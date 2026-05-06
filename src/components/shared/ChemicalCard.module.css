@@ -1,0 +1,196 @@
+.card {
+  background: var(--color-card);
+  border: var(--card-border);
+  border-radius: var(--card-radius);
+  padding: var(--card-padding);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+  border-color: var(--card-hover-border);
+  box-shadow: var(--card-hover-shadow);
+}
+
+.cardPinned {
+  border-color: rgba(74, 158, 74, 0.5);
+  box-shadow: 0 0 0 1px rgba(74, 158, 74, 0.25);
+}
+
+/* ── Top row ── */
+.cardTop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pinBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+
+.pinBtn:hover {
+  color: var(--color-accent);
+}
+
+.pinBtnActive {
+  color: var(--color-accent);
+}
+
+.productName {
+  flex: 1;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.moreBtn {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--color-accent);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 3px 9px;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.moreBtn:hover {
+  background: rgba(74, 158, 74, 0.12);
+  border-color: var(--color-accent);
+}
+
+/* ── Meta row ── */
+.cardMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+}
+
+.manufacturer {
+  color: var(--color-text-muted);
+}
+
+.metaDot {
+  color: var(--color-border);
+}
+
+.chemType {
+  color: var(--color-text-muted);
+}
+
+/* ── Stats row ── */
+.statsRow {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.statLabel {
+  font-size: 0.68rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.statValue {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+/* Signal word colors */
+.signalCaution {
+  color: #d4b84a;
+}
+
+.signalWarning {
+  color: #e07a30;
+}
+
+.signalDanger {
+  color: #e05050;
+}
+
+/* ── Rate row ── */
+.rateRow {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 0.8rem;
+}
+
+.rateLabel {
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.rateValue {
+  color: var(--color-text);
+}
+
+/* ── Tag pills ── */
+.tagRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.tag {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+  letter-spacing: 0.03em;
+  background: rgba(74, 158, 74, 0.12);
+  color: var(--color-accent);
+}
+
+.tagFungicide {
+  background: rgba(124, 77, 255, 0.15);
+  color: #a07cff;
+}
+
+.tagHerbicide {
+  background: rgba(220, 160, 50, 0.15);
+  color: #dca032;
+}
+
+.tagInsecticide {
+  background: rgba(220, 70, 70, 0.15);
+  color: #e87070;
+}
+
+.tagPgr {
+  background: rgba(0, 160, 160, 0.15);
+  color: #40c0c0;
+}
+
+.tagFertilizer {
+  background: rgba(74, 158, 74, 0.12);
+  color: var(--color-accent);
+}

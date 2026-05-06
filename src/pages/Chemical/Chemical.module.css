@@ -1,0 +1,82 @@
+.labelsTab {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── Toolbar ── */
+.toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.searchInput {
+  width: 100%;
+  max-width: 380px;
+  background: var(--color-card);
+  border: var(--card-border);
+  border-radius: 8px;
+  color: var(--color-text);
+  font-size: 0.85rem;
+  padding: 8px 12px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.searchInput::placeholder {
+  color: var(--color-text-muted);
+}
+
+.searchInput:focus {
+  border-color: var(--color-accent);
+}
+
+.filterRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.filterBtn {
+  background: var(--color-card);
+  border: var(--card-border);
+  border-radius: 20px;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 12px;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.filterBtn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.filterBtnActive {
+  background: rgba(74, 158, 74, 0.15);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+/* ── Grid ── */
+.chemGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--grid-gap);
+}
+
+.emptyState {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  padding: 24px 0;
+}
+
+/* ── Mobile ── */
+@media (max-width: 768px) {
+  .chemGrid {
+    grid-template-columns: 1fr;
+  }
+}
