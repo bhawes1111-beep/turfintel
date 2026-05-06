@@ -13,6 +13,7 @@
   --color-weather: #1a3a5c;
   --color-weather-text: #b8d4f0;
   --sidebar-width: 220px;
+  --sidebar-collapsed: 64px;
 }
 
 *,

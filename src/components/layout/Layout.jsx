@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar'
+import { Icon } from '../shared/icons'
 import styles from './Layout.module.css'
 
 export default function Layout() {
@@ -18,13 +19,15 @@ export default function Layout() {
       )}
 
       <div className={styles.main}>
+        {/* Mobile-only hamburger — hidden on desktop via CSS */}
         <button
           className={styles.menuBtn}
           onClick={() => setSidebarOpen(o => !o)}
-          aria-label="Toggle menu"
+          aria-label="Open navigation menu"
         >
-          &#9776;
+          <Icon name={sidebarOpen ? 'close' : 'menu'} size={18} />
         </button>
+
         <Outlet />
       </div>
     </div>

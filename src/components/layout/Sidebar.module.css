@@ -1,3 +1,5 @@
+/* ── Sidebar shell ─────────────────────────────────────────────────────── */
+
 .sidebar {
   width: var(--sidebar-width);
   background-color: var(--color-sidebar);
@@ -7,43 +9,102 @@
   flex-shrink: 0;
   height: 100%;
   overflow: hidden;
+  transition: width 0.25s ease;
+  /* Prevent content bleed during transition */
+  will-change: width;
 }
 
+.sidebar.collapsed {
+  width: var(--sidebar-collapsed);
+}
+
+/* ── Brand header ──────────────────────────────────────────────────────── */
+
 .brand {
-  padding: 18px 16px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  height: 52px;
   border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+  overflow: hidden;
+  gap: 8px;
 }
 
 .brandName {
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--color-accent);
   letter-spacing: 0.3px;
+  white-space: nowrap;
+  overflow: hidden;
+  /* Fade out and collapse width together with sidebar */
+  opacity: 1;
+  max-width: 140px;
+  transition: opacity 0.15s ease, max-width 0.25s ease;
 }
+
+.collapsed .brandName {
+  opacity: 0;
+  max-width: 0;
+}
+
+/* Collapse toggle button */
+.collapseBtn {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.collapseBtn:hover {
+  background-color: var(--color-sidebar-hover);
+  color: var(--color-text);
+}
+
+/* When collapsed: center the button since the brand name is hidden */
+.collapsed .brand {
+  justify-content: center;
+}
+
+/* ── Nav lists ─────────────────────────────────────────────────────────── */
 
 .nav {
   list-style: none;
-  padding: 8px 0;
+  padding: 6px 0;
   flex: 1;
+  overflow: hidden;
 }
 
 .navBottom {
   list-style: none;
-  padding: 8px 0;
+  padding: 6px 0;
   border-top: 1px solid var(--color-border);
+  flex-shrink: 0;
+  overflow: hidden;
 }
+
+/* ── Nav links ─────────────────────────────────────────────────────────── */
 
 .link {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 16px;
+  padding: 9px 12px;
+  margin: 2px 8px;
+  border-radius: 6px;
   color: var(--color-text-muted);
-  border-radius: 4px;
-  margin: 1px 8px;
-  transition: background-color 0.15s, color 0.15s;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: background-color 0.15s, color 0.15s, box-shadow 0.15s, padding 0.25s;
 }
 
 .link:hover {
@@ -51,36 +112,76 @@
   color: var(--color-text);
 }
 
+/* Active: gradient glow + accent left border */
 .link.active {
-  background-color: var(--color-sidebar-active);
+  background: linear-gradient(
+    90deg,
+    rgba(74, 158, 74, 0.18) 0%,
+    rgba(74, 158, 74, 0.04) 100%
+  );
+  box-shadow: inset 3px 0 0 var(--color-accent);
   color: var(--color-text);
-  border-left: 3px solid var(--color-accent);
-  padding-left: 13px;
 }
 
-.icon {
-  font-size: 11px;
-  font-weight: 700;
-  width: 22px;
-  height: 22px;
+/* ── Icon wrapper ──────────────────────────────────────────────────────── */
+
+.iconWrap {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--color-border);
-  border-radius: 3px;
-  flex-shrink: 0;
   color: var(--color-text-muted);
-  letter-spacing: 0;
+  transition: color 0.15s;
 }
 
-.link.active .icon {
-  background-color: var(--color-accent);
-  color: #fff;
+.link:hover .iconWrap {
+  color: var(--color-text);
 }
+
+.link.active .iconWrap {
+  color: var(--color-accent);
+}
+
+/* ── Label ─────────────────────────────────────────────────────────────── */
 
 .label {
-  font-size: 13px;
+  overflow: hidden;
+  white-space: nowrap;
+  /* Smooth label fade + width collapse in sync with sidebar width */
+  opacity: 1;
+  max-width: 160px;
+  transition: opacity 0.15s ease, max-width 0.25s ease;
 }
+
+.collapsed .label {
+  opacity: 0;
+  max-width: 0;
+}
+
+/* ── Collapsed link layout ─────────────────────────────────────────────── */
+
+/* Center the icon when collapsed; padding matches the expanded icon position */
+.collapsed .link {
+  justify-content: center;
+  padding: 9px 0;
+  margin: 2px 8px;
+  gap: 0;
+}
+
+/* Active state must remain obvious when collapsed (icon color + glow only) */
+.collapsed .link.active {
+  box-shadow:
+    inset 3px 0 0 var(--color-accent),
+    0 0 0 1px rgba(74, 158, 74, 0.2);
+}
+
+.collapsed .link.active .iconWrap {
+  color: var(--color-accent);
+}
+
+/* ── Mobile ────────────────────────────────────────────────────────────── */
 
 @media (max-width: 768px) {
   .sidebar {
@@ -89,11 +190,40 @@
     left: 0;
     height: 100%;
     z-index: 100;
+    /* Slide in/out independently of collapse width */
+    width: var(--sidebar-width) !important;
     transform: translateX(-100%);
+    /* Prioritise slide transition on mobile; width is locked */
     transition: transform 0.25s ease;
   }
 
-  .sidebar.open {
+  .sidebar.mobileOpen {
     transform: translateX(0);
+  }
+
+  /* Always show labels on mobile — ignore collapsed state */
+  .collapsed .label {
+    opacity: 1;
+    max-width: 160px;
+  }
+
+  .collapsed .link {
+    justify-content: flex-start;
+    padding: 9px 12px;
+    gap: 10px;
+  }
+
+  .collapsed .brand {
+    justify-content: space-between;
+  }
+
+  .collapsed .brandName {
+    opacity: 1;
+    max-width: 140px;
+  }
+
+  /* Hide the collapse toggle on mobile — not needed */
+  .collapseBtn {
+    display: none;
   }
 }
