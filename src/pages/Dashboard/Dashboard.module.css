@@ -1,12 +1,19 @@
+/* ── Page shell ────────────────────────────────────────────────────────── */
+
 .page {
   display: flex;
   flex-direction: column;
   height: 100%;
+  /* Prevent any child from generating horizontal scroll */
+  overflow-x: hidden;
 }
 
+/* ── Header ────────────────────────────────────────────────────────────── */
+
 .header {
-  padding: 16px 24px 12px;
+  padding: 16px var(--grid-padding) 12px;
   border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
 }
 
 .title {
@@ -15,69 +22,103 @@
   color: var(--color-text);
 }
 
+/* ── Weather bar ───────────────────────────────────────────────────────── */
+
+/* Full-width strip above the grid.
+   Designed to eventually hold live forecast, wind speed, temperature strip,
+   or embedded weather radar. Flex layout wraps gracefully on narrow screens. */
 .weatherBar {
   background-color: var(--color-weather);
   color: var(--color-weather-text);
-  padding: 10px 24px;
+  padding: 9px var(--grid-padding);
   font-size: 13px;
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 20px;
   flex-wrap: wrap;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .weatherItem {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
+  white-space: nowrap;
 }
 
+/* Pushes right-side weather items away from the left label */
+.weatherSpacer {
+  flex: 1;
+}
+
+/* ── Grid ──────────────────────────────────────────────────────────────── */
+
+/* Explicit column count (not auto-fill) — required for span control.
+   All sizes controlled via CSS variables in index.css. */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 16px;
-  padding: 24px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--grid-gap);
+  padding: var(--grid-padding);
+
+  /* Allow vertical scroll, never horizontal */
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  /* Ensures grid never shrinks narrower than its container */
+  min-width: 0;
+  box-sizing: border-box;
+
+  /* Align rows to card content — no artificial row stretching */
+  align-items: start;
 }
 
-.card {
-  background-color: var(--color-card);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 20px;
-  min-height: 130px;
-  transition: border-color 0.15s;
-}
+/* ── Placeholder text inside empty cards ───────────────────────────────── */
 
-.card:hover {
-  border-color: var(--color-accent);
-}
-
-.cardTitle {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-text);
-  margin-bottom: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.cardBody {
+.empty {
   font-size: 13px;
   color: var(--color-text-muted);
+  /* Vertically soft-center in the card body */
+  margin-top: 4px;
 }
 
+/* ── Tablet: 2 columns ─────────────────────────────────────────────────── */
+
+/* At this width a 3-col layout gets cramped with the sidebar present.
+   The sidebar is 220px expanded / 64px collapsed — content area can be
+   as narrow as ~500px on a 768px screen, so we drop to 2 cols early. */
+@media (max-width: 1100px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ── Mobile: 1 column ──────────────────────────────────────────────────── */
+
+/* Below 768px the sidebar slides off-screen entirely.
+   Galaxy S screens are ~360px viewport — grid padding + 1-col ensures
+   no card ever exceeds the available width. */
 @media (max-width: 768px) {
   .header {
-    padding: 14px 16px 10px;
+    padding: 14px var(--grid-padding-mobile) 10px;
+    /* Clear the fixed hamburger button (36px + 12px offset + 4px gap) */
     padding-left: 52px;
   }
 
   .weatherBar {
-    padding: 10px 16px;
+    padding: 9px var(--grid-padding-mobile);
+    gap: 12px;
+  }
+
+  /* Push secondary weather stats to a second line on very narrow screens */
+  .weatherSpacer {
+    display: none;
   }
 
   .grid {
-    padding: 16px;
     grid-template-columns: 1fr;
+    gap: 12px;
+    padding: var(--grid-padding-mobile);
   }
 }

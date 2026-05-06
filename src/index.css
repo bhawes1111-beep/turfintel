@@ -14,6 +14,21 @@
   --color-weather-text: #b8d4f0;
   --sidebar-width: 220px;
   --sidebar-collapsed: 64px;
+
+  /* Dashboard grid */
+  --grid-gap: 16px;
+  --grid-padding: 24px;
+  --grid-padding-mobile: 12px;
+
+  /* Dashboard cards */
+  --card-radius: 10px;
+  --card-padding: 20px;
+  --card-padding-mobile: 16px;
+  --card-min-height: 150px;
+  --card-tall-height: 300px;
+  --card-border: 1px solid var(--color-border);
+  --card-hover-border: rgba(74, 158, 74, 0.35);
+  --card-hover-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
 *,
