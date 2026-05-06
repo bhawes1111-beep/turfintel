@@ -1,0 +1,83 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.header {
+  padding: 16px 24px 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.weatherBar {
+  background-color: var(--color-weather);
+  color: var(--color-weather-text);
+  padding: 10px 24px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.weatherItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  padding: 24px;
+}
+
+.card {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 20px;
+  min-height: 130px;
+  transition: border-color 0.15s;
+}
+
+.card:hover {
+  border-color: var(--color-accent);
+}
+
+.cardTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.cardBody {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+@media (max-width: 768px) {
+  .header {
+    padding: 14px 16px 10px;
+    padding-left: 52px;
+  }
+
+  .weatherBar {
+    padding: 10px 16px;
+  }
+
+  .grid {
+    padding: 16px;
+    grid-template-columns: 1fr;
+  }
+}

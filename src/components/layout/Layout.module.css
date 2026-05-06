@@ -1,0 +1,46 @@
+.shell {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+.main {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.overlay {
+  display: none;
+}
+
+.menuBtn {
+  display: none;
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 200;
+  font-size: 20px;
+  color: var(--color-text);
+  padding: 4px 8px;
+  background-color: var(--color-sidebar);
+  border-radius: 4px;
+  border: 1px solid var(--color-border);
+}
+
+@media (max-width: 768px) {
+  .menuBtn {
+    display: block;
+  }
+
+  .overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 99;
+  }
+}
