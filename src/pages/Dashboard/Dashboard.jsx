@@ -1,11 +1,20 @@
 import { useState } from 'react'
 import DashboardCard from '../../components/shared/DashboardCard'
 import { AlertList } from '../../components/shared/alerts'
+import {
+  WeatherCard, ETCard, ForecastStrip, WeatherAlertBanner,
+  PLACEHOLDER_WEATHER_ALERTS,
+} from '../../components/shared/weather'
 import { DASHBOARD_ALERTS } from '../../data/dashboardAlerts'
 import styles from './Dashboard.module.css'
 
 export default function Dashboard() {
   const [alerts, setAlerts] = useState(DASHBOARD_ALERTS)
+  const [weatherAlerts, setWeatherAlerts] = useState(PLACEHOLDER_WEATHER_ALERTS)
+
+  function handleDismissWeatherAlert(id) {
+    setWeatherAlerts(prev => prev.filter(a => a.id !== id))
+  }
 
   function handleAcknowledge(id) {
     setAlerts(prev => prev.map(a => a.id === id ? { ...a, status: 'acknowledged' } : a))
@@ -25,13 +34,25 @@ export default function Dashboard() {
         <h1 className={styles.title}>Dashboard</h1>
       </div>
 
-      {/* Full-width weather strip — wide format, ready for radar/forecast data */}
-      <div className={styles.weatherBar}>
-        <span className={styles.weatherItem}>&#9728; Weather — data coming soon</span>
-        <span className={styles.weatherSpacer} />
-        <span className={styles.weatherItem}>&#127774; High: --°F</span>
-        <span className={styles.weatherItem}>&#128167; Humidity: --%</span>
-        <span className={styles.weatherItem}>&#127788; Wind: -- mph</span>
+      {/* Weather command-center — always visible above the scrollable grid */}
+      <div className={styles.weatherSection}>
+        {weatherAlerts.length > 0 && (
+          <div className={styles.weatherBanners}>
+            {weatherAlerts.map(alert => (
+              <WeatherAlertBanner
+                key={alert.id}
+                message={alert.message}
+                severity={alert.severity}
+                onDismiss={() => handleDismissWeatherAlert(alert.id)}
+              />
+            ))}
+          </div>
+        )}
+        <div className={styles.weatherCardsRow}>
+          <WeatherCard />
+          <ETCard />
+        </div>
+        <ForecastStrip />
       </div>
 
       {/* Responsive card grid */}
