@@ -1,0 +1,625 @@
+/* ── Shared status tokens ────────────────────────────────────────────────── */
+.statusOk   { --st-color: var(--color-accent);  --st-bg: rgba(74,158,74,0.1);   --st-border: rgba(74,158,74,0.25); }
+.statusLow  { --st-color: #d4883a;              --st-bg: rgba(210,130,40,0.12); --st-border: rgba(210,130,40,0.25); }
+.statusHigh { --st-color: #e05050;              --st-bg: rgba(220,60,60,0.12);  --st-border: rgba(220,60,60,0.25); }
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 12px;
+  color: var(--st-color);
+  background: var(--st-bg);
+  border: 1px solid var(--st-border);
+}
+
+.riskBadge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+.riskLow    { color: var(--color-accent); background: rgba(74,158,74,0.1);   border: 1px solid rgba(74,158,74,0.25); }
+.riskMedium { color: #d4883a;             background: rgba(210,130,40,0.12); border: 1px solid rgba(210,130,40,0.25); }
+.riskHigh   { color: #e05050;             background: rgba(220,60,60,0.12);  border: 1px solid rgba(220,60,60,0.25); }
+
+.priorityHigh   { --pri-color: #e05050; }
+.priorityMedium { --pri-color: #d4883a; }
+.priorityLow    { --pri-color: #c8b830; }
+
+/* ── Shared report header ────────────────────────────────────────────────── */
+.reportCard {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.reportCardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.reportAreaName {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 2px;
+}
+
+.reportMeta {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.reportHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.uploadBtn {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.uploadBtn:hover {
+  color: var(--color-text);
+  border-color: var(--color-accent);
+}
+
+/* ── Soil Reports ────────────────────────────────────────────────────────── */
+.soilKeyMetrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.keyMetricBox {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.keyMetricLabel {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+.keyMetricValue {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1;
+}
+
+.keyMetricUnit {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+
+.keyMetricRange {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.trendIndicator {
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.trendUp     { color: var(--color-accent); }
+.trendDown   { color: #e05050; }
+.trendStable { color: var(--color-text-muted); }
+
+.baseSatBar {
+  display: flex;
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+  gap: 1px;
+  margin-top: 2px;
+}
+
+.baseSatSegment {
+  height: 100%;
+  border-radius: 0;
+  transition: width 0.3s;
+}
+
+.baseSatLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.baseSatItem {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.baseSatDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.sectionLabel {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  margin-bottom: 8px;
+}
+
+.nutrientTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.nutrientTable th {
+  text-align: left;
+  padding: 6px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.nutrientTable td {
+  padding: 7px 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  color: var(--color-text);
+}
+
+.nutrientTable tr:last-child td {
+  border-bottom: none;
+}
+
+/* ── Tissue Reports ──────────────────────────────────────────────────────── */
+.nutrientBarsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.nutrientBarCard {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.nutrientBarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.nutrientBarName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.nutrientBarValue {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.nutrientBarTrack {
+  height: 6px;
+  background: var(--color-border);
+  border-radius: 3px;
+  overflow: visible;
+  position: relative;
+}
+
+.nutrientBarFill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s;
+}
+
+.barOk   { background: var(--color-accent); }
+.barLow  { background: #d4883a; }
+.barHigh { background: #e05050; }
+
+.nutrientBarRange {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  display: flex;
+  justify-content: space-between;
+}
+
+/* ── Water Reports ───────────────────────────────────────────────────────── */
+.waterGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 12px;
+}
+
+.waterParamRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-size: 13px;
+}
+
+.waterParamRow:last-child {
+  border-bottom: none;
+}
+
+.waterParamName {
+  color: var(--color-text-muted);
+  min-width: 140px;
+}
+
+.waterParamValue {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.overallRiskRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 10px;
+  margin-top: 4px;
+  border-top: 1px solid var(--color-border);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+/* ── Nutrient Trends ─────────────────────────────────────────────────────── */
+.trendsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 16px;
+}
+
+.trendCard {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.trendCardTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.trendChartArea {
+  height: 80px;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.trendBar {
+  flex: 1;
+  border-radius: 3px 3px 0 0;
+  min-height: 4px;
+  transition: height 0.3s;
+  position: relative;
+}
+
+.trendBarLabel {
+  position: absolute;
+  bottom: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.trendBarValue {
+  position: absolute;
+  top: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.trendFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  padding-top: 16px;
+}
+
+.trendOptimalRange {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+/* ── Recommendations ─────────────────────────────────────────────────────── */
+.recCard {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--pri-color, var(--color-border));
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.recHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.recTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  line-height: 1.35;
+}
+
+.recArea {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+.recBadges {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.priorityBadge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 12px;
+  color: var(--pri-color);
+  background: color-mix(in srgb, var(--pri-color) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--pri-color) 25%, transparent);
+}
+
+.recDetail {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  line-height: 1.55;
+}
+
+.recProductGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.recProductBox {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.recProductBoxLabel {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  margin-bottom: 2px;
+}
+
+.recProductBoxValue {
+  font-size: 12px;
+  color: var(--color-text);
+  line-height: 1.35;
+}
+
+.nutrientTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.nutrientTag {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: rgba(74,158,74,0.1);
+  border: 1px solid rgba(74,158,74,0.2);
+  color: var(--color-accent);
+}
+
+.recSource {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+/* ── Upload Center ───────────────────────────────────────────────────────── */
+.uploadZoneRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.uploadZone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 28px 20px;
+  text-align: center;
+  background: var(--color-card);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.uploadZone:hover {
+  border-color: var(--color-accent);
+  background: rgba(74,158,74,0.04);
+}
+
+.uploadZoneIcon {
+  font-size: 28px;
+}
+
+.uploadZoneTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.uploadZoneSubtitle {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.uploadZoneFormats {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 2px 9px;
+}
+
+.fileListHeader {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 12px;
+}
+
+.fileList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fileCard {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.fileIcon {
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.fileInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.fileName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fileMeta {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+.fileStatus {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.fileStatus.processed { color: var(--color-accent); background: rgba(74,158,74,0.1); border: 1px solid rgba(74,158,74,0.25); }
+.fileStatus.pending   { color: #d4883a; background: rgba(210,130,40,0.1); border: 1px solid rgba(210,130,40,0.25); }
+
+@media (max-width: 768px) {
+  .soilKeyMetrics   { grid-template-columns: repeat(3, 1fr); }
+  .nutrientBarsGrid { grid-template-columns: 1fr; }
+  .trendsGrid       { grid-template-columns: 1fr; }
+  .recProductGrid   { grid-template-columns: 1fr 1fr; }
+  .uploadZoneRow    { grid-template-columns: 1fr; }
+  .waterGrid        { grid-template-columns: 1fr; }
+}
