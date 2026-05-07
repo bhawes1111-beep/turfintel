@@ -1,0 +1,349 @@
+/* ── Priority CSS token classes ───────────────────────────────────────────── */
+/* Applied to cards and badges to set --pr-* custom properties. */
+
+.priorityCritical { --pr-color: #e05050; --pr-bg: rgba(220,60,60,0.15);  --pr-border: rgba(220,60,60,0.35); }
+.priorityHigh     { --pr-color: #e05050; --pr-bg: rgba(220,60,60,0.1);   --pr-border: rgba(220,60,60,0.25); }
+.priorityMedium   { --pr-color: #d4883a; --pr-bg: rgba(210,130,40,0.12); --pr-border: rgba(210,130,40,0.25); }
+.priorityLow      { --pr-color: #c8b830; --pr-bg: rgba(200,184,48,0.12); --pr-border: rgba(200,184,48,0.25); }
+.priorityInfo     { --pr-color: #3a8ad4; --pr-bg: rgba(58,138,212,0.1);  --pr-border: rgba(58,138,212,0.25); }
+
+/* ── Status CSS token classes ─────────────────────────────────────────────── */
+.statusNew          { --st-color: var(--color-accent); --st-bg: rgba(74,158,74,0.1);   --st-border: rgba(74,158,74,0.25); }
+.statusAcknowledged { --st-color: var(--color-text-muted); --st-bg: var(--color-bg);   --st-border: var(--color-border); }
+.statusSnoozed      { --st-color: #d4883a;             --st-bg: rgba(210,130,40,0.1); --st-border: rgba(210,130,40,0.25); }
+.statusResolved     { --st-color: var(--color-text-muted); --st-bg: var(--color-bg);   --st-border: var(--color-border); }
+
+/* ── AlertCard — full mode ────────────────────────────────────────────────── */
+.alertCard {
+  display: flex;
+  align-items: stretch;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--pr-color, var(--color-border));
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: border-color 0.15s, opacity 0.2s;
+}
+
+.alertCard.resolved {
+  opacity: 0.35;
+}
+
+.alertCard.snoozed {
+  opacity: 0.55;
+}
+
+.alertCard.acknowledged {
+  opacity: 0.75;
+}
+
+/* Critical gets a subtle background tint to stand out */
+.alertCard.critical {
+  background: var(--pr-bg, var(--color-card));
+}
+
+.alertCardBody {
+  flex: 1;
+  min-width: 0;
+  padding: 13px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.alertCardTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  line-height: 1.35;
+}
+
+.alertCardMessage {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  line-height: 1.55;
+}
+
+.alertCardMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.alertCardMetaText {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.alertCardMetaDot {
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: var(--color-text-muted);
+  opacity: 0.4;
+  flex-shrink: 0;
+}
+
+.alertModuleTag {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+}
+
+.alertCardRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 12px 12px 12px 6px;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.alertCardBadges {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.alertCardActions {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.actionBtn {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  white-space: nowrap;
+}
+
+.actionBtn:hover {
+  color: var(--color-text);
+  border-color: var(--color-accent);
+}
+
+.actionBtnPrimary {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.actionBtnPrimary:hover {
+  background: var(--color-accent-hover, #3d8a3d);
+  border-color: var(--color-accent-hover, #3d8a3d);
+  color: #fff;
+}
+
+.dismissBtn {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 5px;
+  border-radius: 4px;
+  line-height: 1;
+  transition: color 0.15s, background 0.15s;
+  flex-shrink: 0;
+}
+
+.dismissBtn:hover {
+  color: #e05050;
+  background: rgba(220, 60, 60, 0.08);
+}
+
+/* ── AlertCard — compact mode ─────────────────────────────────────────────── */
+.alertCardCompact {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--pr-color, var(--color-border));
+  border-radius: var(--radius-sm);
+  transition: opacity 0.2s;
+}
+
+.alertCardCompact.resolved    { opacity: 0.35; }
+.alertCardCompact.snoozed     { opacity: 0.55; }
+.alertCardCompact.acknowledged { opacity: 0.75; }
+
+.compactDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--pr-color, var(--color-text-muted));
+  flex-shrink: 0;
+}
+
+.compactTitle {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.compactRight {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* ── AlertBadge ───────────────────────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  border-radius: 12px;
+  white-space: nowrap;
+}
+
+.priorityBadge {
+  color: var(--pr-color);
+  background: var(--pr-bg);
+  border: 1px solid var(--pr-border);
+}
+
+.statusBadge {
+  color: var(--st-color);
+  background: var(--st-bg);
+  border: 1px solid var(--st-border);
+}
+
+.badgeDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.25; }
+}
+
+.pulseDot {
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+/* ── AlertList ────────────────────────────────────────────────────────────── */
+.alertList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.alertGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.alertGroupHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0 2px;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 2px;
+}
+
+.alertGroupLabel {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+.alertGroupCount {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+}
+
+/* ── Empty state ──────────────────────────────────────────────────────────── */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 40px 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.emptyStateIcon {
+  font-size: 28px;
+  opacity: 0.5;
+}
+
+.emptyStateMessage {
+  font-size: 13px;
+}
+
+/* ── Mobile ───────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .alertCardRight {
+    padding: 10px 8px 10px 4px;
+  }
+
+  .alertCardTitle {
+    font-size: 13px;
+  }
+
+  .alertCardMessage {
+    font-size: 11px;
+  }
+
+  .actionBtn {
+    font-size: 10px;
+    padding: 3px 8px;
+  }
+
+  .alertCardCompact {
+    padding: 8px 10px;
+  }
+
+  .compactTitle {
+    font-size: 12px;
+  }
+}
