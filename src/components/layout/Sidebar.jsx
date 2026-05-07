@@ -4,12 +4,16 @@ import { Icon } from '../shared/icons'
 import styles from './Sidebar.module.css'
 
 const NAV_ITEMS = [
-  { to: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
-  { to: '/crew',      label: 'Crew',      icon: 'crew'      },
-  { to: '/chemical',  label: 'Chemical',  icon: 'chemical'  },
-  { to: '/budget',    label: 'Budget',    icon: 'budget'    },
-  { to: '/inventory', label: 'Inventory', icon: 'inventory' },
-  { to: '/equipment', label: 'Equipment', icon: 'equipment' },
+  { to: '/dashboard',          label: 'Dashboard',          icon: 'dashboard'          },
+  { to: '/crew',               label: 'Crew',               icon: 'crew'               },
+  { to: '/chemical',           label: 'Chemical',           icon: 'chemical'           },
+  { to: '/spray',              label: 'Spray',              icon: 'spray'              },
+  { to: '/disease',            label: 'Disease',            icon: 'disease'            },
+  { to: '/plant-nutrition',    label: 'Plant Nutrition',    icon: 'plantNutrition'     },
+  { to: '/cultural-practices', label: 'Cultural Practices', icon: 'culturalPractices'  },
+  { to: '/budget',             label: 'Budget',             icon: 'budget'             },
+  { to: '/inventory',          label: 'Inventory',          icon: 'inventory'          },
+  { to: '/equipment',          label: 'Equipment',          icon: 'equipment'          },
 ]
 
 export default function Sidebar({ isOpen, onClose }) {

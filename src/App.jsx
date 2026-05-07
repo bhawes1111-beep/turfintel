@@ -3,6 +3,10 @@ import Layout from './components/layout/Layout'
 import Dashboard from './pages/Dashboard/Dashboard'
 import Crew from './pages/Crew/Crew'
 import Chemical from './pages/Chemical/Chemical'
+import Spray from './pages/Spray/Spray'
+import Disease from './pages/Disease/Disease'
+import PlantNutrition from './pages/PlantNutrition/PlantNutrition'
+import CulturalPractices from './pages/CulturalPractices/CulturalPractices'
 import Budget from './pages/Budget/Budget'
 import Inventory from './pages/Inventory/Inventory'
 import Equipment from './pages/Equipment/Equipment'
@@ -17,6 +21,10 @@ export default function App() {
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="crew/*" element={<Crew />} />
           <Route path="chemical/*" element={<Chemical />} />
+          <Route path="spray/*" element={<Spray />} />
+          <Route path="disease/*" element={<Disease />} />
+          <Route path="plant-nutrition/*" element={<PlantNutrition />} />
+          <Route path="cultural-practices/*" element={<CulturalPractices />} />
           <Route path="budget/*" element={<Budget />} />
           <Route path="inventory/*" element={<Inventory />} />
           <Route path="equipment/*" element={<Equipment />} />

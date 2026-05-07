@@ -55,6 +55,49 @@ const iconPaths = {
     </>
   ),
 
+  spray: (
+    // Nozzle body pointing right + three droplets
+    <>
+      <path d="M2 13h8V9.5H6.5L2 13z" />
+      <circle cx="13.5" cy="8.5"  r="1.5" />
+      <circle cx="16.5" cy="12"   r="1.5" />
+      <circle cx="13"   cy="15.5" r="1.5" />
+    </>
+  ),
+
+  disease: (
+    // Shield with concentric ring cut-out (disease target)
+    <path
+      fillRule="evenodd"
+      d="M10 2L3 5.5v5C3 14.5 6.5 18 10 19c3.5-1 7-4.5 7-8.5v-5L10 2zm0 4.5a4 4 0 110 8 4 4 0 010-8zm0 2a2 2 0 100 4 2 2 0 000-4z"
+    />
+  ),
+
+  plantNutrition: (
+    // Leaf + stem
+    <>
+      <path
+        d="M10 18v-7"
+        stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"
+      />
+      <path d="M10 11C6 11 3 7 4 3c3 0 7 2 7 7 0-5 4-7 7-7-1 4-4 8-8 8z" />
+    </>
+  ),
+
+  culturalPractices: (
+    // Core aerator: horizontal bar + tines above + plugs below
+    <>
+      <rect x="1" y="9" width="18" height="2.5" rx="1.25" />
+      <path
+        d="M4.5 9V5M9 9V4M13 9V5M17.5 9V4"
+        stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"
+      />
+      <rect x="3"  y="13" width="2" height="4" rx="1" />
+      <rect x="9"  y="13" width="2" height="4" rx="1" />
+      <rect x="15" y="13" width="2" height="4" rx="1" />
+    </>
+  ),
+
   settings: (
     // Gear: outer shape with evenodd inner circle cut-out
     <path
