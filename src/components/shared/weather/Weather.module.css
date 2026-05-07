@@ -1,0 +1,390 @@
+/* ── Condition token classes ──────────────────────────────────────────────── */
+/* Set --cond-* custom properties consumed by .conditionBadge and .alertBanner. */
+.condFavorable { --cond-color: #4a9e4a; --cond-bg: rgba(74,158,74,0.12);   --cond-border: rgba(74,158,74,0.25); }
+.condCaution   { --cond-color: #d4883a; --cond-bg: rgba(210,130,40,0.12);  --cond-border: rgba(210,130,40,0.25); }
+.condDanger    { --cond-color: #e05050; --cond-bg: rgba(220,60,60,0.12);   --cond-border: rgba(220,60,60,0.25); }
+.condIdeal     { --cond-color: #3a8ad4; --cond-bg: rgba(58,138,212,0.12);  --cond-border: rgba(58,138,212,0.25); }
+
+/* ── Spray window token classes ───────────────────────────────────────────── */
+.sprayIdeal   { --spray-color: #4a9e4a; --spray-bg: rgba(74,158,74,0.12);   --spray-border: rgba(74,158,74,0.25); }
+.sprayCaution { --spray-color: #d4883a; --spray-bg: rgba(210,130,40,0.12);  --spray-border: rgba(210,130,40,0.25); }
+.sprayPoor    { --spray-color: #e05050; --spray-bg: rgba(220,60,60,0.12);   --spray-border: rgba(220,60,60,0.25); }
+
+/* ── Disease pressure token classes ──────────────────────────────────────── */
+.diseaseLow      { --dis-color: #4a9e4a; --dis-bg: rgba(74,158,74,0.12);   --dis-border: rgba(74,158,74,0.25); }
+.diseaseMedium   { --dis-color: #d4883a; --dis-bg: rgba(210,130,40,0.12);  --dis-border: rgba(210,130,40,0.25); }
+.diseaseHigh     { --dis-color: #e05050; --dis-bg: rgba(220,60,60,0.12);   --dis-border: rgba(220,60,60,0.25); }
+.diseaseCritical { --dis-color: #b03030; --dis-bg: rgba(176,48,48,0.15);   --dis-border: rgba(176,48,48,0.35); }
+
+/* ── Shared badge base ────────────────────────────────────────────────────── */
+.conditionBadge,
+.sprayBadge,
+.diseaseBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  border-radius: 12px;
+  white-space: nowrap;
+}
+
+.conditionBadge {
+  color: var(--cond-color);
+  background: var(--cond-bg);
+  border: 1px solid var(--cond-border);
+}
+
+.sprayBadge {
+  color: var(--spray-color);
+  background: var(--spray-bg);
+  border: 1px solid var(--spray-border);
+}
+
+.diseaseBadge {
+  color: var(--dis-color);
+  background: var(--dis-bg);
+  border: 1px solid var(--dis-border);
+}
+
+/* ── WeatherCard ──────────────────────────────────────────────────────────── */
+.weatherCard {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.weatherCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.weatherLocation {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.weatherTimestamp {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.weatherMain {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.weatherMainTemp {
+  font-size: 56px;
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.weatherMainRight {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.weatherFeelsLike {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.weatherGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px 8px;
+}
+
+.weatherStat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.weatherStatValue {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.weatherStatLabel {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.weatherFooter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border);
+}
+
+.weatherFooterLabel {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+/* ── ETCard ───────────────────────────────────────────────────────────────── */
+.etCard {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.etHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.etRateValue {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1;
+}
+
+.etRateLabel {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 4px;
+}
+
+.etDeficit {
+  text-align: right;
+}
+
+.etDeficitValue {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--color-text);
+  line-height: 1;
+}
+
+.etTrendHeading {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+.etTrend {
+  display: flex;
+  gap: 4px;
+}
+
+.etTrendItem {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.etTrendValue {
+  font-size: 9px;
+  color: var(--color-text-muted);
+}
+
+.etTrendBarTrack {
+  width: 100%;
+  height: 48px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  background: var(--color-bg);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.etTrendBarFill {
+  width: 100%;
+  background: var(--color-accent);
+  opacity: 0.7;
+  border-radius: 3px 3px 0 0;
+  min-height: 2px;
+  transition: height 0.3s ease;
+}
+
+.etTrendDay {
+  font-size: 9px;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+}
+
+/* ── ForecastStrip ────────────────────────────────────────────────────────── */
+.forecastStrip {
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+.forecastStrip::-webkit-scrollbar {
+  height: 4px;
+}
+
+.forecastStrip::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 2px;
+}
+
+.forecastTrack {
+  display: flex;
+  gap: 8px;
+  padding-bottom: 4px;
+}
+
+.forecastCard {
+  flex-shrink: 0;
+  width: 104px;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  text-align: center;
+}
+
+.forecastDay {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.forecastDate {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  margin-top: -2px;
+}
+
+.forecastIcon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.forecastTemps {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.forecastHigh {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.forecastLow {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.forecastRain {
+  font-size: 10px;
+  color: #3a8ad4;
+}
+
+.forecastEt {
+  font-size: 10px;
+  color: var(--color-text-muted);
+}
+
+/* ── WeatherAlertBanner ───────────────────────────────────────────────────── */
+.alertBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--cond-bg);
+  border: 1px solid var(--cond-border);
+  border-left: 3px solid var(--cond-color);
+}
+
+.alertBannerContent {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.alertBannerIcon {
+  font-size: 14px;
+  color: var(--cond-color);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.alertBannerMessage {
+  font-size: 12px;
+  color: var(--color-text);
+  line-height: 1.5;
+}
+
+.alertBannerDismiss {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 5px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+
+.alertBannerDismiss:hover {
+  color: var(--color-text);
+}
+
+/* ── Mobile ───────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .weatherGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .weatherMainTemp {
+    font-size: 44px;
+  }
+
+  .etTrendBarTrack {
+    height: 40px;
+  }
+
+  .forecastCard {
+    width: 90px;
+  }
+}
