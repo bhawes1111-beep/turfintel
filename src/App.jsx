@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/layout/Layout'
+import Login from './pages/Login/Login'
 import Dashboard from './pages/Dashboard/Dashboard'
 import Crew from './pages/Crew/Crew'
 import Chemical from './pages/Chemical/Chemical'
@@ -16,6 +17,10 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Login lives outside Layout — no sidebar rendered */}
+        <Route path="/login" element={<Login />} />
+
+        {/* All app routes share the sidebar Layout */}
         <Route path="/" element={<Layout />}>
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
