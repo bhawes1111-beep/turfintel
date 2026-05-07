@@ -1,0 +1,261 @@
+/* ── UploadDropzone ───────────────────────────────────────────────────────── */
+.dropzone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-card);
+  padding: 32px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  outline: none;
+  position: relative;
+}
+
+.dropzone:hover,
+.dropzone:focus-visible {
+  border-color: var(--color-accent);
+  background: rgba(74, 158, 74, 0.04);
+}
+
+.dropzone.dragging {
+  border-color: var(--color-accent);
+  background: rgba(74, 158, 74, 0.08);
+  border-style: solid;
+}
+
+.dropzone.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.dropzoneIcon {
+  font-size: 32px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.dropzoneTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  pointer-events: none;
+}
+
+.dropzoneSub {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+
+.dropzoneFormats {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 2px;
+  pointer-events: none;
+}
+
+.formatTag {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+}
+
+/* hidden native input */
+.hiddenInput {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+}
+
+/* ── UploadedFileCard ─────────────────────────────────────────────────────── */
+.fileCard {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 11px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: border-color 0.15s;
+}
+
+.fileCard:hover {
+  border-color: rgba(255,255,255,0.12);
+}
+
+.fileIconWrap {
+  font-size: 24px;
+  flex-shrink: 0;
+  line-height: 1;
+  width: 36px;
+  text-align: center;
+}
+
+.fileInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.fileName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fileMeta {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.fileMetaDot {
+  opacity: 0.4;
+}
+
+.fileProgress {
+  width: 100%;
+  height: 3px;
+  background: var(--color-border);
+  border-radius: 2px;
+  margin-top: 6px;
+  overflow: hidden;
+}
+
+.fileProgressFill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--color-accent);
+  transition: width 0.3s;
+}
+
+.fileActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.removeBtn {
+  font-size: 14px;
+  color: var(--color-text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  line-height: 1;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.removeBtn:hover {
+  color: #e05050;
+  background: rgba(220, 60, 60, 0.1);
+}
+
+/* ── UploadStatusBadge ────────────────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 12px;
+  white-space: nowrap;
+}
+
+.badgeProcessed {
+  color: var(--color-accent);
+  background: rgba(74, 158, 74, 0.1);
+  border: 1px solid rgba(74, 158, 74, 0.25);
+}
+
+.badgePending {
+  color: #d4883a;
+  background: rgba(210, 130, 40, 0.1);
+  border: 1px solid rgba(210, 130, 40, 0.25);
+}
+
+.badgeUploading {
+  color: #3a8ad4;
+  background: rgba(58, 138, 212, 0.1);
+  border: 1px solid rgba(58, 138, 212, 0.25);
+}
+
+.badgeError {
+  color: #e05050;
+  background: rgba(220, 60, 60, 0.1);
+  border: 1px solid rgba(220, 60, 60, 0.25);
+}
+
+.badgeDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+/* ── Pulsing dot for uploading state ─────────────────────────────────────── */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
+.pulseDot {
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+/* ── Mobile ──────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .dropzone {
+    padding: 24px 16px;
+  }
+
+  .dropzoneIcon {
+    font-size: 26px;
+  }
+
+  .fileCard {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+
+  .fileIconWrap {
+    font-size: 20px;
+    width: 28px;
+  }
+
+  .fileName {
+    font-size: 12px;
+  }
+
+  .fileMeta {
+    font-size: 10px;
+  }
+}
