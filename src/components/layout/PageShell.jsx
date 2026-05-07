@@ -1,10 +1,14 @@
+import { useCourse } from '../../context/CourseContext'
 import styles from './PageShell.module.css'
 
 export default function PageShell({ title, tabs, activeTab, onTabChange, children }) {
+  const { activeCourse } = useCourse()
+
   return (
     <div className={styles.page}>
       <div className={styles.header}>
         <h1 className={styles.title}>{title}</h1>
+        <span className={styles.courseBadge}>{activeCourse.name}</span>
       </div>
 
       {tabs && tabs.length > 0 && (
