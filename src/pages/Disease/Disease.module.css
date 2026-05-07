@@ -1,0 +1,629 @@
+/* ── Shared severity tokens ──────────────────────────────────────────────── */
+.severityHigh   { --sev-color: #e05050; --sev-bg: rgba(220, 60, 60, 0.12); --sev-border: rgba(220, 60, 60, 0.25); }
+.severityMedium { --sev-color: #d4883a; --sev-bg: rgba(210, 130, 40, 0.12); --sev-border: rgba(210, 130, 40, 0.25); }
+.severityLow    { --sev-color: #c8b830; --sev-bg: rgba(200, 184, 48, 0.12); --sev-border: rgba(200, 184, 48, 0.25); }
+
+/* ── Active Issues tab ───────────────────────────────────────────────────── */
+.issueGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.issueCard {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.issueCard.high   { border-left: 3px solid #e05050; }
+.issueCard.medium { border-left: 3px solid #d4883a; }
+.issueCard.low    { border-left: 3px solid #c8b830; }
+
+.issueHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.issueName {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+  line-height: 1.3;
+}
+
+.issuePathogen {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-style: italic;
+  margin-top: 2px;
+}
+
+.issueBadges {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.severityBadge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 12px;
+  color: var(--sev-color);
+  background: var(--sev-bg);
+  border: 1px solid var(--sev-border);
+}
+
+.statusBadge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+.statusBadge.active     { color: #e05050; background: rgba(220,60,60,0.1);  border: 1px solid rgba(220,60,60,0.2); }
+.statusBadge.monitoring { color: #d4883a; background: rgba(210,130,40,0.1); border: 1px solid rgba(210,130,40,0.2); }
+.statusBadge.resolved   { color: var(--color-accent); background: rgba(74,158,74,0.1); border: 1px solid rgba(74,158,74,0.2); }
+
+.issueMeta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 16px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.issueMeta span strong {
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+.issueConditions {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.issueAction {
+  font-size: 12px;
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  line-height: 1.5;
+}
+
+.issueActionLabel {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  margin-bottom: 3px;
+}
+
+/* ── Disease Library tab ─────────────────────────────────────────────────── */
+.libraryControls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.searchBox {
+  flex: 1;
+  min-width: 200px;
+  padding: 8px 12px;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-size: 13px;
+}
+
+.searchBox::placeholder { color: var(--color-text-muted); }
+.searchBox:focus { outline: none; border-color: var(--color-accent); }
+
+.filterSelect {
+  padding: 8px 12px;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.filterSelect:focus { outline: none; border-color: var(--color-accent); }
+
+.libraryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 16px;
+}
+
+.libraryCard {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.libraryCardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.libraryName {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.libraryPathogen {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-style: italic;
+  margin-top: 2px;
+}
+
+.typeBadge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.typeBadge.fungal   { color: #7c5cbf; background: rgba(124,92,191,0.1); border: 1px solid rgba(124,92,191,0.25); }
+.typeBadge.oomycete { color: #3a8ad4; background: rgba(58,138,212,0.1); border: 1px solid rgba(58,138,212,0.25); }
+
+.libraryRow {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+.libraryRow strong {
+  color: var(--color-text);
+  font-weight: 500;
+  display: block;
+  margin-bottom: 1px;
+}
+
+.tagList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.tag {
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+}
+
+.seasonBadge {
+  font-size: 11px;
+  color: var(--color-accent);
+  font-weight: 500;
+}
+
+/* ── Course Map tab ──────────────────────────────────────────────────────── */
+.mapWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.mapLegend {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.legendDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.legendDot.high   { background: #e05050; }
+.legendDot.medium { background: #d4883a; }
+.legendDot.low    { background: #c8b830; }
+
+.mapContainer {
+  position: relative;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  aspect-ratio: 16 / 10;
+  min-height: 320px;
+}
+
+.mapBg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 55% at 35% 40%, rgba(74, 158, 74, 0.18) 0%, transparent 70%),
+    radial-gradient(ellipse 45% 40% at 70% 60%, rgba(74, 158, 74, 0.13) 0%, transparent 65%),
+    var(--color-card);
+}
+
+.mapLabel {
+  position: absolute;
+  top: 12px;
+  left: 16px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.mapPin {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+}
+
+.pinDot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(0,0,0,0.3);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+}
+
+.pinDot.high   { background: #e05050; }
+.pinDot.medium { background: #d4883a; }
+.pinDot.low    { background: #c8b830; }
+
+.pinTooltip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 6px 9px;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--color-text);
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  z-index: 10;
+}
+
+.pinTooltip strong {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 1px;
+}
+
+.mapPin:hover .pinTooltip {
+  display: block;
+}
+
+.mapNote {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  text-align: center;
+  padding: 8px 0 0;
+}
+
+/* ── Photo Gallery tab ───────────────────────────────────────────────────── */
+.uploadArea {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 32px;
+  text-align: center;
+  color: var(--color-text-muted);
+  margin-bottom: 20px;
+  background: var(--color-card);
+  transition: border-color 0.15s;
+  cursor: pointer;
+}
+
+.uploadArea:hover {
+  border-color: var(--color-accent);
+  color: var(--color-text);
+}
+
+.uploadIcon {
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+
+.uploadTitle {
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.uploadSubtitle {
+  font-size: 12px;
+}
+
+.photoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+}
+
+.photoCard {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.photoThumb {
+  height: 140px;
+  background: var(--thumb-bg, #2a3a2a);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.photoThumb::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 55% 45% at 40% 60%, var(--thumb-spot, rgba(100,60,60,0.5)) 0%, transparent 70%),
+    var(--thumb-bg, #2a3a2a);
+}
+
+.photoPlaceholderIcon {
+  font-size: 24px;
+  opacity: 0.5;
+  position: relative;
+  z-index: 1;
+}
+
+.photoInfo {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.photoIssueName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.photoMeta {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+/* ── Alerts tab ──────────────────────────────────────────────────────────── */
+.alertsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.alertsTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.clearBtn {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.clearBtn:hover {
+  color: var(--color-text);
+  border-color: var(--color-text-muted);
+}
+
+.alertsList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.alertCard {
+  display: flex;
+  gap: 12px;
+  background: var(--color-card);
+  border: 1px solid var(--sev-border);
+  border-left: 3px solid var(--sev-color);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  opacity: 1;
+  transition: opacity 0.2s;
+}
+
+.alertCard.dismissed {
+  opacity: 0.45;
+}
+
+.alertDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--sev-color);
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+
+.alertBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.alertTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 4px;
+}
+
+.alertMessage {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  margin-bottom: 6px;
+}
+
+.alertFooter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.alertArea {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 1px 7px;
+}
+
+.dismissBtn {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin-left: auto;
+  transition: color 0.15s;
+  flex-shrink: 0;
+}
+
+.dismissBtn:hover { color: var(--color-text); }
+
+/* ── Reports tab ─────────────────────────────────────────────────────────── */
+.reportsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.reportCard {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.reportIcon {
+  font-size: 22px;
+}
+
+.reportName {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.reportDesc {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  flex: 1;
+}
+
+.reportActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.exportBtn {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.exportBtn:hover {
+  color: var(--color-text);
+  border-color: var(--color-accent);
+}
+
+.exportBtn.primary {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #fff;
+}
+
+.exportBtn.primary:hover {
+  background: var(--color-accent-hover, #3d8a3d);
+  border-color: var(--color-accent-hover, #3d8a3d);
+  color: #fff;
+}
+
+@media (max-width: 768px) {
+  .issueGrid     { grid-template-columns: 1fr; }
+  .libraryGrid   { grid-template-columns: 1fr; }
+  .photoGrid     { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+  .reportsGrid   { grid-template-columns: 1fr; }
+  .mapContainer  { min-height: 240px; }
+}
