@@ -1,0 +1,453 @@
+/* ── Shared tokens ───────────────────────────────────────────────────────── */
+.statusCompleted { --st-color: var(--color-accent); --st-bg: rgba(74,158,74,0.1);   --st-border: rgba(74,158,74,0.25); }
+.statusRecovering { --st-color: #d4883a;            --st-bg: rgba(210,130,40,0.12); --st-border: rgba(210,130,40,0.25); }
+.statusPlanned   { --st-color: #3a8ad4;             --st-bg: rgba(58,138,212,0.1);  --st-border: rgba(58,138,212,0.25); }
+.statusRecovered { --st-color: var(--color-accent); --st-bg: rgba(74,158,74,0.1);   --st-border: rgba(74,158,74,0.25); }
+
+.impactLow    { --imp-color: var(--color-accent); --imp-bg: rgba(74,158,74,0.1);   --imp-border: rgba(74,158,74,0.25); }
+.impactMedium { --imp-color: #d4883a;             --imp-bg: rgba(210,130,40,0.12); --imp-border: rgba(210,130,40,0.25); }
+.impactHigh   { --imp-color: #e05050;             --imp-bg: rgba(220,60,60,0.12);  --imp-border: rgba(220,60,60,0.25); }
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 12px;
+  color: var(--st-color);
+  background: var(--st-bg);
+  border: 1px solid var(--st-border);
+}
+
+.impactBadge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 12px;
+  color: var(--imp-color);
+  background: var(--imp-bg);
+  border: 1px solid var(--imp-border);
+}
+
+/* ── Shared event card ───────────────────────────────────────────────────── */
+.eventCard {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.eventCardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.eventAreaName {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 2px;
+}
+
+.eventMeta {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.eventBadges {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.specsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.specBox {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.specLabel {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  margin-bottom: 2px;
+}
+
+.specValue {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.eventNotes {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  line-height: 1.55;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+/* ── Rolling tab ─────────────────────────────────────────────────────────── */
+.rollingSummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.summaryCard {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.summaryCardTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 8px;
+}
+
+.summaryRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.summaryRow strong {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.sectionTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 10px;
+}
+
+.rollingTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.rollingTable th {
+  text-align: left;
+  padding: 7px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.rollingTable td {
+  padding: 8px 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  color: var(--color-text);
+}
+
+.rollingTable tr:last-child td { border-bottom: none; }
+
+.rollTypeBadge {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  border-radius: 10px;
+}
+
+.rollTypeBadge.double { color: #7c5cbf; background: rgba(124,92,191,0.1); border: 1px solid rgba(124,92,191,0.25); }
+.rollTypeBadge.single { color: var(--color-text-muted); background: var(--color-bg); border: 1px solid var(--color-border); }
+
+/* ── Mowing tab ──────────────────────────────────────────────────────────── */
+.mowingSettingsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.mowingCard {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mowingCardTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 2px;
+}
+
+.mowingTurf {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.hocDisplay {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.hocValue {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-accent);
+  line-height: 1;
+}
+
+.hocLabel {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.mowingDetailGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+/* ── Practice Calendar ───────────────────────────────────────────────────── */
+.calendarWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.calendarNav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.calendarMonthTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.calNavBtn {
+  font-size: 16px;
+  color: var(--color-text-muted);
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.calNavBtn:hover {
+  color: var(--color-text);
+  border-color: var(--color-accent);
+}
+
+.calLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.calLegendItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  text-transform: capitalize;
+}
+
+.calLegendDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.calGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+  background: var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.calDayHeader {
+  background: var(--color-card);
+  padding: 6px 4px;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+.calCell {
+  background: var(--color-card);
+  min-height: 72px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.calCell.empty {
+  background: var(--color-bg);
+}
+
+.calCell.today {
+  background: rgba(74,158,74,0.06);
+}
+
+.calDayNum {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  margin-bottom: 2px;
+}
+
+.calDayNum.today {
+  color: var(--color-accent);
+}
+
+.calPill {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 8px;
+  color: #fff;
+  line-height: 1.5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 1;
+}
+
+.calPill.planned {
+  opacity: 0.65;
+}
+
+/* ── Reports tab ─────────────────────────────────────────────────────────── */
+.reportsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.reportCard {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.reportIcon { font-size: 22px; }
+
+.reportName {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.reportDesc {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  flex: 1;
+}
+
+.reportActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.exportBtn {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 13px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.exportBtn:hover { color: var(--color-text); border-color: var(--color-accent); }
+
+.exportBtn.primary {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #fff;
+}
+
+.exportBtn.primary:hover {
+  background: var(--color-accent-hover, #3d8a3d);
+  border-color: var(--color-accent-hover, #3d8a3d);
+}
+
+@media (max-width: 768px) {
+  .rollingSummaryGrid { grid-template-columns: 1fr; }
+  .mowingSettingsGrid { grid-template-columns: 1fr; }
+  .specsGrid          { grid-template-columns: repeat(2, 1fr); }
+  .mowingDetailGrid   { grid-template-columns: 1fr; }
+  .reportsGrid        { grid-template-columns: 1fr; }
+  .calCell            { min-height: 52px; }
+  .calDayNum          { font-size: 10px; }
+}
