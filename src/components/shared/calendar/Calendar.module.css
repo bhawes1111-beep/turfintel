@@ -1,0 +1,400 @@
+/* ── Root ────────────────────────────────────────────────────────────────── */
+.calendarRoot {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ── Month navigation ────────────────────────────────────────────────────── */
+.monthNav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.monthTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+  min-width: 140px;
+  text-align: center;
+}
+
+.navBtn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: var(--color-text-muted);
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  line-height: 1;
+}
+
+.navBtn:hover {
+  color: var(--color-text);
+  border-color: var(--color-accent);
+}
+
+/* ── View toggle ─────────────────────────────────────────────────────────── */
+.viewToggleWrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.viewToggle {
+  display: flex;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.viewBtn {
+  padding: 5px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: var(--color-card);
+  border: none;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.viewBtn + .viewBtn {
+  border-left: 1px solid var(--color-border);
+}
+
+.viewBtnActive {
+  color: var(--color-accent);
+  background: rgba(74, 158, 74, 0.1);
+}
+
+/* ── Grid view ───────────────────────────────────────────────────────────── */
+.calGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+  background: var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.calDayHeader {
+  background: var(--color-card);
+  padding: 6px 4px;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+.calCell {
+  background: var(--color-card);
+  min-height: 82px;
+  padding: 5px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.calCellEmpty {
+  background: var(--color-bg);
+}
+
+.calCellToday {
+  background: rgba(74, 158, 74, 0.06);
+}
+
+.dayNum {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  margin-bottom: 1px;
+  padding: 0 2px;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+
+.dayNumToday {
+  color: var(--color-accent);
+}
+
+.overflow {
+  font-size: 9px;
+  color: var(--color-text-muted);
+  padding: 0 2px;
+}
+
+/* ── Event pill — compact (grid cells) ───────────────────────────────────── */
+.eventPill {
+  font-size: 9px;
+  font-weight: 600;
+  color: #fff;
+  padding: 1px 5px;
+  border-radius: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: opacity 0.1s, filter 0.1s;
+  line-height: 1.6;
+  flex-shrink: 0;
+}
+
+.eventPill:hover {
+  filter: brightness(1.15);
+}
+
+.pillPlanned {
+  opacity: 0.55;
+}
+
+.pillCancelled {
+  opacity: 0.3;
+  text-decoration: line-through;
+}
+
+/* ── Agenda view ─────────────────────────────────────────────────────────── */
+.agendaList {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.agendaDay {
+  display: flex;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-border);
+  align-items: flex-start;
+}
+
+.agendaDay:last-child {
+  border-bottom: none;
+}
+
+.agendaDayLabel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 40px;
+  padding-top: 2px;
+  flex-shrink: 0;
+}
+
+.agendaDayNum {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1;
+}
+
+.agendaDayName {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+.agendaDayLabelToday .agendaDayNum {
+  color: var(--color-accent);
+}
+
+.agendaDayLabelToday .agendaDayName {
+  color: var(--color-accent);
+}
+
+.agendaEvents {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ── Event card — full (agenda view) ─────────────────────────────────────── */
+.eventCard {
+  display: flex;
+  align-items: stretch;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.15s, opacity 0.15s;
+  min-height: 44px;
+}
+
+.eventCard:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.cardPlanned {
+  opacity: 0.6;
+}
+
+.cardCancelled {
+  opacity: 0.3;
+}
+
+.eventCardAccent {
+  width: 3px;
+  flex-shrink: 0;
+}
+
+.eventCardBody {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  justify-content: center;
+}
+
+.eventCardTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.eventCardMeta {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.eventCardRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 6px 10px 6px 4px;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.eventCardStatus {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.eventCardSeverity {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+
+.severityHigh   { color: #e05050; background: rgba(220,60,60,0.12);  border: 1px solid rgba(220,60,60,0.25); }
+.severityMedium { color: #d4883a; background: rgba(210,130,40,0.12); border: 1px solid rgba(210,130,40,0.25); }
+.severityLow    { color: #c8b830; background: rgba(200,184,48,0.12); border: 1px solid rgba(200,184,48,0.25); }
+
+/* ── EventBadge (legend/inline use) ─────────────────────────────────────── */
+.eventBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.eventBadgeDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Legend row ──────────────────────────────────────────────────────────── */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  text-transform: capitalize;
+}
+
+.legendDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Empty state ─────────────────────────────────────────────────────────── */
+.emptyState {
+  padding: 32px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+/* ── Mobile ──────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .calCell {
+    min-height: 58px;
+    padding: 4px 3px;
+  }
+
+  .dayNum {
+    font-size: 10px;
+  }
+
+  .eventPill {
+    font-size: 8px;
+    padding: 1px 3px;
+  }
+
+  .agendaDayLabel {
+    min-width: 34px;
+  }
+
+  .agendaDayNum {
+    font-size: 15px;
+  }
+
+  .eventCardTitle {
+    font-size: 12px;
+  }
+
+  .monthTitle {
+    font-size: 14px;
+    min-width: 120px;
+  }
+}
