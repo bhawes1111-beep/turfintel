@@ -1,7 +1,22 @@
+import { useState } from 'react'
 import DashboardCard from '../../components/shared/DashboardCard'
+import { AlertList } from '../../components/shared/alerts'
+import { DASHBOARD_ALERTS } from '../../data/dashboardAlerts'
 import styles from './Dashboard.module.css'
 
 export default function Dashboard() {
+  const [alerts, setAlerts] = useState(DASHBOARD_ALERTS)
+
+  function handleAcknowledge(id) {
+    setAlerts(prev => prev.map(a => a.id === id ? { ...a, status: 'acknowledged' } : a))
+  }
+
+  function handleDismiss(id) {
+    setAlerts(prev => prev.filter(a => a.id !== id))
+  }
+
+  const activeAlerts = alerts.filter(a => a.status !== 'resolved')
+
   return (
     <div className={styles.page}>
 
@@ -22,9 +37,17 @@ export default function Dashboard() {
       {/* Responsive card grid */}
       <div className={styles.grid}>
 
-        {/* Priority card — wide + tall for task summary/AI alerts later */}
-        <DashboardCard title="Task Overview" wide tall>
-          <p className={styles.empty}>No tasks scheduled for today.</p>
+        {/* Alerts widget — wide + tall, grouped by priority */}
+        <DashboardCard title={`Alerts${activeAlerts.length > 0 ? ` (${activeAlerts.length})` : ''}`} wide tall>
+          <AlertList
+            alerts={activeAlerts}
+            compact
+            groupBy="priority"
+            onAcknowledge={handleAcknowledge}
+            onDismiss={handleDismiss}
+            emptyMessage="All clear — no active alerts."
+            emptyIcon="✓"
+          />
         </DashboardCard>
 
         {/* Standard cards */}
