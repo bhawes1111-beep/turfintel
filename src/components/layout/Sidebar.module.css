@@ -106,7 +106,28 @@
   list-style: none;
   padding: 10px 0 6px;
   flex: 1;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* Thin scrollbar matching app theme */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(60,140,60,0.3) transparent;
+}
+
+.nav::-webkit-scrollbar {
+  width: 4px;
+}
+
+.nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.nav::-webkit-scrollbar-thumb {
+  background: rgba(60,140,60,0.3);
+  border-radius: 2px;
+}
+
+.nav::-webkit-scrollbar-thumb:hover {
+  background: rgba(78,203,78,0.55);
 }
 
 .navBottom {
@@ -247,6 +268,9 @@
   width: 38px;
   height: 38px;
   min-width: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Active must remain legible when collapsed */
@@ -266,10 +290,17 @@
 .navIcon {
   width: 34px;
   height: 34px;
-  object-fit: contain;
-  user-select: none;
-  transition: filter 0.15s, width 0.25s ease, height 0.25s ease;
   min-width: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: filter 0.15s, width 0.25s ease, height 0.25s ease;
+}
+
+.navIcon svg {
+  width: 100%;
+  height: 100%;
 }
 
 .link:hover .navIcon {
