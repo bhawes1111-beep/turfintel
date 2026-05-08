@@ -1,297 +1,283 @@
-# TurfIntel Pro — Project Status
-
-**Last checkpoint:** 2026-05-07
-**Latest commit:** `a695745` — Wire shared weather into Dashboard
-**Build status:** ✓ Clean — 126 modules, 0 errors
-**Working tree:** Clean (untracked: README.md, eslint.config.js, public/ — intentionally untracked)
-
----
-
-## Deployment
-
-| | |
-|---|---|
-| **Frontend** | Cloudflare Pages |
-| **Repo** | github.com/bhawes1111-beep/turfintel |
-| **Branch** | `master` |
-| **Build command** | `npm run build` |
-| **Output directory** | `dist` |
-| **Deploy trigger** | Every push to `master` auto-deploys via Cloudflare Pages |
-| **Status** | Auto-deploying — commit `a695745` should be live within ~1 min of push |
+# TurfIntel Pro — Development Log
+**Last Updated:** 2026-05-07
+**Stack:** React 19 + Vite 8 · Plain JavaScript · CSS Modules · React Router DOM v7
+**Deployed:** Cloudflare Pages (auto-deploy on push to `master`)
+**Repo:** https://github.com/bhawes1111-beep/turfintel
 
 ---
 
-## How to Run Locally
+## 1. Session Summary
 
-```bash
-cd turfintel
-npm install          # first time only
-npm run dev          # starts dev server at http://localhost:5173
+This session completed the sidebar visual overhaul, unified the dashboard scroll model, added a combined calendar widget to the main dashboard with a clickable event detail modal, added module-level Overview tabs to all 9 section pages, themed the custom scrollbars, and replaced the SVG icon system in the sidebar with user-supplied PNG image assets. The app is now functionally and visually solid as a scaffold — ready for real data wiring.
+
+---
+
+## 2. Features Completed This Session
+
+### Sidebar Icon & Bubble System
+- Replaced all SVG `<Icon>` components in nav items with `<img>` tags loading from `/public/sidebar-icons/[name].png`
+- PNG icons sized at **34×34px** inside **42×42px** tiles (expanded), scaling to **38×38px** inside **48×48px** tiles (collapsed)
+- Smooth `width` / `height` / `border-radius` CSS transitions animate the bubble size change on expand/collapse
+- Glow filter (`drop-shadow`) applied to the `<img>` directly — traces PNG shape, not the tile box
+- Collapse toggle chevron still uses the SVG `<Icon>` system — only nav items use PNG
+
+### Sidebar Premium Visual Pass
+- Sidebar background: `linear-gradient(180deg, #041204, #031003, #020a02)`
+- Right border: `rgba(60,140,60,0.18)` green-tinted glow
+- Icon tiles: dark gradient bg, multi-layer box-shadow, green-tinted border
+- Hover: tile lifts with `translateY(-1px)` + ambient outer glow
+- Active row: `rgba(18,55,18,0.95)` fill, `inset 4px 0 0 #4ecb4e` left accent, inner ambient glow
+- Active icon: `drop-shadow(0 0 6px rgba(90,255,90,0.7))` traces PNG shape
+- Label: 15px, font-weight 600, `rgba(210,230,210,0.72)` inactive · `#f4fff4` active
+- Row min-height: 58px
+
+### Dashboard — Unified Scroll
+- Removed split-scroll architecture (weather section was `flex-shrink:0`, grid had `overflow-y:auto`)
+- `Layout.module.css` `.outlet` is now the **single scroll container** (`overflow-y: auto`)
+- `Dashboard.module.css` `.page` uses natural document flow — no height constraints
+- Everything (header → weather → alerts grid → calendar) scrolls together as one page
+
+### Dashboard — Combined Calendar Widget
+- Full-width `DashboardCard` (new `full` prop, `grid-column: span 3`) at the bottom of the card grid
+- `MonthNavigation` + `CalendarGrid` + `EventBadge` legend, all wired
+- 17 placeholder events seeded in `src/data/dashboardCalendarEvents.js` covering all 7 module types for May 2026
+- Color-coded event pills matching module colors from `EVENT_COLORS`
+
+### Calendar Event Detail Modal
+- Clicking any event pill or agenda card opens `CalendarEventDetail`
+- Fixed overlay with blurred backdrop (`backdrop-filter: blur(3px)`)
+- Close: click backdrop or press `Escape`
+- Shows: colored accent bar (event type color), category, title, full weekday+date, status, course, severity, notes (fields shown only when present)
+- `selectedEvent` state in `Dashboard.jsx`, passed via `onEventClick={setSelectedEvent}`
+
+### Module Overview Tabs — All 9 Pages
+Every module page now opens on an **Overview** tab showing a mini-dashboard of module-specific stats and status panels:
+
+| Page | Stat Tiles | Info Panels |
+|---|---|---|
+| Crew | Total / Available / Off / Open Tasks | Crew status today · Week summary |
+| Chemical | Products / Low Stock / Apps / REI violations | Low stock items · Recent activity |
+| Spray | Apps / Planned / Acres / Today window | Upcoming apps · Month summary |
+| Disease | Issues / Critical / Pressure / Last scouting | Active issues · Conditions & treatment |
+| Plant Nutrition | pH / N Index / Pending Recs / Last test | Open recommendations · Schedule |
+| Cultural Practices | Next aer. / Mow height / Topdressing / Orders | Upcoming practices · Current programs |
+| Budget | YTD / Monthly budget / May spend / Remaining | Expense breakdown · Budget health |
+| Inventory | SKUs / Low Stock / Critical / Pending orders | Critical items · Stock summary |
+| Equipment | Total / Operational / In Service / Due | Service schedule · Fleet summary |
+
+**Shared components used by all Overview tabs:**
+- `ModuleOverview` — 4-col grid wrapper (→ 2-col tablet → 1-col mobile)
+- `StatCard` — metric tile: large value + label + sub-text + optional accent color
+- `InfoCard` — 2-col-span panel: title + key/value rows or children
+- `Badge` — inline status pill: green / yellow / red / blue / gray
+
+### Scrollbar Theming
+- Global CSS in `src/index.css`
+- Track: `rgba(4,12,4,0.6)` near-black · Thumb: `rgba(60,140,60,0.38)` muted green, 6px rounded
+- Thumb hover: `rgba(78,203,78,0.65)` brighter neon green
+- Firefox: `scrollbar-width: thin` + `scrollbar-color`
+- Applies to every scrollable area in the app
+
+---
+
+## 3. Files & Architecture
+
+### New Files Created This Session
+```
+src/components/shared/ModuleOverview.jsx
+src/components/shared/ModuleOverview.module.css
+src/components/shared/calendar/CalendarEventDetail.jsx
+src/data/dashboardCalendarEvents.js
+src/pages/Crew/tabs/CrewOverview.jsx
+src/pages/Chemical/tabs/ChemicalOverview.jsx
+src/pages/Spray/tabs/SprayOverview.jsx
+src/pages/Disease/tabs/DiseaseOverview.jsx
+src/pages/PlantNutrition/tabs/PlantNutritionOverview.jsx
+src/pages/CulturalPractices/tabs/CulturalPracticesOverview.jsx
+src/pages/Budget/tabs/BudgetOverview.jsx
+src/pages/Inventory/tabs/InventoryOverview.jsx
+src/pages/Equipment/tabs/EquipmentOverview.jsx
+```
+
+### Modified Files This Session
+```
+src/components/layout/Layout.module.css        .outlet → overflow-y: auto (single scroll owner)
+src/components/layout/Sidebar.jsx              PNG <img> icons, icon names updated to kebab-case
+src/components/layout/Sidebar.module.css       Premium tiles, navIcon sizing, collapsed bubble sizes
+src/components/shared/DashboardCard.jsx        Added `full` prop
+src/components/shared/DashboardCard.module.css .full { grid-column: span 3 }
+src/components/shared/calendar/Calendar.module.css  CalendarEventDetail modal styles
+src/components/shared/calendar/index.js        Exports CalendarEventDetail
+src/pages/Dashboard/Dashboard.jsx             Calendar, event modal, unified scroll
+src/pages/Dashboard/Dashboard.module.css      Natural height, removed inner scroll locks
+src/pages/Crew/Crew.jsx                       Overview tab + default
+src/pages/Chemical/Chemical.jsx               Overview tab + default
+src/pages/Spray/Spray.jsx                     Overview tab + default
+src/pages/Disease/Disease.jsx                 Overview tab + default
+src/pages/PlantNutrition/PlantNutrition.jsx   Overview tab + default
+src/pages/CulturalPractices/CulturalPractices.jsx  Overview tab + default
+src/pages/Budget/Budget.jsx                   Overview tab wired (was stub)
+src/pages/Inventory/Inventory.jsx             Overview tab + default
+src/pages/Equipment/Equipment.jsx             Overview tab + default
+src/index.css                                 Scrollbar theming + Exo 2 font import
+```
+
+### Key Architecture Decisions
+- **Single scroll model:** `.outlet` in `Layout.module.css` owns scroll. No page-level `height:100%` or inner `overflow-y:auto` on dashboard `.page`. PageShell tabs have their own `.content` scroll — that is correct and intentional.
+- **DashboardCard `full` prop:** `grid-column: span 3` in the 3-col grid = full width. Collapses to `span 1` on mobile alongside `wide`.
+- **PNG icon path convention:** `/sidebar-icons/[kebab-case].png`. Icon key in `NAV_ITEMS` IS the filename — no mapping object. `plant-nutrition` and `cultural-practices` are kebab-case.
+- **Filter on `<img>` not `.iconWrap`:** `drop-shadow` on the img traces the PNG shape. On the wrapper div it glows the tile box.
+- **ModuleOverview is a layout primitive only:** No business logic. Replace placeholder strings in each `[Page]Overview.jsx` when real data arrives.
+
+---
+
+## 4. UI / Branding
+
+### Logo — DO NOT CHANGE
+- `public/logo-full.png` — Full TurfIntel Pro logo, expanded sidebar (192px wide, `height: auto`)
+- `public/logo-mark.png` — Compact TP mark, collapsed sidebar (44×44px, `mix-blend-mode: screen`)
+- Confirmed correct. Significant prior effort to get sizing/display right. Do not modify.
+
+### Sidebar PNG Icons Status
+| Nav Item | Filename | Status |
+|---|---|---|
+| Dashboard | `dashboard.png` | ✅ |
+| Crew | `crew.png` | ✅ |
+| Chemical | `chemical.png` | ✅ |
+| Spray | `spray.png` | ✅ |
+| Plant Nutrition | `plant-nutrition.png` | ✅ |
+| Disease | `disease.png` | ❌ Missing |
+| Cultural Practices | `cultural-practices.png` | ❌ Missing |
+| Budget | `budget.png` | ❌ Missing |
+| Inventory | `inventory.png` | ❌ Missing |
+| Equipment | `equipment.png` | ❌ Missing |
+| Settings | `settings.png` | ❌ Missing |
+
+Drop missing files into `public/sidebar-icons/` and push — zero code changes needed.
+
+### Color Tokens (`src/index.css`)
+```
+--color-bg:           #0d1a0d
+--color-sidebar:      #0a130a
+--color-accent:       #4a9e4a
+--color-text:         #e8f0e8
+--color-text-muted:   #7a9e7a
+--color-border:       #1e341e
+--color-card:         #111e11
+--sidebar-width:      220px
+--sidebar-collapsed:  64px
 ```
 
 ---
 
-## Stack
+## 5. Current Working State
 
-| | |
-|---|---|
-| **Framework** | React 19 + Vite 8 |
-| **Language** | Plain JavaScript (no TypeScript) |
-| **Routing** | React Router DOM v7 |
-| **Styling** | CSS Modules — per-component, scoped class names |
-| **Token system** | CSS custom properties (`--pr-color`, `--cond-color`, etc.) set on parent class, consumed by shared rules |
-| **State** | React `useState` — local only, no global store |
-| **Context** | `CourseContext` / `useCourse()` — active course across all pages |
-| **Backend** | None — placeholder data files only |
-| **Auth** | None |
+### Fully Functional
+- All routing (React Router v7)
+- Sidebar: expand/collapse with smooth animation, PNG icons (5/11 loaded), active highlighting, mobile slide-in
+- Course selector (top-right, CourseContext)
+- Dashboard: weather section, dismissible banners, alert list, card grid, combined calendar, unified page scroll
+- Calendar: grid + agenda views, month navigation, clickable event detail modal
+- All 9 module pages with Overview tab as landing tab
+- Shared weather components: WeatherCard, ETCard, ForecastStrip, WeatherAlertBanner
+- Alert system: AlertList with priority grouping, acknowledge, dismiss
+- Shared upload: UploadDropzone, UploadedFileCard, UploadStatusBadge
+- Chemical: ChemicalLabels tab fully built
+- Crew: all 5 tabs built (Tasks, Hours, Schedule, Employees, Notes)
+- Spray: SprayCalendar tab built
+- Cloudflare Pages auto-deploy
+- Custom scrollbars
 
----
-
-## Current Shared Systems
-
-Four reusable systems live in `src/components/shared/`. Each is a barrel-exported directory consumed via `import { X } from '../../components/shared/<system>'`.
-
-### 1. Upload System — `src/components/shared/upload/`
-
-| Component | Purpose |
-|---|---|
-| `UploadDropzone` | Drag-and-drop or click-to-browse file picker |
-| `UploadedFileCard` | Displays uploaded file with status badge, remove button, progress bar |
-| `UploadStatusBadge` | Inline badge: uploading / complete / error / processing |
-| `Upload.module.css` | Shared CSS for all upload components |
-| `index.js` | Barrel export |
-
-**Currently wired into:** Plant Nutrition → Upload Center tab
+### Placeholder / Stub
+All data is hardcoded. No backend, no API calls, no real auth. Most tabs outside Crew/Chemical/Spray are stubs showing "coming soon."
 
 ---
 
-### 2. Calendar System — `src/components/shared/calendar/`
+## 6. Known Issues / Cleanup
 
-| Component | Purpose |
-|---|---|
-| `CalendarGrid` | Month grid (Monday-first) + agenda view toggle |
-| `CalendarEvent` | Dual-mode: compact pill (grid) or full card (agenda) |
-| `MonthNavigation` | Prev/next month controls with title |
-| `EventBadge` | Small colored category badge |
-| `calendarTokens.js` | `EVENT_COLORS`, `EVENT_STATUS`, helpers (`toDateStr`, `todayStr`, `resolveEventColor`) |
-| `Calendar.module.css` | Shared CSS |
-| `index.js` | Barrel export |
-
-**Date parsing:** `ev.date.split('-').map(Number)` — avoids UTC timezone shift.
-**Currently wired into:** Spray → Spray Calendar tab; Cultural Practices → Practice Calendar tab
+| Priority | Issue | Fix |
+|---|---|---|
+| High | 6 sidebar icons missing | Drop PNGs into `public/sidebar-icons/`, push |
+| Low | `public/icons.svg` committed but unused | Delete file, push |
+| Low | `mix-blend-mode: screen` on `logo-mark.png` unverified in collapsed state | Check visually |
+| Low | Calendar events hardcoded to May 2026 | Will resolve with real data |
+| Low | No auth route guard | Add protected route wrapper when auth is ready |
 
 ---
 
-### 3. Alert / Notification System — `src/components/shared/alerts/`
+## 7. Recommended Next Tasks (Priority Order)
 
-| Component | Purpose |
-|---|---|
-| `AlertCard` | Full card or compact single-line row (`compact` prop) |
-| `AlertBadge` | Priority or status badge (uses CSS custom property token classes) |
-| `AlertList` | Renders alert array with optional `groupBy` ('priority' / 'status' / 'module') and empty state |
-| `alertTokens.js` | `ALERT_PRIORITY`, `ALERT_STATUS`, `MODULE_LABELS`, `PRIORITY_ORDER`, `STATUS_ORDER`, `resolvePriority`, `resolveStatus` |
-| `Alerts.module.css` | Shared CSS |
-| `index.js` | Barrel export |
-
-**Priority levels:** critical → high → medium → low → info
-**Status levels:** new → acknowledged → snoozed → resolved
-**Currently wired into:** Dashboard → Alerts widget (compact, groupBy="priority", local acknowledge/dismiss state)
-
----
-
-### 4. Weather + ET System — `src/components/shared/weather/`
-
-| Component | Purpose |
-|---|---|
-| `WeatherCard` | Current conditions: temp, spray badge, 6-stat grid, disease pressure badge |
-| `ETCard` | ET rate + deficit display + 7-day bar trend chart |
-| `ForecastStrip` | Horizontally scrollable 7-day forecast with icons, temps, ET rate, spray badge per day |
-| `WeatherAlertBanner` | Dismissible inline alert banner with left-border severity accent |
-| `weatherTokens.js` | Token maps (`CONDITION_TOKENS`, `SPRAY_WINDOW_TOKENS`, `DISEASE_PRESSURE_TOKENS`, `WEATHER_ICONS`), placeholder data, helpers |
-| `Weather.module.css` | Shared CSS — condition / spray / disease token classes + all component styles |
-| `index.js` | Barrel export |
-
-**Spray window levels:** ideal → caution → poor
-**Disease pressure levels:** low → moderate → high → critical
-**Planned source:** https://www.weather.gov/wrh/timeseries?site=KSAV (NOAA / Weather.gov)
-**Currently wired into:** Dashboard → command-center weather section (above card grid)
+1. **Upload missing 6 sidebar icons** — `disease`, `cultural-practices`, `budget`, `inventory`, `equipment`, `settings`
+2. **Delete `public/icons.svg`** — dead file
+3. **Verify collapsed sidebar logo-mark** — confirm `mix-blend-mode: screen` looks right
+4. **Wire CourseContext to module data** — filter all content by `activeCourse.id`
+5. **Build Spray tabs** — SprayRecords, BuildSpraySheet, PlannedPrograms are clear stubs
+6. **Build Disease tabs** — ActiveIssues + DiseaseAlerts share the alert data shape
+7. **Inventory data model** — define schema, wire InventoryProducts / InventoryChemicals
+8. **Add auth guard** — route protection wrapper, check login state
+9. **Real calendar data** — replace `dashboardCalendarEvents.js` with API fetch
+10. **Equipment page** — most stub-heavy; Equipment List + Maintenance Logs need schemas
+11. **Budget charts** — add bar/line charts to BudgetOverview expense breakdown
+12. **Collapsed sidebar tooltips** — show label on hover when collapsed (browser default `title` exists but is unstyled)
 
 ---
 
-## App Structure
+## 8. Startup Instructions For Next Session
 
-```
-turfintel/
-├── src/
-│   ├── components/
-│   │   ├── layout/
-│   │   │   ├── Layout.jsx / .module.css       ← Shell: sidebar + main + mobile hamburger
-│   │   │   ├── Sidebar.jsx / .module.css       ← Left nav, collapsible, Settings pinned bottom
-│   │   │   └── PageShell.jsx / .module.css     ← Reusable: page title + tab bar + content area
-│   │   └── shared/
-│   │       ├── icons.jsx                       ← SVG icon registry (20×20)
-│   │       ├── DashboardCard.jsx               ← Reusable card (wide + tall variants)
-│   │       ├── ChemicalCard.jsx                ← Chemical label card
-│   │       ├── ChemicalModal.jsx               ← Detail modal (React Portal)
-│   │       ├── upload/                         ← Shared upload system
-│   │       ├── calendar/                       ← Shared calendar engine
-│   │       ├── alerts/                         ← Shared alert/notification system
-│   │       └── weather/                        ← Shared weather + ET system
-│   ├── context/
-│   │   └── CourseContext.jsx                   ← Active course across all pages
-│   ├── data/
-│   │   ├── chemicals.js                        ← 6 placeholder chemicals
-│   │   ├── disease.js                          ← Active issues, library, alerts, map, photos
-│   │   ├── plantNutrition.js                   ← Soil/tissue/water reports, trends, recs
-│   │   ├── culturalPractices.js                ← Aerification/topdress/verticut/rolling/mowing/calendar
-│   │   ├── dashboardAlerts.js                  ← 8 cross-module placeholder alerts
-│   │   └── spray.js                            ← Spray records and events
-│   ├── pages/
-│   │   ├── Dashboard/                          ← Weather section + alert widget + placeholder cards
-│   │   ├── Spray/                              ← 6 tabs; Spray Calendar wired to shared calendar
-│   │   ├── Disease/                            ← 6 tabs: Active Issues, Library, Map, Gallery, Alerts, Reports
-│   │   ├── PlantNutrition/                     ← 6 tabs: Soil, Tissue, Water, Trends, Recs, Upload
-│   │   ├── CulturalPractices/                  ← 7 tabs; Practice Calendar wired to shared calendar
-│   │   ├── Inventory/                          ← Shell (tabs stubbed)
-│   │   ├── Crew/                               ← Tasks, Schedule, Hours tabs
-│   │   ├── Chemical/                           ← Chemical Labels tab live; others stub
-│   │   ├── Budget/                             ← Full stub
-│   │   ├── Equipment/                          ← Full stub
-│   │   └── Settings/                           ← Full stub
-│   ├── App.jsx                                 ← Root router
-│   ├── index.css                               ← Global CSS tokens / dark green theme
-│   └── main.jsx
-├── index.html
-├── package.json
-└── vite.config.js
+### Run dev server
+```powershell
+cd C:\Users\bhawe\turfintel
+npm run dev
+# → http://localhost:5173
 ```
 
----
+### Build for production
+```powershell
+cd C:\Users\bhawe\turfintel
+npm run build
+# Cloudflare Pages auto-deploys on git push to master
+```
 
-## Completed Features
-
-| Commit | Feature |
-|---|---|
-| `1224d35` | Initial scaffold — React + Vite, global dark green theme, CSS custom properties |
-| `fe7fd4e` | `_redirects` for Cloudflare Pages SPA routing |
-| `bf70c83` | Left sidebar navigation, active page highlight, Settings pinned bottom |
-| `07d881a` | Sidebar collapse/expand, SVG icon registry, mobile slide-in overlay |
-| `ee1ee6f` | Responsive dashboard grid (3-col → 2-col → 1-col), DashboardCard, weather bar placeholder |
-| `4ca462e` | Crew module shell — Tasks, Schedule, Hours tabs |
-| `768170a` | Chemical Labels module shell — searchable card grid, ChemicalCard, ChemicalModal (React Portal) |
-| `896a4e1` | Project status checkpoint (prior session end) |
-| `882ef0b` | Stub modules — Spray, Disease, Plant Nutrition, Cultural Practices |
-| `fab8427` | Remove conflicting `_redirects` file |
-| `8e98bd5` | Inventory module shell |
-| `de8c9d9` | Login page shell |
-| `f658075` | Spray module shell — 6 tabs with records, programs, calculator |
-| `f8da311` | Multi-course selector system shell — CourseContext, course switcher in sidebar |
-| `e28a74a` | Disease module shell — 6 tabs: Active Issues, Library, Course Map, Photo Gallery, Alerts, Reports |
-| `2956f9c` | Plant Nutrition module shell — 6 tabs: Soil, Tissue, Water, Trends, Recommendations, Upload |
-| `5b9a7e5` | Cultural Practices module shell — 7 tabs including aerification, topdressing, verticutting, rolling, mowing |
-| `1cd502a` | Shared upload system shell — UploadDropzone, UploadedFileCard, UploadStatusBadge |
-| `b99d26f` | Shared calendar engine shell — CalendarGrid (Monday-first), CalendarEvent, MonthNavigation, EventBadge |
-| `f4b676e` | Wire shared calendar into Spray — replaced local calendar, removed ~158 lines dead CSS |
-| `e213dca` | Wire shared calendar into Cultural Practices — replaced local calendar, removed ~127 lines dead CSS |
-| `230eb0c` | Shared alert/notification system shell — AlertCard, AlertBadge, AlertList, alertTokens |
-| `58e7f74` | Wire shared alerts into Dashboard — 8 cross-module alerts, compact groupBy="priority", local state |
-| `970153d` | Shared Weather + ET Engine shell — WeatherCard, ETCard, ForecastStrip, WeatherAlertBanner, weatherTokens |
-| `a695745` | Wire shared weather into Dashboard — command-center weather section above card grid |
-
----
-
-## Known Issues
-
-- All data is placeholder — no backend or API connected
-- No live weather data — all weather fields are static placeholder values
-- `PLACEHOLDER_WEATHER_ALERTS` contains hardcoded messages (not dynamic)
-- Pin state on ChemicalCard is visual only — not persisted
-- `internalNotes` and `courseNotes` on chemical placeholder data are empty
-- No authentication or user accounts
-- Budget, Equipment, Settings pages are full stubs (no tabs or data)
-- Inventory module shell exists but tabs are stubbed
-- Spray, Disease, Plant Nutrition, Cultural Practices: data is placeholder only
-- Shared weather components display `PLACEHOLDER_CURRENT` — future: replace with `useFetch` from NOAA
-
----
-
-## Next Planned Feature
-
-**Budget module shell** — following the same pattern as Disease / Plant Nutrition / Cultural Practices:
-
-1. Create `src/data/budget.js` — placeholder summary cards, expense line items, category breakdowns
-2. Create `src/pages/Budget/` with tabs: **Overview**, **Expenses**, **Labor**, **Materials**, **Forecast**, **Reports**
-3. Build summary cards (YTD spend vs. budget, by category)
-4. Simple expense table with status badges
-5. Wire into existing Budget route in `App.jsx`
-
-Alternative next features (discuss at session start):
-- **Equipment module shell** — same pattern, tabs: Equipment List, Maintenance Log, Service Due, Parts
-- **Wire weather into Spray** — use `WeatherCard`, `ForecastStrip`, `WeatherAlertBanner` for spray timing in the Spray module
-- **Wire weather into Disease** — use disease pressure tokens in Disease module Alerts tab
-
----
-
-## Recommended Build Order
-
-### Remaining module shells (any order)
-1. Budget module shell
-2. Equipment module shell
-3. Settings shell — Course info, user preferences
-
-### Shared system wiring (when module shells exist)
-4. Wire weather into Spray — spray timing + condition badges
-5. Wire weather into Disease — disease pressure indicators
-6. Wire alerts into Spray / Disease / other modules
-
-### Future integrations (requires external setup)
-7. NOAA / Weather.gov API — replace `PLACEHOLDER_CURRENT` with live fetch
-8. Real authentication — hook Login page to an auth provider
-9. Backend / persistence — replace placeholder data files with API calls
-
----
-
-## Rollback Strategy
-
-**Preferred — revert a single commit (safe, non-destructive):**
-```bash
-git revert <commit-hash> --no-edit
+### Git commit (PowerShell syntax — NOT bash heredoc)
+```powershell
+git add .
+git commit -m @'
+Your commit message here
+'@
 git push origin master
 ```
-Creates a new revert commit. No force-push needed. Cloudflare redeploys automatically.
 
-**Last resort — hard reset (destructive, rewrites history):**
-```bash
-git reset --hard <commit-hash>
-git push --force
+### Key files for orientation
+| File | Purpose |
+|---|---|
+| `src/App.jsx` | All routes |
+| `src/index.css` | Global CSS tokens + scrollbar styles |
+| `src/components/layout/Sidebar.jsx` | Nav items, PNG icon paths, collapse logic |
+| `src/components/layout/Sidebar.module.css` | All sidebar visual styles |
+| `src/components/layout/Layout.module.css` | Shell layout — `.outlet` is the scroll owner |
+| `src/pages/Dashboard/Dashboard.jsx` | Weather, alerts, card grid, calendar, event modal |
+| `src/components/shared/ModuleOverview.jsx` | StatCard, InfoCard, Badge — all Overview tabs use this |
+| `src/components/shared/weather/weatherTokens.js` | All weather placeholder data + helpers |
+| `src/data/dashboardAlerts.js` | Placeholder cross-module alerts |
+| `src/data/dashboardCalendarEvents.js` | Placeholder combined calendar events |
+| `public/sidebar-icons/` | PNG icon assets — drop new files here, no code change needed |
+
+### Constraints to preserve
+- **Logo is final** — Do not change `public/logo-full.png` or `public/logo-mark.png`
+- **Plain JavaScript only** — No TypeScript
+- **CSS Modules only** — No Tailwind, no styled-components; inline `style={{}}` only for dynamic values
+- **Sidebar icons are PNG** — The `<Icon>` SVG component remains only for the collapse toggle chevrons
+- **Scroll model** — `.outlet` owns scroll; do not add `overflow-y: auto` to `.page` divs
+- **Admin API key** — `x-admin-key: TurfAdmin2025!` for backend endpoints
+
+### Shared component quick reference
 ```
-Only if the commit was never reviewed or shared outside the repo.
-
-**Cloudflare rollback (no Git required):**
-Open Cloudflare Pages dashboard → TurfIntel project → Deployments → click any prior deployment → "Rollback to this deployment". Instant, no Git involvement.
-
----
-
-## How to Resume Next Session
-
-1. Open terminal in `C:\Users\bhawe\turfintel`
-2. Confirm clean state:
-   ```
-   git status          → should show "nothing to commit"
-   git branch          → should be on master
-   git log --oneline -3
-   ```
-3. Start the dev server if testing locally:
-   ```
-   npm run dev
-   ```
-4. Confirm latest commit is `a695745` (Wire shared weather into Dashboard)
-5. Pick the next feature from **Next Planned Feature** above
-6. Branch: `git checkout -b feature/<name>`
-7. Follow the pattern: data file → component(s) → page wiring → `npm run build` → commit → ff-merge → push
-
-**Current module state to keep in mind:**
-- Dashboard is the most built-out page — weather + alerts are both wired
-- Spray and Cultural Practices have the shared calendar wired
-- Disease, Plant Nutrition have full tab shells but no shared systems wired yet
-- Budget, Equipment, Settings are completely empty stubs
+<StatCard label="..." value="..." sub="..." color="#hex" />
+<InfoCard title="..." rows={[{ label, value }]} />
+<InfoCard title="...">custom children</InfoCard>
+<Badge variant="green|yellow|red|blue|gray">text</Badge>
+<ModuleOverview>  ← 4-col grid wrapper, all the above go inside
+<DashboardCard wide tall full>  ← span 2 / min-height 300 / span 3
+<CalendarGrid events={[]} year={n} month={n} onEventClick={fn} />
+<CalendarEventDetail event={obj} onClose={fn} />
+```
