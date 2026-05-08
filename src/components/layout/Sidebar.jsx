@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { to: '/budget',             label: 'Budget',             icon: 'budget'              },
   { to: '/inventory',          label: 'Inventory',          icon: 'inventory'           },
   { to: '/equipment',          label: 'Equipment',          icon: 'equipment'           },
+  { to: '/irrigation',         label: 'Irrigation',         icon: 'irrigation'          },
 ]
 
 export default function Sidebar({ isOpen, onClose }) {

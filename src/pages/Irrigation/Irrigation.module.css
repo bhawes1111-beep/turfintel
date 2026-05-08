@@ -1,0 +1,628 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   IRRIGATION — Repairs  (ir*)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.irWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── Stat row ────────────────────────────────────────────────────────────── */
+
+.irStatRow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.irStatCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.irStatLabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--color-muted);
+}
+
+.irStatValue {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--color-text);
+}
+
+.irStatGreen { color: var(--color-accent); }
+.irStatTeal  { color: #2eb8b8; }
+.irStatAmber { color: #dca032; }
+.irStatRed   { color: #c0392b; }
+
+/* ── Toolbar / Search ────────────────────────────────────────────────────── */
+
+.irToolbar {
+  display: flex;
+  gap: 8px;
+}
+
+.irSearch {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 14px;
+}
+
+.irSearch::placeholder { color: var(--color-muted); }
+.irSearch:focus { outline: none; border-color: var(--color-accent); }
+
+/* ── Filter chips ────────────────────────────────────────────────────────── */
+
+.irFilters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.irChip {
+  padding: 4px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  background: var(--color-surface);
+  color: var(--color-muted);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color .15s, color .15s, background .15s;
+}
+
+.irChip:hover {
+  border-color: var(--color-accent);
+  color: var(--color-text);
+}
+
+.irChipActive {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: #fff;
+}
+
+/* ── Count line ──────────────────────────────────────────────────────────── */
+
+.irCount {
+  font-size: 12px;
+  color: var(--color-muted);
+  margin: 0;
+}
+
+/* ── Repair list ─────────────────────────────────────────────────────────── */
+
+.irList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.irEmpty {
+  color: var(--color-muted);
+  font-size: 14px;
+  text-align: center;
+  padding: 32px 0;
+}
+
+/* ── Repair card ─────────────────────────────────────────────────────────── */
+
+.irCard {
+  appearance: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  transition: border-color .15s, box-shadow .15s;
+}
+
+.irCard:hover {
+  border-color: var(--color-accent);
+  box-shadow: 0 2px 10px rgba(0,0,0,.22);
+}
+
+/* Priority left-accent */
+.irCard_high   { border-left-color: #c0392b; }
+.irCard_medium { border-left-color: #dca032; }
+.irCard_low    { border-left-color: #4a9e4a; }
+
+/* Completed: muted left-accent + reduced opacity for scan */
+.irCard_completed {
+  border-left-color: #444;
+  opacity: .72;
+}
+
+.irCardMain {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.irCardLeft {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.irCardRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* ── Card title row ──────────────────────────────────────────────────────── */
+
+.irCardNameRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.irCardTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+/* Head # badge */
+.irHeadBadge {
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(46,184,184,.12);
+  border: 1px solid #2eb8b8;
+  font-size: 11px;
+  color: #2eb8b8;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Parts count badge */
+.irPartsBadge {
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(220,160,50,.1);
+  border: 1px solid #dca032;
+  font-size: 11px;
+  color: #dca032;
+}
+
+/* ── Card meta (hole / area) ─────────────────────────────────────────────── */
+
+.irCardMeta {
+  font-size: 13px;
+  color: var(--color-muted);
+  font-weight: 500;
+}
+
+/* ── Card description ────────────────────────────────────────────────────── */
+
+.irCardDesc {
+  font-size: 13px;
+  color: var(--color-text);
+  line-height: 1.5;
+  /* Two-line clamp for outdoor scan-readability */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ── Card footer row ─────────────────────────────────────────────────────── */
+
+.irCardFooter {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.irAssigned {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.irUnassigned {
+  font-size: 12px;
+  color: var(--color-muted);
+  font-style: italic;
+}
+
+.irLaborHours {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.irCardDate {
+  font-size: 11px;
+  color: var(--color-muted);
+  margin-left: auto;
+}
+
+/* ── Status badge ────────────────────────────────────────────────────────── */
+
+.irStatusBadge {
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* open = amber */
+.irStatusOpen {
+  background: rgba(220,160,50,.15);
+  color: #dca032;
+  border: 1px solid #dca032;
+}
+
+/* in-progress = blue/teal */
+.irStatusInProgress {
+  background: rgba(46,184,184,.15);
+  color: #2eb8b8;
+  border: 1px solid #2eb8b8;
+}
+
+/* parts-needed = red */
+.irStatusPartsNeeded {
+  background: rgba(192,57,43,.15);
+  color: #e74c3c;
+  border: 1px solid #c0392b;
+}
+
+/* completed = muted green */
+.irStatusCompleted {
+  background: rgba(74,158,74,.12);
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent);
+}
+
+/* ── Priority label (right column) ──────────────────────────────────────── */
+
+.irPriorityLabel {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+/* ── Modal ───────────────────────────────────────────────────────────────── */
+
+.irModalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.62);
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.irModalPanel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 560px;
+  max-height: 88vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.irModalAccent {
+  height: 4px;
+  flex-shrink: 0;
+}
+
+.irModalBody {
+  overflow-y: auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.irModalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.irModalTitle {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.irModalSub {
+  font-size: 13px;
+  color: var(--color-muted);
+  margin: 4px 0 0;
+}
+
+.irModalSection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.irModalSectionTitle {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--color-muted);
+  margin: 0;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.irFieldGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.irField {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.irFieldLabel {
+  font-size: 11px;
+  color: var(--color-muted);
+}
+
+.irFieldValue {
+  font-size: 14px;
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+.irModalDesc {
+  font-size: 13px;
+  color: var(--color-text);
+  line-height: 1.6;
+  margin: 0;
+  padding: 10px 12px;
+  background: rgba(255,255,255,.03);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+}
+
+/* ── Parts table ─────────────────────────────────────────────────────────── */
+
+.irPartsTable {
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.irPartsHeader {
+  display: flex;
+  gap: 12px;
+  padding: 7px 12px;
+  background: rgba(255,255,255,.04);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.irPartsQtyHead,
+.irPartsNameHead {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--color-muted);
+  font-weight: 600;
+}
+
+.irPartsQtyHead { width: 36px; flex-shrink: 0; }
+.irPartsNameHead { flex: 1; }
+
+.irPartsRow {
+  display: flex;
+  gap: 12px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.irPartsRow:last-child { border-bottom: none; }
+
+.irPartsQty {
+  width: 36px;
+  flex-shrink: 0;
+  font-size: 14px;
+  color: var(--color-accent);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.irPartsName {
+  flex: 1;
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+.irNoParts {
+  font-size: 13px;
+  color: var(--color-muted);
+  font-style: italic;
+  margin: 0;
+}
+
+/* ── Modal notes ─────────────────────────────────────────────────────────── */
+
+.irModalNotes {
+  font-size: 13px;
+  color: var(--color-text);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ── GPS / Map placeholder ───────────────────────────────────────────────── */
+
+.irMapPlaceholder {
+  border: 1px dashed var(--color-border);
+  border-radius: 8px;
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,.02);
+  text-align: center;
+}
+
+.irMapPlaceholderText {
+  font-size: 13px;
+  color: var(--color-muted);
+  font-weight: 500;
+}
+
+.irMapPlaceholderSub {
+  font-size: 11px;
+  color: var(--color-muted);
+  opacity: .6;
+}
+
+/* ── Modal close button ──────────────────────────────────────────────────── */
+
+.irModalClose {
+  appearance: none;
+  align-self: flex-end;
+  padding: 8px 20px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text);
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+
+.irModalClose:hover {
+  border-color: var(--color-accent);
+  background: rgba(74,158,74,.1);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   IRRIGATION DASHBOARD  (irDash*)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.irDashWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.irDashGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.irDashCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 120px;
+}
+
+.irDashCardTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.irDashCardSub {
+  font-size: 12px;
+  color: var(--color-muted);
+  line-height: 1.5;
+  flex: 1;
+  margin: 0;
+}
+
+.irDashComingSoon {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  color: var(--color-muted);
+  border: 1px solid var(--color-border);
+  background: rgba(255,255,255,.03);
+  align-self: flex-start;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 1100px) {
+  .irDashGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .irStatRow {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .irFieldGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .irDashGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .irStatValue {
+    font-size: 22px;
+  }
+
+  .irFieldGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .irDashGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .irModalPanel {
+    max-height: 92vh;
+  }
+
+  .irCardDesc {
+    -webkit-line-clamp: 3;
+  }
+}

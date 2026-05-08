@@ -11,8 +11,9 @@ import PlantNutrition from './pages/PlantNutrition/PlantNutrition'
 import CulturalPractices from './pages/CulturalPractices/CulturalPractices'
 import Budget from './pages/Budget/Budget'
 import Inventory from './pages/Inventory/Inventory'
-import Equipment from './pages/Equipment/Equipment'
-import Settings from './pages/Settings/Settings'
+import Equipment  from './pages/Equipment/Equipment'
+import Irrigation from './pages/Irrigation/Irrigation'
+import Settings   from './pages/Settings/Settings'
 
 export default function App() {
   return (
@@ -34,8 +35,9 @@ export default function App() {
           <Route path="cultural-practices/*" element={<CulturalPractices />} />
           <Route path="budget/*" element={<Budget />} />
           <Route path="inventory/*" element={<Inventory />} />
-          <Route path="equipment/*" element={<Equipment />} />
-          <Route path="settings/*" element={<Settings />} />
+          <Route path="equipment/*"  element={<Equipment />} />
+          <Route path="irrigation/*" element={<Irrigation />} />
+          <Route path="settings/*"   element={<Settings />} />
         </Route>
       </Routes>
     </BrowserRouter>
