@@ -1,9 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useOperations } from '../../utils/operations/OperationsContext'
-import { SPRAY_RECORDS } from '../../data/spray'
-import { SCHEDULE } from '../../data/crew'
-import { SERVICE_LOG } from '../../data/equipment'
-import { REPAIRS } from '../../data/irrigation'
 import { PLACEHOLDER_CURRENT, SPRAY_WINDOW_TOKENS } from '../../components/shared/weather/weatherTokens'
 import styles from './OperationsCalendar.module.css'
 
@@ -163,18 +159,18 @@ export default function OperationsCalendar() {
     [filteredEvents]
   )
 
-  // Weekly metrics anchored to TODAY's week (not the navigated week)
+  // Weekly metrics derived from context state — includes operations-layer events and persists on refresh
   const weeklyMetrics = useMemo(() => {
     const todayWeek = getWeekDates(TODAY)
     const ws = todayWeek[0]
     const we = todayWeek[6]
     return {
-      spray:       SPRAY_RECORDS.filter(r => r.date >= ws && r.date <= we).length,
-      crew:        SCHEDULE.filter(s => s.date >= ws && s.date <= we && s.status !== 'off').length,
-      maintenance: SERVICE_LOG.filter(s => s.date >= ws && s.date <= we).length,
-      openRepairs: REPAIRS.filter(r => r.status !== 'completed').length,
+      spray:       calendarEvents.filter(e => e.category === 'spray'       && e.date >= ws && e.date <= we).length,
+      crew:        calendarEvents.filter(e => e.category === 'crew'        && e.date >= ws && e.date <= we).length,
+      maintenance: calendarEvents.filter(e => e.category === 'maintenance' && e.date >= ws && e.date <= we).length,
+      openRepairs: calendarEvents.filter(e => e.category === 'irrigation'  && e.status !== 'completed').length,
     }
-  }, [])
+  }, [calendarEvents])
 
   const headerLabel = useMemo(() => {
     if (view === 'month') return `${MONTH_NAMES[month]} ${year}`
