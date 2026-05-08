@@ -513,3 +513,226 @@
   .eqModalPanel       { max-height: 92vh; }
   .eqModalHeaderRight { gap: 6px; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Maintenance Logs tab  (ml* prefix — reuses eq* modal + toolbar classes)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Stat row variants (reuses .eqStat shell) ─────────────────────────────── */
+
+.mlStatOpen    { border-left-color: #5ba8a0; }
+.mlStatMonth   { border-left-color: #4ecb4e; }
+.mlStatOverdue { border-left-color: #e05050; background: rgba(220,60,60,0.05); }
+.mlStatCost    { border-left-color: #a060e0; }
+
+.mlStatOpen    .eqStatValue { color: #5ba8a0; }
+.mlStatMonth   .eqStatValue { color: #4ecb4e; }
+.mlStatOverdue .eqStatValue { color: #e05050; }
+.mlStatCost    .eqStatValue { color: var(--color-text); }
+
+.mlCostValue {
+  font-size: 1.5rem !important;
+  letter-spacing: -0.02em;
+}
+
+/* ── Maintenance log card (full-width, reuses eqList) ─────────────────────── */
+
+.mlCard {
+  text-align: left;
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--color-card);
+  border: var(--card-border);
+  border-radius: var(--card-radius);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.mlCard:hover {
+  border-color: var(--card-hover-border);
+  box-shadow: var(--card-hover-shadow);
+}
+
+/* Priority left accents */
+.mlCard_critical { border-left: 3px solid #e05050; background: rgba(220,60,60,0.04); }
+.mlCard_high     { border-left: 3px solid #d4883a; }
+.mlCard_routine  { border-left: 3px solid rgba(74,158,74,0.35); }
+
+/* ── Card meta row ────────────────────────────────────────────────────────── */
+
+.mlCardMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.mlCardDate {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.mlUnassigned {
+  font-size: 0.68rem;
+  color: var(--color-text-muted);
+  opacity: 0.55;
+  font-style: italic;
+}
+
+.mlHoursAtService {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  opacity: 0.75;
+}
+
+/* ── Service type badge ───────────────────────────────────────────────────── */
+
+.mlTypeBadge {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+/* ── Priority badge ───────────────────────────────────────────────────────── */
+
+.mlPriorityBadge {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 7px;
+  border-radius: 20px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.mlPriorityCritical { background: rgba(220,60,60,0.15);  color: #e05050; border-color: rgba(220,60,60,0.3);  }
+.mlPriorityHigh     { background: rgba(212,136,58,0.15); color: #d4883a; border-color: rgba(212,136,58,0.3); }
+.mlPriorityRoutine  { background: rgba(74,158,74,0.12);  color: #4ecb4e; border-color: rgba(74,158,74,0.25); }
+
+/* ── Status badges (maintenance-specific variants) ────────────────────────── */
+
+.mlStatusCompleted  { background: rgba(74,158,74,0.14);  color: #4ecb4e; border: 1px solid rgba(74,158,74,0.3);  }
+.mlStatusOpen       { background: rgba(80,140,220,0.14); color: #6aabee; border: 1px solid rgba(80,140,220,0.3); }
+.mlStatusInProgress { background: rgba(91,168,160,0.14); color: #5ba8a0; border: 1px solid rgba(91,168,160,0.3); }
+.mlStatusOverdue    { background: rgba(220,60,60,0.15);  color: #e05050; border: 1px solid rgba(220,60,60,0.3);  }
+
+/* ── Small icon badges on card footer ────────────────────────────────────── */
+
+.mlPartsBadge {
+  font-size: 0.62rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(150,80,220,0.1);
+  color: #a060e0;
+  border: 1px solid rgba(150,80,220,0.22);
+}
+
+.mlHasNotes {
+  font-size: 0.62rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.06);
+  color: var(--color-text-muted);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* ── Card right: cost display ─────────────────────────────────────────────── */
+
+.mlBigCost {
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.mlCostPending { color: var(--color-text-muted); opacity: 0.5; }
+
+/* ── Parts table in modal ─────────────────────────────────────────────────── */
+
+.mlPartsTable {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.mlPartsHeader {
+  display: grid;
+  grid-template-columns: 2fr 1.2fr 0.4fr 0.6fr 0.6fr;
+  gap: 0 8px;
+  padding: 7px 12px;
+  background: rgba(255,255,255,0.05);
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--color-text-muted);
+}
+
+.mlPartsRow {
+  display: grid;
+  grid-template-columns: 2fr 1.2fr 0.4fr 0.6fr 0.6fr;
+  gap: 0 8px;
+  padding: 9px 12px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  align-items: center;
+}
+
+.mlPartName {
+  font-size: 0.82rem;
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+.mlPartNumber {
+  font-size: 0.72rem;
+  font-family: monospace;
+  color: var(--color-text-muted);
+}
+
+.mlPartsQty {
+  font-size: 0.78rem;
+  color: var(--color-text);
+  text-align: center;
+}
+
+.mlPartsCost {
+  font-size: 0.78rem;
+  color: var(--color-text);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Total cost highlight ─────────────────────────────────────────────────── */
+
+.mlTotalCost {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--color-accent);
+}
+
+/* ── Maintenance Logs mobile ──────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .mlCard          { flex-wrap: wrap; }
+  .mlPartsHeader,
+  .mlPartsRow      { grid-template-columns: 2fr 1fr 0.4fr 0.6fr; }
+  .mlPartsHeader > span:nth-child(2),
+  .mlPartsRow > span:nth-child(2) { display: none; }
+}

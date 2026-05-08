@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import PageShell from '../../components/layout/PageShell'
-import EquipmentOverview from './tabs/EquipmentOverview'
-import EquipmentList     from './tabs/EquipmentList'
+import EquipmentOverview  from './tabs/EquipmentOverview'
+import EquipmentList      from './tabs/EquipmentList'
+import MaintenanceLogs    from './tabs/MaintenanceLogs'
 
 const TABS = ['Overview', 'Equipment List', 'Maintenance Logs', 'Repairs', 'Fuel Usage', 'Service Schedule', 'Parts Needed']
 
@@ -10,9 +11,10 @@ export default function Equipment() {
 
   return (
     <PageShell title="Equipment" tabs={TABS} activeTab={activeTab} onTabChange={setActiveTab}>
-      {activeTab === 'Overview'        && <EquipmentOverview />}
-      {activeTab === 'Equipment List'  && <EquipmentList />}
-      {activeTab !== 'Overview' && activeTab !== 'Equipment List' && (
+      {activeTab === 'Overview'          && <EquipmentOverview />}
+      {activeTab === 'Equipment List'    && <EquipmentList />}
+      {activeTab === 'Maintenance Logs'  && <MaintenanceLogs />}
+      {activeTab !== 'Overview' && activeTab !== 'Equipment List' && activeTab !== 'Maintenance Logs' && (
         <p style={{ color: 'var(--color-text-muted)' }}>{activeTab} — coming soon</p>
       )}
     </PageShell>
