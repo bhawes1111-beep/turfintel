@@ -1,10 +1,8 @@
 import { useState } from 'react'
 import DashboardCard from '../../components/shared/DashboardCard'
 import { AlertList } from '../../components/shared/alerts'
-import {
-  WeatherCard, ETCard, ForecastStrip, WeatherAlertBanner,
-  PLACEHOLDER_WEATHER_ALERTS,
-} from '../../components/shared/weather'
+import { PLACEHOLDER_WEATHER_ALERTS } from '../../components/shared/weather'
+import WeatherSection from './WeatherSection'
 import OperationsCalendar from './OperationsCalendar'
 import { DASHBOARD_ALERTS } from '../../data/dashboardAlerts'
 import styles from './Dashboard.module.css'
@@ -35,31 +33,17 @@ export default function Dashboard() {
         <h1 className={styles.title}>Dashboard</h1>
       </div>
 
-      {/* Weather command-center */}
+      {/* Weather section — redesigned */}
       <div className={styles.weatherSection}>
-        {weatherAlerts.length > 0 && (
-          <div className={styles.weatherBanners}>
-            {weatherAlerts.map(alert => (
-              <WeatherAlertBanner
-                key={alert.id}
-                message={alert.message}
-                severity={alert.severity}
-                onDismiss={() => handleDismissWeatherAlert(alert.id)}
-              />
-            ))}
-          </div>
-        )}
-        <div className={styles.weatherCardsRow}>
-          <WeatherCard />
-          <ETCard />
-        </div>
-        <ForecastStrip />
+        <WeatherSection
+          alerts={weatherAlerts}
+          onDismissAlert={handleDismissWeatherAlert}
+        />
       </div>
 
       {/* Responsive card grid */}
       <div className={styles.grid}>
 
-        {/* Alerts widget */}
         <DashboardCard title={`Alerts${activeAlerts.length > 0 ? ` (${activeAlerts.length})` : ''}`} wide tall>
           <AlertList
             alerts={activeAlerts}
@@ -88,7 +72,6 @@ export default function Dashboard() {
           <p className={styles.empty}>No recent activity.</p>
         </DashboardCard>
 
-        {/* Operations calendar — full width */}
         <DashboardCard full>
           <OperationsCalendar />
         </DashboardCard>

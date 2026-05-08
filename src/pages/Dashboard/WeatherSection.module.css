@@ -1,0 +1,521 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   WEATHER SECTION  (ws*)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Main section wrapper ────────────────────────────────────────────────── */
+
+.wsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── Alert banners ───────────────────────────────────────────────────────── */
+
+.wsAlerts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ── Top row: two cards side by side ─────────────────────────────────────── */
+
+.wsTopRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  align-items: stretch;
+}
+
+/* ── Shared glass card ───────────────────────────────────────────────────── */
+
+.wsCard {
+  background: linear-gradient(
+    150deg,
+    rgba(6, 20, 6, 0.97) 0%,
+    rgba(2, 10, 2, 0.99) 100%
+  );
+  border: 1px solid rgba(74, 158, 74, 0.22);
+  border-radius: 14px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+/* ── Card header ─────────────────────────────────────────────────────────── */
+
+.wsCardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.wsCardHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.wsCardIconWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: rgba(74, 158, 74, 0.1);
+  border: 1px solid rgba(74, 158, 74, 0.22);
+  border-radius: 7px;
+  color: rgba(130, 200, 130, 0.85);
+  flex-shrink: 0;
+}
+
+.wsCardTitle {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: rgba(180, 210, 180, 0.7);
+}
+
+.wsCardLocation {
+  font-size: 12px;
+  color: rgba(140, 170, 140, 0.6);
+  margin-top: 1px;
+}
+
+.wsUpdated {
+  font-size: 10px;
+  color: rgba(120, 150, 120, 0.5);
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* ── Main weather display ────────────────────────────────────────────────── */
+
+.wsMainDisplay {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 6px 0;
+}
+
+.wsWeatherEmoji {
+  font-size: 54px;
+  line-height: 1;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 8px rgba(74, 158, 74, 0.18));
+}
+
+.wsTempBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.wsCurrentTemp {
+  font-size: 54px;
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1;
+  letter-spacing: -2px;
+  font-variant-numeric: tabular-nums;
+}
+
+.wsUnit {
+  font-size: 11px;
+  color: rgba(140, 170, 140, 0.55);
+  letter-spacing: 0.04em;
+}
+
+.wsFeelsLike {
+  font-size: 12px;
+  color: rgba(160, 190, 160, 0.7);
+  margin-top: 3px;
+}
+
+.wsCondBadgeWrap {
+  margin-left: auto;
+  align-self: flex-start;
+}
+
+.wsCondBadge {
+  display: inline-block;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+/* ── 6-metric grid ───────────────────────────────────────────────────────── */
+
+.wsMetricsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px 8px;
+  padding: 12px 0;
+  border-top: 1px solid rgba(74, 158, 74, 0.1);
+  border-bottom: 1px solid rgba(74, 158, 74, 0.1);
+}
+
+.wsMetric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wsMetricLabel {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(130, 160, 130, 0.6);
+  font-weight: 600;
+}
+
+.wsMetricValue {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Bottom status strip ─────────────────────────────────────────────────── */
+
+.wsStatusStrip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.wsStatusItem {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.wsStatusLabel {
+  font-size: 11px;
+  color: rgba(130, 160, 130, 0.6);
+  font-weight: 500;
+}
+
+.wsStatusBadge {
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.wsETToday {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-accent);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── ET card specifics ───────────────────────────────────────────────────── */
+
+.wsETWeekTotal {
+  font-size: 11px;
+  color: rgba(130, 160, 130, 0.55);
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.wsETValues {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.wsETValueBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wsETLabel {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: rgba(130, 160, 130, 0.6);
+  font-weight: 600;
+}
+
+.wsETBigRow {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.wsETBig {
+  font-size: 36px;
+  font-weight: 700;
+  color: var(--color-accent);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.wsETDeficit {
+  color: #dca032;
+}
+
+.wsETUnit {
+  font-size: 12px;
+  color: rgba(140, 170, 140, 0.55);
+}
+
+/* ── Chart section ───────────────────────────────────────────────────────── */
+
+.wsChartSection {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(74, 158, 74, 0.1);
+}
+
+.wsChartTitle {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: rgba(130, 160, 130, 0.55);
+  font-weight: 600;
+}
+
+/* ── ET bar chart ────────────────────────────────────────────────────────── */
+
+.wsBarChart {
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  flex: 1;
+  min-height: 80px;
+}
+
+.wsBarCol {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  gap: 4px;
+}
+
+.wsBarValue {
+  font-size: 8px;
+  color: rgba(130, 200, 130, 0.75);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.wsBarTrack {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  border-bottom: 1px solid rgba(74, 158, 74, 0.18);
+  min-height: 40px;
+}
+
+.wsBar {
+  width: 100%;
+  min-height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: linear-gradient(180deg, rgba(78, 203, 78, 0.9) 0%, rgba(36, 110, 36, 0.75) 100%);
+}
+
+.wsBarDay {
+  font-size: 9px;
+  color: rgba(120, 150, 120, 0.65);
+  font-weight: 600;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+/* ── 7-day forecast row ──────────────────────────────────────────────────── */
+
+.wsForecastOuter {
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(60, 140, 60, 0.3) transparent;
+}
+
+.wsForecastOuter::-webkit-scrollbar { height: 4px; }
+.wsForecastOuter::-webkit-scrollbar-track { background: transparent; }
+.wsForecastOuter::-webkit-scrollbar-thumb { background: rgba(60, 140, 60, 0.3); border-radius: 2px; }
+
+.wsForecastRow {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(110px, 1fr));
+  gap: 8px;
+  min-width: 700px;
+}
+
+/* ── Forecast day card ───────────────────────────────────────────────────── */
+
+.wsForecastCard {
+  background: linear-gradient(
+    150deg,
+    rgba(5, 17, 5, 0.97) 0%,
+    rgba(2, 9, 2, 0.99) 100%
+  );
+  border: 1px solid rgba(74, 158, 74, 0.16);
+  border-radius: 11px;
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  text-align: center;
+  transition: border-color 0.15s;
+}
+
+.wsForecastCard:hover {
+  border-color: rgba(74, 158, 74, 0.35);
+}
+
+.wsForecastCardToday {
+  border-color: rgba(74, 158, 74, 0.52);
+  background: linear-gradient(
+    150deg,
+    rgba(8, 26, 8, 0.97) 0%,
+    rgba(3, 14, 3, 0.99) 100%
+  );
+  box-shadow: 0 0 14px rgba(74, 158, 74, 0.1), inset 0 1px 0 rgba(74, 158, 74, 0.08);
+}
+
+.wsFcastDayLabel {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.wsForecastCardToday .wsFcastDayLabel {
+  color: var(--color-accent);
+}
+
+.wsFcastDate {
+  font-size: 10px;
+  color: rgba(130, 160, 130, 0.55);
+  margin-top: -2px;
+}
+
+.wsFcastIcon {
+  font-size: 30px;
+  line-height: 1;
+  margin: 3px 0;
+}
+
+.wsFcastTemps {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.wsFcastHigh {
+  color: var(--color-text);
+}
+
+.wsFcastSep {
+  color: rgba(130, 160, 130, 0.4);
+  font-weight: 400;
+}
+
+.wsFcastLow {
+  color: rgba(140, 170, 140, 0.6);
+  font-size: 12px;
+}
+
+.wsFcastRain {
+  font-size: 11px;
+  color: #3a8ad4;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.wsFcastNoRain {
+  font-size: 10px;
+  color: rgba(120, 150, 120, 0.4);
+}
+
+.wsFcastET {
+  font-size: 10px;
+  color: var(--color-accent);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.wsFcastBadge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 8px;
+  font-size: 9px;
+  font-weight: 700;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  margin-top: 2px;
+  text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 1000px) {
+  .wsTopRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .wsCard {
+    padding: 16px;
+  }
+
+  .wsCurrentTemp {
+    font-size: 44px;
+  }
+
+  .wsWeatherEmoji {
+    font-size: 44px;
+  }
+
+  .wsETBig {
+    font-size: 28px;
+  }
+
+  .wsMetricsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 500px) {
+  .wsMetricsGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px 6px;
+  }
+
+  .wsMetricValue {
+    font-size: 12px;
+  }
+}
