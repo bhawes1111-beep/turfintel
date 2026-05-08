@@ -5,7 +5,7 @@ import {
   WeatherCard, ETCard, ForecastStrip, WeatherAlertBanner,
   PLACEHOLDER_WEATHER_ALERTS,
 } from '../../components/shared/weather'
-import { CalendarGrid, MonthNavigation, EventBadge, EVENT_COLORS } from '../../components/shared/calendar'
+import { CalendarGrid, MonthNavigation, EventBadge, CalendarEventDetail, EVENT_COLORS } from '../../components/shared/calendar'
 import { DASHBOARD_ALERTS } from '../../data/dashboardAlerts'
 import { DASHBOARD_CALENDAR_EVENTS } from '../../data/dashboardCalendarEvents'
 import styles from './Dashboard.module.css'
@@ -21,6 +21,7 @@ export default function Dashboard() {
   const [weatherAlerts, setWeatherAlerts] = useState(PLACEHOLDER_WEATHER_ALERTS)
   const [calYear, setCalYear]           = useState(today.getFullYear())
   const [calMonth, setCalMonth]         = useState(today.getMonth())
+  const [selectedEvent, setSelectedEvent] = useState(null)
 
   function handleDismissWeatherAlert(id) {
     setWeatherAlerts(prev => prev.filter(a => a.id !== id))
@@ -123,10 +124,18 @@ export default function Dashboard() {
             defaultView="grid"
             showViewToggle
             maxEventsPerDay={3}
+            onEventClick={setSelectedEvent}
           />
         </DashboardCard>
 
       </div>
+      {selectedEvent && (
+        <CalendarEventDetail
+          event={selectedEvent}
+          onClose={() => setSelectedEvent(null)}
+        />
+      )}
+
     </div>
   )
 }
