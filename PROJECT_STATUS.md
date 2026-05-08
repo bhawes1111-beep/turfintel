@@ -3,17 +3,20 @@
 **Stack:** React 19 + Vite 8 · Plain JavaScript · CSS Modules · React Router DOM v7  
 **Deployed:** Cloudflare Pages (auto-deploy on push to `master`)  
 **Repo:** https://github.com/bhawes1111-beep/turfintel  
-**Latest Commit:** `0126ab9` — Redesign dashboard weather section
+**Latest Commit:** (see DEVLOG Session 5)
 
 ---
 
 ## Checkpoint Summary (2026-05-08)
 
-Working tree is clean. Master is pushed. Build passes at 153 modules, 0 errors.
+Working tree is clean. Master is pushed. Build passes at 156 modules, 0 errors.
 Known warning: bundle chunk-size >500 kB — not blocking, resolves with code-splitting when app grows.
 
-Twelve full-data workflows shipped across three sessions. This session added three major
-dashboard/UX systems on top of the nine data workflows from prior sessions:
+Session 5 additions: Spray Sheet tab (full printable worksheet system) + shared operational
+actions layer (`src/utils/operations/`) with localStorage persistence. All cross-module
+state mutations now survive browser refreshes. Duplicate-event guard added to reducer.
+
+Fourteen full-data workflows shipped across five sessions. Dashboard/UX systems:
 Operations Calendar · Crew Scheduling Board · Dashboard Weather Redesign.
 
 Every data workflow follows the same pattern: real static dataset in `src/data/`, full-featured
@@ -123,7 +126,16 @@ and a namespaced CSS block in the module's `.module.css`.
 
 ---
 
-### Spray (1 of ~4 data tabs complete)
+### Spray (2 of ~4 data tabs complete)
+
+**Spray → Build Spray Sheet** (`src/pages/Spray/tabs/BuildSpraySheet.jsx`)
+- Multi-select application cards from `SPRAY_RECORDS`; each card has separate checkbox + body button
+- Generated right-panel spray sheet: header, weather window, summary row, product table, PPE, safety, signature block
+- `buildProductTable()` deduplicates products across selected records via `Map` keyed by product name
+- `buildPPE()` collects unique PPE from `PRODUCT_META` lookup
+- "Add to Operations Calendar" button dispatches `createCalendarEvent` per selected record; REI alert auto-created when `maxREI > 0`
+- Print via `window.print()` with `@media print` isolating only the sheet panel
+- CSS prefix: `ss*` · Files: `BuildSpraySheet.jsx`, `Spray.module.css`
 
 **Spray → Spray Records** (`src/pages/Spray/tabs/SprayRecords.jsx`)
 - Data: `SPRAY_RECORDS` in `src/data/spray.js`
@@ -183,6 +195,24 @@ and a namespaced CSS block in the module's `.module.css`.
 ---
 
 ## Architecture Reference
+
+### Operations Layer (`src/utils/operations/`)
+
+Cross-module operational state — shared across all pages via React Context.
+
+| File | Purpose |
+|---|---|
+| `schemas.js` | `makeCalendarEvent()`, `makeAlert()`, `makeCrewAssignment()`, `makeEquipmentReservation()` factory functions |
+| `actions.js` | Six action type constants + six pure action creator functions |
+| `OperationsContext.jsx` | React Context + useReducer + localStorage persistence |
+
+**Persistence:** State is loaded from `localStorage['turfintel-operations']` on mount, written back on every reducer change. Falls back to static seed datasets when storage is absent or corrupt. `loadState()` / `saveState()` are isolated adapter functions — swap for API / D1 / Supabase / Firebase without touching reducers or consumers.
+
+**Deduplication:** `CREATE_CALENDAR_EVENT` rejects payloads where `sourceId + category + date` already exists in state. Events without a `sourceId` are always allowed.
+
+**Integration targets:** Spray → Build Spray Sheet · Irrigation → Repairs · Equipment → Maintenance Logs · Dashboard (reads `state.alerts`) · Operations Calendar (reads `state.calendarEvents`)
+
+**API-ready pattern:** Each action creator returns `{ type, payload }`. When a backend exists, wrap in async thunks: dispatch optimistically → POST to API → UPDATE with server ID on success → REVERT on failure.
 
 ### Data Files
 | File | Exports | Records |
@@ -282,6 +312,7 @@ Drop missing files into `public/sidebar-icons/` — no code changes needed.
 | Low | Calendar events hardcoded to May 2026 | Resolves with real data |
 | Low | Weather data is placeholder | Resolves with API integration |
 | Low | No auth route guard | Add protected route wrapper when backend ready |
+| Low | `weeklyMetrics` in Operations Calendar counts static data only | Will update when operations state replaces static datasets |
 
 **Missing sidebar icons** (drop into `public/sidebar-icons/` when available — zero code changes needed):
 `disease.png` · `cultural-practices.png` · `budget.png` · `inventory.png` · `equipment.png` · `settings.png`
@@ -290,8 +321,7 @@ Drop missing files into `public/sidebar-icons/` — no code changes needed.
 
 ## Recommended Next Features (Priority Order)
 
-1. **Spray → Spray Sheet tab** — printable/PDF-ready application worksheet built from `SPRAY_RECORDS`
-2. **Spray → Planned Programs** — scheduled spray program list with calendar integration
+1. **Spray → Planned Programs** — scheduled spray program list with calendar integration
 3. **Disease → Disease Alerts** — threshold-based alert feed; shares `ACTIVE_ISSUES` shape
 4. **Inventory → Chemicals tab** — chemical inventory parallel to Products, `CHEMICALS` export in `inventory.js`
 5. **Plant Nutrition tabs** — soil test data, recommendations, application log

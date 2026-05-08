@@ -2,6 +2,41 @@
 
 ---
 
+## Session 5 — 2026-05-08
+
+**Commits:** Spray Sheet tab · Operations Layer · Persistence + dedup  
+**Build:** 156 modules, 0 errors · known warning: bundle chunk >500 kB (not blocking)
+
+### Spray → Build Spray Sheet (new tab)
+- Left panel: multi-select application cards pulled from `SPRAY_RECORDS`; each card has a separate checkbox button (top-right) and a clickable body for detail; selected cards show `ssAppCardSelected` green border
+- Right panel: sticky 420px `ssPanelWrap`; empty state or generated `ssSheet` document
+- Sheet sections: header (course + date + sheet ID), weather window (wind/temp/humidity/spray window), summary (areas + total product + REI + applicator), product table (`ssSheetTable`, border-collapse, deduped via `Map`), PPE block (unique from `PRODUCT_META`), safety notes, signature block
+- `buildProductTable()`: deduplicates products across all selected records by product name — merges area and volume
+- `buildPPE()`: collects unique PPE requirements across all selected records via `PRODUCT_META` lookup
+- "Add to Operations Calendar" dispatches `createCalendarEvent` per selected record; if `maxREI > 0` dispatches `createAlert` with priority based on REI hours
+- Print: `@media print` hides `.ssList`, makes `.ssPanelWrap` full-width static, sheet white on white
+- CSS prefix: `ss*` · File: `src/pages/Spray/tabs/BuildSpraySheet.jsx`
+
+### Shared Operations Layer (`src/utils/operations/`)
+- `schemas.js`: factory functions `makeCalendarEvent()`, `makeAlert()`, `makeCrewAssignment()`, `makeEquipmentReservation()` — output matches existing static dataset shapes exactly
+- `actions.js`: six action type constants + six pure action creators returning `{ type, payload }`; API-ready pattern documented in comments
+- `OperationsContext.jsx`: React Context + `useReducer`; initial state seeded from static datasets
+- Integration targets wired: Spray Sheet → calendar events + REI alerts; Irrigation Repairs → calendar events + high-priority alerts; Equipment Maintenance → calendar events + equipment reservations (two-dispatch pattern using `makeCalendarEvent()` directly to capture ID)
+- Dashboard wired: reads `state.alerts`, dispatches `acknowledgeAlert` / `dismissAlert`
+- Operations Calendar wired: reads `state.calendarEvents`; `calendarEvents` added to `filteredEvents` useMemo dep array
+- Global utility classes appended to `src/index.css`: `.opActionBtn`, `.opActionRow`, `.opToast`, `@keyframes opToastIn`
+
+### OperationsContext Persistence Layer
+- `STORAGE_KEY = 'turfintel-operations'`
+- Lazy `useReducer` initializer: `() => loadState() ?? seedState` — reads localStorage once on mount
+- `loadState()`: `JSON.parse` inside try/catch; on failure clears corrupt key, `console.warn`, returns `null`
+- `saveState()`: `JSON.stringify` inside try/catch; quota/private-browsing failures are silent
+- `useEffect([state])`: writes full state on every reducer change
+- `loadState` / `saveState` are isolated adapter functions — swap for API / Cloudflare D1 / Supabase / Firebase without touching reducer or any consumer
+- **Deduplication guard in `CREATE_CALENDAR_EVENT`**: checks `sourceId + category + date` uniqueness; returns existing state unchanged if match found; events without `sourceId` are always allowed
+
+---
+
 ## Session 4 — 2026-05-08
 
 **Commit range:** `1956bf0` → `0126ab9`  
