@@ -10,7 +10,6 @@
   height: 100%;
   overflow: hidden;
   transition: width 0.25s ease;
-  /* Prevent content bleed during transition */
   will-change: width;
 }
 
@@ -18,58 +17,116 @@
   width: var(--sidebar-collapsed);
 }
 
-/* ── Brand header ──────────────────────────────────────────────────────── */
+/* ── Brand / logo header ───────────────────────────────────────────────── */
 
 .brand {
+  position: relative;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 12px;
-  height: 52px;
+  justify-content: center;
+  padding: 20px 12px 18px;
   border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
   overflow: hidden;
-  gap: 8px;
+  min-height: 108px;
+  transition: min-height 0.25s ease, padding 0.25s ease;
 }
 
-.brandName {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--color-accent);
-  letter-spacing: 0.3px;
-  white-space: nowrap;
-  overflow: hidden;
-  /* Fade out and collapse width together with sidebar */
-  opacity: 1;
-  max-width: 140px;
-  transition: opacity 0.15s ease, max-width 0.25s ease;
-}
-
-.collapsed .brandName {
-  opacity: 0;
-  max-width: 0;
-}
-
-/* Collapse toggle button */
+/* Collapse toggle — pinned to top-right of brand area */
 .collapseBtn {
-  flex-shrink: 0;
-  width: 26px;
-  height: 26px;
-  border-radius: 5px;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-text-muted);
-  transition: background-color 0.15s, color 0.15s;
+  color: rgba(255, 255, 255, 0.22);
+  transition: color 0.15s, background 0.15s;
+  flex-shrink: 0;
 }
 
 .collapseBtn:hover {
-  background-color: var(--color-sidebar-hover);
-  color: var(--color-text);
+  color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.07);
 }
 
-/* When collapsed: center the button since the brand name is hidden */
+/* ── Full logo (expanded) ─────────────────────────────────────────────── */
+
+.logoFull {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  opacity: 1;
+  transition: opacity 0.15s ease;
+}
+
+.collapsed .logoFull {
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+/* TP lettermark */
+.logoMark {
+  font-family: 'Exo 2', 'Arial Black', Impact, sans-serif;
+  font-weight: 900;
+  font-size: 42px;
+  line-height: 1;
+  letter-spacing: -3px;
+  display: flex;
+  align-items: baseline;
+}
+
+.logoT { color: #3bae3b; }
+.logoP { color: #b8c8b0; }
+
+/* TURFINTEL wordmark */
+.logoWordmark {
+  font-family: 'Exo 2', 'Arial Black', sans-serif;
+  font-weight: 900;
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  line-height: 1;
+}
+
+.wTurf  { color: #3bae3b; }
+.wIntel { color: #c8d8c8; }
+
+/* — PRO — tag */
+.logoPro {
+  font-family: 'Exo 2', sans-serif;
+  font-weight: 700;
+  font-size: 8.5px;
+  letter-spacing: 0.24em;
+  color: rgba(59, 174, 59, 0.55);
+  margin-top: 1px;
+}
+
+/* ── Compact mark (collapsed) ─────────────────────────────────────────── */
+
+.logoCompact {
+  display: none;
+  font-family: 'Exo 2', 'Arial Black', Impact, sans-serif;
+  font-weight: 900;
+  font-size: 26px;
+  letter-spacing: -2px;
+  line-height: 1;
+  align-items: baseline;
+}
+
+.collapsed .logoCompact {
+  display: flex;
+}
+
+/* Shrink brand area when collapsed */
 .collapsed .brand {
+  min-height: 60px;
+  padding: 0 0 0 0;
   justify-content: center;
 }
 
@@ -77,14 +134,14 @@
 
 .nav {
   list-style: none;
-  padding: 6px 0;
+  padding: 8px 0;
   flex: 1;
   overflow: hidden;
 }
 
 .navBottom {
   list-style: none;
-  padding: 6px 0;
+  padding: 6px 0 8px;
   border-top: 1px solid var(--color-border);
   flex-shrink: 0;
   overflow: hidden;
@@ -95,11 +152,11 @@
 .link {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 9px 12px;
-  margin: 2px 8px;
-  border-radius: 6px;
-  color: var(--color-text-muted);
+  gap: 11px;
+  padding: 11px 14px;
+  margin: 1px 8px;
+  border-radius: 7px;
+  color: rgba(200, 220, 200, 0.6);
   font-size: 13px;
   font-weight: 500;
   white-space: nowrap;
@@ -112,36 +169,37 @@
   color: var(--color-text);
 }
 
-/* Active: gradient glow + accent left border */
+/* Active: filled green panel + bright left accent */
 .link.active {
   background: linear-gradient(
     90deg,
-    rgba(74, 158, 74, 0.18) 0%,
-    rgba(74, 158, 74, 0.04) 100%
+    rgba(59, 174, 59, 0.22) 0%,
+    rgba(59, 174, 59, 0.06) 100%
   );
-  box-shadow: inset 3px 0 0 var(--color-accent);
-  color: var(--color-text);
+  box-shadow: inset 3px 0 0 #3bae3b;
+  color: #e8f5e8;
 }
 
 /* ── Icon wrapper ──────────────────────────────────────────────────────── */
 
 .iconWrap {
   flex-shrink: 0;
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-text-muted);
+  color: rgba(160, 200, 160, 0.5);
   transition: color 0.15s;
 }
 
 .link:hover .iconWrap {
-  color: var(--color-text);
+  color: rgba(200, 230, 200, 0.85);
 }
 
 .link.active .iconWrap {
-  color: var(--color-accent);
+  color: #3bae3b;
+  filter: drop-shadow(0 0 4px rgba(59, 174, 59, 0.5));
 }
 
 /* ── Label ─────────────────────────────────────────────────────────────── */
@@ -149,7 +207,6 @@
 .label {
   overflow: hidden;
   white-space: nowrap;
-  /* Smooth label fade + width collapse in sync with sidebar width */
   opacity: 1;
   max-width: 160px;
   transition: opacity 0.15s ease, max-width 0.25s ease;
@@ -162,23 +219,23 @@
 
 /* ── Collapsed link layout ─────────────────────────────────────────────── */
 
-/* Center the icon when collapsed; padding matches the expanded icon position */
 .collapsed .link {
   justify-content: center;
-  padding: 9px 0;
-  margin: 2px 8px;
+  padding: 11px 0;
+  margin: 1px 8px;
   gap: 0;
 }
 
-/* Active state must remain obvious when collapsed (icon color + glow only) */
+/* Active must remain visible when collapsed */
 .collapsed .link.active {
   box-shadow:
-    inset 3px 0 0 var(--color-accent),
-    0 0 0 1px rgba(74, 158, 74, 0.2);
+    inset 3px 0 0 #3bae3b,
+    0 0 0 1px rgba(59, 174, 59, 0.18);
 }
 
 .collapsed .link.active .iconWrap {
-  color: var(--color-accent);
+  color: #3bae3b;
+  filter: drop-shadow(0 0 5px rgba(59, 174, 59, 0.55));
 }
 
 /* ── Mobile ────────────────────────────────────────────────────────────── */
@@ -190,10 +247,8 @@
     left: 0;
     height: 100%;
     z-index: 100;
-    /* Slide in/out independently of collapse width */
     width: var(--sidebar-width) !important;
     transform: translateX(-100%);
-    /* Prioritise slide transition on mobile; width is locked */
     transition: transform 0.25s ease;
   }
 
@@ -201,7 +256,7 @@
     transform: translateX(0);
   }
 
-  /* Always show labels on mobile — ignore collapsed state */
+  /* Always show labels on mobile regardless of collapsed state */
   .collapsed .label {
     opacity: 1;
     max-width: 160px;
@@ -209,20 +264,27 @@
 
   .collapsed .link {
     justify-content: flex-start;
-    padding: 9px 12px;
-    gap: 10px;
+    padding: 11px 14px;
+    gap: 11px;
   }
 
   .collapsed .brand {
-    justify-content: space-between;
+    min-height: 108px;
+    padding: 20px 12px 18px;
+    justify-content: center;
   }
 
-  .collapsed .brandName {
+  .collapsed .logoFull {
     opacity: 1;
-    max-width: 140px;
+    pointer-events: auto;
+    position: static;
   }
 
-  /* Hide the collapse toggle on mobile — not needed */
+  .collapsed .logoCompact {
+    display: none;
+  }
+
+  /* Hide collapse toggle on mobile — sidebar slides, not collapses */
   .collapseBtn {
     display: none;
   }

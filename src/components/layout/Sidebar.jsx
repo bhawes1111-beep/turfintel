@@ -23,20 +23,38 @@ export default function Sidebar({ isOpen, onClose }) {
     <nav
       className={[
         styles.sidebar,
-        collapsed   ? styles.collapsed   : '',
-        isOpen      ? styles.mobileOpen  : '',
+        collapsed  ? styles.collapsed  : '',
+        isOpen     ? styles.mobileOpen : '',
       ].join(' ')}
     >
-      {/* Brand header */}
+      {/* Brand / logo header */}
       <div className={styles.brand}>
-        <span className={styles.brandName}>TurfIntel</span>
+
+        {/* Collapse toggle — top-right corner */}
         <button
           className={styles.collapseBtn}
           onClick={() => setCollapsed(c => !c)}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
-          <Icon name={collapsed ? 'chevronRight' : 'chevronLeft'} size={14} />
+          <Icon name={collapsed ? 'chevronRight' : 'chevronLeft'} size={13} />
         </button>
+
+        {/* Full logo — visible when expanded */}
+        <div className={styles.logoFull}>
+          <div className={styles.logoMark}>
+            <span className={styles.logoT}>T</span><span className={styles.logoP}>P</span>
+          </div>
+          <div className={styles.logoWordmark}>
+            <span className={styles.wTurf}>TURF</span><span className={styles.wIntel}>INTEL</span>
+          </div>
+          <div className={styles.logoPro}>— PRO —</div>
+        </div>
+
+        {/* Compact mark — visible when collapsed */}
+        <div className={styles.logoCompact}>
+          <span className={styles.logoT}>T</span><span className={styles.logoP}>P</span>
+        </div>
+
       </div>
 
       {/* Main navigation */}
@@ -52,7 +70,7 @@ export default function Sidebar({ isOpen, onClose }) {
               }
             >
               <span className={styles.iconWrap}>
-                <Icon name={item.icon} size={18} />
+                <Icon name={item.icon} size={20} />
               </span>
               <span className={styles.label}>{item.label}</span>
             </NavLink>
@@ -72,7 +90,7 @@ export default function Sidebar({ isOpen, onClose }) {
             }
           >
             <span className={styles.iconWrap}>
-              <Icon name="settings" size={18} />
+              <Icon name="settings" size={20} />
             </span>
             <span className={styles.label}>Settings</span>
           </NavLink>
