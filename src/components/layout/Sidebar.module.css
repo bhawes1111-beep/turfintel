@@ -124,15 +124,14 @@
   align-items: center;
   gap: 12px;
   padding: 9px 10px;
-  margin: 2px 6px;
+  margin: 2px 8px;
   border-radius: 10px;
-  color: rgba(200, 225, 200, 0.68);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.07em;
+  color: rgba(210, 230, 210, 0.72);
+  font-size: 15px;
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
-  min-height: 62px;
+  min-height: 58px;
   transition: background 0.15s, color 0.15s, box-shadow 0.15s, padding 0.25s;
 }
 
@@ -158,8 +157,8 @@
 
 .iconWrap {
   flex-shrink: 0;
-  width: 48px;
-  height: 48px;
+  width: 42px;
+  height: 42px;
   border-radius: 12px;
   display: flex;
   align-items: center;
@@ -216,28 +215,25 @@
 
 .label {
   overflow: hidden;
-  white-space: normal;
-  line-height: 1.25;
-  text-transform: uppercase;
+  white-space: nowrap;
   opacity: 1;
-  max-width: 130px;
+  max-width: 160px;
   transition: opacity 0.15s ease, max-width 0.25s ease;
 }
 
 .collapsed .label {
   opacity: 0;
   max-width: 0;
-  white-space: nowrap;
 }
 
 /* ── Collapsed link layout ─────────────────────────────────────────────── */
 
 .collapsed .link {
   justify-content: center;
-  padding: 7px 0;
-  margin: 2px 6px;
+  padding: 9px 0;
+  margin: 2px 8px;
   gap: 0;
-  min-height: 62px;
+  min-height: 58px;
 }
 
 /* Active must remain legible when collapsed */
@@ -291,8 +287,7 @@
   /* Always show labels on mobile */
   .collapsed .label {
     opacity: 1;
-    max-width: 130px;
-    white-space: normal;
+    max-width: 160px;
   }
 
   .collapsed .link {
