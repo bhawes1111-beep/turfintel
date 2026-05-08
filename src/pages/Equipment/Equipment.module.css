@@ -1,0 +1,515 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Equipment module styles  (eq* prefix throughout)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Root wrapper ─────────────────────────────────────────────────────────── */
+
+.eqRoot {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── Stat row ─────────────────────────────────────────────────────────────── */
+
+.eqStats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.eqStat {
+  background: var(--color-card);
+  border: var(--card-border);
+  border-radius: var(--card-radius);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-left: 3px solid transparent;
+}
+
+.eqStatOperational { border-left-color: #4ecb4e; }
+.eqStatInService   { border-left-color: #5ba8a0; }
+.eqStatMaint       { border-left-color: #d4883a; }
+.eqStatOut         { border-left-color: #e05050; background: rgba(220,60,60,0.05); }
+
+.eqStatValue {
+  font-size: 1.8rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--color-text);
+}
+
+.eqStatOperational .eqStatValue { color: #4ecb4e; }
+.eqStatInService   .eqStatValue { color: #5ba8a0; }
+.eqStatMaint       .eqStatValue { color: #d4883a; }
+.eqStatOut         .eqStatValue { color: #e05050; }
+
+.eqStatLabel {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+/* ── Toolbar ──────────────────────────────────────────────────────────────── */
+
+.eqToolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.eqSearch {
+  width: 100%;
+  max-width: 420px;
+  background: var(--color-card);
+  border: var(--card-border);
+  border-radius: 8px;
+  color: var(--color-text);
+  font-size: 0.85rem;
+  padding: 8px 12px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.eqSearch::placeholder { color: var(--color-text-muted); }
+.eqSearch:focus        { border-color: var(--color-accent); }
+
+.eqFilterRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.eqFilterBtn {
+  background: var(--color-card);
+  border: var(--card-border);
+  border-radius: 20px;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 12px;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.eqFilterBtn:hover     { border-color: var(--color-accent); color: var(--color-accent); }
+.eqFilterBtnActive     { background: rgba(74,158,74,0.15); border-color: var(--color-accent); color: var(--color-accent); }
+
+.eqCount {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.eqEmpty {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  padding: 24px 0;
+}
+
+/* ── Status badges ────────────────────────────────────────────────────────── */
+
+.eqStatusBadge {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 8px;
+  border-radius: 20px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.eqStatusOperational { background: rgba(74,158,74,0.14);  color: #4ecb4e; border-color: rgba(74,158,74,0.3);  }
+.eqStatusInService   { background: rgba(91,168,160,0.14); color: #5ba8a0; border-color: rgba(91,168,160,0.3); }
+.eqStatusMaint       { background: rgba(212,136,58,0.15); color: #d4883a; border-color: rgba(212,136,58,0.3); }
+.eqStatusOut         { background: rgba(220,60,60,0.15);  color: #e05050; border-color: rgba(220,60,60,0.3);  }
+
+/* ── Fuel type badge ──────────────────────────────────────────────────────── */
+
+.eqFuelBadge {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+/* ── Service warning badges ───────────────────────────────────────────────── */
+
+.eqServiceBadge {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 7px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.eqServiceDue  { background: rgba(220,60,60,0.18);  color: #e05050; border: 1px solid rgba(220,60,60,0.4);  }
+.eqServiceSoon { background: rgba(210,140,30,0.15);  color: #d4883a; border: 1px solid rgba(210,140,30,0.3); }
+
+.eqServiceCurrent {
+  font-size: 0.75rem;
+  color: #4ecb4e;
+  font-weight: 500;
+}
+
+/* ── Operator badge ───────────────────────────────────────────────────────── */
+
+.eqOperatorBadge {
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 4px;
+  padding: 2px 7px;
+}
+
+/* ── Equipment list ───────────────────────────────────────────────────────── */
+
+.eqList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ── Equipment card (full-width list item) ────────────────────────────────── */
+
+.eqCard {
+  text-align: left;
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--color-card);
+  border: var(--card-border);
+  border-radius: var(--card-radius);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.eqCard:hover {
+  border-color: var(--card-hover-border);
+  box-shadow: var(--card-hover-shadow);
+}
+
+.eqCard_operational       { border-left: 3px solid rgba(74,158,74,0.35); }
+.eqCard_in_service        { border-left: 3px solid #5ba8a0; }
+.eqCard_needs_maintenance { border-left: 3px solid #d4883a; }
+.eqCard_out_of_service    { border-left: 3px solid #e05050; background: rgba(220,60,60,0.04); }
+
+/* ── Card main content ────────────────────────────────────────────────────── */
+
+.eqCardMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.eqCardTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.eqCardName {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.eqCategoryPill {
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: rgba(74,158,74,0.1);
+  color: var(--color-accent);
+  border: 1px solid rgba(74,158,74,0.2);
+  border-radius: 4px;
+  padding: 1px 6px;
+  flex-shrink: 0;
+}
+
+.eqCardMakeModel {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.eqCardYear {
+  opacity: 0.7;
+}
+
+.eqCardBadgeRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+/* ── Card right: hours display ────────────────────────────────────────────── */
+
+.eqCardRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex-shrink: 0;
+  min-width: 90px;
+}
+
+.eqBigHours {
+  font-size: 1.6rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.eqHoursLabel {
+  font-size: 0.68rem;
+  color: var(--color-text-muted);
+  text-align: right;
+}
+
+.eqNextService {
+  font-size: 0.65rem;
+  color: var(--color-text-muted);
+  text-align: right;
+  opacity: 0.75;
+}
+
+.eqViewDetail {
+  font-size: 0.68rem;
+  color: var(--color-accent);
+  opacity: 0;
+  transition: opacity 0.15s;
+  margin-top: 2px;
+}
+
+.eqCard:hover .eqViewDetail { opacity: 1; }
+
+/* ── Modal overlay ────────────────────────────────────────────────────────── */
+
+.eqModalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 8, 2, 0.78);
+  backdrop-filter: blur(3px);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.eqModalPanel {
+  background: linear-gradient(160deg, #0e1e0e, #091409);
+  border: 1px solid rgba(74,158,74,0.28);
+  border-radius: 14px;
+  width: 100%;
+  max-width: 640px;
+  max-height: 88vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,0.6),
+    0 24px 60px rgba(0,0,0,0.7),
+    0 0 40px rgba(74,158,74,0.06);
+}
+
+.eqModalAccent {
+  height: 4px;
+  width: 100%;
+  border-radius: 14px 14px 0 0;
+  flex-shrink: 0;
+}
+
+.eqModalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.eqModalTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 3px;
+}
+
+.eqModalSubtitle {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.eqModalHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.eqModalClose {
+  width: 28px;
+  height: 28px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  line-height: 1;
+}
+
+.eqModalClose:hover {
+  background: rgba(255,255,255,0.12);
+  color: var(--color-text);
+}
+
+.eqModalBody {
+  overflow-y: auto;
+  padding: 16px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── Modal sections ───────────────────────────────────────────────────────── */
+
+.eqModalSection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.eqModalSectionTitle {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-accent);
+  margin: 0;
+}
+
+.eqModalGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px 16px;
+}
+
+.eqModalField {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.eqModalFieldLabel {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+.eqModalFieldValue {
+  font-size: 0.85rem;
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+.eqModalHoursBig {
+  font-size: 1.4rem;
+  font-weight: 800;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Hours progress bar ───────────────────────────────────────────────────── */
+
+.eqHoursBarWrap {
+  background: rgba(255,255,255,0.06);
+  border-radius: 6px;
+  height: 8px;
+  overflow: hidden;
+  position: relative;
+}
+
+.eqHoursBar {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.3s ease;
+  min-width: 4px;
+}
+
+.eqHoursBarOk   { background: #4ecb4e; }
+.eqHoursBarSoon { background: #d4883a; }
+.eqHoursBarDue  { background: #e05050; }
+
+.eqHoursBarLabels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.6rem;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+}
+
+/* ── Modal service note ───────────────────────────────────────────────────── */
+
+.eqModalServiceNote {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+  margin: 0;
+  opacity: 0.7;
+}
+
+/* ── Modal notes ──────────────────────────────────────────────────────────── */
+
+.eqModalNotes {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  line-height: 1.65;
+  font-style: italic;
+  margin: 0;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.03);
+  border-left: 3px solid rgba(74,158,74,0.35);
+  border-radius: 0 5px 5px 0;
+}
+
+/* ── Mobile ───────────────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .eqStats            { grid-template-columns: repeat(2, 1fr); }
+  .eqCard             { flex-wrap: wrap; }
+  .eqCardRight        { flex-direction: row; align-items: center; width: 100%; justify-content: space-between; min-width: unset; }
+  .eqBigHours         { font-size: 1.2rem; }
+  .eqModalPanel       { max-height: 92vh; }
+  .eqModalHeaderRight { gap: 6px; }
+}
