@@ -4,16 +4,16 @@ import { Icon } from '../shared/icons'
 import styles from './Sidebar.module.css'
 
 const NAV_ITEMS = [
-  { to: '/dashboard',          label: 'Dashboard',          icon: 'dashboard'          },
-  { to: '/crew',               label: 'Crew',               icon: 'crew'               },
-  { to: '/chemical',           label: 'Chemical',           icon: 'chemical'           },
-  { to: '/spray',              label: 'Spray',              icon: 'spray'              },
-  { to: '/disease',            label: 'Disease',            icon: 'disease'            },
-  { to: '/plant-nutrition',    label: 'Plant Nutrition',    icon: 'plantNutrition'     },
-  { to: '/cultural-practices', label: 'Cultural Practices', icon: 'culturalPractices'  },
-  { to: '/budget',             label: 'Budget',             icon: 'budget'             },
-  { to: '/inventory',          label: 'Inventory',          icon: 'inventory'          },
-  { to: '/equipment',          label: 'Equipment',          icon: 'equipment'          },
+  { to: '/dashboard',          label: 'Dashboard',          icon: 'dashboard'           },
+  { to: '/crew',               label: 'Crew',               icon: 'crew'                },
+  { to: '/chemical',           label: 'Chemical',           icon: 'chemical'            },
+  { to: '/spray',              label: 'Spray',              icon: 'spray'               },
+  { to: '/disease',            label: 'Disease',            icon: 'disease'             },
+  { to: '/plant-nutrition',    label: 'Plant Nutrition',    icon: 'plant-nutrition'     },
+  { to: '/cultural-practices', label: 'Cultural Practices', icon: 'cultural-practices'  },
+  { to: '/budget',             label: 'Budget',             icon: 'budget'              },
+  { to: '/inventory',          label: 'Inventory',          icon: 'inventory'           },
+  { to: '/equipment',          label: 'Equipment',          icon: 'equipment'           },
 ]
 
 export default function Sidebar({ isOpen, onClose }) {
@@ -70,7 +70,12 @@ export default function Sidebar({ isOpen, onClose }) {
               }
             >
               <span className={styles.iconWrap}>
-                <Icon name={item.icon} size={20} />
+                <img
+                  src={`/sidebar-icons/${item.icon}.png`}
+                  alt=""
+                  className={styles.navIcon}
+                  draggable="false"
+                />
               </span>
               <span className={styles.label}>{item.label}</span>
             </NavLink>
@@ -90,7 +95,12 @@ export default function Sidebar({ isOpen, onClose }) {
             }
           >
             <span className={styles.iconWrap}>
-              <Icon name="settings" size={20} />
+              <img
+                src="/sidebar-icons/settings.png"
+                alt=""
+                className={styles.navIcon}
+                draggable="false"
+              />
             </span>
             <span className={styles.label}>Settings</span>
           </NavLink>
