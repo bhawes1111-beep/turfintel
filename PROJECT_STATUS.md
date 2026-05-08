@@ -3,25 +3,50 @@
 **Stack:** React 19 + Vite 8 · Plain JavaScript · CSS Modules · React Router DOM v7  
 **Deployed:** Cloudflare Pages (auto-deploy on push to `master`)  
 **Repo:** https://github.com/bhawes1111-beep/turfintel  
-**Latest Commit:** `53412d1` — Build functional Crew Tasks workflow
+**Latest Commit:** `0126ab9` — Redesign dashboard weather section
 
 ---
 
 ## Checkpoint Summary (2026-05-08)
 
-Working tree is clean. Master is pushed. Build passes at 144 modules, 0 errors.
+Working tree is clean. Master is pushed. Build passes at 153 modules, 0 errors.
+Known warning: bundle chunk-size >500 kB — not blocking, resolves with code-splitting when app grows.
 
-Nine full-data workflows were shipped across two sessions (2026-05-07 and 2026-05-08):
-Spray Records → Disease Active Issues → Inventory Products → Equipment List →
-Equipment Maintenance Logs → Crew Hours → Crew Schedule → Crew Employees → Crew Tasks.
+Twelve full-data workflows shipped across three sessions. This session added three major
+dashboard/UX systems on top of the nine data workflows from prior sessions:
+Operations Calendar · Crew Scheduling Board · Dashboard Weather Redesign.
 
-Every workflow follows the same pattern: real static dataset in `src/data/`, full-featured
+Every data workflow follows the same pattern: real static dataset in `src/data/`, full-featured
 tab component with stat row + search + filter chips + sortable list cards + detail modal,
 and a namespaced CSS block in the module's `.module.css`.
 
 ---
 
 ## Fully Functional Modules
+
+### Dashboard (redesigned this session)
+
+**Dashboard → Weather Section** (`src/pages/Dashboard/WeatherSection.jsx`)
+- Replaces old WeatherCard / ETCard / ForecastStrip stack
+- Top row: **Weather Insights** card (current temp, emoji, 6-metric grid, disease pressure badge, ET today) + **Evapotranspiration** card (ET rate + deficit, pure CSS flex bar chart for 7-day trend) — side by side, equal columns
+- Bottom row: full-width scrollable **7-day forecast** (day, date, icon, high/low, rain, ET rate, condition badge)
+- Dark glass card design: `linear-gradient(150deg, rgba(6,20,6,0.97), rgba(2,10,2,0.99))` + green accent borders
+- Inline SVG icons only (no external icon library)
+- Responsive: top row stacks to single column at ≤1000px; forecast row scrolls horizontally on mobile
+- CSS prefix: `ws*` · Files: `WeatherSection.jsx`, `WeatherSection.module.css`
+
+**Dashboard → Operations Calendar** (`src/pages/Dashboard/OperationsCalendar.jsx`)
+- Replaces old combined CalendarGrid/EventBadge/CalendarEventDetail widget
+- Three views: **Month** (42-cell Mon-start grid, up to 3 chips + overflow), **Week** (7-column Mon–Sun grid, full event cards), **List** (grouped by date, sticky date headers, Today pill)
+- Right panel (240px sticky): mini calendar, upcoming events (next 5 filtered), weekly metrics (spray / crew / maintenance / open repairs), conditions strip from `PLACEHOLDER_CURRENT`
+- Category filter chips: Spray · Crew · Maintenance · Agronomy · Irrigation (5 colors)
+- Event detail modal: category accent bar, all fields, tags as chips, notes block
+- Day overflow modal: lists all events when day has >3; click any to open event detail
+- `eventsByDate` = `useMemo` Map for O(1) lookup; `weeklyMetrics` always anchored to TODAY's week
+- Data: `src/data/dashboardCalendarEvents.js` — 36 events across 5 categories
+- CSS prefix: `oc*` · Files: `OperationsCalendar.jsx`, `OperationsCalendar.module.css`
+
+---
 
 ### Crew (all 5 data tabs complete)
 
@@ -36,14 +61,16 @@ and a namespaced CSS block in the module's `.module.css`.
 
 **Crew → Schedule** (`src/pages/Crew/tabs/CrewSchedule.jsx`)
 - Data: `SCHEDULE` in `src/data/crew.js` — 40 records (8 employees × 5 days Mon–Fri 2026-05-04 to 2026-05-08)
+- **Rebuilt this session** as a full scheduling board with right-side edit panel
 - Stat row (today): Scheduled Today · Off Today · Opening Crew · Scheduled Hours
-- Dual view: **Daily** (filtered card list) + **Weekly** (CSS Grid table — 7 columns: name + 5 days + weekly total)
-- O(1) lookup: `scheduleMap = useMemo(() => map by ${employeeId}-${date})` 
-- Weekly grid: container `border-top + border-left + overflow:hidden`, cells `border-bottom + border-right` — border-collapse equivalent in CSS Grid
-- Clickable shift blocks in weekly view open the same detail modal
-- Shift filter chips visible in daily view only
-- `Fragment` import (not `<>`) required for keyed rows in weekly grid
-- CSS prefix: `cs*`
+- Dual view: **Week** (full board grid, 9 columns: name + Mon–Sun + weekly total) + **Day** (filtered card list for selected day)
+- Color-coded shift cards by status: green (active/completed/scheduled) · gray (off) · yellow (half-day/late) · blue (special) · red (absent/call-out/unavailable)
+- Clickable empty cells open add-shift panel pre-filled with employee + date
+- Right-side edit panel (300px): full form — employee, date, start/end time, routing (None/Press/Hammer), area, task, shift type, status, notes; Save + Delete with toast notifications
+- Crew Availability section below board: tabbed filter (All / Approved / Pending / Medical/Vacation / Call-Out), approval status badges
+- O(1) lookup: `scheduleMap = useMemo(() => map by ${employeeId}-${date})`
+- `Fragment` import (not `<>`) required for keyed rows in board grid
+- CSS prefix: `csb*` · Appended to `src/pages/Crew/Crew.module.css`
 
 **Crew → Employees** (`src/pages/Crew/tabs/CrewEmployees.jsx`)
 - Data: `EMPLOYEES` in `src/data/crew.js` — 8 records (EMP-001 through EMP-008)
@@ -165,8 +192,9 @@ and a namespaced CSS block in the module's `.module.css`.
 | `src/data/spray.js` | `SPRAY_RECORDS` | — |
 | `src/data/disease.js` | `ACTIVE_ISSUES` | — |
 | `src/data/inventory.js` | `PRODUCTS` | — |
-| `src/data/dashboardCalendarEvents.js` | — | 17 events |
-| `src/data/dashboardAlerts.js` | — | placeholder alerts |
+| `src/data/dashboardCalendarEvents.js` | `CALENDAR_EVENTS` | 36 events (5 categories) |
+| `src/data/dashboardAlerts.js` | `DASHBOARD_ALERTS` | placeholder alerts |
+| `src/components/shared/weather/weatherTokens.js` | `PLACEHOLDER_CURRENT`, `PLACEHOLDER_ET_TREND`, `PLACEHOLDER_FORECAST`, `SPRAY_WINDOW_TOKENS`, `DISEASE_PRESSURE_TOKENS`, `WEATHER_ICONS`, `formatTimestamp` | — |
 
 ### Shared Components
 ```
@@ -182,8 +210,10 @@ and a namespaced CSS block in the module's `.module.css`.
 ### CSS Prefix Convention
 | Module / Tab | Prefix |
 |---|---|
+| Dashboard Weather Section | `ws*` |
+| Dashboard Operations Calendar | `oc*` |
 | Crew Hours | `ch*` |
-| Crew Schedule | `cs*` |
+| Crew Schedule Board | `csb*` |
 | Crew Employees | `ce*` |
 | Crew Tasks | `ct*` |
 | Equipment List | `el*` |
@@ -246,28 +276,32 @@ Drop missing files into `public/sidebar-icons/` — no code changes needed.
 
 | Priority | Issue | Fix |
 |---|---|---|
-| High | 6 sidebar icons missing | Drop PNGs into `public/sidebar-icons/`, push |
+| Medium | 6 sidebar icons missing | Drop PNGs into `public/sidebar-icons/`, push — no code change |
 | Low | `public/icons.svg` committed but unused | Delete file, push |
-| Low | Chunk size warning on build (>500kb) | Not blocking — code-split when app grows |
+| Low | Chunk size warning on build (>500 kB) | Not blocking — code-split when app grows |
 | Low | Calendar events hardcoded to May 2026 | Resolves with real data |
+| Low | Weather data is placeholder | Resolves with API integration |
 | Low | No auth route guard | Add protected route wrapper when backend ready |
+
+**Missing sidebar icons** (drop into `public/sidebar-icons/` when available — zero code changes needed):
+`disease.png` · `cultural-practices.png` · `budget.png` · `inventory.png` · `equipment.png` · `settings.png`
 
 ---
 
 ## Recommended Next Features (Priority Order)
 
-1. **Upload 6 missing sidebar icons** — `disease`, `cultural-practices`, `budget`, `inventory`, `equipment`, `settings` (drop into `public/sidebar-icons/`, no code change)
-2. **Spray → Build Spray Sheet** — printable/PDF application worksheet built from SPRAY_RECORDS
-3. **Spray → Planned Programs** — scheduled spray program list with calendar integration
-4. **Disease → Disease Alerts** — threshold-based alert feed; shares ACTIVE_ISSUES shape
-5. **Inventory → Chemicals tab** — chemical inventory parallel to Products, `CHEMICALS` export in inventory.js
-6. **Plant Nutrition tabs** — soil test data, recommendations, application log
-7. **Cultural Practices tabs** — aeration schedule, mowing height log, topdressing program
-8. **Budget tabs** — expense log, monthly budget tracker, category breakdown charts
-9. **Equipment → Work Orders tab** — open/closed work order list linked to SERVICE_LOG
-10. **Wire CourseContext** — filter all module data by `activeCourse.id` when multi-course support is needed
-11. **Collapsed sidebar tooltips** — show label on hover when nav is collapsed
-12. **Dashboard calendar — real data** — replace `dashboardCalendarEvents.js` with API fetch
+1. **Spray → Spray Sheet tab** — printable/PDF-ready application worksheet built from `SPRAY_RECORDS`
+2. **Spray → Planned Programs** — scheduled spray program list with calendar integration
+3. **Disease → Disease Alerts** — threshold-based alert feed; shares `ACTIVE_ISSUES` shape
+4. **Inventory → Chemicals tab** — chemical inventory parallel to Products, `CHEMICALS` export in `inventory.js`
+5. **Plant Nutrition tabs** — soil test data, recommendations, application log
+6. **Cultural Practices tabs** — aeration schedule, mowing height log, topdressing program
+7. **Budget tabs** — expense log, monthly budget tracker, category breakdown charts
+8. **Equipment → Work Orders tab** — open/closed work order list linked to `SERVICE_LOG`
+9. **Wire CourseContext** — filter all module data by `activeCourse.id` when multi-course support is needed
+10. **Collapsed sidebar tooltips** — show label on hover when nav is collapsed
+11. **Upload 6 missing sidebar icons** — no code change, drop PNGs into `public/sidebar-icons/`
+12. **Dashboard — real data** — replace placeholder weather + calendar data with API fetch
 
 ---
 
@@ -305,9 +339,16 @@ git push origin master
 | `src/index.css` | Global CSS tokens + scrollbar styles |
 | `src/components/layout/Sidebar.jsx` | Nav items, PNG icon paths, collapse logic |
 | `src/components/layout/Layout.module.css` | `.outlet` is the single scroll owner |
-| `src/pages/Dashboard/Dashboard.jsx` | Weather, alerts, card grid, calendar, event modal |
+| `src/pages/Dashboard/Dashboard.jsx` | Weather, alerts, card grid, calendar |
+| `src/pages/Dashboard/WeatherSection.jsx` | Weather Insights + ET + 7-day forecast |
+| `src/pages/Dashboard/WeatherSection.module.css` | `ws*` styles |
+| `src/pages/Dashboard/OperationsCalendar.jsx` | Month/Week/List calendar + right panel + modals |
+| `src/pages/Dashboard/OperationsCalendar.module.css` | `oc*` styles |
+| `src/pages/Crew/tabs/CrewSchedule.jsx` | Scheduling board + edit panel + availability |
 | `src/components/shared/ModuleOverview.jsx` | StatCard, InfoCard, Badge |
+| `src/components/shared/weather/weatherTokens.js` | Placeholder weather data + token maps |
 | `src/data/crew.js` | HOURS_LOG, SCHEDULE, EMPLOYEES, TASKS |
+| `src/data/dashboardCalendarEvents.js` | CALENDAR_EVENTS — 36 events, 5 categories |
 | `src/data/equipment.js` | EQUIPMENT_LIST, SERVICE_LOG |
 | `src/data/spray.js` | SPRAY_RECORDS |
 | `src/data/disease.js` | ACTIVE_ISSUES |

@@ -2,6 +2,57 @@
 
 ---
 
+## Session 4 — 2026-05-08
+
+**Commit range:** `1956bf0` → `0126ab9`  
+**Features shipped:** Operations Calendar · Crew Scheduling Board · Dashboard Weather Redesign  
+**Build:** 153 modules, 0 errors · known warning: bundle chunk >500 kB (not blocking)
+
+### Dashboard → Operations Calendar
+- Replaces old `CalendarGrid` / `MonthNavigation` / `EventBadge` / `CalendarEventDetail` widget
+- Data: `src/data/dashboardCalendarEvents.js` — 36 events, 5 categories (spray, crew, maintenance, agronomy, irrigation), forward-compatible schema: `{ id, category, priority, status, title, date, startTime, endTime, location, assignedStaff[], equipment[], tags[], notes, recurrence, externalId, metadata }`
+- Three views: **Month** (42-cell Mon-start grid, up to 3 chips + "+N more" overflow) · **Week** (Mon–Sun 7-column grid, full event cards) · **List** (date-grouped, sticky date headers, Today pill)
+- Right panel (240px, position: sticky): mini calendar (always TODAY's month), upcoming events (next 5 after today filtered by active categories), weekly metrics grid (spray / crew / maintenance / open repairs anchored to TODAY's week), conditions strip from `PLACEHOLDER_CURRENT`
+- Category filter chips (5 colors); event cards use `--chip-color` CSS custom property + `::before` pseudoelement for 10% tinted background
+- Event detail modal (IIFE): category-colored accent bar, all event fields, tags as chips, notes block
+- Day overflow modal (IIFE): lists all events for a day; click any to close overflow and open event detail
+- `eventsByDate = useMemo(() => Map)` for O(1) lookup; `weeklyMetrics` stable — never changes on nav
+- `buildMonthGrid(year, month)` returns 42 cells Mon-start; `getWeekDates(refDateStr)` returns Mon–Sun array
+- CSS prefix: `oc*` · Files: `OperationsCalendar.jsx`, `OperationsCalendar.module.css`
+- Commit: `1956bf0`
+
+### Crew → Schedule (full rebuild)
+- Previous version was a read-only schedule viewer — replaced with a full live scheduling board
+- Data: `SCHEDULE` in `src/data/crew.js` — 40 records (8 employees × 5 days Mon–Fri 2026-05-04–2026-05-08)
+- Inline `AVAILABILITY` constant (6 records): medical leave, vacation, call-out, time-off, unavailable
+- **Week view**: 9-column CSS Grid (`150px repeat(7, minmax(106px, 1fr)) 46px`) — employee name · Mon–Sun · weekly total; `Fragment` with `key` for multi-cell rows
+- **Day view**: filtered card list for selected day
+- Shift card colors by status group: green (active/completed/scheduled) · gray (off) · yellow (half-day/late) · blue (special) · red (absent/call-out/unavailable)
+- Empty week cells: dashed add button (opacity:0, shown on `.csbDayCell:hover`)
+- Right-side edit panel (300px, `max-height: 680px, overflow-y: auto`): full form — employee select, date, start/end time, routing toggle (None/Press/Hammer), assignedArea select (11 options), task text, shift type, status select (10 options), notes textarea; Save + Delete buttons
+- `handleSave()`: upsert by `form.id`; `handleDelete()`: filter out; both call `showToast()` + `closePanel()`
+- Toast auto-dismisses via `setTimeout` 2500ms
+- Crew Availability section: tabbed filter (All / Approved / Pending / Medical|Vacation / Call-Out); type + status badges using `styles[\`csbAvailT_${type.replace(/-/g,'_')}\`]` pattern
+- `scheduleMap = useMemo(() => map keyed by ${employeeId}-${date})` for O(1) shift lookup
+- CSS prefix: `csb*` · Appended to `src/pages/Crew/Crew.module.css`
+- Commit: `63382a3`
+
+### Dashboard → Weather Section (full redesign)
+- Replaces old `WeatherCard` / `ETCard` / `ForecastStrip` / `WeatherAlertBanner` stack
+- New component: `WeatherSection.jsx` — self-contained, receives `{ alerts, onDismissAlert }` props
+- **Weather Insights card**: cloud SVG icon, location + updated timestamp, large weather emoji (54px) + current temp (54px) + feels like, 6-metric grid (Humidity, Wind, Dew Point, Soil Temp, 24h Rain, Solar Rad), bottom strip with Disease Pressure badge + ET Today value
+- **Evapotranspiration card**: droplet SVG icon, 7-day total in header, ET Rate Today (36px green) + ET Deficit (36px amber) in 2-col grid, pure CSS flex bar chart (7 bars, `wsBarTrack / wsBar / wsBarCol` pattern, inline `style={{ height: \`${heightPct}%\` }}`)
+- **7-day forecast row**: scrollable outer (`overflow-x: auto`), `min-width: 700px` inner grid (`repeat(7, minmax(110px, 1fr))`), per-card: day label, date, weather icon emoji, high/low temps, rain or "No rain", ET rate, condition badge (Wet Conditions / Monitor / Good Conditions / Marginal / Poor Conditions)
+- `forecastCondition(day)` helper: rainfall ≥0.5 → Wet; rainfall >0.1 → Monitor; else based on sprayWindow token
+- Inline SVG icons: `IconCloud`, `IconDroplet`, `IconWind` (no external icon library)
+- Glass card design: `linear-gradient(150deg, rgba(6,20,6,0.97), rgba(2,10,2,0.99))` + `border: 1px solid rgba(74,158,74,0.22)` + `box-shadow: 0 4px 24px rgba(0,0,0,0.45)`
+- Responsive: top row stacks to 1 column at ≤1000px; forecast scrolls horizontally on mobile
+- CSS prefix: `ws*` · Files: `WeatherSection.jsx`, `WeatherSection.module.css`
+- `Dashboard.jsx` changes: removed old weather component imports, added `import WeatherSection from './WeatherSection'`, replaced weather JSX block
+- Commit: `0126ab9`
+
+---
+
 ## Session 3 — 2026-05-08
 
 **Commit range:** `e051267` → `53412d1`  
