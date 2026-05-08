@@ -1,5 +1,8 @@
 import { useState, useMemo, useEffect } from 'react'
 import { SERVICE_LOG } from '../../../data/equipment'
+import { useOperations } from '../../../utils/operations/OperationsContext'
+import { makeCalendarEvent } from '../../../utils/operations/schemas'
+import { CREATE_CALENDAR_EVENT, reserveEquipment } from '../../../utils/operations/actions'
 import styles from '../Equipment.module.css'
 
 const THIS_MONTH = '2026-05'
@@ -39,10 +42,50 @@ const FILTER_STATUS_KEY = {
 }
 
 export default function MaintenanceLogs() {
-  const [search,     setSearch]    = useState('')
+  const { dispatch }             = useOperations()
+  const [search,     setSearch]  = useState('')
   const [staFilter,  setStaFilter] = useState('All')
   const [priFilter,  setPriFilter] = useState('All')
   const [selected,   setSelected]  = useState(null)
+  const [toast,      setToast]   = useState(null)
+
+  function showToast(msg) {
+    setToast(msg)
+    setTimeout(() => setToast(null), 2800)
+  }
+
+  function handleScheduleService(log) {
+    const evtPriority = log.priority === 'critical' ? 'high' : log.priority
+    const evtStatus   = log.status === 'completed' ? 'completed'
+                      : log.status === 'in-progress' ? 'in-progress'
+                      : 'scheduled'
+
+    const calEvent = makeCalendarEvent({
+      title:         `${log.serviceType} — ${log.equipmentName}`,
+      date:          log.date,
+      category:      'maintenance',
+      priority:      evtPriority,
+      status:        evtStatus,
+      location:      'Maintenance Shop',
+      assignedStaff: log.technician ? [log.technician] : [],
+      equipment:     [log.equipmentName],
+      tags:          [log.serviceType, log.category],
+      notes:         log.notes || '',
+      sourceModule:  'equipment',
+      sourceId:      log.id,
+    })
+
+    dispatch({ type: CREATE_CALENDAR_EVENT, payload: calEvent })
+
+    dispatch(reserveEquipment({
+      eventId:        calEvent.id,
+      equipmentNames: [log.equipmentName],
+      date:           log.date,
+      notes:          `${log.serviceType} service — ${log.hoursAtService.toLocaleString()} hrs`,
+    }))
+
+    showToast(`Service event added to Operations Calendar`)
+  }
 
   useEffect(() => {
     if (!selected) return
@@ -442,11 +485,28 @@ export default function MaintenanceLogs() {
                   </section>
                 )}
 
+                {/* Operations actions */}
+                <section className={styles.eqModalSection}>
+                  <div className="opActionRow">
+                    <button
+                      className="opActionBtn"
+                      onClick={() => { handleScheduleService(selected); setSelected(null) }}
+                    >
+                      + Add to Operations Calendar
+                    </button>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                      Reserves {selected.equipmentName} · adds maintenance event
+                    </span>
+                  </div>
+                </section>
+
               </div>
             </div>
           </div>
         )
       })()}
+
+      {toast && <div className="opToast">{toast}</div>}
 
     </div>
   )

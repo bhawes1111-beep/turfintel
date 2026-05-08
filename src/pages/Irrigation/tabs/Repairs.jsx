@@ -1,5 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { REPAIRS } from '../../../data/irrigation'
+import { useOperations } from '../../../utils/operations/OperationsContext'
+import { createCalendarEvent, createAlert } from '../../../utils/operations/actions'
 import styles from '../Irrigation.module.css'
 
 const TODAY      = '2026-05-08'
@@ -59,11 +61,55 @@ function matchesArea(repair, area) {
 }
 
 export default function Repairs() {
+  const { dispatch }                         = useOperations()
   const [search,         setSearch]         = useState('')
   const [statusFilter,   setStatusFilter]   = useState('All')
   const [priorityFilter, setPriorityFilter] = useState('All')
   const [areaFilter,     setAreaFilter]     = useState('All')
   const [selected,       setSelected]       = useState(null)
+  const [toast,          setToast]          = useState(null)
+
+  function showToast(msg) {
+    setToast(msg)
+    setTimeout(() => setToast(null), 2800)
+  }
+
+  function handleScheduleRepair(repair) {
+    const locationStr = [
+      repair.hole != null ? `Hole ${repair.hole}` : null,
+      repair.area,
+      repair.headNumber ? `Head #${repair.headNumber}` : null,
+    ].filter(Boolean).join(' · ')
+
+    dispatch(createCalendarEvent({
+      title:         `Irrigation Repair — ${ISSUE_TYPE_LABELS[repair.issueType] || repair.issueType}`,
+      date:          repair.dateReported,
+      category:      'irrigation',
+      priority:      repair.priority,
+      status:        repair.status === 'completed' ? 'completed' : 'scheduled',
+      location:      locationStr,
+      assignedStaff: repair.assignedTo ? [repair.assignedTo] : [],
+      equipment:     repair.partsUsed.length > 0 ? ['Repair Kit'] : [],
+      tags:          [repair.issueType],
+      notes:         repair.notes || '',
+      sourceModule:  'irrigation',
+      sourceId:      repair.repairId,
+    }))
+
+    if (repair.priority === 'high') {
+      dispatch(createAlert({
+        title:       `Irrigation Repair Scheduled — ${ISSUE_TYPE_LABELS[repair.issueType]}`,
+        message:     `${locationStr}. Assigned to ${repair.assignedTo || 'unassigned'}. Status: ${repair.status.replace('-', ' ')}.`,
+        module:      'irrigation',
+        priority:    'high',
+        course:      repair.area,
+        actionLabel: 'View Irrigation',
+        sourceId:    repair.repairId,
+      }))
+    }
+
+    showToast('Repair added to Operations Calendar')
+  }
 
   useEffect(() => {
     if (!selected) return
@@ -397,15 +443,27 @@ export default function Repairs() {
                   </div>
                 </div>
 
-                <button className={styles.irModalClose} onClick={() => setSelected(null)}>
-                  Close
-                </button>
+                <div className="opActionRow">
+                  <button
+                    className="opActionBtn"
+                    onClick={() => { handleScheduleRepair(selected); setSelected(null) }}
+                    disabled={selected.status === 'completed'}
+                    title={selected.status === 'completed' ? 'Already completed' : 'Add to Operations Calendar'}
+                  >
+                    + Schedule Repair
+                  </button>
+                  <button className={styles.irModalClose} onClick={() => setSelected(null)}>
+                    Close
+                  </button>
+                </div>
 
               </div>
             </div>
           </div>
         )
       })()}
+
+      {toast && <div className="opToast">{toast}</div>}
 
     </div>
   )

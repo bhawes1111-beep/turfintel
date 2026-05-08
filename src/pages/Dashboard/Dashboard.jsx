@@ -4,11 +4,13 @@ import { AlertList } from '../../components/shared/alerts'
 import { PLACEHOLDER_WEATHER_ALERTS } from '../../components/shared/weather'
 import WeatherSection from './WeatherSection'
 import OperationsCalendar from './OperationsCalendar'
-import { DASHBOARD_ALERTS } from '../../data/dashboardAlerts'
+import { useOperations } from '../../utils/operations/OperationsContext'
+import { acknowledgeAlert, dismissAlert } from '../../utils/operations/actions'
 import styles from './Dashboard.module.css'
 
 export default function Dashboard() {
-  const [alerts, setAlerts]               = useState(DASHBOARD_ALERTS)
+  const { state, dispatch }               = useOperations()
+  const alerts                            = state.alerts
   const [weatherAlerts, setWeatherAlerts] = useState(PLACEHOLDER_WEATHER_ALERTS)
 
   function handleDismissWeatherAlert(id) {
@@ -16,11 +18,11 @@ export default function Dashboard() {
   }
 
   function handleAcknowledge(id) {
-    setAlerts(prev => prev.map(a => a.id === id ? { ...a, status: 'acknowledged' } : a))
+    dispatch(acknowledgeAlert(id))
   }
 
   function handleDismiss(id) {
-    setAlerts(prev => prev.filter(a => a.id !== id))
+    dispatch(dismissAlert(id))
   }
 
   const activeAlerts = alerts.filter(a => a.status !== 'resolved')

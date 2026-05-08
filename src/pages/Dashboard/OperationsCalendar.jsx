@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import { CALENDAR_EVENTS } from '../../data/dashboardCalendarEvents'
+import { useOperations } from '../../utils/operations/OperationsContext'
 import { SPRAY_RECORDS } from '../../data/spray'
 import { SCHEDULE } from '../../data/crew'
 import { SERVICE_LOG } from '../../data/equipment'
@@ -101,6 +101,9 @@ function sortEvents(events) {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function OperationsCalendar() {
+  const { state } = useOperations()
+  const calendarEvents = state.calendarEvents
+
   const [view, setView] = useState('month')
   const [navDate, setNavDate] = useState(TODAY)
   const [activeCategories, setActiveCategories] = useState(
@@ -128,8 +131,8 @@ export default function OperationsCalendar() {
   const month = navDateObj.getMonth()
 
   const filteredEvents = useMemo(
-    () => CALENDAR_EVENTS.filter(e => activeCategories.has(e.category)),
-    [activeCategories]
+    () => calendarEvents.filter(e => activeCategories.has(e.category)),
+    [calendarEvents, activeCategories]
   )
 
   const eventsByDate = useMemo(() => {

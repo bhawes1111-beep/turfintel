@@ -1,5 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { SPRAY_RECORDS, TYPE_COLORS } from '../../../data/spray'
+import { useOperations } from '../../../utils/operations/OperationsContext'
+import { createCalendarEvent, createAlert } from '../../../utils/operations/actions'
 import styles from '../Spray.module.css'
 
 const TODAY  = new Date().toISOString().slice(0, 10)
@@ -89,12 +91,59 @@ function buildPPE(records) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function BuildSpraySheet() {
+  const { dispatch }                     = useOperations()
   const [search,       setSearch]       = useState('')
   const [dateFilter,   setDateFilter]   = useState('')
   const [areaFilter,   setAreaFilter]   = useState('All')
   const [statusFilter, setStatusFilter] = useState('All')
   const [selected,     setSelected]     = useState(new Set())
   const [modalRecord,  setModalRecord]  = useState(null)
+  const [toast,        setToast]        = useState(null)
+
+  function showToast(msg) {
+    setToast(msg)
+    setTimeout(() => setToast(null), 2800)
+  }
+
+  function handleAddToCalendar() {
+    selectedRecords.forEach(r => {
+      const isPrimary    = r.products.some(p => p.type === 'Fungicide' || p.type === 'Insecticide')
+      const categoryPrio = isPrimary ? 'high' : 'medium'
+      const evtStatus    = r.status === 'completed' ? 'completed'
+                         : r.status === 'in-progress' ? 'in-progress'
+                         : 'scheduled'
+      dispatch(createCalendarEvent({
+        title:         `Spray — ${r.area}: ${r.products.map(p => p.name).join(' + ')}`,
+        date:          r.date,
+        category:      'spray',
+        priority:      categoryPrio,
+        status:        evtStatus,
+        location:      r.area,
+        assignedStaff: r.applicator ? [r.applicator] : [],
+        equipment:     ['Spray Rig #1'],
+        tags:          r.products.map(p => p.name),
+        notes:         r.notes || '',
+        sourceModule:  'spray',
+        sourceId:      r.id,
+      }))
+    })
+
+    if (maxREI > 0) {
+      dispatch(createAlert({
+        title:       `REI Active — ${sheetAreas}`,
+        message:     `${maxREI}-hour re-entry interval in effect after spray application on ${sheetDate}. Restrict turf access until interval expires.`,
+        module:      'spray',
+        priority:    maxREI >= 12 ? 'high' : 'medium',
+        course:      sheetAreas,
+        actionLabel: 'View Spray',
+        sourceId:    selectedRecords[0]?.id,
+      }))
+    }
+
+    showToast(
+      `${selectedRecords.length} event${selectedRecords.length !== 1 ? 's' : ''} added to Operations Calendar`
+    )
+  }
 
   useEffect(() => {
     if (!modalRecord) return
@@ -533,10 +582,25 @@ export default function BuildSpraySheet() {
                 </div>
               </div>
 
+              {/* Operations actions */}
+              <div className={styles.ssSheetSection}>
+                <div className="opActionRow">
+                  <button className="opActionBtn" onClick={handleAddToCalendar}>
+                    + Add to Operations Calendar
+                  </button>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                    {selectedRecords.length} application{selectedRecords.length !== 1 ? 's' : ''} selected
+                    {maxREI > 0 ? ` · REI alert will be created` : ''}
+                  </span>
+                </div>
+              </div>
+
             </div>
           )}
         </div>
       </div>
+
+      {toast && <div className="opToast">{toast}</div>}
 
       {/* ── Detail Modal ── */}
       {modalRecord && (() => {
