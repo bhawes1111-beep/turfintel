@@ -5,23 +5,13 @@ import {
   WeatherCard, ETCard, ForecastStrip, WeatherAlertBanner,
   PLACEHOLDER_WEATHER_ALERTS,
 } from '../../components/shared/weather'
-import { CalendarGrid, MonthNavigation, EventBadge, CalendarEventDetail, EVENT_COLORS } from '../../components/shared/calendar'
+import OperationsCalendar from './OperationsCalendar'
 import { DASHBOARD_ALERTS } from '../../data/dashboardAlerts'
-import { DASHBOARD_CALENDAR_EVENTS } from '../../data/dashboardCalendarEvents'
 import styles from './Dashboard.module.css'
 
-const today = new Date()
-
-const LEGEND_TYPES = [
-  'spray', 'cultural', 'crew', 'equipment', 'disease', 'nutrition', 'budget',
-]
-
 export default function Dashboard() {
-  const [alerts, setAlerts]             = useState(DASHBOARD_ALERTS)
+  const [alerts, setAlerts]               = useState(DASHBOARD_ALERTS)
   const [weatherAlerts, setWeatherAlerts] = useState(PLACEHOLDER_WEATHER_ALERTS)
-  const [calYear, setCalYear]           = useState(today.getFullYear())
-  const [calMonth, setCalMonth]         = useState(today.getMonth())
-  const [selectedEvent, setSelectedEvent] = useState(null)
 
   function handleDismissWeatherAlert(id) {
     setWeatherAlerts(prev => prev.filter(a => a.id !== id))
@@ -33,16 +23,6 @@ export default function Dashboard() {
 
   function handleDismiss(id) {
     setAlerts(prev => prev.filter(a => a.id !== id))
-  }
-
-  function prevMonth() {
-    if (calMonth === 0) { setCalYear(y => y - 1); setCalMonth(11) }
-    else setCalMonth(m => m - 1)
-  }
-
-  function nextMonth() {
-    if (calMonth === 11) { setCalYear(y => y + 1); setCalMonth(0) }
-    else setCalMonth(m => m + 1)
   }
 
   const activeAlerts = alerts.filter(a => a.status !== 'resolved')
@@ -108,33 +88,12 @@ export default function Dashboard() {
           <p className={styles.empty}>No recent activity.</p>
         </DashboardCard>
 
-        {/* Combined calendar — full width, all modules */}
+        {/* Operations calendar — full width */}
         <DashboardCard full>
-          <MonthNavigation year={calYear} month={calMonth} onPrev={prevMonth} onNext={nextMonth}>
-            <div className={styles.calLegend}>
-              {LEGEND_TYPES.map(type => (
-                <EventBadge key={type} label={type} color={EVENT_COLORS[type]} />
-              ))}
-            </div>
-          </MonthNavigation>
-          <CalendarGrid
-            events={DASHBOARD_CALENDAR_EVENTS}
-            year={calYear}
-            month={calMonth}
-            defaultView="grid"
-            showViewToggle
-            maxEventsPerDay={3}
-            onEventClick={setSelectedEvent}
-          />
+          <OperationsCalendar />
         </DashboardCard>
 
       </div>
-      {selectedEvent && (
-        <CalendarEventDetail
-          event={selectedEvent}
-          onClose={() => setSelectedEvent(null)}
-        />
-      )}
 
     </div>
   )

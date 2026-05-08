@@ -1,0 +1,1111 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   OPERATIONS CALENDAR  (oc*)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Wrapper ─────────────────────────────────────────────────────────────── */
+
+.ocWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+
+.ocHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ocHeaderTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ocTitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0;
+}
+
+/* ── View toggle ─────────────────────────────────────────────────────────── */
+
+.ocViewToggle {
+  display: flex;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.ocViewBtn {
+  appearance: none;
+  padding: 5px 14px;
+  background: transparent;
+  border: none;
+  color: var(--color-muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+
+.ocViewBtn + .ocViewBtn {
+  border-left: 1px solid var(--color-border);
+}
+
+.ocViewBtn:hover {
+  color: var(--color-text);
+  background: rgba(255,255,255,.04);
+}
+
+.ocViewBtnActive {
+  background: var(--color-accent);
+  color: #fff;
+}
+
+/* ── Nav row ─────────────────────────────────────────────────────────────── */
+
+.ocHeaderNav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ocNavBtn {
+  appearance: none;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--color-text);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+
+.ocNavBtn:hover {
+  border-color: var(--color-accent);
+  background: rgba(74,158,74,.08);
+}
+
+.ocNavLabel {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text);
+  min-width: 180px;
+  text-align: center;
+}
+
+.ocTodayBtn {
+  appearance: none;
+  padding: 5px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: 4px;
+  transition: border-color .15s, color .15s;
+}
+
+.ocTodayBtn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-text);
+}
+
+/* ── Category chips ──────────────────────────────────────────────────────── */
+
+.ocCategoryRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ocCatChip {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  background: transparent;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color .15s, color .15s, background .15s;
+}
+
+.ocCatChip:hover { color: var(--color-text); }
+
+.ocCatChipActive {
+  border-color: var(--cat-color, var(--color-accent));
+  color: var(--cat-color, var(--color-accent));
+  background: oklch(from var(--cat-color, #4a9e4a) l c h / 0.12);
+}
+
+.ocCatDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Body layout ─────────────────────────────────────────────────────────── */
+
+.ocBody {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  padding-top: 14px;
+}
+
+.ocMain {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Right panel ─────────────────────────────────────────────────────────── */
+
+.ocPanel {
+  width: 240px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--color-surface);
+}
+
+.ocPanelSection {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ocPanelSection:last-child { border-bottom: none; }
+
+.ocPanelTitle {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--color-muted);
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+
+.ocPanelEmpty {
+  font-size: 13px;
+  color: var(--color-muted);
+  margin: 0;
+}
+
+/* ── Mini calendar ───────────────────────────────────────────────────────── */
+
+.ocMiniCalDayRow {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 2px;
+}
+
+.ocMiniCalDayLabel {
+  font-size: 10px;
+  color: var(--color-muted);
+  text-align: center;
+  font-weight: 600;
+  padding: 2px 0;
+}
+
+.ocMiniCalGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+}
+
+.ocMiniCalCell {
+  appearance: none;
+  border: none;
+  background: transparent;
+  font-size: 11px;
+  color: var(--color-text);
+  text-align: center;
+  padding: 3px 0;
+  border-radius: 3px;
+  cursor: pointer;
+  line-height: 1.4;
+  transition: background .12s, color .12s;
+}
+
+.ocMiniCalCellOut {
+  color: var(--color-muted);
+  opacity: .4;
+}
+
+.ocMiniCalCellToday {
+  background: var(--color-accent);
+  color: #fff;
+  font-weight: 700;
+}
+
+.ocMiniCalCellNav {
+  border: 1px solid var(--color-accent);
+  color: var(--color-accent);
+}
+
+/* ── Upcoming events ─────────────────────────────────────────────────────── */
+
+.ocUpcomingCard {
+  appearance: none;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 5px 0;
+  cursor: pointer;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  transition: opacity .15s;
+}
+
+.ocUpcomingCard:hover { opacity: .75; }
+
+.ocUpcomingDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
+.ocUpcomingInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.ocUpcomingTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ocUpcomingDate {
+  font-size: 11px;
+  color: var(--color-muted);
+}
+
+/* ── Weekly metrics ──────────────────────────────────────────────────────── */
+
+.ocMetricsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.ocMetricItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ocMetricVal {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.ocMetricLabel {
+  font-size: 10px;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+/* ── Weather strip ───────────────────────────────────────────────────────── */
+
+.ocWeatherStrip {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ocWeatherRow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.ocWeatherTemp {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1;
+}
+
+.ocWeatherSub {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.ocWeatherStats {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.ocSprayWindow {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* ── Month view ──────────────────────────────────────────────────────────── */
+
+.ocMonthWrap {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.ocMonthDayHeaders {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border-bottom: 1px solid var(--color-border);
+  background: rgba(255,255,255,.02);
+}
+
+.ocMonthDayHeader {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--color-muted);
+  font-weight: 600;
+  text-align: center;
+  padding: 7px 0;
+}
+
+.ocMonthGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.ocMonthCell {
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  padding: 6px;
+  min-height: 92px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: transparent;
+}
+
+/* Remove right border from last column */
+.ocMonthCell:nth-child(7n) { border-right: none; }
+/* Remove bottom border from last row */
+.ocMonthCell:nth-last-child(-n+7) { border-bottom: none; }
+
+.ocMonthCellOut { background: rgba(0,0,0,.14); }
+.ocMonthCellOut .ocMonthDayNum { opacity: .3; }
+.ocMonthCellToday { background: rgba(74,158,74,.06); }
+
+.ocMonthDayNum {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-muted);
+  line-height: 1;
+  padding: 1px 3px;
+  align-self: flex-start;
+}
+
+.ocMonthDayNumToday {
+  background: var(--color-accent);
+  color: #fff;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  padding: 0;
+}
+
+.ocMonthEvents {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+/* ── Event chip (month view) ─────────────────────────────────────────────── */
+
+.ocEventChip {
+  appearance: none;
+  width: 100%;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 5px;
+  border: none;
+  border-radius: 3px;
+  border-left: 3px solid var(--chip-color, #888);
+  background: rgba(0,0,0,.0);
+  cursor: pointer;
+  overflow: hidden;
+  transition: opacity .12s;
+}
+
+/* tinted bg using alpha on the chip color via box-shadow trick */
+.ocEventChip::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--chip-color, #888);
+  opacity: .1;
+  pointer-events: none;
+  border-radius: 3px;
+}
+
+.ocEventChip {
+  position: relative;
+}
+
+.ocEventChip:hover { opacity: .8; }
+
+.ocChipTime {
+  font-size: 10px;
+  color: var(--chip-color, #888);
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.ocChipTitle {
+  font-size: 11px;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  position: relative;
+}
+
+.ocMoreBtn {
+  appearance: none;
+  background: transparent;
+  border: none;
+  font-size: 11px;
+  color: var(--color-muted);
+  cursor: pointer;
+  padding: 1px 3px;
+  text-align: left;
+  transition: color .12s;
+}
+
+.ocMoreBtn:hover { color: var(--color-accent); }
+
+/* ── Week view ───────────────────────────────────────────────────────────── */
+
+.ocWeekWrap {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow-x: auto;
+}
+
+.ocWeekGrid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(110px, 1fr));
+  border-top: 1px solid var(--color-border);
+  border-left: 1px solid var(--color-border);
+  min-width: 700px;
+}
+
+.ocWeekCol {
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  min-height: 280px;
+}
+
+.ocWeekColToday { background: rgba(74,158,74,.04); }
+
+.ocWeekDayHeader {
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--color-border);
+  text-align: center;
+  background: rgba(255,255,255,.02);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: center;
+}
+
+.ocWeekDayHeaderToday { background: rgba(74,158,74,.08); }
+
+.ocWeekDow {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--color-muted);
+  font-weight: 600;
+}
+
+.ocWeekDayNum {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1;
+}
+
+.ocWeekDayNumToday { color: var(--color-accent); }
+
+.ocWeekEvents {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 4px;
+  flex: 1;
+}
+
+.ocWeekEmpty {
+  font-size: 11px;
+  color: var(--color-muted);
+  text-align: center;
+  padding: 12px 0;
+  opacity: .4;
+}
+
+.ocWeekEventCard {
+  appearance: none;
+  width: 100%;
+  text-align: left;
+  border: none;
+  border-left: 3px solid var(--chip-color, #888);
+  border-radius: 0 4px 4px 0;
+  background: rgba(0,0,0,0);
+  padding: 5px 6px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  transition: opacity .12s;
+  position: relative;
+}
+
+.ocWeekEventCard::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--chip-color, #888);
+  opacity: .09;
+  pointer-events: none;
+  border-radius: 0 4px 4px 0;
+}
+
+.ocWeekEventCard:hover { opacity: .8; }
+
+.ocWeekCardCat {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  font-weight: 700;
+  position: relative;
+}
+
+.ocWeekCardTitle {
+  font-size: 11px;
+  color: var(--color-text);
+  font-weight: 600;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  position: relative;
+}
+
+.ocWeekCardTime {
+  font-size: 10px;
+  color: var(--color-muted);
+  position: relative;
+}
+
+/* ── List view ───────────────────────────────────────────────────────────── */
+
+.ocListWrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.ocListEmpty {
+  color: var(--color-muted);
+  font-size: 14px;
+  padding: 32px 0;
+  text-align: center;
+}
+
+.ocListGroup {
+  margin-bottom: 16px;
+}
+
+.ocListDateHeader {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-muted);
+  padding: 6px 0;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
+.ocListDateHeaderToday { color: var(--color-accent); }
+
+.ocTodayPill {
+  padding: 1px 7px;
+  background: var(--color-accent);
+  color: #fff;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.ocListCard {
+  appearance: none;
+  width: 100%;
+  text-align: left;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--chip-color, #888);
+  border-radius: 6px;
+  padding: 10px 14px;
+  cursor: pointer;
+  margin-bottom: 6px;
+  transition: border-color .15s, box-shadow .15s;
+}
+
+.ocListCard:hover {
+  border-color: var(--chip-color, var(--color-accent));
+  box-shadow: 0 2px 8px rgba(0,0,0,.22);
+}
+
+.ocListCardMain {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.ocListCardLeft {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ocListCardRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.ocListCardTopRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ocListCardTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.ocListCardMeta {
+  font-size: 12px;
+  color: var(--color-muted);
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.ocListCardStaff {
+  font-size: 12px;
+  color: var(--color-muted);
+  font-style: italic;
+}
+
+.ocListCatDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.ocListCardCat {
+  font-size: 11px;
+  color: var(--color-muted);
+  font-weight: 600;
+}
+
+/* ── Status badges ───────────────────────────────────────────────────────── */
+
+.ocStatusBadge {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ocStatusScheduled {
+  background: rgba(58,138,212,.12);
+  color: #3a8ad4;
+  border: 1px solid #3a8ad4;
+}
+
+.ocStatusInProgress {
+  background: rgba(46,184,184,.12);
+  color: #2eb8b8;
+  border: 1px solid #2eb8b8;
+}
+
+.ocStatusCompleted {
+  background: rgba(74,158,74,.12);
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent);
+}
+
+.ocStatusCancelled {
+  background: rgba(120,120,120,.1);
+  color: var(--color-muted);
+  border: 1px solid var(--color-border);
+}
+
+/* ── Priority badge ──────────────────────────────────────────────────────── */
+
+.ocPriorityBadge {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.ocPriorityBadge[data-priority="high"] {
+  background: rgba(192,57,43,.15);
+  color: #e74c3c;
+  border: 1px solid #c0392b;
+}
+
+.ocPriorityBadge[data-priority="medium"] {
+  background: rgba(220,160,50,.12);
+  color: #dca032;
+  border: 1px solid #dca032;
+}
+
+.ocPriorityBadge[data-priority="low"] {
+  background: rgba(74,158,74,.1);
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent);
+}
+
+/* ── Modal overlay ───────────────────────────────────────────────────────── */
+
+.ocModalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.62);
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.ocModalPanel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.ocModalAccent {
+  height: 4px;
+  flex-shrink: 0;
+}
+
+.ocModalBody {
+  overflow-y: auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ocModalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.ocModalTitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.ocModalSub {
+  font-size: 13px;
+  color: var(--color-muted);
+  margin: 4px 0 0;
+}
+
+.ocModalCloseX {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--color-muted);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  transition: background .12s, color .12s;
+}
+
+.ocModalCloseX:hover {
+  background: rgba(255,255,255,.06);
+  color: var(--color-text);
+}
+
+.ocModalBadgeRow {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.ocModalCatBadge {
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.ocModalField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ocModalFieldLabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--color-muted);
+  font-weight: 600;
+}
+
+.ocModalFieldValue {
+  font-size: 14px;
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+.ocModalTags {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.ocModalTag {
+  padding: 2px 8px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--color-text);
+}
+
+.ocModalNotes {
+  font-size: 13px;
+  color: var(--color-text);
+  line-height: 1.6;
+  margin: 0;
+  padding: 10px 12px;
+  background: rgba(255,255,255,.03);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+}
+
+.ocModalClose {
+  appearance: none;
+  align-self: flex-end;
+  padding: 8px 20px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text);
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+
+.ocModalClose:hover {
+  border-color: var(--color-accent);
+  background: rgba(74,158,74,.1);
+}
+
+/* ── Day modal list ──────────────────────────────────────────────────────── */
+
+.ocDayModalList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ocDayModalCard {
+  appearance: none;
+  width: 100%;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--chip-color, #888);
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  transition: background .12s;
+}
+
+.ocDayModalCard:hover { background: rgba(255,255,255,.04); }
+
+.ocDayModalDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ocDayModalInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ocDayModalTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.ocDayModalMeta {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 1100px) {
+  .ocPanel { width: 210px; }
+}
+
+@media (max-width: 900px) {
+  .ocBody {
+    flex-direction: column;
+  }
+
+  .ocPanel {
+    width: 100%;
+    position: static;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .ocPanelSection {
+    border-right: 1px solid var(--color-border);
+  }
+
+  .ocPanelSection:nth-child(even) {
+    border-right: none;
+  }
+
+  .ocPanelSection:nth-last-child(-n+2) {
+    border-bottom: none;
+  }
+
+  .ocMonthCell { min-height: 76px; }
+}
+
+@media (max-width: 700px) {
+  .ocHeaderTop { flex-direction: column; align-items: flex-start; }
+  .ocNavLabel { min-width: 140px; font-size: 14px; }
+  .ocMonthCell { min-height: 62px; padding: 4px; }
+  .ocMonthDayHeader { font-size: 10px; letter-spacing: 0; }
+  .ocChipTitle { font-size: 10px; }
+  .ocChipTime { display: none; }
+}
+
+@media (max-width: 500px) {
+  .ocPanel {
+    grid-template-columns: 1fr;
+  }
+
+  .ocPanelSection {
+    border-right: none;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .ocPanelSection:last-child { border-bottom: none; }
+
+  .ocMonthCell { min-height: 52px; }
+  .ocMonthDayHeader { font-size: 9px; }
+}
