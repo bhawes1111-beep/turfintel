@@ -25,108 +25,84 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 20px 12px 18px;
+  /* Enough height for the full stacked logo image */
+  min-height: 116px;
+  padding: 10px 8px 8px;
   border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
   overflow: hidden;
-  min-height: 108px;
   transition: min-height 0.25s ease, padding 0.25s ease;
 }
 
-/* Collapse toggle — pinned to top-right of brand area */
+/* Collapse toggle — pinned top-right inside brand area */
 .collapseBtn {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 7px;
+  right: 7px;
   width: 22px;
   height: 22px;
   border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(255, 255, 255, 0.22);
+  /* Very subtle so it doesn't compete with the logo */
+  color: rgba(255, 255, 255, 0.18);
   transition: color 0.15s, background 0.15s;
-  flex-shrink: 0;
+  z-index: 1;
 }
 
 .collapseBtn:hover {
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.55);
   background: rgba(255, 255, 255, 0.07);
 }
 
-/* ── Full logo (expanded) ─────────────────────────────────────────────── */
+/* ── Logo image — full (expanded) ─────────────────────────────────────── */
 
-.logoFull {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
+/*
+ * mix-blend-mode: screen removes dark/textured backgrounds by making dark
+ * pixels transparent against the dark sidebar, while preserving bright
+ * greens, silvers, and whites from the logo render.
+ */
+.imgLogo {
+  display: block;
+  width: 158px;
+  height: auto;
+  max-height: 100px;
+  object-fit: contain;
+  mix-blend-mode: screen;
+  /* Prevent browser drag */
+  user-select: none;
   opacity: 1;
-  transition: opacity 0.15s ease;
+  transition: opacity 0.2s ease;
+  flex-shrink: 0;
 }
 
-.collapsed .logoFull {
+.collapsed .imgLogo {
   opacity: 0;
   pointer-events: none;
   position: absolute;
 }
 
-/* TP lettermark */
-.logoMark {
-  font-family: 'Exo 2', 'Arial Black', Impact, sans-serif;
-  font-weight: 900;
-  font-size: 42px;
-  line-height: 1;
-  letter-spacing: -3px;
-  display: flex;
-  align-items: baseline;
-}
+/* ── Logo image — compact mark (collapsed) ────────────────────────────── */
 
-.logoT { color: #3bae3b; }
-.logoP { color: #b8c8b0; }
-
-/* TURFINTEL wordmark */
-.logoWordmark {
-  font-family: 'Exo 2', 'Arial Black', sans-serif;
-  font-weight: 900;
-  font-size: 13px;
-  letter-spacing: 0.14em;
-  line-height: 1;
-}
-
-.wTurf  { color: #3bae3b; }
-.wIntel { color: #c8d8c8; }
-
-/* — PRO — tag */
-.logoPro {
-  font-family: 'Exo 2', sans-serif;
-  font-weight: 700;
-  font-size: 8.5px;
-  letter-spacing: 0.24em;
-  color: rgba(59, 174, 59, 0.55);
-  margin-top: 1px;
-}
-
-/* ── Compact mark (collapsed) ─────────────────────────────────────────── */
-
-.logoCompact {
+.imgMark {
   display: none;
-  font-family: 'Exo 2', 'Arial Black', Impact, sans-serif;
-  font-weight: 900;
-  font-size: 26px;
-  letter-spacing: -2px;
-  line-height: 1;
-  align-items: baseline;
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  mix-blend-mode: screen;
+  user-select: none;
+  flex-shrink: 0;
 }
 
-.collapsed .logoCompact {
-  display: flex;
+.collapsed .imgMark {
+  display: block;
 }
 
-/* Shrink brand area when collapsed */
+/* Collapsed: shrink brand area to icon-only height */
 .collapsed .brand {
-  min-height: 60px;
-  padding: 0 0 0 0;
+  min-height: 62px;
+  padding: 0;
   justify-content: center;
 }
 
@@ -153,10 +129,10 @@
   display: flex;
   align-items: center;
   gap: 11px;
-  padding: 11px 14px;
+  padding: 10px 12px;
   margin: 1px 8px;
   border-radius: 7px;
-  color: rgba(200, 220, 200, 0.6);
+  color: rgba(180, 210, 180, 0.55);
   font-size: 13px;
   font-weight: 500;
   white-space: nowrap;
@@ -165,41 +141,50 @@
 }
 
 .link:hover {
-  background-color: var(--color-sidebar-hover);
-  color: var(--color-text);
+  background-color: rgba(74, 158, 74, 0.08);
+  color: rgba(220, 240, 220, 0.9);
 }
 
 /* Active: filled green panel + bright left accent */
 .link.active {
   background: linear-gradient(
     90deg,
-    rgba(59, 174, 59, 0.22) 0%,
-    rgba(59, 174, 59, 0.06) 100%
+    rgba(59, 174, 59, 0.24) 0%,
+    rgba(59, 174, 59, 0.07) 100%
   );
   box-shadow: inset 3px 0 0 #3bae3b;
   color: #e8f5e8;
 }
 
-/* ── Icon wrapper ──────────────────────────────────────────────────────── */
+/* ── Icon wrapper — subtle container card ──────────────────────────────── */
 
 .iconWrap {
   flex-shrink: 0;
-  width: 22px;
-  height: 22px;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(160, 200, 160, 0.5);
-  transition: color 0.15s;
+  /* Barely-there card container gives icons depth without noise */
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  color: rgba(140, 190, 140, 0.5);
+  transition: color 0.15s, background 0.15s, border-color 0.15s, filter 0.15s;
 }
 
 .link:hover .iconWrap {
-  color: rgba(200, 230, 200, 0.85);
+  color: rgba(180, 230, 180, 0.85);
+  background: rgba(74, 158, 74, 0.1);
+  border-color: rgba(74, 158, 74, 0.18);
 }
 
+/* Active icon: bright green + glow */
 .link.active .iconWrap {
   color: #3bae3b;
-  filter: drop-shadow(0 0 4px rgba(59, 174, 59, 0.5));
+  background: rgba(59, 174, 59, 0.14);
+  border-color: rgba(59, 174, 59, 0.28);
+  filter: drop-shadow(0 0 5px rgba(59, 174, 59, 0.55));
 }
 
 /* ── Label ─────────────────────────────────────────────────────────────── */
@@ -221,21 +206,21 @@
 
 .collapsed .link {
   justify-content: center;
-  padding: 11px 0;
+  padding: 10px 0;
   margin: 1px 8px;
   gap: 0;
 }
 
-/* Active must remain visible when collapsed */
+/* Active must remain legible when collapsed */
 .collapsed .link.active {
   box-shadow:
     inset 3px 0 0 #3bae3b,
-    0 0 0 1px rgba(59, 174, 59, 0.18);
+    0 0 0 1px rgba(59, 174, 59, 0.15);
 }
 
 .collapsed .link.active .iconWrap {
   color: #3bae3b;
-  filter: drop-shadow(0 0 5px rgba(59, 174, 59, 0.55));
+  filter: drop-shadow(0 0 6px rgba(59, 174, 59, 0.65));
 }
 
 /* ── Mobile ────────────────────────────────────────────────────────────── */
@@ -256,7 +241,24 @@
     transform: translateX(0);
   }
 
-  /* Always show labels on mobile regardless of collapsed state */
+  /* Always show full logo on mobile — sidebar slides, does not collapse */
+  .collapsed .imgLogo {
+    opacity: 1;
+    pointer-events: auto;
+    position: static;
+  }
+
+  .collapsed .imgMark {
+    display: none;
+  }
+
+  .collapsed .brand {
+    min-height: 116px;
+    padding: 10px 8px 8px;
+    justify-content: center;
+  }
+
+  /* Always show labels on mobile */
   .collapsed .label {
     opacity: 1;
     max-width: 160px;
@@ -264,27 +266,11 @@
 
   .collapsed .link {
     justify-content: flex-start;
-    padding: 11px 14px;
+    padding: 10px 12px;
     gap: 11px;
   }
 
-  .collapsed .brand {
-    min-height: 108px;
-    padding: 20px 12px 18px;
-    justify-content: center;
-  }
-
-  .collapsed .logoFull {
-    opacity: 1;
-    pointer-events: auto;
-    position: static;
-  }
-
-  .collapsed .logoCompact {
-    display: none;
-  }
-
-  /* Hide collapse toggle on mobile — sidebar slides, not collapses */
+  /* Hide collapse toggle — not needed on mobile */
   .collapseBtn {
     display: none;
   }

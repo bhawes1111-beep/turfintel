@@ -30,7 +30,7 @@ export default function Sidebar({ isOpen, onClose }) {
       {/* Brand / logo header */}
       <div className={styles.brand}>
 
-        {/* Collapse toggle — top-right corner */}
+        {/* Collapse toggle */}
         <button
           className={styles.collapseBtn}
           onClick={() => setCollapsed(c => !c)}
@@ -39,21 +39,21 @@ export default function Sidebar({ isOpen, onClose }) {
           <Icon name={collapsed ? 'chevronRight' : 'chevronLeft'} size={13} />
         </button>
 
-        {/* Full logo — visible when expanded */}
-        <div className={styles.logoFull}>
-          <div className={styles.logoMark}>
-            <span className={styles.logoT}>T</span><span className={styles.logoP}>P</span>
-          </div>
-          <div className={styles.logoWordmark}>
-            <span className={styles.wTurf}>TURF</span><span className={styles.wIntel}>INTEL</span>
-          </div>
-          <div className={styles.logoPro}>— PRO —</div>
-        </div>
+        {/* Full logo — expanded sidebar */}
+        <img
+          src="/logo-full.png"
+          alt="TurfIntel Pro"
+          className={styles.imgLogo}
+          draggable="false"
+        />
 
-        {/* Compact mark — visible when collapsed */}
-        <div className={styles.logoCompact}>
-          <span className={styles.logoT}>T</span><span className={styles.logoP}>P</span>
-        </div>
+        {/* Compact mark — collapsed sidebar */}
+        <img
+          src="/logo-mark.png"
+          alt="TP"
+          className={styles.imgMark}
+          draggable="false"
+        />
 
       </div>
 
