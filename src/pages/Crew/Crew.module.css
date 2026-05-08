@@ -504,3 +504,476 @@
     grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
   }
 }
+
+/* ── Crew Hours (ch*) ───────────────────────────────────────────────────── */
+
+.chWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ── Stat row ───────────────────────────────────────────────────────────── */
+
+.chStatRow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.chStatCard {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--card-radius);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chStatLabel {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--color-text-muted);
+}
+
+.chStatValue {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1.1;
+}
+
+.chStatGreen { color: var(--color-accent) !important; }
+.chStatAmber { color: #dca032 !important; }
+.chStatTeal  { color: #2eb8b8 !important; }
+.chStatRed   { color: #c0392b !important; }
+
+/* ── Toolbar ────────────────────────────────────────────────────────────── */
+
+.chToolbar {
+  display: flex;
+  gap: 10px;
+}
+
+.chSearch {
+  flex: 1;
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 9px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--color-text);
+  transition: border-color 0.15s;
+}
+
+.chSearch:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.chSearch::placeholder {
+  color: var(--color-text-muted);
+}
+
+/* ── Filter chips ───────────────────────────────────────────────────────── */
+
+.chFilters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chChip {
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-card);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background-color 0.15s;
+}
+
+.chChip:hover {
+  border-color: var(--color-accent);
+  color: var(--color-text);
+}
+
+.chChipActive {
+  border-color: var(--color-accent);
+  background-color: rgba(74, 158, 74, 0.12);
+  color: var(--color-accent);
+}
+
+/* ── Record count ───────────────────────────────────────────────────────── */
+
+.chCount {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+/* ── Log list ───────────────────────────────────────────────────────────── */
+
+.chList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Log card — full-width button */
+.chCard {
+  width: 100%;
+  appearance: none;
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-border);
+  border-radius: var(--card-radius);
+  padding: var(--card-padding);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.chCard:hover {
+  border-color: var(--card-hover-border);
+  box-shadow: var(--card-hover-shadow);
+}
+
+.chCard_clocked_in { border-left-color: var(--color-accent); }
+.chCard_completed  { border-left-color: #555; }
+.chCard_absent     { border-left-color: #c0392b; }
+.chCard_late       { border-left-color: #dca032; }
+
+/* Card layout */
+.chCardMain {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.chCardLeft {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chCardRight {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.chCardNameRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.chCardName {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.chCardRole {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.chCardAssignment {
+  font-size: 12px;
+  color: var(--color-text);
+}
+
+.chCardTime {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+/* Big hours display */
+.chBigHours {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-accent);
+  line-height: 1;
+}
+
+/* Department badge */
+.chDeptBadge {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background-color: rgba(74, 158, 74, 0.1);
+  color: var(--color-text-muted);
+}
+
+/* Overtime warning badge */
+.chOvertimeBadge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background-color: rgba(220, 160, 50, 0.18);
+  color: #dca032;
+}
+
+/* Status badges */
+.chStatusBadge {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  width: fit-content;
+  flex-shrink: 0;
+}
+
+.chStatusClockedIn {
+  background-color: rgba(74, 158, 74, 0.15);
+  color: var(--color-accent);
+}
+
+.chStatusCompleted {
+  background-color: rgba(120, 120, 120, 0.12);
+  color: var(--color-text-muted);
+}
+
+.chStatusAbsent {
+  background-color: rgba(192, 57, 43, 0.12);
+  color: #c0392b;
+}
+
+.chStatusLate {
+  background-color: rgba(220, 160, 50, 0.15);
+  color: #dca032;
+}
+
+/* Empty state */
+.chEmpty {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  padding: 12px 0;
+  text-align: center;
+}
+
+/* ── Modal ──────────────────────────────────────────────────────────────── */
+
+.chModalOverlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(3px);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.chModalPanel {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--card-radius);
+  width: 100%;
+  max-width: 600px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.chModalAccent {
+  height: 4px;
+  flex-shrink: 0;
+}
+
+.chModalBody {
+  overflow-y: auto;
+  padding: 20px 22px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.chModalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.chModalTitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.chModalSub {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin: 4px 0 0;
+}
+
+.chModalSection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chModalSectionTitle {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 5px;
+  margin: 0;
+}
+
+.chFieldGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 16px;
+}
+
+.chField {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chFieldLabel {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.chFieldValue {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+/* Labor summary total bar */
+.chTotalCost {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: rgba(74, 158, 74, 0.07);
+  border: 1px solid rgba(74, 158, 74, 0.2);
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin-top: 4px;
+}
+
+.chTotalLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.chTotalValue {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
+/* Overtime breakdown table */
+.chOtBreakdown {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.chOtRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 9px 12px;
+  font-size: 12px;
+  color: var(--color-text);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.chOtRow:last-child {
+  border-bottom: none;
+}
+
+.chOtTotal {
+  font-weight: 700;
+  background-color: rgba(220, 160, 50, 0.08);
+  color: #dca032;
+}
+
+/* Notes */
+.chModalNotes {
+  font-size: 13px;
+  color: var(--color-text);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Close button */
+.chModalClose {
+  align-self: flex-end;
+  padding: 8px 18px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  background-color: transparent;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.chModalClose:hover {
+  border-color: var(--color-accent);
+  color: var(--color-text);
+}
+
+/* ── ch* Mobile ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .chStatRow {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .chStatValue {
+    font-size: 22px;
+  }
+
+  .chBigHours {
+    font-size: 22px;
+  }
+
+  .chFieldGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .chModalPanel {
+    max-height: 92vh;
+  }
+}
