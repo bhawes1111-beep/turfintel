@@ -874,3 +874,519 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   BUILD SPRAY SHEET  (ss*)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Toolbar ─────────────────────────────────────────────────────────────── */
+
+.ssToolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ssToolbarTop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ssSearch {
+  flex: 1;
+  min-width: 180px;
+  max-width: 320px;
+  background: var(--color-card);
+  border: var(--card-border);
+  border-radius: 8px;
+  color: var(--color-text);
+  font-size: 0.85rem;
+  padding: 8px 12px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.ssSearch::placeholder { color: var(--color-text-muted); }
+.ssSearch:focus        { border-color: var(--color-accent); }
+
+.ssDateInput {
+  background: var(--color-card);
+  border: var(--card-border);
+  border-radius: 8px;
+  color: var(--color-text);
+  font-size: 0.82rem;
+  padding: 8px 10px;
+  outline: none;
+  transition: border-color 0.2s;
+  color-scheme: dark;
+}
+
+.ssDateInput:focus { border-color: var(--color-accent); }
+
+.ssToolbarActions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.ssFilterLabel {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  align-self: center;
+  flex-shrink: 0;
+}
+
+.ssBtnPrimary {
+  background: linear-gradient(135deg, #2d8a2d, #3bae3b);
+  border: none;
+  border-radius: 7px;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 8px 16px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+}
+
+.ssBtnPrimary:hover:not(:disabled)   { opacity: 0.88; }
+.ssBtnPrimary:disabled               { opacity: 0.4; cursor: not-allowed; }
+
+.ssBtnSecondary {
+  background: none;
+  border: 1px solid rgba(74,158,74,0.35);
+  border-radius: 7px;
+  color: var(--color-accent);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 8px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.ssBtnSecondary:hover:not(:disabled) { background: rgba(74,158,74,0.08); border-color: var(--color-accent); }
+.ssBtnSecondary:disabled             { opacity: 0.4; cursor: not-allowed; }
+
+.ssBtnDisabled {
+  background: none;
+  border: var(--card-border);
+  border-radius: 7px;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  padding: 8px 14px;
+  cursor: not-allowed;
+  opacity: 0.4;
+  white-space: nowrap;
+}
+
+/* ── Stat row ────────────────────────────────────────────────────────────── */
+
+.ssStats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.ssStatCard {
+  background: var(--color-card);
+  border: var(--card-border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ssStatValue {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-accent);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.ssStatLabel {
+  font-size: 0.63rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+/* ── Split layout ────────────────────────────────────────────────────────── */
+
+.ssLayout {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+/* ── Left: card list ─────────────────────────────────────────────────────── */
+
+.ssList {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ssListHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ssListCount {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.ssSelectAll {
+  background: none;
+  border: none;
+  color: var(--color-accent);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+.ssSelectAll:hover { opacity: 0.8; }
+
+.ssCardList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ── Application card ────────────────────────────────────────────────────── */
+
+.ssAppCard {
+  display: flex;
+  align-items: stretch;
+  background: var(--color-card);
+  border: var(--card-border);
+  border-radius: var(--card-radius);
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+
+.ssAppCard:hover {
+  border-color: rgba(74,158,74,0.28);
+}
+
+.ssAppCardSelected {
+  border-color: var(--color-accent);
+  background: rgba(74,158,74,0.04);
+}
+
+.ssCheckbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  border-right: 1px solid var(--color-border);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.15s;
+}
+
+.ssCheckbox:hover { background: rgba(74,158,74,0.07); }
+
+.ssCheckboxBox {
+  width: 17px;
+  height: 17px;
+  border: 1.5px solid rgba(255,255,255,0.2);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  color: var(--color-accent);
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.ssCheckboxChecked {
+  background: rgba(74,158,74,0.2);
+  border-color: var(--color-accent);
+}
+
+.ssAppCardBody {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 14px;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ssAppCardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ssAppCardTitle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.ssAppCardMeta {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3px 12px;
+  font-size: 0.75rem;
+  color: var(--color-text);
+}
+
+.ssMetaKey {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  margin-right: 4px;
+}
+
+.ssAppCardFooter {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  padding-top: 7px;
+  border-top: 1px solid var(--color-border);
+}
+
+.ssPhiBadge {
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(150,100,220,0.12);
+  color: #b08ce0;
+  border: 1px solid rgba(150,100,220,0.25);
+  letter-spacing: 0.03em;
+}
+
+/* ── Right panel ─────────────────────────────────────────────────────────── */
+
+.ssPanelWrap {
+  width: 420px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 20px;
+  max-height: calc(100vh - 60px);
+  overflow-y: auto;
+}
+
+.ssPanelEmpty {
+  background: var(--color-card);
+  border: var(--card-border);
+  border-radius: var(--card-radius);
+  padding: 48px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.ssPanelEmptyIcon  { font-size: 2.2rem; opacity: 0.3; }
+.ssPanelEmptyTitle { font-size: 0.88rem; font-weight: 700; color: var(--color-text); }
+.ssPanelEmptyText  { font-size: 0.75rem; color: var(--color-text-muted); line-height: 1.5; max-width: 240px; }
+
+/* ── Spray sheet document ────────────────────────────────────────────────── */
+
+.ssSheet {
+  background: var(--color-card);
+  border: var(--card-border);
+  border-radius: var(--card-radius);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Sheet: header band */
+.ssSheetHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px;
+  background: rgba(74,158,74,0.07);
+  border-bottom: 1px solid rgba(74,158,74,0.15);
+  flex-wrap: wrap;
+}
+
+.ssSheetBrand        { display: flex; flex-direction: column; gap: 2px; }
+.ssSheetBrandName    { font-size: 0.82rem; font-weight: 700; color: var(--color-accent); letter-spacing: 0.02em; }
+.ssSheetBrandSub     { font-size: 0.65rem; color: var(--color-text-muted); }
+.ssSheetHeaderFields { display: flex; gap: 18px; flex-wrap: wrap; }
+.ssSheetHeaderField  { display: flex; flex-direction: column; gap: 1px; }
+.ssSheetFieldLabel   { font-size: 0.56rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted); }
+.ssSheetFieldValue   { font-size: 0.78rem; font-weight: 600; color: var(--color-text); }
+
+/* Sheet: weather strip */
+.ssSheetWeather {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 18px;
+  background: rgba(255,255,255,0.02);
+  flex-wrap: wrap;
+}
+
+.ssSheetWeatherLabel   { font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--color-text-muted); font-weight: 600; flex-shrink: 0; }
+.ssSheetWeatherGrid    { display: flex; gap: 14px; flex-wrap: wrap; }
+.ssSheetWeatherGrid span { font-size: 0.78rem; color: var(--color-text); font-weight: 500; }
+.ssSheetWeatherPending { font-size: 0.72rem; color: var(--color-text-muted); font-style: italic; }
+
+.ssSheetDivider { height: 1px; background: rgba(74,158,74,0.1); flex-shrink: 0; }
+
+/* Sheet: generic section */
+.ssSheetSection      { padding: 12px 18px; display: flex; flex-direction: column; gap: 10px; }
+.ssSheetSectionTitle { font-size: 0.58rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--color-accent); }
+
+/* Sheet: summary grid */
+.ssSheetSummaryGrid  { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px 12px; }
+.ssSheetSummaryItem  { display: flex; flex-direction: column; gap: 1px; }
+.ssSheetSummaryLabel { font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted); }
+.ssSheetSummaryValue { font-size: 0.8rem; font-weight: 600; color: var(--color-text); }
+
+/* Sheet: product table */
+.ssSheetTableWrap { overflow-x: auto; }
+
+.ssSheetTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.72rem;
+  min-width: 380px;
+}
+
+.ssSheetTable th {
+  text-align: left;
+  font-size: 0.56rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--color-border);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ssSheetTable td {
+  padding: 7px 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  color: var(--color-text);
+  vertical-align: top;
+}
+
+.ssSheetTable tbody tr:last-child td { border-bottom: none; }
+.ssTableProductName { font-weight: 600; }
+
+/* Sheet: safety blocks */
+.ssSheetSafetyBlock { display: flex; flex-direction: column; gap: 4px; }
+.ssSheetSafetyLabel { font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted); font-weight: 600; }
+.ssSheetSafetyList  { margin: 0; padding-left: 14px; display: flex; flex-direction: column; gap: 2px; }
+.ssSheetSafetyList li { font-size: 0.75rem; color: var(--color-text); line-height: 1.4; }
+.ssSheetSafetyText  { font-size: 0.75rem; color: var(--color-text); line-height: 1.4; }
+
+/* Sheet: signature grid */
+.ssSheetSigGrid  { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.ssSheetSigBlock { display: flex; flex-direction: column; gap: 5px; }
+.ssSheetSigLine  { height: 1px; background: rgba(255,255,255,0.18); margin-bottom: 3px; }
+.ssSheetSigLabel { font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--color-text-muted); }
+.ssSheetSigName  { font-size: 0.72rem; color: var(--color-text-muted); }
+
+/* ── Print ───────────────────────────────────────────────────────────────── */
+
+@media print {
+  .ssToolbar,
+  .ssStats,
+  .ssListHeader,
+  .ssList { display: none !important; }
+
+  .ssLayout { display: block !important; }
+
+  .ssPanelWrap {
+    width: 100% !important;
+    position: static !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .ssSheet {
+    background: #fff !important;
+    border: none !important;
+    border-radius: 0 !important;
+    color: #111 !important;
+    box-shadow: none !important;
+  }
+
+  .ssSheetHeader     { background: #f0f7f0 !important; border-bottom: 1px solid #ccc !important; }
+  .ssSheetBrandName  { color: #2a6e2a !important; }
+  .ssSheetBrandSub,
+  .ssSheetFieldLabel,
+  .ssSheetWeatherLabel,
+  .ssSheetSummaryLabel,
+  .ssSheetSectionTitle,
+  .ssSheetSafetyLabel,
+  .ssSheetSigLabel   { color: #555 !important; }
+
+  .ssSheetSectionTitle { color: #2a6e2a !important; }
+
+  .ssSheetFieldValue,
+  .ssSheetSummaryValue,
+  .ssSheetSafetyText,
+  .ssSheetSigName      { color: #111 !important; }
+
+  .ssSheetWeatherGrid span { color: #111 !important; }
+  .ssSheetWeatherPending   { color: #666 !important; }
+  .ssSheetDivider          { background: #ddd !important; }
+  .ssSheetWeather          { background: #fafafa !important; }
+
+  .ssSheetTable th { color: #555 !important; border-bottom: 1px solid #ccc !important; }
+  .ssSheetTable td { color: #111 !important; border-bottom: 1px solid #eee !important; }
+
+  .ssSheetSafetyList li { color: #111 !important; }
+  .ssSheetSigLine       { background: #aaa !important; }
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 1100px) {
+  .ssPanelWrap { width: 360px; }
+}
+
+@media (max-width: 900px) {
+  .ssLayout    { flex-direction: column; }
+  .ssPanelWrap { width: 100%; position: static; max-height: none; }
+  .ssStats     { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .ssSheetSigGrid  { grid-template-columns: 1fr; }
+  .ssToolbarTop    { flex-direction: column; align-items: stretch; }
+  .ssToolbarActions { margin-left: 0; }
+  .ssAppCardMeta   { grid-template-columns: 1fr 1fr; }
+  .ssStats         { grid-template-columns: 1fr 1fr; }
+}
