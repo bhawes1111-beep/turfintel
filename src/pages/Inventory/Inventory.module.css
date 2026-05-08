@@ -424,3 +424,439 @@
     justify-content: space-between;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Inventory Products tab  (ip* prefix)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Stat row ─────────────────────────────────────────────────────────────── */
+
+.ipStats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.ipStat {
+  background: var(--color-card);
+  border: var(--card-border);
+  border-radius: var(--card-radius);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-left: 3px solid transparent;
+}
+
+.ipStatOut  { border-left-color: #c03030; background: rgba(192,48,48,0.05); }
+.ipStatCrit { border-left-color: #e05050; }
+.ipStatLow  { border-left-color: #d4883a; }
+.ipStatGood { border-left-color: #4ecb4e; }
+
+.ipStatValue {
+  font-size: 1.8rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--color-text);
+}
+
+.ipStatOut  .ipStatValue { color: #c03030; }
+.ipStatCrit .ipStatValue { color: #e05050; }
+.ipStatLow  .ipStatValue { color: #d4883a; }
+.ipStatGood .ipStatValue { color: #4ecb4e; }
+
+.ipStatLabel {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+/* ── Record count ─────────────────────────────────────────────────────────── */
+
+.ipCount {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+/* ── Stock status badges (4-level) ────────────────────────────────────────── */
+
+.ipStockGood     { background: rgba(74,158,74,0.15);  color: #4ecb4e; border: 1px solid rgba(74,158,74,0.3);  }
+.ipStockLow      { background: rgba(212,136,58,0.15); color: #d4883a; border: 1px solid rgba(212,136,58,0.3); }
+.ipStockCritical { background: rgba(220,60,60,0.15);  color: #e05050; border: 1px solid rgba(220,60,60,0.3);  }
+.ipStockOut      { background: rgba(192,48,48,0.18);  color: #c03030; border: 1px solid rgba(192,48,48,0.4);  }
+
+/* ── Full-width list layout ───────────────────────────────────────────────── */
+
+.ipList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ipCard {
+  text-align: left;
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--color-card);
+  border: var(--card-border);
+  border-radius: var(--card-radius);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.ipCard:hover {
+  border-color: var(--card-hover-border);
+  box-shadow: var(--card-hover-shadow);
+}
+
+/* Severity left accent matching status */
+.ipCard_good     { border-left: 3px solid rgba(74,158,74,0.4); }
+.ipCard_low      { border-left: 3px solid #d4883a; }
+.ipCard_critical { border-left: 3px solid #e05050; }
+.ipCard_out      { border-left: 3px solid #c03030; background: rgba(192,48,48,0.04); }
+
+/* ── Card main content (left side) ───────────────────────────────────────── */
+
+.ipCardMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ipCardTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ipCardName {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.ipCategoryPill {
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: rgba(74,158,74,0.1);
+  color: var(--color-accent);
+  border: 1px solid rgba(74,158,74,0.2);
+  border-radius: 4px;
+  padding: 1px 6px;
+  flex-shrink: 0;
+}
+
+.ipCardSub {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ipCardLocation {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.ipCardVendor {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  opacity: 0.7;
+}
+
+.ipCardVendor::before {
+  content: '·';
+  margin-right: 10px;
+}
+
+/* ── Stock bar (inline on card) ───────────────────────────────────────────── */
+
+.ipBarWrap {
+  height: 4px;
+  background: rgba(255,255,255,0.07);
+  border-radius: 4px;
+  overflow: hidden;
+  max-width: 280px;
+}
+
+.ipBar {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.ipBar_good     { background: #4ecb4e; }
+.ipBar_low      { background: #d4883a; }
+.ipBar_critical { background: #e05050; }
+.ipBar_out      { background: #c03030; width: 0 !important; }
+
+/* ── Card right side (quantity) ───────────────────────────────────────────── */
+
+.ipCardRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+  min-width: 80px;
+}
+
+.ipBigQty {
+  font-size: 1.6rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--color-text);
+}
+
+.ipBigQtyOut {
+  color: #c03030;
+}
+
+.ipCardUnit {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  text-align: right;
+}
+
+.ipViewDetail {
+  font-size: 0.68rem;
+  color: var(--color-accent);
+  opacity: 0;
+  transition: opacity 0.15s;
+  margin-top: 2px;
+}
+
+.ipCard:hover .ipViewDetail { opacity: 1; }
+
+/* ── Modal overlay ────────────────────────────────────────────────────────── */
+
+.ipModalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 8, 2, 0.78);
+  backdrop-filter: blur(3px);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.ipModalPanel {
+  background: linear-gradient(160deg, #0e1e0e, #091409);
+  border: 1px solid rgba(74,158,74,0.28);
+  border-radius: 14px;
+  width: 100%;
+  max-width: 620px;
+  max-height: 88vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,0.6),
+    0 24px 60px rgba(0,0,0,0.7),
+    0 0 40px rgba(74,158,74,0.06);
+}
+
+.ipModalAccent {
+  height: 4px;
+  width: 100%;
+  border-radius: 14px 14px 0 0;
+  flex-shrink: 0;
+}
+
+.ipModalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.ipModalTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 3px;
+}
+
+.ipModalSubtitle {
+  font-size: 0.73rem;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.ipModalHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.ipModalClose {
+  width: 28px;
+  height: 28px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  line-height: 1;
+}
+
+.ipModalClose:hover {
+  background: rgba(255,255,255,0.12);
+  color: var(--color-text);
+}
+
+.ipModalBody {
+  overflow-y: auto;
+  padding: 16px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── Modal sections ───────────────────────────────────────────────────────── */
+
+.ipModalSection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ipModalSectionTitle {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-accent);
+  margin: 0;
+}
+
+.ipModalGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px 16px;
+}
+
+.ipModalField {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ipModalFieldLabel {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+.ipModalFieldValue {
+  font-size: 0.85rem;
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+.ipModalQtyBig {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--color-text);
+  line-height: 1.1;
+}
+
+.ipModalQtyUnit {
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+/* ── Stock bar in modal ───────────────────────────────────────────────────── */
+
+.ipModalBarWrap {
+  background: rgba(255,255,255,0.06);
+  border-radius: 6px;
+  height: 8px;
+  overflow: hidden;
+  position: relative;
+}
+
+.ipModalBarLabels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.6rem;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+}
+
+/* ── Usage tags ───────────────────────────────────────────────────────────── */
+
+.ipUsageList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ipUsageTag {
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: rgba(74,158,74,0.1);
+  color: var(--color-accent);
+  border: 1px solid rgba(74,158,74,0.22);
+  border-radius: 5px;
+  padding: 4px 10px;
+}
+
+.ipUsagePlaceholder {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+  margin: 0;
+  opacity: 0.7;
+}
+
+/* ── Modal notes ──────────────────────────────────────────────────────────── */
+
+.ipModalNotes {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  line-height: 1.65;
+  font-style: italic;
+  margin: 0;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.03);
+  border-left: 3px solid rgba(74,158,74,0.35);
+  border-radius: 0 5px 5px 0;
+}
+
+/* ── Products tab mobile ──────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .ipStats           { grid-template-columns: repeat(2, 1fr); }
+  .ipCard            { flex-wrap: wrap; }
+  .ipCardRight       { flex-direction: row; align-items: center; width: 100%; justify-content: space-between; min-width: unset; }
+  .ipBigQty          { font-size: 1.2rem; }
+  .ipModalPanel      { max-height: 92vh; }
+  .ipModalHeaderRight { gap: 6px; }
+}
