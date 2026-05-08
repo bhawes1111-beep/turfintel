@@ -9,12 +9,14 @@ export default function DashboardCard({
   children,
   wide = false,
   tall = false,
+  full = false,
   className = '',
 }) {
   const classes = [
     styles.card,
     wide  ? styles.wide  : '',
     tall  ? styles.tall  : '',
+    full  ? styles.full  : '',
     className,
   ].filter(Boolean).join(' ')
 

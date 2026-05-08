@@ -61,6 +61,11 @@
   grid-column: span 2;
 }
 
+/* Full: spans all 3 columns for calendar and other full-width widgets */
+.full {
+  grid-column: span 3;
+}
+
 /* Tall: deeper card for priority content — charts, summaries, task lists */
 .tall {
   min-height: var(--card-tall-height);
@@ -96,8 +101,9 @@
     padding: var(--card-padding-mobile);
   }
 
-  /* Lock wide cards to single column — no horizontal overflow */
-  .wide {
+  /* Lock wide/full cards to single column on mobile */
+  .wide,
+  .full {
     grid-column: span 1;
   }
 }

@@ -35,13 +35,14 @@
   display: none;
 }
 
-/* Page content fills remaining space below topBar */
+/* Page content — single scroll container for the entire page */
 .outlet {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .overlay {
