@@ -1,0 +1,164 @@
+/* ── Overview grid ───────────────────────────────────────────────────────── */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+/* ── Stat tile ───────────────────────────────────────────────────────────── */
+
+.statCard {
+  position: relative;
+  background: linear-gradient(160deg, var(--color-card) 0%, var(--color-bg) 100%);
+  border: 1px solid var(--color-border);
+  border-radius: var(--card-radius);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.statCard:hover {
+  border-color: rgba(74, 158, 74, 0.32);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.28);
+}
+
+.statCard::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(74, 158, 74, 0.05) 0%, transparent 55%);
+  pointer-events: none;
+}
+
+.statValue {
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1;
+}
+
+.statLabel {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+  margin-top: 6px;
+}
+
+.statSub {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+/* ── Info card ───────────────────────────────────────────────────────────── */
+
+.infoCard {
+  position: relative;
+  grid-column: span 2;
+  background: linear-gradient(160deg, var(--color-card) 0%, var(--color-bg) 100%);
+  border: 1px solid var(--color-border);
+  border-radius: var(--card-radius);
+  padding: var(--card-padding);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.infoCard:hover {
+  border-color: rgba(74, 158, 74, 0.28);
+}
+
+.infoCard::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(74, 158, 74, 0.04) 0%, transparent 55%);
+  pointer-events: none;
+}
+
+.infoTitle {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.infoRows {
+  display: flex;
+  flex-direction: column;
+}
+
+.infoRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.infoRow:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.infoRowLabel {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  min-width: 0;
+}
+
+.infoRowValue {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ── Badges ──────────────────────────────────────────────────────────────── */
+
+.badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 9px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+.badgeGreen  { color: #4ecb4e; background: rgba(78, 203, 78, 0.1);   border: 1px solid rgba(78, 203, 78, 0.25);  }
+.badgeYellow { color: #d4a43a; background: rgba(212, 164, 58, 0.1);  border: 1px solid rgba(212, 164, 58, 0.25); }
+.badgeRed    { color: #e05050; background: rgba(224, 80, 80, 0.1);   border: 1px solid rgba(224, 80, 80, 0.25);  }
+.badgeBlue   { color: #5ba8a0; background: rgba(91, 168, 160, 0.1);  border: 1px solid rgba(91, 168, 160, 0.25); }
+.badgeGray   { color: #7a9e7a; background: rgba(122, 158, 122, 0.1); border: 1px solid rgba(122, 158, 122, 0.2); }
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 1100px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .infoCard {
+    grid-column: span 1;
+  }
+}

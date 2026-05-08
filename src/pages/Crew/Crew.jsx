@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import PageShell from '../../components/layout/PageShell'
+import CrewOverview  from './tabs/CrewOverview'
 import CrewTasks     from './tabs/CrewTasks'
 import CrewHours     from './tabs/CrewHours'
 import CrewSchedule  from './tabs/CrewSchedule'
 import CrewEmployees from './tabs/CrewEmployees'
 import CrewNotes     from './tabs/CrewNotes'
 
-const TABS = ['Tasks', 'Hours', 'Schedule', 'Employees', 'Notes']
+const TABS = ['Overview', 'Tasks', 'Hours', 'Schedule', 'Employees', 'Notes']
 
 // Placeholder crew roster — swap this array for an API call when backend is ready.
 // status: 'available' | 'later' | 'off'
@@ -20,10 +21,11 @@ const CREW = [
 ]
 
 export default function Crew() {
-  const [activeTab, setActiveTab] = useState('Tasks')
+  const [activeTab, setActiveTab] = useState('Overview')
 
   return (
     <PageShell title="Crew" tabs={TABS} activeTab={activeTab} onTabChange={setActiveTab}>
+      {activeTab === 'Overview'  && <CrewOverview />}
       {activeTab === 'Tasks'     && <CrewTasks     crew={CREW} />}
       {activeTab === 'Hours'     && <CrewHours     crew={CREW} />}
       {activeTab === 'Schedule'  && <CrewSchedule  crew={CREW} />}

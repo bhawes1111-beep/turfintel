@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import PageShell from '../../components/layout/PageShell'
+import SprayOverview    from './tabs/SprayOverview'
 import SprayCalendar    from './tabs/SprayCalendar'
 import BuildSpraySheet  from './tabs/BuildSpraySheet'
 import SprayRecords     from './tabs/SprayRecords'
@@ -7,13 +8,14 @@ import PlannedPrograms  from './tabs/PlannedPrograms'
 import MixCalculator    from './tabs/MixCalculator'
 import SprayReports     from './tabs/SprayReports'
 
-const TABS = ['Spray Calendar', 'Build Spray Sheet', 'Spray Records', 'Planned Programs', 'Mix Calculator', 'Reports']
+const TABS = ['Overview', 'Spray Calendar', 'Build Spray Sheet', 'Spray Records', 'Planned Programs', 'Mix Calculator', 'Reports']
 
 export default function Spray() {
-  const [activeTab, setActiveTab] = useState('Spray Calendar')
+  const [activeTab, setActiveTab] = useState('Overview')
 
   return (
     <PageShell title="Spray" tabs={TABS} activeTab={activeTab} onTabChange={setActiveTab}>
+      {activeTab === 'Overview'         && <SprayOverview />}
       {activeTab === 'Spray Calendar'   && <SprayCalendar />}
       {activeTab === 'Build Spray Sheet' && <BuildSpraySheet />}
       {activeTab === 'Spray Records'    && <SprayRecords />}
