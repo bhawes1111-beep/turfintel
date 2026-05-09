@@ -10,6 +10,7 @@ import GDDCard from './GDDCard'
 import AppEffectivenessCard from './AppEffectivenessCard'
 import { useOperations } from '../../utils/operations/OperationsContext'
 import { acknowledgeAlert, dismissAlert } from '../../utils/operations/actions'
+import RecentActivity from './RecentActivity'
 import styles from './Dashboard.module.css'
 
 export default function Dashboard() {
@@ -91,6 +92,10 @@ export default function Dashboard() {
 
         <DashboardCard title="Equipment Alerts">
           <p className={styles.empty}>No alerts.</p>
+        </DashboardCard>
+
+        <DashboardCard title="Recent Activity" full>
+          <RecentActivity />
         </DashboardCard>
 
         <DashboardCard title="Upcoming Applications" wide>
