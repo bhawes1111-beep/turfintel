@@ -65,6 +65,14 @@ export default function Dashboard() {
           />
         </DashboardCard>
 
+        <DashboardCard title="Weather Intelligence" wide>
+          <WeatherIntelligence />
+        </DashboardCard>
+
+        <DashboardCard title="Irrigation Intelligence" wide>
+          <IrrigationIntelligence />
+        </DashboardCard>
+
         <DashboardCard title="Crew Status">
           <p className={styles.empty}>No crew data.</p>
         </DashboardCard>
@@ -79,14 +87,6 @@ export default function Dashboard() {
 
         <DashboardCard title="Recent Notes">
           <p className={styles.empty}>No recent activity.</p>
-        </DashboardCard>
-
-        <DashboardCard title="Weather Intelligence" wide>
-          <WeatherIntelligence />
-        </DashboardCard>
-
-        <DashboardCard title="Irrigation Intelligence" wide>
-          <IrrigationIntelligence />
         </DashboardCard>
 
       </div>
