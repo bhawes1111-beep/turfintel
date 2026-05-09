@@ -1,0 +1,454 @@
+import { useState, useMemo } from 'react'
+import { useCourse } from '../../context/CourseContext'
+import { EMPLOYEES, TASKS, HOURS_LOG } from '../../data/crew'
+import { EQUIPMENT_LIST } from '../../data/equipment'
+import CrewSchedule  from '../Crew/tabs/CrewSchedule'
+import CrewEmployees from '../Crew/tabs/CrewEmployees'
+import CrewHours     from '../Crew/tabs/CrewHours'
+import CrewNotes     from '../Crew/tabs/CrewNotes'
+import styles from './OperationsBoard.module.css'
+
+const TODAY = '2026-05-08'
+
+const WEATHER = { temp: 68, wind: '8 mph SW', humidity: 64, frost: false }
+
+const ROUTING_OPTIONS  = ['Press & Roll', 'Hammer', 'Normal', 'Modified', 'Event Prep']
+const PATTERN_OPTIONS  = ['8-2', '6-2', '4-2', '2-2', 'Diagonal', 'Cross']
+const DIR_OPTIONS      = ['N/S', 'E/W', 'NE/SW', 'NW/SE']
+const FW_PATTERNS      = ['Striped', 'Diagonal', 'Checker', 'Standard']
+const TEE_PATTERNS     = ['Diagonal', 'Standard', 'Striped', 'Cross']
+const BUNKER_OPTIONS   = ['Raked', 'Skip', 'Deep Rake', 'Edge Only']
+const NOTES_TABS       = ['Daily', 'Weather', 'Super', 'Geo', 'Alerts']
+
+const INITIAL_NOTES = {
+  Daily:   'Morning greens cut in progress. Pre-emergent applied to front nine. Bunker work deferred — James T. absent.',
+  Weather: '68°F at 6:00 AM. Wind 8 mph SW. Low humidity (64%). No precipitation. Ideal spray window 6–10 AM.',
+  Super:   '',
+  Geo:     'Championship Course: Holes 1–18. Member-Guest tournament begins May 11. Priority: presentation quality.',
+  Alerts:  '',
+}
+
+const STATUS_LABEL = {
+  'in-progress':  'In Progress',
+  'open':         'Open',
+  'completed':    'Completed',
+  'blocked':      'Blocked',
+  'weather-hold': 'Weather Hold',
+  'pending':      'Pending',
+}
+
+const PRIORITY_LABEL = {
+  high:    'HIGH',
+  medium:  'MED',
+  routine: 'ROUTINE',
+  low:     'LOW',
+}
+
+const STATUS_ORDER = ['in-progress', 'blocked', 'weather-hold', 'open', 'pending', 'completed']
+
+const TABS = [
+  { id: 'board',     label: 'Operations Board' },
+  { id: 'schedule',  label: 'Schedule' },
+  { id: 'employees', label: 'Employees' },
+  { id: 'hours',     label: 'Hours' },
+  { id: 'notes',     label: 'Notes' },
+]
+
+export default function OperationsBoard() {
+  const { activeCourse } = useCourse()
+  const [activeTab,   setActiveTab]   = useState('board')
+  const [routing,     setRouting]     = useState('Press & Roll')
+  const [panelOpen,   setPanelOpen]   = useState(false)
+  const [notesTab,    setNotesTab]    = useState('Daily')
+  const [notes,       setNotes]       = useState(INITIAL_NOTES)
+  const [mowOps,      setMowOps]      = useState({
+    greensPattern:  '8-2',
+    greensDirection: 'N/S',
+    doubleCut:      false,
+    rollGreens:     true,
+    fairwayPattern: 'Striped',
+    teePattern:     'Diagonal',
+    bunkersStatus:  'Raked',
+  })
+
+  const eqByCategory = useMemo(() => {
+    const map = {}
+    EQUIPMENT_LIST.forEach(eq => { if (!map[eq.category]) map[eq.category] = eq })
+    return map
+  }, [])
+
+  const empById = useMemo(() => {
+    const map = {}
+    EMPLOYEES.forEach(e => { map[e.employeeId] = e })
+    return map
+  }, [])
+
+  const todayLog = useMemo(() => {
+    const map = {}
+    HOURS_LOG.filter(h => h.date === TODAY).forEach(h => { map[h.employeeId] = h })
+    return map
+  }, [])
+
+  const sortedTasks = useMemo(() =>
+    [...TASKS].sort((a, b) => {
+      const ai = STATUS_ORDER.indexOf(a.status)
+      const bi = STATUS_ORDER.indexOf(b.status)
+      return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi)
+    }),
+  [])
+
+  const mowNote = useMemo(() => {
+    const parts = [`Greens: Pattern ${mowOps.greensPattern} — ${mowOps.greensDirection}`]
+    if (mowOps.doubleCut)  parts.push('Double Cut')
+    if (mowOps.rollGreens) parts.push('Roll')
+    parts.push(`Fairways: ${mowOps.fairwayPattern}`)
+    parts.push(`Tees: ${mowOps.teePattern}`)
+    parts.push(`Bunkers: ${mowOps.bunkersStatus}`)
+    return parts.join(' · ')
+  }, [mowOps])
+
+  const stats = useMemo(() => {
+    const logs = Object.values(todayLog)
+    return {
+      active:   logs.filter(h => ['clocked-in','active','completed'].includes(h.status)).length,
+      absent:   logs.filter(h => ['absent','call-out'].includes(h.status)).length,
+      late:     logs.filter(h => h.status === 'late').length,
+      totalHrs: logs.reduce((s, h) => s + (h.totalHours || 0), 0),
+    }
+  }, [todayLog])
+
+  function setMow(key, val) {
+    setMowOps(prev => ({ ...prev, [key]: val }))
+  }
+
+  function rosterDotStatus(log) {
+    if (!log) return 'dim'
+    if (['clocked-in','active'].includes(log.status)) return 'green'
+    if (['absent','call-out'].includes(log.status)) return 'red'
+    if (log.status === 'late') return 'yellow'
+    if (log.status === 'completed') return 'done'
+    return 'dim'
+  }
+
+  return (
+    <div className={styles.obPage}>
+
+      {/* ── Tab bar ─────────────────────────────────────────────────────── */}
+      <div className={styles.obTabBar}>
+        {TABS.map(t => (
+          <button
+            key={t.id}
+            className={`${styles.obTab} ${activeTab === t.id ? styles.obTabActive : ''}`}
+            onClick={() => setActiveTab(t.id)}
+          >
+            {t.label}
+          </button>
+        ))}
+        <div className={styles.obTabSpacer} />
+        <span className={styles.obCourseLabel}>{activeCourse?.name}</span>
+      </div>
+
+      {/* ── Secondary tabs (reuse existing Crew components) ─────────────── */}
+      {activeTab !== 'board' && (
+        <div className={styles.obSecondary}>
+          {activeTab === 'schedule'  && <CrewSchedule />}
+          {activeTab === 'employees' && <CrewEmployees />}
+          {activeTab === 'hours'     && <CrewHours />}
+          {activeTab === 'notes'     && <CrewNotes />}
+        </div>
+      )}
+
+      {/* ── Primary Operations Board ─────────────────────────────────────── */}
+      {activeTab === 'board' && (
+        <div className={styles.obBoard}>
+
+          {/* Header */}
+          <div className={styles.obHeader}>
+            <div className={styles.obHeaderLeft}>
+              <span className={styles.obDate}>Friday · May 9, 2026</span>
+              <div className={styles.obRoutingRow}>
+                <span className={styles.obRoutingLabel}>Routing</span>
+                <select
+                  className={styles.obRoutingSelect}
+                  value={routing}
+                  onChange={e => setRouting(e.target.value)}
+                >
+                  {ROUTING_OPTIONS.map(r => <option key={r}>{r}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div className={styles.obHeaderCenter}>
+              <span className={styles.obWeather}>
+                {WEATHER.temp}°F &nbsp;·&nbsp; {WEATHER.wind} &nbsp;·&nbsp; {WEATHER.humidity}% RH
+              </span>
+              <span
+                className={styles.obFrostBadge}
+                data-frost={WEATHER.frost ? 'warn' : 'clear'}
+              >
+                {WEATHER.frost ? '⚠ FROST RISK' : '✓ No Frost Risk'}
+              </span>
+            </div>
+
+            <div className={styles.obHeaderRight}>
+              <div className={styles.obStats}>
+                <div className={styles.obStat}>
+                  <span className={styles.obStatVal}>{stats.active}</span>
+                  <span className={styles.obStatLbl}>Active</span>
+                </div>
+                <div className={styles.obStat}>
+                  <span className={styles.obStatVal}>{stats.absent}</span>
+                  <span className={styles.obStatLbl}>Absent</span>
+                </div>
+                <div className={styles.obStat}>
+                  <span className={styles.obStatVal}>{stats.totalHrs.toFixed(0)}h</span>
+                  <span className={styles.obStatLbl}>Hours</span>
+                </div>
+              </div>
+              <button className={styles.obQuickBtn}>+ Task</button>
+              <button
+                className={`${styles.obPanelBtn} ${panelOpen ? styles.obPanelBtnActive : ''}`}
+                onClick={() => setPanelOpen(o => !o)}
+                title="Toggle Operations Panel"
+              >
+                Panel
+              </button>
+            </div>
+          </div>
+
+          {/* 3-column layout */}
+          <div className={styles.obColumns}>
+
+            {/* Left: Crew Roster ───────────────────────────────────────── */}
+            <div className={styles.obColLeft}>
+              <div className={styles.obColHeader}>Crew Today</div>
+              <div className={styles.obRosterList}>
+                {EMPLOYEES.map(emp => {
+                  const log = todayLog[emp.employeeId]
+                  const dot = rosterDotStatus(log)
+                  const initials = emp.fullName.split(' ').map(n => n[0]).join('')
+                  const firstName = emp.fullName.split(' ')[0]
+                  const lastInitial = emp.fullName.split(' ')[1]?.[0]
+                  return (
+                    <div key={emp.employeeId} className={styles.obRosterCard} data-dot={dot}>
+                      <div className={styles.obRosterAvatar} data-dot={dot}>{initials}</div>
+                      <div className={styles.obRosterInfo}>
+                        <span className={styles.obRosterName}>{firstName} {lastInitial}.</span>
+                        <span className={styles.obRosterRole}>{emp.role}</span>
+                      </div>
+                      <div className={styles.obRosterDot} data-dot={dot} />
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Center: Task Cards ──────────────────────────────────────── */}
+            <div className={styles.obColCenter}>
+              <div className={styles.obColHeader}>
+                Today's Operations
+                <span className={styles.obTaskCount}>{TASKS.length} tasks</span>
+              </div>
+              <div className={styles.obTaskList}>
+                {sortedTasks.map(task => {
+                  const progress = task.estimatedHours > 0
+                    ? Math.min(100, Math.round((task.completedHours / task.estimatedHours) * 100))
+                    : 0
+                  const assignedEmps = (task.assignedTo || []).map(id => empById[id]).filter(Boolean)
+                  return (
+                    <div
+                      key={task.id}
+                      className={styles.obTaskCard}
+                      data-status={task.status}
+                    >
+                      <div className={styles.obTaskTop}>
+                        <div className={styles.obTaskTitleRow}>
+                          <span className={styles.obTaskTitle}>{task.title}</span>
+                          <span className={styles.obPriBadge} data-priority={task.priority}>
+                            {PRIORITY_LABEL[task.priority] ?? task.priority}
+                          </span>
+                        </div>
+                        <span className={styles.obStatusPill} data-status={task.status}>
+                          {STATUS_LABEL[task.status] ?? task.status}
+                        </span>
+                      </div>
+
+                      <div className={styles.obTaskArea}>{task.assignedArea}</div>
+
+                      {/* Assigned crew */}
+                      {assignedEmps.length > 0 ? (
+                        <div className={styles.obTaskAssigned}>
+                          {assignedEmps.map(emp => (
+                            <span key={emp.employeeId} className={styles.obEmpChip}>
+                              {emp.fullName.split(' ').map(n => n[0]).join('')}
+                            </span>
+                          ))}
+                          <span className={styles.obAssignedNames}>
+                            {assignedEmps.map(e => e.fullName.split(' ')[0]).join(', ')}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className={styles.obUnassigned}>Unassigned</div>
+                      )}
+
+                      {/* Progress bar */}
+                      {task.estimatedHours > 0 && (
+                        <div className={styles.obProgressRow}>
+                          <div className={styles.obProgressTrack}>
+                            <div
+                              className={styles.obProgressFill}
+                              data-status={task.status}
+                              style={{ width: `${progress}%` }}
+                            />
+                          </div>
+                          <span className={styles.obProgressLabel}>
+                            {task.completedHours}h / {task.estimatedHours}h
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Equipment chips */}
+                      {task.equipment.length > 0 && (
+                        <div className={styles.obEqRow}>
+                          {task.equipment.map(name => {
+                            const eq = eqByCategory[name]
+                            return (
+                              <span
+                                key={name}
+                                className={styles.obEqChip}
+                                data-eqstatus={eq?.status ?? 'unknown'}
+                                title={eq ? `${eq.name} — ${eq.status}` : name}
+                              >
+                                {eq?.status === 'out-of-service' && '🔒 '}
+                                {eq?.status === 'needs-maintenance' && '⚠ '}
+                                {name}
+                              </span>
+                            )
+                          })}
+                        </div>
+                      )}
+
+                      {/* Notes */}
+                      {task.notes && (
+                        <div className={styles.obTaskNote}>{task.notes}</div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Right: Operations Panel ─────────────────────────────────── */}
+            <div className={`${styles.obColRight} ${panelOpen ? styles.obColRightOpen : ''}`}>
+
+              {/* Turf Operations Section */}
+              <div className={styles.obPanelSec}>
+                <div className={styles.obPanelSecHeader}>Turf Operations</div>
+
+                <div className={styles.obPanelGroup}>
+                  <div className={styles.obGroupLabel}>Greens</div>
+                  <div className={styles.obCtrlRow}>
+                    <label className={styles.obCtrlLabel}>Pattern</label>
+                    <select className={styles.obCtrlSelect}
+                      value={mowOps.greensPattern}
+                      onChange={e => setMow('greensPattern', e.target.value)}
+                    >
+                      {PATTERN_OPTIONS.map(p => <option key={p}>{p}</option>)}
+                    </select>
+                  </div>
+                  <div className={styles.obCtrlRow}>
+                    <label className={styles.obCtrlLabel}>Direction</label>
+                    <select className={styles.obCtrlSelect}
+                      value={mowOps.greensDirection}
+                      onChange={e => setMow('greensDirection', e.target.value)}
+                    >
+                      {DIR_OPTIONS.map(d => <option key={d}>{d}</option>)}
+                    </select>
+                  </div>
+                  <div className={styles.obToggleRow}>
+                    <button
+                      className={styles.obToggle}
+                      data-on={mowOps.doubleCut}
+                      onClick={() => setMow('doubleCut', !mowOps.doubleCut)}
+                    >Double Cut</button>
+                    <button
+                      className={styles.obToggle}
+                      data-on={mowOps.rollGreens}
+                      onClick={() => setMow('rollGreens', !mowOps.rollGreens)}
+                    >Roll Greens</button>
+                  </div>
+                </div>
+
+                <div className={styles.obPanelGroup}>
+                  <div className={styles.obGroupLabel}>Fairways</div>
+                  <div className={styles.obCtrlRow}>
+                    <label className={styles.obCtrlLabel}>Pattern</label>
+                    <select className={styles.obCtrlSelect}
+                      value={mowOps.fairwayPattern}
+                      onChange={e => setMow('fairwayPattern', e.target.value)}
+                    >
+                      {FW_PATTERNS.map(p => <option key={p}>{p}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                <div className={styles.obPanelGroup}>
+                  <div className={styles.obGroupLabel}>Tees &amp; Bunkers</div>
+                  <div className={styles.obCtrlRow}>
+                    <label className={styles.obCtrlLabel}>Tee Pattern</label>
+                    <select className={styles.obCtrlSelect}
+                      value={mowOps.teePattern}
+                      onChange={e => setMow('teePattern', e.target.value)}
+                    >
+                      {TEE_PATTERNS.map(p => <option key={p}>{p}</option>)}
+                    </select>
+                  </div>
+                  <div className={styles.obCtrlRow}>
+                    <label className={styles.obCtrlLabel}>Bunkers</label>
+                    <select className={styles.obCtrlSelect}
+                      value={mowOps.bunkersStatus}
+                      onChange={e => setMow('bunkersStatus', e.target.value)}
+                    >
+                      {BUNKER_OPTIONS.map(b => <option key={b}>{b}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                <div className={styles.obMowNote}>
+                  <div className={styles.obMowNoteLabel}>Auto-note</div>
+                  <div className={styles.obMowNoteText}>{mowNote}</div>
+                </div>
+              </div>
+
+              {/* Notes Section */}
+              <div className={styles.obPanelSec}>
+                <div className={styles.obPanelSecHeader}>Notes</div>
+                <div className={styles.obNotesTabs}>
+                  {NOTES_TABS.map(t => (
+                    <button
+                      key={t}
+                      className={`${styles.obNotesTab} ${notesTab === t ? styles.obNotesTabActive : ''}`}
+                      onClick={() => setNotesTab(t)}
+                    >{t}</button>
+                  ))}
+                </div>
+                <textarea
+                  className={styles.obNotesArea}
+                  value={notes[notesTab]}
+                  onChange={e => setNotes(prev => ({ ...prev, [notesTab]: e.target.value }))}
+                  placeholder={`${notesTab} notes...`}
+                />
+              </div>
+
+            </div>
+          </div>
+
+          {/* Mobile panel overlay */}
+          {panelOpen && (
+            <div className={styles.obOverlay} onClick={() => setPanelOpen(false)} />
+          )}
+        </div>
+      )}
+    </div>
+  )
+}

@@ -5,7 +5,7 @@ import ToastProvider from './components/feedback/ToastProvider'
 import Layout from './components/layout/Layout'
 import Login from './pages/Login/Login'
 import Dashboard from './pages/Dashboard/Dashboard'
-import Crew from './pages/Crew/Crew'
+import OperationsBoard from './pages/Operations/OperationsBoard'
 import Chemical from './pages/Chemical/Chemical'
 import Spray from './pages/Spray/Spray'
 import Disease from './pages/Disease/Disease'
@@ -32,7 +32,7 @@ export default function App() {
         <Route path="/" element={<Layout />}>
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
-          <Route path="crew/*" element={<Crew />} />
+          <Route path="crew/*" element={<OperationsBoard />} />
           <Route path="chemical/*" element={<Chemical />} />
           <Route path="spray/*" element={<Spray />} />
           <Route path="disease/*" element={<Disease />} />

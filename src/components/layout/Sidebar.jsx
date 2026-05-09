@@ -121,7 +121,7 @@ const ICONS = {
 
 const NAV_ITEMS = [
   { to: '/dashboard',          label: 'Dashboard',          icon: 'dashboard'          },
-  { to: '/crew',               label: 'Crew',               icon: 'crew'               },
+  { to: '/crew',               label: 'Operations Board',   icon: 'crew'               },
   { to: '/chemical',           label: 'Chemical',           icon: 'chemical'           },
   { to: '/spray',              label: 'Spray',              icon: 'spray'              },
   { to: '/disease',            label: 'Disease',            icon: 'disease'            },
