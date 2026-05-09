@@ -44,7 +44,7 @@
   padding: 18px 20px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 11px;
   box-shadow:
     0 4px 24px rgba(0, 0, 0, 0.45),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
@@ -183,7 +183,6 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 6px 0;
 }
 
 .wsMainLeft {
@@ -200,18 +199,18 @@
 }
 
 .wsWeatherEmoji {
-  font-size: 54px;
+  font-size: 48px;
   line-height: 1;
   flex-shrink: 0;
   filter: drop-shadow(0 0 8px rgba(74, 158, 74, 0.18));
 }
 
 .wsCurrentTemp {
-  font-size: 54px;
+  font-size: 48px;
   font-weight: 700;
   color: var(--color-text);
   line-height: 1;
-  letter-spacing: -2px;
+  letter-spacing: -1.5px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -228,7 +227,7 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 10px 8px;
-  padding: 12px 14px;
+  padding: 8px 12px;
   border-left: 1px solid rgba(74, 158, 74, 0.1);
   min-width: 0;
 }
@@ -303,10 +302,12 @@
 
 .wsEmbForecast {
   display: flex;
-  gap: 6px;
+  gap: 5px;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
+  padding-top: 2px;
   padding-bottom: 4px;
+  border-top: 1px solid rgba(74, 158, 74, 0.08);
   scrollbar-width: thin;
   scrollbar-color: rgba(60, 140, 60, 0.3) transparent;
 }
@@ -321,6 +322,7 @@
 .wsEmbFcastCard {
   flex: 1;
   min-width: 84px;
+  max-width: 120px;
   flex-shrink: 0;
   scroll-snap-align: start;
   display: flex;
@@ -426,11 +428,11 @@
   }
 
   .wsCurrentTemp {
-    font-size: 44px;
+    font-size: 40px;
   }
 
   .wsWeatherEmoji {
-    font-size: 44px;
+    font-size: 40px;
   }
 
   .wsMetricsGrid {

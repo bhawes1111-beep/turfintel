@@ -3,7 +3,7 @@
 .gddWrap {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .gddEmpty {
@@ -27,7 +27,7 @@
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  padding: 9px 6px;
+  padding: 7px 6px;
   background: rgba(74,158,74,0.04);
 }
 
@@ -60,13 +60,13 @@
 .gddList {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .gddRow {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 4px;
 }
 
 .gddRowHeader {
