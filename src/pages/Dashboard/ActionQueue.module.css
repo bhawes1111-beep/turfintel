@@ -1,0 +1,111 @@
+/* ── List container ───────────────────────────────────────────────────────── */
+
+.aqList {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Queue item ───────────────────────────────────────────────────────────── */
+
+.aqItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px 10px 10px;
+  border-bottom: 1px solid var(--color-border);
+  border-left: 3px solid transparent; /* color set inline per severity */
+  transition: background 0.12s;
+  min-width: 0;
+}
+
+.aqItem:last-child {
+  border-bottom: none;
+}
+
+.aqItem:hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+/* ── Module icon ──────────────────────────────────────────────────────────── */
+
+.aqIcon {
+  font-size: 14px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  line-height: 1;
+  width: 18px;
+  text-align: center;
+}
+
+/* ── Body: title + context ────────────────────────────────────────────────── */
+
+.aqBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.aqTitle {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text);
+  line-height: 1.3;
+  margin: 0;
+}
+
+.aqContext {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+  margin: 3px 0 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Meta: module tag + timestamp ─────────────────────────────────────────── */
+
+.aqMeta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.aqModuleTag {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.aqTimestamp {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+/* ── Empty state ──────────────────────────────────────────────────────────── */
+
+.aqEmpty {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  padding: 16px 0;
+  text-align: center;
+  margin: 0;
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+
+@media (max-width: 600px) {
+  .aqContext {
+    display: none; /* hide context on very narrow screens, keep title + meta */
+  }
+
+  .aqItem {
+    padding: 9px 10px 9px 8px;
+  }
+}
