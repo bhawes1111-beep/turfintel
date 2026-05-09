@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useCourse } from '../../context/CourseContext'
+import { useToast } from '../../utils/feedback/toastContext'
 import { EMPLOYEES, TASKS, HOURS_LOG } from '../../data/crew'
 import { EQUIPMENT_LIST } from '../../data/equipment'
 import CrewSchedule  from '../Crew/tabs/CrewSchedule'
@@ -12,13 +13,13 @@ const TODAY = '2026-05-08'
 
 const WEATHER = { temp: 68, wind: '8 mph SW', humidity: 64, frost: false }
 
-const ROUTING_OPTIONS  = ['Press & Roll', 'Hammer', 'Normal', 'Modified', 'Event Prep']
-const PATTERN_OPTIONS  = ['8-2', '6-2', '4-2', '2-2', 'Diagonal', 'Cross']
-const DIR_OPTIONS      = ['N/S', 'E/W', 'NE/SW', 'NW/SE']
-const FW_PATTERNS      = ['Striped', 'Diagonal', 'Checker', 'Standard']
-const TEE_PATTERNS     = ['Diagonal', 'Standard', 'Striped', 'Cross']
-const BUNKER_OPTIONS   = ['Raked', 'Skip', 'Deep Rake', 'Edge Only']
-const NOTES_TABS       = ['Daily', 'Weather', 'Super', 'Geo', 'Alerts']
+const ROUTING_OPTIONS = ['Press & Roll', 'Hammer', 'Normal', 'Modified', 'Event Prep']
+const PATTERN_OPTIONS = ['8-2', '6-2', '4-2', '2-2', 'Diagonal', 'Cross']
+const DIR_OPTIONS     = ['N/S', 'E/W', 'NE/SW', 'NW/SE']
+const FW_PATTERNS     = ['Striped', 'Diagonal', 'Checker', 'Standard']
+const TEE_PATTERNS    = ['Diagonal', 'Standard', 'Striped', 'Cross']
+const BUNKER_OPTIONS  = ['Raked', 'Skip', 'Deep Rake', 'Edge Only']
+const NOTES_TABS      = ['Daily', 'Weather', 'Super', 'Geo', 'Alerts']
 
 const INITIAL_NOTES = {
   Daily:   'Morning greens cut in progress. Pre-emergent applied to front nine. Bunker work deferred — James T. absent.',
@@ -38,13 +39,16 @@ const STATUS_LABEL = {
 }
 
 const PRIORITY_LABEL = {
-  high:    'HIGH',
-  medium:  'MED',
-  routine: 'ROUTINE',
-  low:     'LOW',
+  high: 'HIGH', medium: 'MED', routine: 'ROUTINE', low: 'LOW',
 }
 
-const STATUS_ORDER = ['in-progress', 'blocked', 'weather-hold', 'open', 'pending', 'completed']
+const TASK_GROUPS = [
+  { key: 'active',    label: 'Active Operations',   statuses: ['in-progress', 'blocked', 'weather-hold'] },
+  { key: 'open',      label: 'Open Tasks',           statuses: ['open', 'pending'] },
+  { key: 'completed', label: 'Completed Operations', statuses: ['completed'] },
+]
+
+const DENSITY_OPTIONS = ['Compact', 'Comfortable', 'Expanded']
 
 const TABS = [
   { id: 'board',     label: 'Operations Board' },
@@ -56,20 +60,41 @@ const TABS = [
 
 export default function OperationsBoard() {
   const { activeCourse } = useCourse()
-  const [activeTab,   setActiveTab]   = useState('board')
-  const [routing,     setRouting]     = useState('Press & Roll')
-  const [panelOpen,   setPanelOpen]   = useState(false)
-  const [notesTab,    setNotesTab]    = useState('Daily')
-  const [notes,       setNotes]       = useState(INITIAL_NOTES)
-  const [mowOps,      setMowOps]      = useState({
-    greensPattern:  '8-2',
+  const toast = useToast()
+
+  // ── Tab / layout ─────────────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState('board')
+  const [routing,   setRouting]   = useState('Press & Roll')
+  const [panelOpen, setPanelOpen] = useState(false)
+
+  // ── Board interaction ─────────────────────────────────────────────────────
+  const [density,         setDensity]         = useState('comfortable')
+  const [collapsedGroups, setCollapsedGroups] = useState(new Set())
+  const [taskOverrides,   setTaskOverrides]   = useState({})
+  const [expandedNoteIds, setExpandedNoteIds] = useState(new Set())
+  const [openMenuId,      setOpenMenuId]      = useState(null)
+
+  // ── Live clock ────────────────────────────────────────────────────────────
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(t)
+  }, [])
+
+  // ── Right panel ───────────────────────────────────────────────────────────
+  const [notesTab, setNotesTab] = useState('Daily')
+  const [notes,    setNotes]    = useState(INITIAL_NOTES)
+  const [mowOps,   setMowOps]   = useState({
+    greensPattern:   '8-2',
     greensDirection: 'N/S',
-    doubleCut:      false,
-    rollGreens:     true,
-    fairwayPattern: 'Striped',
-    teePattern:     'Diagonal',
-    bunkersStatus:  'Raked',
+    doubleCut:       false,
+    rollGreens:      true,
+    fairwayPattern:  'Striped',
+    teePattern:      'Diagonal',
+    bunkersStatus:   'Raked',
   })
+
+  // ── Derived data ──────────────────────────────────────────────────────────
 
   const eqByCategory = useMemo(() => {
     const map = {}
@@ -89,13 +114,16 @@ export default function OperationsBoard() {
     return map
   }, [])
 
-  const sortedTasks = useMemo(() =>
-    [...TASKS].sort((a, b) => {
-      const ai = STATUS_ORDER.indexOf(a.status)
-      const bi = STATUS_ORDER.indexOf(b.status)
-      return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi)
-    }),
-  [])
+  const effectiveTasks = useMemo(() =>
+    TASKS.map(t => ({ ...t, status: taskOverrides[t.id]?.status ?? t.status })),
+  [taskOverrides])
+
+  const groupedTasks = useMemo(() =>
+    TASK_GROUPS.map(g => ({
+      ...g,
+      tasks: effectiveTasks.filter(t => g.statuses.includes(t.status)),
+    })),
+  [effectiveTasks])
 
   const mowNote = useMemo(() => {
     const parts = [`Greens: Pattern ${mowOps.greensPattern} — ${mowOps.greensDirection}`]
@@ -117,18 +145,58 @@ export default function OperationsBoard() {
     }
   }, [todayLog])
 
+  const doneCount = useMemo(() =>
+    effectiveTasks.filter(t => t.status === 'completed').length,
+  [effectiveTasks])
+
+  const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+
+  // ── Handlers ──────────────────────────────────────────────────────────────
+
   function setMow(key, val) {
     setMowOps(prev => ({ ...prev, [key]: val }))
   }
 
-  function rosterDotStatus(log) {
+  function toggleGroup(key) {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev)
+      next.has(key) ? next.delete(key) : next.add(key)
+      return next
+    })
+  }
+
+  function toggleNote(taskId) {
+    setExpandedNoteIds(prev => {
+      const next = new Set(prev)
+      next.has(taskId) ? next.delete(taskId) : next.add(taskId)
+      return next
+    })
+  }
+
+  function handleAction(taskId, action) {
+    const original = TASKS.find(t => t.id === taskId)?.status ?? 'open'
+    const current  = taskOverrides[taskId]?.status ?? original
+    if (action === 'complete') {
+      setTaskOverrides(p => ({ ...p, [taskId]: { status: current === 'completed' ? original : 'completed' } }))
+    } else if (action === 'hold') {
+      setTaskOverrides(p => ({ ...p, [taskId]: { status: current === 'weather-hold' ? original : 'weather-hold' } }))
+    } else if (action === 'delay') {
+      toast.info('Delay scheduling coming soon')
+    } else if (action === 'reassign') {
+      toast.info('Reassignment coming soon')
+    }
+  }
+
+  function rosterDot(log) {
     if (!log) return 'dim'
     if (['clocked-in','active'].includes(log.status)) return 'green'
-    if (['absent','call-out'].includes(log.status)) return 'red'
-    if (log.status === 'late') return 'yellow'
+    if (['absent','call-out'].includes(log.status))   return 'red'
+    if (log.status === 'late')      return 'yellow'
     if (log.status === 'completed') return 'done'
     return 'dim'
   }
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className={styles.obPage}>
@@ -145,10 +213,11 @@ export default function OperationsBoard() {
           </button>
         ))}
         <div className={styles.obTabSpacer} />
+        <span className={styles.obClock}>{timeStr}</span>
         <span className={styles.obCourseLabel}>{activeCourse?.name}</span>
       </div>
 
-      {/* ── Secondary tabs (reuse existing Crew components) ─────────────── */}
+      {/* ── Secondary tabs ───────────────────────────────────────────────── */}
       {activeTab !== 'board' && (
         <div className={styles.obSecondary}>
           {activeTab === 'schedule'  && <CrewSchedule />}
@@ -182,10 +251,7 @@ export default function OperationsBoard() {
               <span className={styles.obWeather}>
                 {WEATHER.temp}°F &nbsp;·&nbsp; {WEATHER.wind} &nbsp;·&nbsp; {WEATHER.humidity}% RH
               </span>
-              <span
-                className={styles.obFrostBadge}
-                data-frost={WEATHER.frost ? 'warn' : 'clear'}
-              >
+              <span className={styles.obFrostBadge} data-frost={WEATHER.frost ? 'warn' : 'clear'}>
                 {WEATHER.frost ? '⚠ FROST RISK' : '✓ No Frost Risk'}
               </span>
             </div>
@@ -197,12 +263,16 @@ export default function OperationsBoard() {
                   <span className={styles.obStatLbl}>Active</span>
                 </div>
                 <div className={styles.obStat}>
-                  <span className={styles.obStatVal}>{stats.absent}</span>
-                  <span className={styles.obStatLbl}>Absent</span>
+                  <span className={styles.obStatVal}>{doneCount}</span>
+                  <span className={styles.obStatLbl}>Done</span>
+                </div>
+                <div className={styles.obStat} data-late={stats.late > 0 ? 'true' : 'false'}>
+                  <span className={styles.obStatVal}>{stats.late}</span>
+                  <span className={styles.obStatLbl}>Late</span>
                 </div>
                 <div className={styles.obStat}>
-                  <span className={styles.obStatVal}>{stats.totalHrs.toFixed(0)}h</span>
-                  <span className={styles.obStatLbl}>Hours</span>
+                  <span className={styles.obStatVal}>{stats.absent}</span>
+                  <span className={styles.obStatLbl}>Absent</span>
                 </div>
               </div>
               <button className={styles.obQuickBtn}>+ Task</button>
@@ -225,15 +295,15 @@ export default function OperationsBoard() {
               <div className={styles.obRosterList}>
                 {EMPLOYEES.map(emp => {
                   const log = todayLog[emp.employeeId]
-                  const dot = rosterDotStatus(log)
+                  const dot = rosterDot(log)
                   const initials = emp.fullName.split(' ').map(n => n[0]).join('')
-                  const firstName = emp.fullName.split(' ')[0]
-                  const lastInitial = emp.fullName.split(' ')[1]?.[0]
                   return (
                     <div key={emp.employeeId} className={styles.obRosterCard} data-dot={dot}>
                       <div className={styles.obRosterAvatar} data-dot={dot}>{initials}</div>
                       <div className={styles.obRosterInfo}>
-                        <span className={styles.obRosterName}>{firstName} {lastInitial}.</span>
+                        <span className={styles.obRosterName}>
+                          {emp.fullName.split(' ')[0]} {emp.fullName.split(' ')[1]?.[0]}.
+                        </span>
                         <span className={styles.obRosterRole}>{emp.role}</span>
                       </div>
                       <div className={styles.obRosterDot} data-dot={dot} />
@@ -243,105 +313,259 @@ export default function OperationsBoard() {
               </div>
             </div>
 
-            {/* Center: Task Cards ──────────────────────────────────────── */}
+            {/* Center: Task Groups ─────────────────────────────────────── */}
             <div className={styles.obColCenter}>
-              <div className={styles.obColHeader}>
-                Today's Operations
-                <span className={styles.obTaskCount}>{TASKS.length} tasks</span>
-              </div>
-              <div className={styles.obTaskList}>
-                {sortedTasks.map(task => {
-                  const progress = task.estimatedHours > 0
-                    ? Math.min(100, Math.round((task.completedHours / task.estimatedHours) * 100))
-                    : 0
-                  const assignedEmps = (task.assignedTo || []).map(id => empById[id]).filter(Boolean)
-                  return (
-                    <div
-                      key={task.id}
-                      className={styles.obTaskCard}
-                      data-status={task.status}
+
+              {/* Sticky center header: title + density toggle */}
+              <div className={styles.obCenterHeader}>
+                <div className={styles.obCenterTitle}>
+                  Today's Operations
+                  <span className={styles.obTaskCount}>{effectiveTasks.length} tasks</span>
+                </div>
+                <div className={styles.obDensityToggle}>
+                  {DENSITY_OPTIONS.map(d => (
+                    <button
+                      key={d}
+                      className={styles.obDensityBtn}
+                      data-active={density === d.toLowerCase()}
+                      onClick={() => setDensity(d.toLowerCase())}
                     >
-                      <div className={styles.obTaskTop}>
-                        <div className={styles.obTaskTitleRow}>
-                          <span className={styles.obTaskTitle}>{task.title}</span>
-                          <span className={styles.obPriBadge} data-priority={task.priority}>
-                            {PRIORITY_LABEL[task.priority] ?? task.priority}
-                          </span>
-                        </div>
-                        <span className={styles.obStatusPill} data-status={task.status}>
-                          {STATUS_LABEL[task.status] ?? task.status}
-                        </span>
-                      </div>
+                      {d}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-                      <div className={styles.obTaskArea}>{task.assignedArea}</div>
+              {/* Scrollable task area */}
+              <div className={styles.obCenterScroll} data-density={density}>
+                <div className={styles.obTaskList}>
+                  {groupedTasks.map(group => group.tasks.length === 0 ? null : (
+                    <div key={group.key} className={styles.obGroup}>
 
-                      {/* Assigned crew */}
-                      {assignedEmps.length > 0 ? (
-                        <div className={styles.obTaskAssigned}>
-                          {assignedEmps.map(emp => (
-                            <span key={emp.employeeId} className={styles.obEmpChip}>
-                              {emp.fullName.split(' ').map(n => n[0]).join('')}
-                            </span>
-                          ))}
-                          <span className={styles.obAssignedNames}>
-                            {assignedEmps.map(e => e.fullName.split(' ')[0]).join(', ')}
-                          </span>
-                        </div>
-                      ) : (
-                        <div className={styles.obUnassigned}>Unassigned</div>
-                      )}
+                      {/* Sticky group header */}
+                      <button
+                        className={styles.obGroupHeader}
+                        onClick={() => toggleGroup(group.key)}
+                      >
+                        <span className={styles.obSectionLabel}>{group.label}</span>
+                        <span className={styles.obSectionCount}>({group.tasks.length})</span>
+                        <span
+                          className={styles.obSectionChevron}
+                          data-collapsed={collapsedGroups.has(group.key)}
+                        >▾</span>
+                      </button>
 
-                      {/* Progress bar */}
-                      {task.estimatedHours > 0 && (
-                        <div className={styles.obProgressRow}>
-                          <div className={styles.obProgressTrack}>
-                            <div
-                              className={styles.obProgressFill}
-                              data-status={task.status}
-                              style={{ width: `${progress}%` }}
-                            />
-                          </div>
-                          <span className={styles.obProgressLabel}>
-                            {task.completedHours}h / {task.estimatedHours}h
-                          </span>
-                        </div>
-                      )}
+                      {!collapsedGroups.has(group.key) && (
+                        <div className={styles.obGroupTasks}>
+                          {group.tasks.map(task => {
+                            const isCompleted    = task.status === 'completed'
+                            const isWeatherHold  = task.status === 'weather-hold'
+                            const hasLongNote    = task.notes && task.notes.length > 80
+                            const isNoteExpanded = density === 'expanded' || expandedNoteIds.has(task.id)
+                            const progress       = task.estimatedHours > 0
+                              ? Math.min(100, Math.round((task.completedHours / task.estimatedHours) * 100))
+                              : 0
+                            const assignedEmps = (task.assignedTo || [])
+                              .map(id => empById[id]).filter(Boolean)
 
-                      {/* Equipment chips */}
-                      {task.equipment.length > 0 && (
-                        <div className={styles.obEqRow}>
-                          {task.equipment.map(name => {
-                            const eq = eqByCategory[name]
                             return (
-                              <span
-                                key={name}
-                                className={styles.obEqChip}
-                                data-eqstatus={eq?.status ?? 'unknown'}
-                                title={eq ? `${eq.name} — ${eq.status}` : name}
+                              <div
+                                key={task.id}
+                                className={styles.obTaskCard}
+                                data-status={task.status}
                               >
-                                {eq?.status === 'out-of-service' && '🔒 '}
-                                {eq?.status === 'needs-maintenance' && '⚠ '}
-                                {name}
-                              </span>
+                                {/* Title row */}
+                                <div className={styles.obTaskTop}>
+                                  <div className={styles.obTaskTitleRow}>
+                                    <span className={`${styles.obTaskTitle} ${isCompleted ? styles.obTitleDone : ''}`}>
+                                      {task.title}
+                                    </span>
+                                    <span className={styles.obPriBadge} data-priority={task.priority}>
+                                      {PRIORITY_LABEL[task.priority] ?? task.priority}
+                                    </span>
+                                  </div>
+                                  <span className={styles.obStatusPill} data-status={task.status}>
+                                    {STATUS_LABEL[task.status] ?? task.status}
+                                  </span>
+                                </div>
+
+                                {/* Area */}
+                                <div className={styles.obTaskArea}>{task.assignedArea}</div>
+
+                                {/* Crew */}
+                                {assignedEmps.length > 0 ? (
+                                  <div className={styles.obTaskAssigned}>
+                                    {assignedEmps.map(emp => (
+                                      <span key={emp.employeeId} className={styles.obEmpChip}>
+                                        {emp.fullName.split(' ').map(n => n[0]).join('')}
+                                      </span>
+                                    ))}
+                                    <span className={styles.obAssignedNames}>
+                                      {assignedEmps.map(e => e.fullName.split(' ')[0]).join(', ')}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <div className={styles.obUnassigned}>Unassigned</div>
+                                )}
+
+                                {/* Progress */}
+                                {task.estimatedHours > 0 && (
+                                  <div className={styles.obProgressRow}>
+                                    <div className={styles.obProgressTrack}>
+                                      <div
+                                        className={styles.obProgressFill}
+                                        data-status={task.status}
+                                        style={{ width: `${progress}%` }}
+                                      />
+                                    </div>
+                                    <span className={styles.obProgressLabel}>
+                                      {task.completedHours}h / {task.estimatedHours}h
+                                    </span>
+                                  </div>
+                                )}
+
+                                {/* Equipment chips */}
+                                {task.equipment.length > 0 && (
+                                  <div className={styles.obEqRow}>
+                                    {task.equipment.map(name => {
+                                      const eq = eqByCategory[name]
+                                      return (
+                                        <span
+                                          key={name}
+                                          className={styles.obEqChip}
+                                          data-eqstatus={eq?.status ?? 'unknown'}
+                                          title={eq ? `${eq.name} — ${eq.status}` : name}
+                                        >
+                                          {eq?.status === 'out-of-service'    && '🔒 '}
+                                          {eq?.status === 'needs-maintenance' && '⚠ '}
+                                          {name}
+                                        </span>
+                                      )
+                                    })}
+                                  </div>
+                                )}
+
+                                {/* Notes (expandable) */}
+                                {task.notes && (
+                                  <div className={styles.obNoteWrap}>
+                                    <div className={`${styles.obTaskNote} ${!isNoteExpanded && hasLongNote ? styles.obNoteClamp : ''}`}>
+                                      {task.notes}
+                                    </div>
+                                    {hasLongNote && density !== 'expanded' && (
+                                      <button
+                                        className={styles.obNoteToggle}
+                                        onClick={() => toggleNote(task.id)}
+                                      >
+                                        {isNoteExpanded ? '▲ less' : '▾ more'}
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+
+                                {/* Quick actions */}
+                                <div className={styles.obCardActionsWrap}>
+                                  {/* Desktop: hover-reveal */}
+                                  <div className={styles.obCardActions}>
+                                    <button
+                                      className={styles.obAction}
+                                      data-variant={isCompleted ? 'done' : 'complete'}
+                                      onClick={() => handleAction(task.id, 'complete')}
+                                    >
+                                      {isCompleted ? '↩ Undo' : '✓ Complete'}
+                                    </button>
+                                    <button
+                                      className={styles.obAction}
+                                      data-variant={isWeatherHold ? 'active' : 'default'}
+                                      onClick={() => handleAction(task.id, 'hold')}
+                                    >
+                                      ⛅ Hold
+                                    </button>
+                                    <button
+                                      className={styles.obAction}
+                                      onClick={() => handleAction(task.id, 'delay')}
+                                    >
+                                      ↷ Delay
+                                    </button>
+                                    <button
+                                      className={styles.obAction}
+                                      onClick={() => handleAction(task.id, 'reassign')}
+                                    >
+                                      ↗ Reassign
+                                    </button>
+                                    {task.notes && (
+                                      <button
+                                        className={styles.obAction}
+                                        data-variant={expandedNoteIds.has(task.id) ? 'active' : 'default'}
+                                        onClick={() => toggleNote(task.id)}
+                                      >
+                                        {expandedNoteIds.has(task.id) ? '▲ Notes' : '▾ Notes'}
+                                      </button>
+                                    )}
+                                  </div>
+
+                                  {/* Mobile: overflow ⋮ */}
+                                  <div className={styles.obOverflowWrap}>
+                                    <button
+                                      className={styles.obOverflowBtn}
+                                      aria-label="More actions"
+                                      onClick={e => {
+                                        e.stopPropagation()
+                                        setOpenMenuId(openMenuId === task.id ? null : task.id)
+                                      }}
+                                    >⋮</button>
+                                    {openMenuId === task.id && (
+                                      <div className={styles.obOverflowMenu}>
+                                        <button
+                                          className={styles.obOverflowItem}
+                                          onClick={() => { handleAction(task.id, 'complete'); setOpenMenuId(null) }}
+                                        >
+                                          {isCompleted ? '↩ Undo Complete' : '✓ Complete'}
+                                        </button>
+                                        <button
+                                          className={styles.obOverflowItem}
+                                          onClick={() => { handleAction(task.id, 'hold'); setOpenMenuId(null) }}
+                                        >
+                                          ⛅ Weather Hold
+                                        </button>
+                                        <button
+                                          className={styles.obOverflowItem}
+                                          onClick={() => { handleAction(task.id, 'delay'); setOpenMenuId(null) }}
+                                        >
+                                          ↷ Delay
+                                        </button>
+                                        <button
+                                          className={styles.obOverflowItem}
+                                          onClick={() => { handleAction(task.id, 'reassign'); setOpenMenuId(null) }}
+                                        >
+                                          ↗ Reassign
+                                        </button>
+                                        {task.notes && (
+                                          <button
+                                            className={styles.obOverflowItem}
+                                            onClick={() => { toggleNote(task.id); setOpenMenuId(null) }}
+                                          >
+                                            {expandedNoteIds.has(task.id) ? '▲ Hide Notes' : '▾ Show Notes'}
+                                          </button>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+
+                              </div>
                             )
                           })}
                         </div>
                       )}
-
-                      {/* Notes */}
-                      {task.notes && (
-                        <div className={styles.obTaskNote}>{task.notes}</div>
-                      )}
                     </div>
-                  )
-                })}
+                  ))}
+                </div>
               </div>
             </div>
 
             {/* Right: Operations Panel ─────────────────────────────────── */}
             <div className={`${styles.obColRight} ${panelOpen ? styles.obColRightOpen : ''}`}>
 
-              {/* Turf Operations Section */}
               <div className={styles.obPanelSec}>
                 <div className={styles.obPanelSecHeader}>Turf Operations</div>
 
@@ -366,16 +590,10 @@ export default function OperationsBoard() {
                     </select>
                   </div>
                   <div className={styles.obToggleRow}>
-                    <button
-                      className={styles.obToggle}
-                      data-on={mowOps.doubleCut}
-                      onClick={() => setMow('doubleCut', !mowOps.doubleCut)}
-                    >Double Cut</button>
-                    <button
-                      className={styles.obToggle}
-                      data-on={mowOps.rollGreens}
-                      onClick={() => setMow('rollGreens', !mowOps.rollGreens)}
-                    >Roll Greens</button>
+                    <button className={styles.obToggle} data-on={mowOps.doubleCut}
+                      onClick={() => setMow('doubleCut', !mowOps.doubleCut)}>Double Cut</button>
+                    <button className={styles.obToggle} data-on={mowOps.rollGreens}
+                      onClick={() => setMow('rollGreens', !mowOps.rollGreens)}>Roll Greens</button>
                   </div>
                 </div>
 
@@ -420,7 +638,6 @@ export default function OperationsBoard() {
                 </div>
               </div>
 
-              {/* Notes Section */}
               <div className={styles.obPanelSec}>
                 <div className={styles.obPanelSecHeader}>Notes</div>
                 <div className={styles.obNotesTabs}>
@@ -443,10 +660,16 @@ export default function OperationsBoard() {
             </div>
           </div>
 
-          {/* Mobile panel overlay */}
+          {/* Panel overlay (tablet/mobile) */}
           {panelOpen && (
             <div className={styles.obOverlay} onClick={() => setPanelOpen(false)} />
           )}
+
+          {/* Overflow menu backdrop */}
+          {openMenuId && (
+            <div className={styles.obMenuBackdrop} onClick={() => setOpenMenuId(null)} />
+          )}
+
         </div>
       )}
     </div>
