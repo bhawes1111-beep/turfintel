@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, Fragment } from 'react'
 import { SCHEDULE, EMPLOYEES } from '../../../data/crew'
+import { useToast } from '../../../utils/feedback/toastContext'
 import styles from '../Crew.module.css'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -186,6 +187,7 @@ function formFromShift(shift) {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function CrewSchedule() {
+  const toast                      = useToast()
   const [view,      setView]      = useState('week')
   const [navDate,   setNavDate]   = useState(TODAY)
   const [shifts,    setShifts]    = useState(SCHEDULE)
@@ -193,7 +195,6 @@ export default function CrewSchedule() {
   const [panelMode, setPanelMode] = useState('edit')
   const [form,      setForm]      = useState(null)
   const [availTab,  setAvailTab]  = useState('all')
-  const [toast,     setToast]     = useState(null)
 
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') closePanel() }
@@ -270,20 +271,15 @@ export default function CrewSchedule() {
     } else {
       setShifts(prev => [...prev, { ...form, id: `sc-${Date.now()}` }])
     }
-    showToast('Shift saved.')
+    toast.success('Shift saved.')
     closePanel()
   }
 
   function handleDelete() {
     if (!form?.id) return
     setShifts(prev => prev.filter(s => s.id !== form.id))
-    showToast('Shift deleted.')
+    toast.warning('Shift deleted.')
     closePanel()
-  }
-
-  function showToast(msg) {
-    setToast(msg)
-    setTimeout(() => setToast(null), 2800)
   }
 
   function navPrev() {
@@ -325,7 +321,7 @@ export default function CrewSchedule() {
           </div>
         </div>
         <div className={styles.csbHeaderRight}>
-          <button className={styles.csbBtnSecondary} onClick={() => showToast('Auto-assign coming in a future update.')}>
+          <button className={styles.csbBtnSecondary} onClick={() => toast.info('Auto-assign coming in a future update.')}>
             Auto Assign Crew
           </button>
           <button className={styles.csbBtnPrimary} onClick={() => openAdd()}>
@@ -706,11 +702,6 @@ export default function CrewSchedule() {
           ))}
         </div>
       </div>
-
-      {/* ── Toast notification ── */}
-      {toast && (
-        <div className={styles.csbToast}>{toast}</div>
-      )}
 
     </div>
   )

@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { SPRAY_RECORDS, TYPE_COLORS } from '../../../data/spray'
 import { useOperations } from '../../../utils/operations/OperationsContext'
+import { useToast } from '../../../utils/feedback/toastContext'
 import { createCalendarEvent, createAlert, deductInventory } from '../../../utils/operations/actions'
 import styles from '../Spray.module.css'
 
@@ -106,18 +107,13 @@ function buildPPE(records) {
 
 export default function BuildSpraySheet() {
   const { state, dispatch }              = useOperations()
+  const toast                            = useToast()
   const [search,       setSearch]       = useState('')
   const [dateFilter,   setDateFilter]   = useState('')
   const [areaFilter,   setAreaFilter]   = useState('All')
   const [statusFilter, setStatusFilter] = useState('All')
   const [selected,     setSelected]     = useState(new Set())
   const [modalRecord,  setModalRecord]  = useState(null)
-  const [toast,        setToast]        = useState(null)
-
-  function showToast(msg) {
-    setToast(msg)
-    setTimeout(() => setToast(null), 2800)
-  }
 
   function handleAddToCalendar() {
     // ── Calendar events ──────────────────────────────────────────────────────
@@ -211,7 +207,7 @@ export default function BuildSpraySheet() {
       })
     })
 
-    showToast(
+    toast.success(
       `${selectedRecords.length} event${selectedRecords.length !== 1 ? 's' : ''} added to Operations Calendar`
     )
   }
@@ -670,8 +666,6 @@ export default function BuildSpraySheet() {
           )}
         </div>
       </div>
-
-      {toast && <div className="opToast">{toast}</div>}
 
       {/* ── Detail Modal ── */}
       {modalRecord && (() => {

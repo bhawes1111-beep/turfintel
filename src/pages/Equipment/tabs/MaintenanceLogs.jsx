@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { SERVICE_LOG, EQUIPMENT_LIST } from '../../../data/equipment'
 import { useOperations } from '../../../utils/operations/OperationsContext'
+import { useToast } from '../../../utils/feedback/toastContext'
 import { makeCalendarEvent } from '../../../utils/operations/schemas'
 import { CREATE_CALENDAR_EVENT, reserveEquipment, updateEquipmentOverride } from '../../../utils/operations/actions'
 import { mergeServiceLogs } from '../../../utils/operations/equipmentUtils'
@@ -51,21 +52,16 @@ const FILTER_STATUS_KEY = {
 
 export default function MaintenanceLogs() {
   const { state, dispatch }         = useOperations()
+  const toast                        = useToast()
   const [search,      setSearch]    = useState('')
   const [staFilter,   setStaFilter] = useState('All')
   const [priFilter,   setPriFilter] = useState('All')
   const [selected,       setSelected]      = useState(null)
   const [selectedSection,setSelectedSection]= useState(null)
-  const [toast,          setToast]         = useState(null)
   const [activeReport,   setActiveReport]  = useState(null)
   const [reportLoading,  setReportLoading] = useState(false)
   const [reportThumbs,   setReportThumbs]  = useState([])
   const attachSectionRef                    = useRef(null)
-
-  function showToast(msg) {
-    setToast(msg)
-    setTimeout(() => setToast(null), 2800)
-  }
 
   function closeModal() {
     setSelected(null)
@@ -90,13 +86,13 @@ export default function MaintenanceLogs() {
       const base = SERVICE_LOG.find(l => l.id === log.id)
       const baseStatus = (base?.status === 'completed') ? 'open' : (base?.status || 'open')
       dispatch(updateEquipmentOverride(log.id, { status: baseStatus, completedDate: null }))
-      showToast('Service record reopened')
+      toast.info('Service record reopened')
     } else {
       dispatch(updateEquipmentOverride(log.id, {
         status:        'completed',
         completedDate: new Date().toISOString().slice(0, 10),
       }))
-      showToast('Service marked complete ✓')
+      toast.success('Service marked complete ✓')
     }
   }
 
@@ -104,7 +100,7 @@ export default function MaintenanceLogs() {
     e.stopPropagation()
     const next = PRIORITY_CYCLE[log.priority] || 'routine'
     dispatch(updateEquipmentOverride(log.id, { priority: next }))
-    showToast(`Priority set to ${next}`)
+    toast.info(`Priority set to ${next}`)
   }
 
   function handleInlineSchedule(log, e) {
@@ -153,7 +149,7 @@ export default function MaintenanceLogs() {
       notes:          `${log.serviceType} service — ${log.hoursAtService.toLocaleString()} hrs`,
     }))
 
-    showToast(`Service event added to Operations Calendar`)
+    toast.success('Service event added to Operations Calendar')
   }
 
   useEffect(() => {
@@ -745,8 +741,6 @@ export default function MaintenanceLogs() {
           </div>
         )
       })()}
-
-      {toast && <div className="opToast">{toast}</div>}
 
       <ReportPreviewModal
         report={activeReport}

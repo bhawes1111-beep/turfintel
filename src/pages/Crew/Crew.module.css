@@ -3605,25 +3605,6 @@
 .csbAvailS_noted    { background: rgba(41,128,185,.12); color: #2980b9; border: 1px solid #2980b9; }
 .csbAvailS_denied   { background: rgba(192,57,43,.12);  color: #e74c3c; border: 1px solid #c0392b; }
 
-/* ── Toast notification ──────────────────────────────────────────────────── */
-
-.csbToast {
-  position: fixed;
-  bottom: 28px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(10,30,10,.94);
-  border: 1px solid var(--color-accent);
-  color: var(--color-text);
-  padding: 10px 22px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  z-index: 999;
-  white-space: nowrap;
-  box-shadow: 0 4px 20px rgba(0,0,0,.5);
-}
-
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 
 @media (max-width: 900px) {

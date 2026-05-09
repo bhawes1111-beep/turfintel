@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { CourseProvider } from './context/CourseContext'
 import { OperationsProvider } from './utils/operations/OperationsContext'
+import ToastProvider from './components/feedback/ToastProvider'
 import Layout from './components/layout/Layout'
 import Login from './pages/Login/Login'
 import Dashboard from './pages/Dashboard/Dashboard'
@@ -21,6 +22,7 @@ export default function App() {
   return (
     <OperationsProvider>
     <CourseProvider>
+    <ToastProvider>
     <BrowserRouter>
       <Routes>
         {/* Login lives outside Layout — no sidebar rendered */}
@@ -45,6 +47,7 @@ export default function App() {
         </Route>
       </Routes>
     </BrowserRouter>
+    </ToastProvider>
     </CourseProvider>
     </OperationsProvider>
   )

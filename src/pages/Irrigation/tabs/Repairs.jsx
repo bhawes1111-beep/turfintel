@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { REPAIRS } from '../../../data/irrigation'
 import { useOperations } from '../../../utils/operations/OperationsContext'
+import { useToast } from '../../../utils/feedback/toastContext'
 import { createCalendarEvent, createAlert, updateRepairOverride } from '../../../utils/operations/actions'
 import { mergeRepairs } from '../../../utils/operations/repairUtils'
 import UploadCenter from '../../../components/uploads/UploadCenter'
@@ -69,22 +70,17 @@ function matchesArea(repair, area) {
 
 export default function Repairs() {
   const { state, dispatch }                  = useOperations()
+  const toast                                = useToast()
   const [search,         setSearch]         = useState('')
   const [statusFilter,   setStatusFilter]   = useState('All')
   const [priorityFilter, setPriorityFilter] = useState('All')
   const [areaFilter,     setAreaFilter]     = useState('All')
   const [selected,       setSelected]       = useState(null)
   const [selectedSection,setSelectedSection]= useState(null)
-  const [toast,          setToast]          = useState(null)
   const [activeReport,   setActiveReport]   = useState(null)
   const [reportLoading,  setReportLoading]  = useState(false)
   const [reportThumbs,   setReportThumbs]   = useState([])
   const attachSectionRef                     = useRef(null)
-
-  function showToast(msg) {
-    setToast(msg)
-    setTimeout(() => setToast(null), 2800)
-  }
 
   function closeModal() {
     setSelected(null)
@@ -110,13 +106,13 @@ export default function Repairs() {
       const base = REPAIRS.find(r => r.repairId === repair.repairId)
       const baseStatus = (base?.status === 'completed') ? 'open' : (base?.status || 'open')
       dispatch(updateRepairOverride(repair.repairId, { status: baseStatus, dateCompleted: null }))
-      showToast('Repair reopened')
+      toast.info('Repair reopened')
     } else {
       dispatch(updateRepairOverride(repair.repairId, {
         status:        'completed',
         dateCompleted: new Date().toISOString().slice(0, 10),
       }))
-      showToast('Repair marked complete ✓')
+      toast.success('Repair marked complete ✓')
     }
   }
 
@@ -124,7 +120,7 @@ export default function Repairs() {
     e.stopPropagation()
     const next = PRIORITY_CYCLE[repair.priority] || 'medium'
     dispatch(updateRepairOverride(repair.repairId, { priority: next }))
-    showToast(`Priority set to ${next}`)
+    toast.info(`Priority set to ${next}`)
   }
 
   function handleInlineSchedule(repair, e) {
@@ -224,7 +220,7 @@ export default function Repairs() {
       }))
     }
 
-    showToast('Repair added to Operations Calendar')
+    toast.success('Repair added to Operations Calendar')
   }
 
   useEffect(() => {
@@ -663,8 +659,6 @@ export default function Repairs() {
           </div>
         )
       })()}
-
-      {toast && <div className="opToast">{toast}</div>}
 
       <ReportPreviewModal
         report={activeReport}
