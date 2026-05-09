@@ -2,6 +2,133 @@
 
 ---
 
+## Session 8 — 2026-05-08
+
+**Commits:**
+- `7869afc` — Wire Irrigation Intelligence into Dashboard
+- `d671727` — Enforce advisory-only principle in intelligence cards
+- `793da97` — Add irrigation tonight recommendation to Weather Insights status strip
+- `b3cf136` — Refactor dashboard agronomy intelligence cards
+- `6991df8` — Redesign dashboard weather and agronomy intelligence layout
+
+**Build:** 172 modules, 0 errors · known warning: bundle chunk >500 kB (not blocking)  
+**Backup:** `backup/end-session-2026-05-08` + tag `checkpoint-2026-05-08` (both pushed to origin)  
+**Pre-redesign safety:** `backup/pre-dashboard-weather-redesign` + tag `pre-weather-dashboard-redesign`
+
+---
+
+### Wire Irrigation Intelligence (`7869afc`)
+
+- `IrrigationIntelligence.jsx` was imported in `Dashboard.jsx` but positioned after stub widgets
+- Fixed grid order: Alerts → Weather Intelligence → **Irrigation Intelligence** → Crew Status → Equipment Alerts → Upcoming Applications → Recent Notes
+
+---
+
+### Advisory-Only Principle (`d671727`)
+
+**Principle established:** TurfIntel advises the superintendent — it never makes decisions for them.
+
+**Changes:**
+- Removed all `dispatch(createAlert(...))` calls from `WeatherIntelligence.jsx`
+- Removed all `dispatch(createAlert(...))` calls from `IrrigationIntelligence.jsx`
+- Removed "Push to Alerts" buttons from both components
+- Removed the bulk "Push All High-Priority" button from `WeatherIntelligence.jsx`
+- Removed `pushed` Set state and all related logic
+- Both components are now pure read-only advisory displays
+- No import of `createAlert` or `useOperations` remains in either component
+
+---
+
+### Irrigation Tonight in Weather Card (`793da97`)
+
+- Added `computeIrrigationSummary(current, forecast)` call in `WeatherSection.jsx`
+- Added "Irrigation Tonight" item to the weather card status strip (between Disease Pressure and ET Today)
+- Blue value (`#3a8ad4`) when irrigation is recommended; green "Skip" when conditions are favorable
+- `irrigationRec > 0 ? \`\${irrigationRec.toFixed(2)}"\` : 'Skip'`
+- Recomputes via `useMemo`-equivalent whenever `current` or `forecast` changes
+
+---
+
+### Agronomy Intelligence Cards (`b3cf136`)
+
+**New utility files:**
+
+`src/utils/agronomy/gddEngine.js` — `computeGDDSummary(forecast, baseTempF=50)`
+- Accumulates GDD from forecast using base temp (default 50°F)
+- Returns: `{ todayGDD, sevenDayGDD, avgDailyGDD, baseTempF, statusMeta, windows, fungicide:{status,daysTo}, pgr:{status,daysTo}, nutrient:{status,daysTo} }`
+- Thresholds: fungicide `{150, 250, 350}`, pgr `{100, 200, 280}`, nutrient `{200, 350, 500}`
+- Status values: `early` · `optimal` · `late` · `expired`
+- `statusMeta` maps status → `{ label, color, bg, border }` tokens
+
+`src/utils/agronomy/applicationEffectiveness.js` — `computeApplicationEffectiveness(current, forecast)`
+- 5 factors × 20pts each: wind, humidity, temp, rain, dew spread
+- Returns: `{ score(0–100), rating:{label,color,bg,border}, factors[], positives[], negatives[] }`
+
+**New components:**
+
+`GDDCard.jsx` + `GDDCard.module.css` — flat progress bars with status badges and notes
+
+`AppEffectivenessCard.jsx` + `AppEffectivenessCard.module.css` — score display + factor bars + positive/negative notes
+
+**Dashboard layout:**
+- `agronomySection`: `1fr 1fr` grid below the weather section (later replaced in the redesign)
+
+**ETCard moved:**
+- Removed `ETCard` from `Dashboard.jsx`
+- Added `ETCard` to `IrrigationDashboard.jsx` at the top of the irrigation tab
+
+---
+
+### Dashboard Weather + Agronomy Redesign (`6991df8`)
+
+**Pre-work:**
+- Created and pushed backup branch `backup/pre-dashboard-weather-redesign`
+- Created and pushed tag `pre-weather-dashboard-redesign`
+- Verified clean tree and passing build before any changes
+
+**`Dashboard.jsx` + `Dashboard.module.css`:**
+- Replaced `agronomySection` with `intelligenceRow`: `grid-template-columns: 2fr 1fr`, `align-items: stretch`
+- `intelligenceWeather` (left, 2fr): `display: flex; flex-direction: column`
+- `intelligenceRight` (right, 1fr): `display: flex; flex-direction: column; gap` + `> * { flex: 1 }` to equally share height between GDD and AppEffectiveness cards
+- Breakpoint: `grid-template-columns: 1fr` at ≤1100px
+
+**`WeatherSection.jsx`** — full rewrite:
+- `wsSection` set to `flex: 1` to fill `intelligenceWeather`
+- `WeatherInsightsCard` now receives full `forecast` array (not just day 0)
+- Header: spray condition badge moved to header right cluster (alongside timestamp + refresh)
+- Main display: `.wsMainLeft` (emoji + temp + feels like) | `.wsMetricsGrid` (3×2 grid, left-border divider)
+- Status strip: Disease Pressure | Irrigation Tonight | ET Today
+- Embedded 7-day forecast: `wsEmbForecast` horizontal scroll (`overflow-x: auto; scroll-snap-type: x mandatory`) — compact cards `wsEmbFcastCard` (84px min-width, `flex-shrink: 0`)
+
+**`WeatherSection.module.css`** — full rewrite:
+- `wsSection { flex: 1 }` — fills intelligenceWeather
+- `wsCard { flex: 1 }` — fills wsSection after banners
+- `wsMainDisplay`: `display: flex; align-items: center; gap: 14px`
+- `wsMetricsGrid`: `border-left` divider (not `border-top/border-bottom` as before)
+- All standalone forecast row classes (`.wsForecastOuter`, `.wsForecastRow`, `.wsForecastCard`, etc.) removed
+- All ET card classes (`.wsETBig`, `.wsETValues`, `.wsBarChart`, etc.) removed
+- New embedded forecast classes: `wsEmbForecast`, `wsEmbFcastCard`, `wsEmbFcastCardToday`, and all sub-elements
+
+**`GDDCard.jsx`** — redesigned:
+- 4-stat row (GDD Today · 7-Day Accum. · Daily Avg · Base Temp) replaces 3-stat row
+- `GDDScale` sub-component: zone-colored CSS gradient track (Early/blue → Optimal/green → Late/amber) with absolute-positioned fill bar, marker lines at threshold boundaries, zone label row below
+- `GDDScale({ current, windows, color })`: `m1 = optimalStart/expired×100`, `m2 = optimalEnd/expired×100`; fill `width = Math.min(100, current/expired×100)%`
+
+**`GDDCard.module.css`** — updated:
+- New classes: `gddScaleWrap`, `gddScaleTrack` (relative, CSS gradient bg), `gddScaleFill` (absolute, fill bar), `gddScaleMarker` (absolute, 1px white line), `gddScaleLabels` (relative, 12px tall), `gddZoneLabel` (absolute, `transform: translateX(-50%)`)
+
+**`AppEffectivenessCard.jsx`** — redesigned:
+- `CircleGauge({ score, color })`: SVG, `r=30`, `circ=2π×30≈188.5`, `strokeDashoffset = circ × (1 - score/100)`, `rotate(-90 38 38)` to start at 12 o'clock
+- Layout: `.aeBody` (flex row) — gauge left (76×76px relative wrap with absolute centered overlay) | factors right (flex col, positives ✓ green + negatives ✕ red)
+- Bottom: `<p className={styles.aeRec}>` — italic recommendation text driven by `recText(score)` helper
+- Factor bars removed; checklist pattern replaces them
+
+**`AppEffectivenessCard.module.css`** — full rewrite:
+- New classes: `aeBody`, `aeGaugeWrap` (76×76 relative), `aeGaugeCenter` (absolute inset, flex col center), `aeScoreNum`, `aeRatingTag`, `aeFactors`, `aeFactorRow`, `aeFactorIcon`, `aeFactorText`, `aePos` (green), `aeNeg` (#e07070), `aeRec` (italic, border-top)
+- Old classes removed: `aeScore`, `aeScoreNumber`, `aeScoreRight`, `aeRatingBadge`, `aeRatingLabel`, `aeTrack`, `aeFill`, `aeFactorPts`, `aeNotes`, `aeNote`, `aeNoteIcon`, `aePositive`, `aeNegative`
+
+---
+
 ## Session 7 — 2026-05-08
 
 **Commit:** `5609f60` — Refine and stabilize live weather operations layer  
