@@ -3,6 +3,7 @@ import { SPRAY_RECORDS, TYPE_COLORS } from '../../../data/spray'
 import { useOperations } from '../../../utils/operations/OperationsContext'
 import { useToast } from '../../../utils/feedback/toastContext'
 import { createCalendarEvent, createAlert, deductInventory } from '../../../utils/operations/actions'
+import ContextActions from '../../../components/contextActions/ContextActions'
 import styles from '../Spray.module.css'
 
 const TODAY  = new Date().toISOString().slice(0, 10)
@@ -114,6 +115,7 @@ export default function BuildSpraySheet() {
   const [statusFilter, setStatusFilter] = useState('All')
   const [selected,     setSelected]     = useState(new Set())
   const [modalRecord,  setModalRecord]  = useState(null)
+  const [hoveredId,    setHoveredId]    = useState(null)
 
   function handleAddToCalendar() {
     // ── Calendar events ──────────────────────────────────────────────────────
@@ -406,6 +408,8 @@ export default function BuildSpraySheet() {
                   <div
                     key={r.id}
                     className={`${styles.ssAppCard} ${isSelected ? styles.ssAppCardSelected : ''}`}
+                    onMouseEnter={() => setHoveredId(r.id)}
+                    onMouseLeave={() => setHoveredId(null)}
                   >
                     <button
                       className={styles.ssCheckbox}
@@ -455,6 +459,16 @@ export default function BuildSpraySheet() {
                         <span className={styles.viewDetail}>Details →</span>
                       </div>
                     </button>
+
+                    <ContextActions
+                      hovered={hoveredId === r.id}
+                      actions={[{
+                        id: 'details',
+                        label: '📄 Details',
+                        onClick: e => { e.stopPropagation(); setModalRecord(r) },
+                        title: 'View application details',
+                      }]}
+                    />
                   </div>
                 )
               })}

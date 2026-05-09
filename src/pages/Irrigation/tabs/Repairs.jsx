@@ -4,6 +4,7 @@ import { useOperations } from '../../../utils/operations/OperationsContext'
 import { useToast } from '../../../utils/feedback/toastContext'
 import { createCalendarEvent, createAlert, updateRepairOverride } from '../../../utils/operations/actions'
 import { mergeRepairs } from '../../../utils/operations/repairUtils'
+import ContextActions from '../../../components/contextActions/ContextActions'
 import UploadCenter from '../../../components/uploads/UploadCenter'
 import { buildIrrigationRepairReport, buildIrrigationRepairSummaryReport } from '../../../utils/reports/reportBuilder'
 import { createAttachmentRef } from '../../../utils/reports/reportSchemas'
@@ -79,6 +80,7 @@ export default function Repairs() {
   const [selectedSection,setSelectedSection]= useState(null)
   const [activeReport,   setActiveReport]   = useState(null)
   const [reportLoading,  setReportLoading]  = useState(false)
+  const [hoveredId,      setHoveredId]      = useState(null)
   const [reportThumbs,   setReportThumbs]   = useState([])
   const attachSectionRef                     = useRef(null)
 
@@ -361,6 +363,8 @@ export default function Repairs() {
               role="button"
               tabIndex={0}
               onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setSelected(repair) }}
+              onMouseEnter={() => setHoveredId(repair.repairId)}
+              onMouseLeave={() => setHoveredId(null)}
             >
               <div className={styles.irCardMain}>
                 <div className={styles.irCardLeft}>
@@ -410,52 +414,45 @@ export default function Repairs() {
               </div>
 
               {/* ── Inline actions ──────────────────────────────────────── */}
-              <div className={styles.irCardActions} onClick={e => e.stopPropagation()}>
-                <button
-                  className={`${styles.irActionBtn} ${completed ? styles.irActionBtnMuted : styles.irActionBtnGreen}`}
-                  onClick={e => handleMarkComplete(repair, e)}
-                  title={completed ? 'Reopen repair' : 'Mark as completed'}
-                >
-                  {completed ? '↩ Reopen' : '✓ Complete'}
-                </button>
-
-                {!completed && (
-                  <button
-                    className={styles.irActionBtn}
-                    style={{ color: accent, borderColor: accent }}
-                    onClick={e => handleCyclePriority(repair, e)}
-                    title="Cycle priority: high → medium → low"
-                  >
-                    ↕ {repair.priority.charAt(0).toUpperCase() + repair.priority.slice(1)}
-                  </button>
-                )}
-
-                {!completed && (
-                  <button
-                    className={styles.irActionBtn}
-                    onClick={e => handleInlineSchedule(repair, e)}
-                    title="Add to Operations Calendar"
-                  >
-                    📅 Schedule
-                  </button>
-                )}
-
-                <button
-                  className={styles.irActionBtn}
-                  onClick={e => handleInlineReport(repair, e)}
-                  disabled={reportLoading}
-                  title="Generate repair report"
-                >
-                  📄 Report
-                </button>
-
-                <button
-                  className={styles.irActionBtn}
-                  onClick={e => handleOpenAttachments(repair, e)}
-                  title="View attachments"
-                >
-                  📎 Attachments
-                </button>
+              <div className={styles.irCardActions}>
+                <ContextActions
+                  hovered={hoveredId === repair.repairId}
+                  actions={[
+                    {
+                      id: 'complete',
+                      label: completed ? '↩ Reopen' : '✓ Complete',
+                      variant: completed ? 'muted' : 'green',
+                      onClick: e => handleMarkComplete(repair, e),
+                      title: completed ? 'Reopen repair' : 'Mark as completed',
+                    },
+                    ...(!completed ? [{
+                      id: 'priority',
+                      label: `↕ ${repair.priority.charAt(0).toUpperCase() + repair.priority.slice(1)}`,
+                      style: { color: accent, borderColor: accent },
+                      onClick: e => handleCyclePriority(repair, e),
+                      title: 'Cycle priority: high → medium → low',
+                    }] : []),
+                    ...(!completed ? [{
+                      id: 'schedule',
+                      label: '📅 Schedule',
+                      onClick: e => handleInlineSchedule(repair, e),
+                      title: 'Add to Operations Calendar',
+                    }] : []),
+                    {
+                      id: 'report',
+                      label: '📄 Report',
+                      onClick: e => handleInlineReport(repair, e),
+                      disabled: reportLoading,
+                      title: 'Generate repair report',
+                    },
+                    {
+                      id: 'attachments',
+                      label: '📎 Attachments',
+                      onClick: e => handleOpenAttachments(repair, e),
+                      title: 'View attachments',
+                    },
+                  ]}
+                />
               </div>
             </div>
           )

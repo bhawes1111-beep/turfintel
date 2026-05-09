@@ -8,6 +8,7 @@ import { mergeServiceLogs } from '../../../utils/operations/equipmentUtils'
 import { buildMaintenanceLogReport } from '../../../utils/reports/reportBuilder'
 import { createAttachmentRef } from '../../../utils/reports/reportSchemas'
 import { getMediaByModule, getThumbnailBlob } from '../../../utils/media/mediaStore'
+import ContextActions from '../../../components/contextActions/ContextActions'
 import UploadCenter from '../../../components/uploads/UploadCenter'
 import ReportPreviewModal from '../../../components/reports/ReportPreviewModal'
 import styles from '../Equipment.module.css'
@@ -60,6 +61,7 @@ export default function MaintenanceLogs() {
   const [selectedSection,setSelectedSection]= useState(null)
   const [activeReport,   setActiveReport]  = useState(null)
   const [reportLoading,  setReportLoading] = useState(false)
+  const [hoveredId,      setHoveredId]     = useState(null)
   const [reportThumbs,   setReportThumbs]  = useState([])
   const attachSectionRef                    = useRef(null)
 
@@ -359,6 +361,8 @@ export default function MaintenanceLogs() {
                 tabIndex={0}
                 onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setSelected(log) }}
                 aria-label={`View details for ${log.equipmentName} ${log.serviceType}`}
+                onMouseEnter={() => setHoveredId(log.id)}
+                onMouseLeave={() => setHoveredId(null)}
               >
                 {/* Left: equipment + service info */}
                 <div className={styles.eqCardMain}>
@@ -398,52 +402,45 @@ export default function MaintenanceLogs() {
                   </div>
 
                   {/* ── Inline actions ── */}
-                  <div className={styles.mlCardActions} onClick={e => e.stopPropagation()}>
-                    <button
-                      className={`${styles.mlActionBtn} ${completed ? styles.mlActionBtnMuted : styles.mlActionBtnGreen}`}
-                      onClick={e => handleMarkComplete(log, e)}
-                      title={completed ? 'Reopen service record' : 'Mark as completed'}
-                    >
-                      {completed ? '↩ Reopen' : '✓ Complete'}
-                    </button>
-
-                    {!completed && (
-                      <button
-                        className={styles.mlActionBtn}
-                        style={{ color: accentColor, borderColor: accentColor }}
-                        onClick={e => handleCyclePriority(log, e)}
-                        title="Cycle priority: critical → high → routine"
-                      >
-                        ↕ {log.priority.charAt(0).toUpperCase() + log.priority.slice(1)}
-                      </button>
-                    )}
-
-                    {!completed && (
-                      <button
-                        className={styles.mlActionBtn}
-                        onClick={e => handleInlineSchedule(log, e)}
-                        title="Add to Operations Calendar"
-                      >
-                        📅 Schedule
-                      </button>
-                    )}
-
-                    <button
-                      className={styles.mlActionBtn}
-                      onClick={e => handleInlineReport(log, e)}
-                      disabled={reportLoading}
-                      title="Generate service report"
-                    >
-                      📄 Report
-                    </button>
-
-                    <button
-                      className={styles.mlActionBtn}
-                      onClick={e => handleOpenAttachments(log, e)}
-                      title="View attachments"
-                    >
-                      📎 Attachments
-                    </button>
+                  <div className={styles.mlCardActions}>
+                    <ContextActions
+                      hovered={hoveredId === log.id}
+                      actions={[
+                        {
+                          id: 'complete',
+                          label: completed ? '↩ Reopen' : '✓ Complete',
+                          variant: completed ? 'muted' : 'green',
+                          onClick: e => handleMarkComplete(log, e),
+                          title: completed ? 'Reopen service record' : 'Mark as completed',
+                        },
+                        ...(!completed ? [{
+                          id: 'priority',
+                          label: `↕ ${log.priority.charAt(0).toUpperCase() + log.priority.slice(1)}`,
+                          style: { color: accentColor, borderColor: accentColor },
+                          onClick: e => handleCyclePriority(log, e),
+                          title: 'Cycle priority: critical → high → routine',
+                        }] : []),
+                        ...(!completed ? [{
+                          id: 'schedule',
+                          label: '📅 Schedule',
+                          onClick: e => handleInlineSchedule(log, e),
+                          title: 'Add to Operations Calendar',
+                        }] : []),
+                        {
+                          id: 'report',
+                          label: '📄 Report',
+                          onClick: e => handleInlineReport(log, e),
+                          disabled: reportLoading,
+                          title: 'Generate service report',
+                        },
+                        {
+                          id: 'attachments',
+                          label: '📎 Attachments',
+                          onClick: e => handleOpenAttachments(log, e),
+                          title: 'View attachments',
+                        },
+                      ]}
+                    />
                   </div>
                 </div>
 

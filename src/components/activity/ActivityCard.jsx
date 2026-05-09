@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { getMediaByModule, getThumbnailBlob } from '../../utils/media/mediaStore'
 import {
   getModuleIcon,
@@ -7,10 +8,20 @@ import {
   formatRelativeTime,
   formatActivityDate,
 } from '../../utils/activity/activityFormatters'
+import ContextActions from '../contextActions/ContextActions'
 import styles from './activity.module.css'
 
+const MODULE_ROUTES = {
+  spray:      '/spray',
+  irrigation: '/irrigation',
+  equipment:  '/equipment',
+  alerts:     '/dashboard',
+}
+
 export default function ActivityCard({ activity }) {
+  const navigate    = useNavigate()
   const [thumbUrls, setThumbUrls] = useState([])
+  const [hovered,   setHovered]   = useState(false)
   const sourceId = activity.metadata?.sourceId
 
   useEffect(() => {
@@ -44,8 +55,14 @@ export default function ActivityCard({ activity }) {
   const icon         = getModuleIcon(activity.module)
   const moduleLabel  = getModuleLabel(activity.module)
 
+  const route = MODULE_ROUTES[activity.module] ?? '/dashboard'
+
   return (
-    <div className={styles.acCard}>
+    <div
+      className={styles.acCard}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
       <div className={styles.acHeader}>
         <span className={styles.acIcon}>{icon}</span>
         <div className={styles.acTitleGroup}>
@@ -86,6 +103,16 @@ export default function ActivityCard({ activity }) {
           </div>
         )}
       </div>
+
+      <ContextActions
+        hovered={hovered}
+        actions={[{
+          id: 'view',
+          label: '→ View',
+          onClick: () => navigate(route),
+          title: `Go to ${activity.module}`,
+        }]}
+      />
     </div>
   )
 }
