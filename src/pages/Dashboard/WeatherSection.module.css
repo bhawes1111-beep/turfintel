@@ -301,6 +301,12 @@
   font-variant-numeric: tabular-nums;
 }
 
+.wsIrrigationRec {
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ── ET card specifics ───────────────────────────────────────────────────── */
 
 .wsETWeekTotal {

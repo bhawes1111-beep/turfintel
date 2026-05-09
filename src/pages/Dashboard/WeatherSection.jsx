@@ -6,6 +6,7 @@ import {
 } from '../../components/shared/weather/weatherTokens'
 import { WeatherAlertBanner } from '../../components/shared/weather'
 import { useWeather } from '../../utils/weather/useWeather'
+import { computeIrrigationSummary } from '../../utils/weather/irrigationEngine'
 import styles from './WeatherSection.module.css'
 
 // ── Inline SVG icons ──────────────────────────────────────────────────────────
@@ -78,7 +79,7 @@ function ETBarChart({ data }) {
 
 // ── Weather Insights card ─────────────────────────────────────────────────────
 
-function WeatherInsightsCard({ current, forecastDay0, isLive, isStale, loading, onRefresh }) {
+function WeatherInsightsCard({ current, forecastDay0, irrigationRec, isLive, isStale, loading, onRefresh }) {
   const w   = current
   const sw  = SPRAY_WINDOW_TOKENS[w.sprayWindow] ?? SPRAY_WINDOW_TOKENS.caution
   const dp  = DISEASE_PRESSURE_TOKENS[w.diseasePressure] ?? DISEASE_PRESSURE_TOKENS.low
@@ -156,6 +157,15 @@ function WeatherInsightsCard({ current, forecastDay0, isLive, isStale, loading, 
             style={{ color: dp.color, background: dp.bg, borderColor: dp.border }}
           >
             {dp.label}
+          </span>
+        </div>
+        <div className={styles.wsStatusItem}>
+          <span className={styles.wsStatusLabel}>Irrigation Tonight</span>
+          <span
+            className={styles.wsIrrigationRec}
+            style={{ color: irrigationRec > 0 ? '#3a8ad4' : 'var(--color-accent)' }}
+          >
+            {irrigationRec > 0 ? `${irrigationRec.toFixed(2)}"` : 'Skip'}
           </span>
         </div>
         <div className={styles.wsStatusItem}>
@@ -264,6 +274,7 @@ function ForecastRow({ forecast }) {
 
 export default function WeatherSection({ alerts = [], onDismissAlert }) {
   const { current, forecast, etTrend, loading, error, isLive, isStale, refresh } = useWeather()
+  const { recApplication } = computeIrrigationSummary(current, forecast)
 
   return (
     <div className={styles.wsSection}>
@@ -291,6 +302,7 @@ export default function WeatherSection({ alerts = [], onDismissAlert }) {
         <WeatherInsightsCard
           current={current}
           forecastDay0={forecast[0]}
+          irrigationRec={recApplication}
           isLive={isLive}
           isStale={isStale}
           loading={loading}
