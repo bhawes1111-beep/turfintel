@@ -1,0 +1,112 @@
+/* ── Shared Intelligence UI Components (ic*) ─────────────────────────────────
+   Used by IntelligenceCard, SeverityBadge, RecommendationList.
+   Expects --ic-color, --ic-bg, --ic-border set inline on .icItem.          */
+
+/* ── Recommendation list container ──────────────────────────────────────── */
+
+.icList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ── Advisory card ───────────────────────────────────────────────────────── */
+
+.icItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 11px 12px;
+  border-radius: 7px;
+  border: 1px solid var(--ic-border, rgba(74,158,74,0.2));
+  background: var(--ic-bg, rgba(74,158,74,0.06));
+}
+
+/* ── Left column: icon + severity label ──────────────────────────────────── */
+
+.icItemLeft {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 40px;
+  padding-top: 1px;
+  flex-shrink: 0;
+}
+
+.icIcon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.icSeverityLabel {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+/* ── Body: title row + message + action ──────────────────────────────────── */
+
+.icItemBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.icItemTop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+
+.icTitle {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--color-text);
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Module pill (optional — weather only) ───────────────────────────────── */
+
+.icModulePill {
+  font-size: 0.58rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: rgba(74,158,74,0.14);
+  color: var(--color-accent);
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
+/* ── Message and action text ─────────────────────────────────────────────── */
+
+.icMessage {
+  font-size: 0.74rem;
+  color: var(--color-muted);
+  margin: 0 0 5px;
+  line-height: 1.45;
+}
+
+.icAction {
+  font-size: 0.72rem;
+  color: var(--color-text);
+  margin: 0;
+  opacity: 0.78;
+  font-style: italic;
+  line-height: 1.4;
+}
+
+/* ── Empty state ─────────────────────────────────────────────────────────── */
+
+.icEmpty {
+  font-size: 13px;
+  color: var(--color-muted);
+  margin-top: 4px;
+}

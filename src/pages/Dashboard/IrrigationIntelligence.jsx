@@ -5,6 +5,7 @@ import {
   computeIrrigationSummary,
 } from '../../utils/weather/irrigationEngine'
 import { IRRIGATION_SEVERITY_TOKENS } from '../../utils/intelligence/severity'
+import RecommendationList from '../../components/intelligence/RecommendationList'
 import styles from './IrrigationIntelligence.module.css'
 
 export default function IrrigationIntelligence() {
@@ -27,7 +28,7 @@ export default function IrrigationIntelligence() {
   return (
     <div className={styles.iiWrap}>
 
-      {/* Summary stat row */}
+      {/* Summary stat row — component-specific, not shared */}
       <div className={styles.iiSummary}>
         <div className={styles.iiStat}>
           <span className={styles.iiStatValue}>{summary.etToday.toFixed(2)}"</span>
@@ -54,43 +55,11 @@ export default function IrrigationIntelligence() {
         </div>
       </div>
 
-      {recommendations.length === 0 ? (
-        <p className={styles.iiEmpty}>Irrigation conditions favorable. No advisories at this time.</p>
-      ) : (
-        <>
-          <div className={styles.iiList}>
-            {recommendations.map(rec => {
-              const meta = IRRIGATION_SEVERITY_TOKENS[rec.severity] ?? IRRIGATION_SEVERITY_TOKENS.low
-              return (
-                <div
-                  key={rec.id}
-                  className={styles.iiItem}
-                  style={{
-                    '--ii-color':  meta.color,
-                    '--ii-bg':     meta.bg,
-                    '--ii-border': meta.border,
-                  }}
-                >
-                  <div className={styles.iiItemLeft}>
-                    <span className={styles.iiIcon}>{rec.icon}</span>
-                    <span className={styles.iiSeverityLabel} style={{ color: meta.color }}>
-                      {meta.label}
-                    </span>
-                  </div>
-
-                  <div className={styles.iiItemBody}>
-                    <div className={styles.iiItemTop}>
-                      <span className={styles.iiTitle}>{rec.title}</span>
-                    </div>
-                    <p className={styles.iiMessage}>{rec.message}</p>
-                    <p className={styles.iiAction}>→ {rec.recommendation}</p>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </>
-      )}
+      <RecommendationList
+        recommendations={recommendations}
+        tokens={IRRIGATION_SEVERITY_TOKENS}
+        emptyText="Irrigation conditions favorable. No advisories at this time."
+      />
 
     </div>
   )
