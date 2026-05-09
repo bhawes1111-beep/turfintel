@@ -3,7 +3,7 @@
 **Stack:** React 19 + Vite 8 · Plain JavaScript · CSS Modules · React Router DOM v7  
 **Deployed:** Cloudflare Pages (auto-deploy on push to `master`)  
 **Repo:** https://github.com/bhawes1111-beep/turfintel  
-**Latest Commit:** (see DEVLOG Session 7)
+**Latest Commit:** `5609f60` — Refine and stabilize live weather operations layer
 
 ---
 

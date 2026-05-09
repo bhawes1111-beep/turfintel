@@ -4,7 +4,7 @@
 
 ## Session 7 — 2026-05-08
 
-**Commit:** Weather stabilization pass  
+**Commit:** `5609f60` — Refine and stabilize live weather operations layer  
 **Build:** 163 modules, 0 errors · known warning: bundle chunk >500 kB (not blocking)
 
 ### Weather System Stabilization + Operational Accuracy Pass
