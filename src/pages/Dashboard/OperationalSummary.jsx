@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useOperations } from '../../utils/operations/OperationsContext'
 import { REPAIRS } from '../../data/irrigation'
 import { SERVICE_LOG } from '../../data/equipment'
@@ -18,6 +19,7 @@ function buildSummaryItems(alerts) {
   const items = []
 
   // 1. Alert status — derived from OperationsContext (respects dismissals)
+  // No route: alerts are visible on the same dashboard page
   const criticalHigh = alerts.filter(a => a.priority === 'critical' || a.priority === 'high')
   if (criticalHigh.length > 0) {
     items.push({
@@ -47,10 +49,12 @@ function buildSummaryItems(alerts) {
       icon:     '🔬',
       text:     diseaseAlerts[0].title,
       severity: 'warning',
+      route:    '/disease',
     })
   }
 
   // 3. Weather advisory — alert module tag
+  // No route: weather intelligence is visible on the same dashboard page
   const weatherAlert = alerts.find(a => a.module === 'weather')
   if (weatherAlert) {
     items.push({
@@ -73,6 +77,7 @@ function buildSummaryItems(alerts) {
       icon:     '💧',
       text:     `${openRepairs.length} irrigation repair${openRepairs.length > 1 ? 's' : ''} open${suffix}`,
       severity: highRepairs.length > 0 ? 'critical' : 'caution',
+      route:    '/irrigation',
     })
   } else {
     items.push({
@@ -91,6 +96,7 @@ function buildSummaryItems(alerts) {
       icon:     '⚙️',
       text:     `${overdueItems.length} equipment service item${overdueItems.length > 1 ? 's' : ''} overdue`,
       severity: 'warning',
+      route:    '/equipment',
     })
   } else {
     items.push({
@@ -107,6 +113,7 @@ function buildSummaryItems(alerts) {
       icon:     '🌿',
       text:     `${plannedApps.length} spray application${plannedApps.length > 1 ? 's' : ''} planned this season`,
       severity: 'info',
+      route:    '/spray',
     })
   }
 
@@ -119,6 +126,7 @@ function buildSummaryItems(alerts) {
       icon:     '🕐',
       text:     `${recentCount} operation${recentCount > 1 ? 's' : ''} logged in the past 7 days`,
       severity: 'info',
+      route:    '/activity',
     })
   }
 
@@ -129,6 +137,7 @@ function buildSummaryItems(alerts) {
 
 export default function OperationalSummary() {
   const { state } = useOperations()
+  const navigate  = useNavigate()
 
   const items = useMemo(
     () => buildSummaryItems(state.alerts.filter(a => a.status !== 'resolved')),
@@ -145,8 +154,13 @@ export default function OperationalSummary() {
       <div className={styles.osList}>
         {items.map((item, i) => {
           const meta = SEVERITY_TOKENS[item.severity] ?? SEVERITY_TOKENS.info
+          const Tag  = item.route ? 'button' : 'div'
           return (
-            <div key={i} className={styles.osItem}>
+            <Tag
+              key={i}
+              className={`${styles.osItem}${item.route ? ` ${styles.osItemClickable}` : ''}`}
+              onClick={item.route ? () => navigate(item.route) : undefined}
+            >
               <span
                 className={styles.osDot}
                 style={{ background: meta.color }}
@@ -154,7 +168,7 @@ export default function OperationalSummary() {
               />
               <span className={styles.osIcon}>{item.icon}</span>
               <span className={styles.osText}>{item.text}</span>
-            </div>
+            </Tag>
           )
         })}
       </div>

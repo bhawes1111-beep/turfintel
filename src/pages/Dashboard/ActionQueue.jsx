@@ -1,10 +1,28 @@
 import { useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useOperations } from '../../utils/operations/OperationsContext'
 import { REPAIRS } from '../../data/irrigation'
 import { SERVICE_LOG } from '../../data/equipment'
 import { SPRAY_RECORDS } from '../../data/spray'
 import { SEVERITY_TOKENS, SEVERITY_ORDER } from '../../utils/intelligence/severity'
 import styles from './ActionQueue.module.css'
+
+// ── Route mapping ─────────────────────────────────────────────────────────────
+
+const MODULE_ROUTES = {
+  spray:      '/spray',
+  irrigation: '/irrigation',
+  equipment:  '/equipment',
+  disease:    '/disease',
+  inventory:  '/inventory',
+  nutrition:  '/plant-nutrition',
+  weather:    '/dashboard',
+  alerts:     '/dashboard',
+}
+
+function getRoute(module) {
+  return MODULE_ROUTES[module] ?? '/dashboard'
+}
 
 // ── Module metadata ───────────────────────────────────────────────────────────
 
@@ -143,6 +161,7 @@ function buildQueue(alerts) {
 
 export default function ActionQueue() {
   const { state } = useOperations()
+  const navigate  = useNavigate()
 
   // Recompute only when alert list changes (dismissals, acknowledgements)
   const items = useMemo(() => buildQueue(state.alerts), [state.alerts])
@@ -159,10 +178,11 @@ export default function ActionQueue() {
         const meta        = SEVERITY_TOKENS[item.severity] ?? SEVERITY_TOKENS.info
         const moduleLabel = MODULE_LABELS[item.module] ?? item.module
         return (
-          <div
+          <button
             key={item.id}
             className={styles.aqItem}
             style={{ borderLeftColor: meta.color }}
+            onClick={() => navigate(getRoute(item.module))}
           >
             <span className={styles.aqIcon}>{item.icon}</span>
 
@@ -188,7 +208,7 @@ export default function ActionQueue() {
                 <span className={styles.aqTimestamp}>{item.timestamp}</span>
               )}
             </div>
-          </div>
+          </button>
         )
       })}
     </div>

@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { aggregateAll } from '../../utils/activity/activityBuilder'
 import {
   getModuleIcon,
@@ -10,7 +10,19 @@ import styles from './RecentActivity.module.css'
 
 const RECENT = aggregateAll().slice(0, 10)
 
+const MODULE_ROUTES = {
+  spray:      '/spray',
+  irrigation: '/irrigation',
+  equipment:  '/equipment',
+  alerts:     '/dashboard',
+}
+
+function getRoute(module) {
+  return MODULE_ROUTES[module] ?? '/dashboard'
+}
+
 export default function RecentActivity() {
+  const navigate = useNavigate()
   return (
     <div className={styles.raWrap}>
       <div className={styles.raList}>
@@ -18,7 +30,11 @@ export default function RecentActivity() {
           const severityMeta = getSeverityMeta(a.severity)
           const icon         = getModuleIcon(a.module)
           return (
-            <div key={a.id} className={styles.raRow}>
+            <button
+              key={a.id}
+              className={styles.raRow}
+              onClick={() => navigate(getRoute(a.module))}
+            >
               <span className={styles.raIcon}>{icon}</span>
               <span className={styles.raTitle} title={a.title}>
                 {a.title}
@@ -37,7 +53,7 @@ export default function RecentActivity() {
                 style={{ background: severityMeta.color }}
                 title={severityMeta.label}
               />
-            </div>
+            </button>
           )
         })}
       </div>

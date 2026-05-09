@@ -8,12 +8,23 @@
 /* ── Queue item ───────────────────────────────────────────────────────────── */
 
 .aqItem {
+  /* button reset */
+  appearance: none;
+  -webkit-appearance: none;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  border-left: 3px solid transparent; /* color set inline per severity */
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  /* layout */
   display: flex;
   align-items: flex-start;
   gap: 10px;
   padding: 10px 12px 10px 10px;
-  border-bottom: 1px solid var(--color-border);
-  border-left: 3px solid transparent; /* color set inline per severity */
+  width: 100%;
+  box-sizing: border-box;
   transition: background 0.12s;
   min-width: 0;
 }
