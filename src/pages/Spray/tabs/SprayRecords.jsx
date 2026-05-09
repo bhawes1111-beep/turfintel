@@ -1,5 +1,10 @@
 import { useState, useMemo, useEffect } from 'react'
 import { SPRAY_RECORDS, TYPE_COLORS } from '../../../data/spray'
+import { buildSpraySummaryReport } from '../../../utils/reports/reportBuilder'
+import { createAttachmentRef } from '../../../utils/reports/reportSchemas'
+import { getMediaByModule, getThumbnailBlob } from '../../../utils/media/mediaStore'
+import UploadCenter from '../../../components/uploads/UploadCenter'
+import ReportPreviewModal from '../../../components/reports/ReportPreviewModal'
 import styles from '../Spray.module.css'
 
 const TYPE_FILTERS = ['All', 'Fungicide', 'Herbicide', 'Insecticide', 'PGR', 'Fertilizer']
@@ -33,6 +38,9 @@ export default function SprayRecords() {
   const [typeFilter, setTypeFilter]     = useState('All')
   const [statusFilter, setStatusFilter] = useState('All')
   const [selected, setSelected]         = useState(null)
+  const [activeReport,  setActiveReport]  = useState(null)
+  const [reportLoading, setReportLoading] = useState(false)
+  const [reportThumbs,  setReportThumbs]  = useState([])
 
   useEffect(() => {
     if (!selected) return
@@ -40,6 +48,60 @@ export default function SprayRecords() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [selected])
+
+  function handleCloseReport() {
+    reportThumbs.forEach(url => URL.revokeObjectURL(url))
+    setReportThumbs([])
+    setActiveReport(null)
+  }
+
+  async function generateApplicationReport(record) {
+    setReportLoading(true)
+    try {
+      const [photos, docs] = await Promise.all([
+        getMediaByModule(record.id).catch(() => []),
+        getMediaByModule(`${record.id}-docs`).catch(() => []),
+      ])
+      const allMedia  = [...photos, ...docs]
+      const thumbUrls = []
+
+      const attachmentRefs = await Promise.all(allMedia.map(async rec => {
+        let thumbnailUrl = null
+        if (rec.type === 'image') {
+          try {
+            const blob = await getThumbnailBlob(rec.id)
+            if (blob) {
+              thumbnailUrl = URL.createObjectURL(blob)
+              thumbUrls.push(thumbnailUrl)
+            }
+          } catch {}
+        }
+        return createAttachmentRef({
+          id:           rec.id,
+          filename:     rec.filename,
+          type:         rec.type,
+          thumbnailUrl,
+          size:         rec.size,
+        })
+      }))
+
+      setReportThumbs(thumbUrls)
+      setActiveReport(buildSpraySummaryReport(
+        [{
+          ...record,
+          product: record.products.map(p => p.name).join(' + '),
+          rate:    record.products.map(p => p.rate).join(' / '),
+        }],
+        {
+          title:     `Application Report — ${record.products.map(p => p.name).join(' + ')}`,
+          dateRange: record.date,
+          zone:      record.area,
+        },
+      ))
+    } finally {
+      setReportLoading(false)
+    }
+  }
 
   const visible = useMemo(() => {
     return SPRAY_RECORDS.filter(r => {
@@ -321,10 +383,42 @@ export default function SprayRecords() {
                 </section>
               )}
 
+              {/* Attachments */}
+              <section className={styles.modalSection}>
+                <h3 className={styles.modalSectionTitle}>Attachments</h3>
+                <UploadCenter
+                  module={selected.id}
+                  type="image"
+                  tags={[selected.area, selected.targetPest, selected.products[0]?.type].filter(Boolean)}
+                  title="Photos"
+                />
+                <UploadCenter
+                  module={`${selected.id}-docs`}
+                  type="document"
+                  tags={[selected.area, selected.targetPest, selected.products[0]?.type].filter(Boolean)}
+                  title="Documents"
+                />
+              </section>
+
+            </div>
+
+            <div className="opActionRow">
+              <button
+                className="opActionBtn"
+                onClick={() => generateApplicationReport(selected)}
+                disabled={reportLoading}
+              >
+                {reportLoading ? 'Loading…' : 'Generate Report'}
+              </button>
             </div>
           </div>
         </div>
       )}
+
+      <ReportPreviewModal
+        report={activeReport}
+        onClose={handleCloseReport}
+      />
 
     </div>
   )
