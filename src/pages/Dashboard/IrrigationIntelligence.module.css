@@ -1,0 +1,211 @@
+/* ── Irrigation Intelligence card — prefix: ii* ──────────────────────────── */
+
+.iiWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ── Summary stat row ────────────────────────────────────────────────────── */
+
+.iiSummary {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  margin-bottom: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.iiStat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 10px 8px;
+  background: rgba(58,138,212,0.05);
+}
+
+.iiStatDivider {
+  width: 1px;
+  background: var(--color-border);
+  flex-shrink: 0;
+}
+
+.iiStatValue {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1;
+}
+
+.iiStatLabel {
+  font-size: 0.58rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+/* Value state modifiers */
+.iiStatAlert {
+  color: #3a8ad4;
+}
+
+.iiStatRec {
+  color: #3a8ad4;
+}
+
+.iiStatGood {
+  color: var(--color-accent);
+}
+
+/* ── Recommendation list ─────────────────────────────────────────────────── */
+
+.iiList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.iiItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 11px 12px;
+  border-radius: 7px;
+  border: 1px solid var(--ii-border, rgba(58,138,212,0.2));
+  background: var(--ii-bg, rgba(58,138,212,0.06));
+}
+
+/* ── Left: icon + severity label ─────────────────────────────────────────── */
+
+.iiItemLeft {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 40px;
+  padding-top: 1px;
+  flex-shrink: 0;
+}
+
+.iiIcon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.iiSeverityLabel {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+/* ── Body: title + message + action ──────────────────────────────────────── */
+
+.iiItemBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.iiItemTop {
+  margin-bottom: 4px;
+}
+
+.iiTitle {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.iiMessage {
+  font-size: 0.74rem;
+  color: var(--color-muted);
+  margin: 0 0 5px;
+  line-height: 1.45;
+}
+
+.iiAction {
+  font-size: 0.72rem;
+  color: var(--color-text);
+  margin: 0;
+  opacity: 0.78;
+  font-style: italic;
+  line-height: 1.4;
+}
+
+/* ── Push button ─────────────────────────────────────────────────────────── */
+
+.iiPushBtn {
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin-top: 1px;
+  background: rgba(58,138,212,0.12);
+  border: 1px solid rgba(58,138,212,0.28);
+  border-radius: 5px;
+  color: #3a8ad4;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 4px 9px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.iiPushBtn:hover:not(:disabled) {
+  background: rgba(58,138,212,0.24);
+  border-color: rgba(58,138,212,0.5);
+}
+
+.iiPushBtnDone {
+  background: transparent;
+  border-color: rgba(58,138,212,0.15);
+  color: var(--color-muted);
+  cursor: default;
+}
+
+/* ── Footer: push-all ────────────────────────────────────────────────────── */
+
+.iiFooter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 12px;
+  margin-top: 10px;
+  border-top: 1px solid rgba(58,138,212,0.12);
+  flex-wrap: wrap;
+}
+
+.iiPushAllBtn {
+  background: linear-gradient(135deg, #1a6aad, #2a8ad4);
+  border: none;
+  border-radius: 7px;
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 7px 15px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.iiPushAllBtn:hover {
+  opacity: 0.88;
+}
+
+.iiFooterSub {
+  font-size: 0.68rem;
+  color: var(--color-muted);
+}
+
+/* ── Empty state ─────────────────────────────────────────────────────────── */
+
+.iiEmpty {
+  font-size: 13px;
+  color: var(--color-muted);
+  margin-top: 4px;
+}

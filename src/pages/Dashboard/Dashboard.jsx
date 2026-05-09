@@ -5,6 +5,7 @@ import { PLACEHOLDER_WEATHER_ALERTS } from '../../components/shared/weather'
 import WeatherSection from './WeatherSection'
 import OperationsCalendar from './OperationsCalendar'
 import WeatherIntelligence from './WeatherIntelligence'
+import IrrigationIntelligence from './IrrigationIntelligence'
 import { useOperations } from '../../utils/operations/OperationsContext'
 import { acknowledgeAlert, dismissAlert } from '../../utils/operations/actions'
 import styles from './Dashboard.module.css'
@@ -84,6 +85,9 @@ export default function Dashboard() {
           <WeatherIntelligence />
         </DashboardCard>
 
+        <DashboardCard title="Irrigation Intelligence" wide>
+          <IrrigationIntelligence />
+        </DashboardCard>
 
       </div>
 
