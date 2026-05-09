@@ -1,7 +1,5 @@
-import { useState, useMemo } from 'react'
+import { useMemo } from 'react'
 import { useWeather } from '../../utils/weather/useWeather'
-import { useOperations } from '../../utils/operations/OperationsContext'
-import { createAlert } from '../../utils/operations/actions'
 import {
   generateIrrigationRecommendations,
   computeIrrigationSummary,
@@ -16,8 +14,6 @@ const SEVERITY_META = {
 
 export default function IrrigationIntelligence() {
   const { current, forecast, loading } = useWeather()
-  const { dispatch }                   = useOperations()
-  const [pushed, setPushed]            = useState(new Set())
 
   const recommendations = useMemo(
     () => generateIrrigationRecommendations(current, forecast),
@@ -28,27 +24,6 @@ export default function IrrigationIntelligence() {
     () => computeIrrigationSummary(current, forecast),
     [current, forecast]
   )
-
-  function pushToAlerts(rec) {
-    if (pushed.has(rec.id)) return
-    dispatch(createAlert({
-      title:       rec.title,
-      message:     `${rec.message} ${rec.recommendedAction}`,
-      module:      'irrigation',
-      priority:    rec.severity,
-      actionLabel: 'Irrigation',
-      sourceId:    rec.id,
-    }))
-    setPushed(prev => new Set([...prev, rec.id]))
-  }
-
-  function pushAllHigh() {
-    recommendations
-      .filter(r => r.severity === 'high' && !pushed.has(r.id))
-      .forEach(pushToAlerts)
-  }
-
-  const highUnpushed = recommendations.filter(r => r.severity === 'high' && !pushed.has(r.id)).length
 
   if (loading) {
     return <p className={styles.iiEmpty}>Loading irrigation data…</p>
@@ -90,8 +65,7 @@ export default function IrrigationIntelligence() {
         <>
           <div className={styles.iiList}>
             {recommendations.map(rec => {
-              const meta     = SEVERITY_META[rec.severity] ?? SEVERITY_META.low
-              const isPushed = pushed.has(rec.id)
+              const meta = SEVERITY_META[rec.severity] ?? SEVERITY_META.low
               return (
                 <div
                   key={rec.id}
@@ -116,28 +90,10 @@ export default function IrrigationIntelligence() {
                     <p className={styles.iiMessage}>{rec.message}</p>
                     <p className={styles.iiAction}>→ {rec.recommendedAction}</p>
                   </div>
-
-                  <button
-                    className={`${styles.iiPushBtn} ${isPushed ? styles.iiPushBtnDone : ''}`}
-                    onClick={() => pushToAlerts(rec)}
-                    disabled={isPushed}
-                    title={isPushed ? 'Added to alerts' : 'Push to Operations Alerts'}
-                  >
-                    {isPushed ? '✓ Added' : '+ Alert'}
-                  </button>
                 </div>
               )
             })}
           </div>
-
-          {highUnpushed > 0 && (
-            <div className={styles.iiFooter}>
-              <button className={styles.iiPushAllBtn} onClick={pushAllHigh}>
-                Push {highUnpushed} High-Priority Alert{highUnpushed !== 1 ? 's' : ''} →
-              </button>
-              <span className={styles.iiFooterSub}>Adds to Operations Alerts on this Dashboard</span>
-            </div>
-          )}
         </>
       )}
 

@@ -1,8 +1,6 @@
-import { useState, useMemo } from 'react'
+import { useMemo } from 'react'
 import { generateWeatherRecommendations } from '../../utils/weather/recommendations'
 import { useWeather } from '../../utils/weather/useWeather'
-import { useOperations } from '../../utils/operations/OperationsContext'
-import { createAlert } from '../../utils/operations/actions'
 import styles from './WeatherIntelligence.module.css'
 
 const SEVERITY_META = {
@@ -20,37 +18,12 @@ const MODULE_LABEL = {
 }
 
 export default function WeatherIntelligence() {
-  const { dispatch }             = useOperations()
   const { current, forecast, loading, isLive } = useWeather()
-  const [pushed, setPushed]      = useState(new Set())
 
-  // Regenerate recommendations when live data arrives (current/forecast object identity changes).
-  // useMemo deps are object references — stable while data is unchanged, new on live data load.
   const recommendations = useMemo(
     () => generateWeatherRecommendations(current, forecast),
     [current, forecast]
   )
-
-  function pushToAlerts(rec) {
-    if (pushed.has(rec.id)) return
-    dispatch(createAlert({
-      title:       rec.title,
-      message:     `${rec.message} ${rec.recommendedAction}`,
-      module:      rec.module,
-      priority:    rec.severity,
-      actionLabel: MODULE_LABEL[rec.module] || rec.module,
-      sourceId:    rec.id,
-    }))
-    setPushed(prev => new Set([...prev, rec.id]))
-  }
-
-  function pushAllHigh() {
-    recommendations
-      .filter(r => r.severity === 'high' && !pushed.has(r.id))
-      .forEach(pushToAlerts)
-  }
-
-  const highUnpushed = recommendations.filter(r => r.severity === 'high' && !pushed.has(r.id)).length
 
   if (loading) {
     return <p className={styles.wiEmpty}>Loading weather data…</p>
@@ -65,8 +38,7 @@ export default function WeatherIntelligence() {
       {isLive && <p className={styles.wiSourceNote}>Based on live NWS data for KSAV</p>}
       <div className={styles.wiList}>
         {recommendations.map(rec => {
-          const meta     = SEVERITY_META[rec.severity] || SEVERITY_META.low
-          const isPushed = pushed.has(rec.id)
+          const meta = SEVERITY_META[rec.severity] || SEVERITY_META.low
           return (
             <div
               key={rec.id}
@@ -94,28 +66,10 @@ export default function WeatherIntelligence() {
                 <p className={styles.wiMessage}>{rec.message}</p>
                 <p className={styles.wiAction}>→ {rec.recommendedAction}</p>
               </div>
-
-              <button
-                className={`${styles.wiPushBtn} ${isPushed ? styles.wiPushBtnDone : ''}`}
-                onClick={() => pushToAlerts(rec)}
-                disabled={isPushed}
-                title={isPushed ? 'Added to alerts' : 'Push to Operations Alerts'}
-              >
-                {isPushed ? '✓ Added' : '+ Alert'}
-              </button>
             </div>
           )
         })}
       </div>
-
-      {highUnpushed > 0 && (
-        <div className={styles.wiFooter}>
-          <button className={styles.wiPushAllBtn} onClick={pushAllHigh}>
-            Push {highUnpushed} High-Priority Alert{highUnpushed !== 1 ? 's' : ''} →
-          </button>
-          <span className={styles.wiFooterSub}>Adds to Operations Alerts on this Dashboard</span>
-        </div>
-      )}
     </div>
   )
 }
