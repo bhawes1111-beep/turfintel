@@ -7,6 +7,7 @@ export const RESERVE_EQUIPMENT     = 'RESERVE_EQUIPMENT'
 export const DISMISS_ALERT         = 'DISMISS_ALERT'
 export const ACKNOWLEDGE_ALERT     = 'ACKNOWLEDGE_ALERT'
 export const DEDUCT_INVENTORY      = 'DEDUCT_INVENTORY'
+export const UPDATE_REPAIR_OVERRIDE = 'UPDATE_REPAIR_OVERRIDE'
 
 // ── Pure action creators ──────────────────────────────────────────────────────
 //
@@ -52,4 +53,8 @@ export function acknowledgeAlert(id) {
 
 export function deductInventory(fields) {
   return { type: DEDUCT_INVENTORY, payload: makeInventoryUsage(fields) }
+}
+
+export function updateRepairOverride(repairId, patch) {
+  return { type: UPDATE_REPAIR_OVERRIDE, payload: { repairId, patch } }
 }

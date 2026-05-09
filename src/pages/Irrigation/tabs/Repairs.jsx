@@ -1,7 +1,8 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { REPAIRS } from '../../../data/irrigation'
 import { useOperations } from '../../../utils/operations/OperationsContext'
-import { createCalendarEvent, createAlert } from '../../../utils/operations/actions'
+import { createCalendarEvent, createAlert, updateRepairOverride } from '../../../utils/operations/actions'
+import { mergeRepairs } from '../../../utils/operations/repairUtils'
 import UploadCenter from '../../../components/uploads/UploadCenter'
 import { buildIrrigationRepairReport, buildIrrigationRepairSummaryReport } from '../../../utils/reports/reportBuilder'
 import { createAttachmentRef } from '../../../utils/reports/reportSchemas'
@@ -52,8 +53,9 @@ const ISSUE_TYPE_LABELS = {
   'pop-up-failure':  'Pop-Up Failure',
 }
 
-const SORT_STATUS   = { 'in-progress': 0, open: 1, 'parts-needed': 2, completed: 3 }
-const SORT_PRIORITY = { high: 0, medium: 1, low: 2 }
+const SORT_STATUS      = { 'in-progress': 0, open: 1, 'parts-needed': 2, completed: 3 }
+const SORT_PRIORITY    = { high: 0, medium: 1, low: 2 }
+const PRIORITY_CYCLE   = { high: 'medium', medium: 'low', low: 'high' }
 
 function matchesArea(repair, area) {
   if (area === 'All')          return true
@@ -66,20 +68,79 @@ function matchesArea(repair, area) {
 }
 
 export default function Repairs() {
-  const { dispatch }                         = useOperations()
+  const { state, dispatch }                  = useOperations()
   const [search,         setSearch]         = useState('')
   const [statusFilter,   setStatusFilter]   = useState('All')
   const [priorityFilter, setPriorityFilter] = useState('All')
   const [areaFilter,     setAreaFilter]     = useState('All')
   const [selected,       setSelected]       = useState(null)
+  const [selectedSection,setSelectedSection]= useState(null)
   const [toast,          setToast]          = useState(null)
   const [activeReport,   setActiveReport]   = useState(null)
   const [reportLoading,  setReportLoading]  = useState(false)
   const [reportThumbs,   setReportThumbs]   = useState([])
+  const attachSectionRef                     = useRef(null)
 
   function showToast(msg) {
     setToast(msg)
     setTimeout(() => setToast(null), 2800)
+  }
+
+  function closeModal() {
+    setSelected(null)
+    setSelectedSection(null)
+  }
+
+  // Scroll to attachments section when modal opens via inline action
+  useEffect(() => {
+    if (selected && selectedSection === 'attachments' && attachSectionRef.current) {
+      const timer = setTimeout(() => {
+        attachSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 80)
+      return () => clearTimeout(timer)
+    }
+  }, [selected, selectedSection])
+
+  // ── Inline action handlers ─────────────────────────────────────────────────
+
+  function handleMarkComplete(repair, e) {
+    e.stopPropagation()
+    const isCompleted = repair.status === 'completed'
+    if (isCompleted) {
+      const base = REPAIRS.find(r => r.repairId === repair.repairId)
+      const baseStatus = (base?.status === 'completed') ? 'open' : (base?.status || 'open')
+      dispatch(updateRepairOverride(repair.repairId, { status: baseStatus, dateCompleted: null }))
+      showToast('Repair reopened')
+    } else {
+      dispatch(updateRepairOverride(repair.repairId, {
+        status:        'completed',
+        dateCompleted: new Date().toISOString().slice(0, 10),
+      }))
+      showToast('Repair marked complete ✓')
+    }
+  }
+
+  function handleCyclePriority(repair, e) {
+    e.stopPropagation()
+    const next = PRIORITY_CYCLE[repair.priority] || 'medium'
+    dispatch(updateRepairOverride(repair.repairId, { priority: next }))
+    showToast(`Priority set to ${next}`)
+  }
+
+  function handleInlineSchedule(repair, e) {
+    e.stopPropagation()
+    handleScheduleRepair(repair)
+  }
+
+  function handleInlineReport(repair, e) {
+    e.stopPropagation()
+    generateRepairReport(repair)
+  }
+
+  function handleOpenAttachments(repair, e) {
+    e.stopPropagation()
+    setSelected(repair)
+    setSelectedSection('attachments')
   }
 
   function handleCloseReport() {
@@ -168,21 +229,26 @@ export default function Repairs() {
 
   useEffect(() => {
     if (!selected) return
-    const onKey = e => { if (e.key === 'Escape') setSelected(null) }
+    const onKey = e => { if (e.key === 'Escape') closeModal() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [selected])
 
+  const mergedRepairs = useMemo(
+    () => mergeRepairs(REPAIRS, state.repairOverrides),
+    [state.repairOverrides],
+  )
+
   const stats = useMemo(() => ({
-    open:              REPAIRS.filter(r => r.status !== 'completed').length,
-    highPriority:      REPAIRS.filter(r => r.priority === 'high' && r.status !== 'completed').length,
-    completedThisWeek: REPAIRS.filter(r => r.status === 'completed' && r.dateCompleted >= WEEK_START).length,
-    partsNeeded:       REPAIRS.filter(r => r.status === 'parts-needed').length,
-  }), [])
+    open:              mergedRepairs.filter(r => r.status !== 'completed').length,
+    highPriority:      mergedRepairs.filter(r => r.priority === 'high' && r.status !== 'completed').length,
+    completedThisWeek: mergedRepairs.filter(r => r.status === 'completed' && r.dateCompleted >= WEEK_START).length,
+    partsNeeded:       mergedRepairs.filter(r => r.status === 'parts-needed').length,
+  }), [mergedRepairs])
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
-    return REPAIRS
+    return mergedRepairs
       .filter(r => {
         if (q &&
           !r.description.toLowerCase().includes(q) &&
@@ -199,7 +265,7 @@ export default function Repairs() {
         if (ss !== 0) return ss
         return (SORT_PRIORITY[a.priority] ?? 9) - (SORT_PRIORITY[b.priority] ?? 9)
       })
-  }, [search, statusFilter, priorityFilter, areaFilter])
+  }, [search, statusFilter, priorityFilter, areaFilter, mergedRepairs])
 
   return (
     <div className={styles.irWrap}>
@@ -286,16 +352,19 @@ export default function Repairs() {
       {/* ── Repair list ──────────────────────────────────────────────────── */}
       <div className={styles.irList}>
         {filtered.map(repair => {
-          const sm        = STATUS_META[repair.status] || { label: repair.status, cls: '' }
-          const accent    = PRIORITY_ACCENT[repair.priority] || 'var(--color-accent)'
+          const sm         = STATUS_META[repair.status] || { label: repair.status, cls: '' }
+          const accent     = PRIORITY_ACCENT[repair.priority] || 'var(--color-accent)'
           const issueLabel = ISSUE_TYPE_LABELS[repair.issueType] || repair.issueType
           const completed  = repair.status === 'completed'
 
           return (
-            <button
+            <div
               key={repair.repairId}
               className={`${styles.irCard} ${styles[`irCard_${repair.priority}`]} ${completed ? styles.irCard_completed : ''}`}
               onClick={() => setSelected(repair)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setSelected(repair) }}
             >
               <div className={styles.irCardMain}>
                 <div className={styles.irCardLeft}>
@@ -343,7 +412,56 @@ export default function Repairs() {
                   </span>
                 </div>
               </div>
-            </button>
+
+              {/* ── Inline actions ──────────────────────────────────────── */}
+              <div className={styles.irCardActions} onClick={e => e.stopPropagation()}>
+                <button
+                  className={`${styles.irActionBtn} ${completed ? styles.irActionBtnMuted : styles.irActionBtnGreen}`}
+                  onClick={e => handleMarkComplete(repair, e)}
+                  title={completed ? 'Reopen repair' : 'Mark as completed'}
+                >
+                  {completed ? '↩ Reopen' : '✓ Complete'}
+                </button>
+
+                {!completed && (
+                  <button
+                    className={styles.irActionBtn}
+                    style={{ color: accent, borderColor: accent }}
+                    onClick={e => handleCyclePriority(repair, e)}
+                    title="Cycle priority: high → medium → low"
+                  >
+                    ↕ {repair.priority.charAt(0).toUpperCase() + repair.priority.slice(1)}
+                  </button>
+                )}
+
+                {!completed && (
+                  <button
+                    className={styles.irActionBtn}
+                    onClick={e => handleInlineSchedule(repair, e)}
+                    title="Add to Operations Calendar"
+                  >
+                    📅 Schedule
+                  </button>
+                )}
+
+                <button
+                  className={styles.irActionBtn}
+                  onClick={e => handleInlineReport(repair, e)}
+                  disabled={reportLoading}
+                  title="Generate repair report"
+                >
+                  📄 Report
+                </button>
+
+                <button
+                  className={styles.irActionBtn}
+                  onClick={e => handleOpenAttachments(repair, e)}
+                  title="View attachments"
+                >
+                  📎 Attachments
+                </button>
+              </div>
+            </div>
           )
         })}
         {filtered.length === 0 && (
@@ -359,7 +477,7 @@ export default function Repairs() {
         const repairTags = [selected.priority, selected.issueType, selected.area].filter(Boolean)
 
         return (
-          <div className={styles.irModalOverlay} onClick={() => setSelected(null)}>
+          <div className={styles.irModalOverlay} onClick={closeModal}>
             <div className={styles.irModalPanel} onClick={e => e.stopPropagation()}>
               <div className={styles.irModalAccent} style={{ background: accent }} />
               <div className={styles.irModalBody}>
@@ -503,7 +621,7 @@ export default function Repairs() {
                 </div>
 
                 {/* Attachments */}
-                <div className={styles.irModalSection}>
+                <div className={styles.irModalSection} ref={attachSectionRef}>
                   <p className={styles.irModalSectionTitle}>Attachments</p>
                   <UploadCenter
                     module={selected.repairId}
@@ -529,13 +647,13 @@ export default function Repairs() {
                   </button>
                   <button
                     className="opActionBtn"
-                    onClick={() => { handleScheduleRepair(selected); setSelected(null) }}
+                    onClick={() => { handleScheduleRepair(selected); closeModal() }}
                     disabled={selected.status === 'completed'}
                     title={selected.status === 'completed' ? 'Already completed' : 'Add to Operations Calendar'}
                   >
                     + Schedule Repair
                   </button>
-                  <button className={styles.irModalClose} onClick={() => setSelected(null)}>
+                  <button className={styles.irModalClose} onClick={closeModal}>
                     Close
                   </button>
                 </div>

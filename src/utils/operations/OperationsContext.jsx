@@ -11,6 +11,7 @@ import {
   DISMISS_ALERT,
   ACKNOWLEDGE_ALERT,
   DEDUCT_INVENTORY,
+  UPDATE_REPAIR_OVERRIDE,
 } from './actions'
 
 const STORAGE_KEY = 'turfintel-operations'
@@ -48,6 +49,7 @@ const seedState = {
     ...CHEMICALS.map(c => toInventoryProduct(c, 'c-')),
   ],
   inventoryUsage:        [],
+  repairOverrides:       {},
 }
 
 // ── Persistence adapter ────────────────────────────────────────────────────────
@@ -160,6 +162,17 @@ function operationsReducer(state, { type, payload }) {
           i === matchIdx ? { ...p, quantity: newQty } : p
         ),
         inventoryUsage: [...state.inventoryUsage, payload],
+      }
+    }
+
+    case UPDATE_REPAIR_OVERRIDE: {
+      const { repairId, patch } = action.payload
+      return {
+        ...state,
+        repairOverrides: {
+          ...state.repairOverrides,
+          [repairId]: { ...(state.repairOverrides[repairId] || {}), ...patch },
+        },
       }
     }
 

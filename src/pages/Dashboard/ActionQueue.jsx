@@ -5,6 +5,7 @@ import { REPAIRS } from '../../data/irrigation'
 import { SERVICE_LOG } from '../../data/equipment'
 import { SPRAY_RECORDS } from '../../data/spray'
 import { SEVERITY_TOKENS, SEVERITY_ORDER } from '../../utils/intelligence/severity'
+import { mergeRepairs } from '../../utils/operations/repairUtils'
 import styles from './ActionQueue.module.css'
 
 // ── Route mapping ─────────────────────────────────────────────────────────────
@@ -95,8 +96,8 @@ function fromAlerts(alerts) {
     }))
 }
 
-function fromRepairs() {
-  return REPAIRS
+function fromRepairs(repairs = REPAIRS) {
+  return repairs
     .filter(r => r.status !== 'completed')
     .map(r => ({
       id:        `aq-ir-${r.repairId}`,
@@ -139,11 +140,12 @@ function fromSpray() {
 
 // ── Aggregate + dedupe + sort ─────────────────────────────────────────────────
 
-function buildQueue(alerts) {
+function buildQueue(alerts, repairOverrides = {}) {
+  const repairs = mergeRepairs(REPAIRS, repairOverrides)
   const seen = new Set()
   return [
     ...fromAlerts(alerts),
-    ...fromRepairs(),
+    ...fromRepairs(repairs),
     ...fromServiceLog(),
     ...fromSpray(),
   ]
@@ -163,8 +165,10 @@ export default function ActionQueue() {
   const { state } = useOperations()
   const navigate  = useNavigate()
 
-  // Recompute only when alert list changes (dismissals, acknowledgements)
-  const items = useMemo(() => buildQueue(state.alerts), [state.alerts])
+  const items = useMemo(
+    () => buildQueue(state.alerts, state.repairOverrides),
+    [state.alerts, state.repairOverrides],
+  )
 
   if (items.length === 0) {
     return (

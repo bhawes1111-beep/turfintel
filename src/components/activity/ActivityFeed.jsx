@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { aggregateAll } from '../../utils/activity/activityBuilder'
+import { useOperations } from '../../utils/operations/OperationsContext'
 import ActivityFilters from './ActivityFilters'
 import ActivityCard from './ActivityCard'
 import styles from './activity.module.css'
@@ -26,11 +27,14 @@ function inDateRange(timestamp, range) {
   return true
 }
 
-// Build once at module load — all sources are static data, no async required
-const ALL_ACTIVITIES = aggregateAll()
-
 export default function ActivityFeed() {
+  const { state }         = useOperations()
   const [filters, setFilters] = useState(DEFAULT_FILTERS)
+
+  const ALL_ACTIVITIES = useMemo(
+    () => aggregateAll(state.repairOverrides),
+    [state.repairOverrides],
+  )
 
   const visible = useMemo(() => {
     return ALL_ACTIVITIES.filter(a => {
@@ -40,7 +44,7 @@ export default function ActivityFeed() {
       if (filters.hasAttachments && a.attachments.length === 0)               return false
       return true
     })
-  }, [filters])
+  }, [filters, ALL_ACTIVITIES])
 
   const isFiltered = filters.module !== 'All' || filters.dateRange !== 'All Time' ||
     filters.severity !== 'All' || filters.hasAttachments

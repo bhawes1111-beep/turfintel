@@ -6,6 +6,7 @@ import { SERVICE_LOG } from '../../data/equipment'
 import { SPRAY_RECORDS } from '../../data/spray'
 import { aggregateAll } from '../../utils/activity/activityBuilder'
 import { SEVERITY_TOKENS } from '../../utils/intelligence/severity'
+import { mergeRepairs } from '../../utils/operations/repairUtils'
 import styles from './OperationalSummary.module.css'
 
 // Build once — static data, no async needed
@@ -15,7 +16,7 @@ const ALL_ACTIVITIES = aggregateAll()
 // Returns an array of { icon, text, severity } briefing items derived from
 // real operational data. Items are ordered by operational relevance.
 
-function buildSummaryItems(alerts) {
+function buildSummaryItems(alerts, repairOverrides = {}) {
   const items = []
 
   // 1. Alert status — derived from OperationsContext (respects dismissals)
@@ -67,7 +68,8 @@ function buildSummaryItems(alerts) {
   }
 
   // 4. Irrigation repairs — open / in-progress / parts-needed
-  const openRepairs   = REPAIRS.filter(r => r.status !== 'completed')
+  const repairs       = mergeRepairs(REPAIRS, repairOverrides)
+  const openRepairs   = repairs.filter(r => r.status !== 'completed')
   const highRepairs   = openRepairs.filter(r => r.priority === 'high')
   if (openRepairs.length > 0) {
     const suffix = highRepairs.length > 0
@@ -140,8 +142,11 @@ export default function OperationalSummary() {
   const navigate  = useNavigate()
 
   const items = useMemo(
-    () => buildSummaryItems(state.alerts.filter(a => a.status !== 'resolved')),
-    [state.alerts],
+    () => buildSummaryItems(
+      state.alerts.filter(a => a.status !== 'resolved'),
+      state.repairOverrides,
+    ),
+    [state.alerts, state.repairOverrides],
   )
 
   const dateLabel = new Date().toLocaleDateString('en-US', {

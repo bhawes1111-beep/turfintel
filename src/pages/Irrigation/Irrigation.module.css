@@ -308,6 +308,63 @@
   text-transform: capitalize;
 }
 
+/* ── Inline card actions ─────────────────────────────────────────────────── */
+
+.irCardActions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding-top: 10px;
+  margin-top: 8px;
+  border-top: 1px solid var(--color-border);
+}
+
+.irActionBtn {
+  appearance: none;
+  background: rgba(255,255,255,.03);
+  border: 1px solid var(--color-border);
+  border-radius: 5px;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-family: inherit;
+  padding: 3px 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  transition: background .12s, color .12s, border-color .12s;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.irActionBtn:hover {
+  background: rgba(255,255,255,.07);
+  color: var(--color-text);
+  border-color: rgba(255,255,255,.2);
+}
+
+.irActionBtn:disabled {
+  opacity: .45;
+  cursor: default;
+}
+
+.irActionBtnGreen {
+  color: var(--color-accent);
+  border-color: rgba(74,158,74,.4);
+  background: rgba(74,158,74,.06);
+}
+
+.irActionBtnGreen:hover {
+  background: rgba(74,158,74,.14);
+  border-color: var(--color-accent);
+}
+
+.irActionBtnMuted {
+  color: var(--color-muted);
+  opacity: .7;
+}
+
 /* ── Modal ───────────────────────────────────────────────────────────────── */
 
 .irModalOverlay {
