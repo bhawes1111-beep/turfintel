@@ -1,0 +1,99 @@
+.saWrap {
+  padding: 0.25rem 0;
+}
+
+.saEmpty {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  padding: 0.5rem 0;
+  margin: 0;
+}
+
+.saGroups {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.saGroup {
+  background: var(--color-surface-raised, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.saGroupLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.875rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  background: var(--color-surface, rgba(255, 255, 255, 0.02));
+  border-bottom: 1px solid var(--color-border);
+}
+
+.saGroupIcon {
+  font-size: 0.9rem;
+}
+
+.saItems {
+  display: flex;
+  flex-direction: column;
+}
+
+.saItem {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.6rem 0.875rem;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.86rem;
+  color: var(--color-text);
+}
+
+.saItem:last-child {
+  border-bottom: none;
+}
+
+.saItemClickable {
+  appearance: none;
+  -webkit-appearance: none;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+  box-sizing: border-box;
+  transition: background 0.15s;
+}
+
+.saItemClickable:last-child {
+  border-bottom: none;
+}
+
+.saItemClickable:hover {
+  background: var(--color-surface-hover, rgba(255, 255, 255, 0.05));
+}
+
+.saDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.saItemIcon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.saItemText {
+  flex: 1;
+  line-height: 1.4;
+}

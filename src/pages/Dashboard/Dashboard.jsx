@@ -14,6 +14,7 @@ import RecentActivity from './RecentActivity'
 import QuickActions from './QuickActions'
 import OperationalSummary from './OperationalSummary'
 import ActionQueue from './ActionQueue'
+import SchedulingAwareness from './SchedulingAwareness'
 import styles from './Dashboard.module.css'
 
 export default function Dashboard() {
@@ -91,6 +92,10 @@ export default function Dashboard() {
 
         <DashboardCard title="Action Required" full>
           <ActionQueue />
+        </DashboardCard>
+
+        <DashboardCard title="Scheduling Awareness" full>
+          <SchedulingAwareness />
         </DashboardCard>
 
         <DashboardCard title="Weather Intelligence" wide>
