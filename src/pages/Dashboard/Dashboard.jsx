@@ -11,6 +11,7 @@ import AppEffectivenessCard from './AppEffectivenessCard'
 import { useOperations } from '../../utils/operations/OperationsContext'
 import { acknowledgeAlert, dismissAlert } from '../../utils/operations/actions'
 import RecentActivity from './RecentActivity'
+import QuickActions from './QuickActions'
 import styles from './Dashboard.module.css'
 
 export default function Dashboard() {
@@ -76,6 +77,10 @@ export default function Dashboard() {
             emptyMessage="All clear — no active alerts."
             emptyIcon="✓"
           />
+        </DashboardCard>
+
+        <DashboardCard title="Quick Actions" full>
+          <QuickActions />
         </DashboardCard>
 
         <DashboardCard title="Weather Intelligence" wide>
