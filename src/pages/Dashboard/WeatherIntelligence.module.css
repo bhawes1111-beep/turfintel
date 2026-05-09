@@ -1,0 +1,173 @@
+/* ── Weather Intelligence card — prefix: wi* ─────────────────────────────── */
+
+.wiWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ── Recommendation list ─────────────────────────────────────────────────── */
+
+.wiList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wiItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 11px 12px;
+  border-radius: 7px;
+  border: 1px solid var(--wi-border, rgba(74,158,74,0.2));
+  background: var(--wi-bg, rgba(74,158,74,0.06));
+}
+
+/* ── Left column: icon + severity label ──────────────────────────────────── */
+
+.wiItemLeft {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 40px;
+  padding-top: 1px;
+  flex-shrink: 0;
+}
+
+.wiIcon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.wiSeverityLabel {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+/* ── Body: title + message + action ──────────────────────────────────────── */
+
+.wiItemBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.wiItemTop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+
+.wiTitle {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--color-text);
+  flex: 1;
+  min-width: 0;
+}
+
+.wiModulePill {
+  font-size: 0.58rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: rgba(74,158,74,0.14);
+  color: var(--color-accent);
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
+.wiMessage {
+  font-size: 0.74rem;
+  color: var(--color-muted);
+  margin: 0 0 5px;
+  line-height: 1.45;
+}
+
+.wiAction {
+  font-size: 0.72rem;
+  color: var(--color-text);
+  margin: 0;
+  opacity: 0.78;
+  font-style: italic;
+  line-height: 1.4;
+}
+
+/* ── Push button ─────────────────────────────────────────────────────────── */
+
+.wiPushBtn {
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin-top: 1px;
+  background: rgba(74,158,74,0.12);
+  border: 1px solid rgba(74,158,74,0.28);
+  border-radius: 5px;
+  color: var(--color-accent);
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 4px 9px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.wiPushBtn:hover:not(:disabled) {
+  background: rgba(74,158,74,0.24);
+  border-color: rgba(74,158,74,0.5);
+}
+
+.wiPushBtnDone {
+  background: transparent;
+  border-color: rgba(74,158,74,0.15);
+  color: var(--color-muted);
+  cursor: default;
+}
+
+/* ── Footer: push-all ────────────────────────────────────────────────────── */
+
+.wiFooter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 12px;
+  margin-top: 10px;
+  border-top: 1px solid rgba(74,158,74,0.12);
+  flex-wrap: wrap;
+}
+
+.wiPushAllBtn {
+  background: linear-gradient(135deg, #2d8a2d, #3bae3b);
+  border: none;
+  border-radius: 7px;
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 7px 15px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.wiPushAllBtn:hover {
+  opacity: 0.88;
+}
+
+.wiFooterSub {
+  font-size: 0.68rem;
+  color: var(--color-muted);
+}
+
+/* ── Empty state ─────────────────────────────────────────────────────────── */
+
+.wiEmpty {
+  font-size: 13px;
+  color: var(--color-muted);
+  margin-top: 4px;
+}

@@ -4,6 +4,7 @@ import { AlertList } from '../../components/shared/alerts'
 import { PLACEHOLDER_WEATHER_ALERTS } from '../../components/shared/weather'
 import WeatherSection from './WeatherSection'
 import OperationsCalendar from './OperationsCalendar'
+import WeatherIntelligence from './WeatherIntelligence'
 import { useOperations } from '../../utils/operations/OperationsContext'
 import { acknowledgeAlert, dismissAlert } from '../../utils/operations/actions'
 import styles from './Dashboard.module.css'
@@ -72,6 +73,10 @@ export default function Dashboard() {
 
         <DashboardCard title="Recent Notes">
           <p className={styles.empty}>No recent activity.</p>
+        </DashboardCard>
+
+        <DashboardCard title="Weather Intelligence" wide>
+          <WeatherIntelligence />
         </DashboardCard>
 
         <DashboardCard full>

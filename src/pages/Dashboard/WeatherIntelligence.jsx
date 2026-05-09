@@ -1,0 +1,118 @@
+import { useState, useMemo } from 'react'
+import {
+  PLACEHOLDER_CURRENT,
+  PLACEHOLDER_FORECAST,
+} from '../../components/shared/weather/weatherTokens'
+import { generateWeatherRecommendations } from '../../utils/weather/recommendations'
+import { useOperations } from '../../utils/operations/OperationsContext'
+import { createAlert } from '../../utils/operations/actions'
+import styles from './WeatherIntelligence.module.css'
+
+const SEVERITY_META = {
+  high:   { label: 'High',   color: '#e07070', bg: 'rgba(220,80,80,0.10)',   border: 'rgba(220,80,80,0.25)'   },
+  medium: { label: 'Medium', color: '#d4883a', bg: 'rgba(210,130,40,0.10)',  border: 'rgba(210,130,40,0.25)'  },
+  low:    { label: 'Low',    color: '#4ecb4e', bg: 'rgba(74,158,74,0.10)',   border: 'rgba(74,158,74,0.25)'   },
+}
+
+const MODULE_LABEL = {
+  spray:      'Spray',
+  irrigation: 'Irrigation',
+  disease:    'Disease',
+  agronomy:   'Agronomy',
+  crew:       'Crew',
+}
+
+export default function WeatherIntelligence() {
+  const { dispatch }    = useOperations()
+  const [pushed, setPushed] = useState(new Set())
+
+  // Recommendations are generated once on mount from the current snapshot.
+  // When real weather data replaces placeholders, pass it in here.
+  const recommendations = useMemo(
+    () => generateWeatherRecommendations(PLACEHOLDER_CURRENT, PLACEHOLDER_FORECAST),
+    []
+  )
+
+  function pushToAlerts(rec) {
+    if (pushed.has(rec.id)) return
+    dispatch(createAlert({
+      title:       rec.title,
+      message:     `${rec.message} ${rec.recommendedAction}`,
+      module:      rec.module,
+      priority:    rec.severity,
+      actionLabel: MODULE_LABEL[rec.module] || rec.module,
+      sourceId:    rec.id,
+    }))
+    setPushed(prev => new Set([...prev, rec.id]))
+  }
+
+  function pushAllHigh() {
+    recommendations
+      .filter(r => r.severity === 'high' && !pushed.has(r.id))
+      .forEach(pushToAlerts)
+  }
+
+  const highUnpushed = recommendations.filter(r => r.severity === 'high' && !pushed.has(r.id)).length
+
+  if (recommendations.length === 0) {
+    return <p className={styles.wiEmpty}>No weather advisories at this time. Conditions are favorable.</p>
+  }
+
+  return (
+    <div className={styles.wiWrap}>
+      <div className={styles.wiList}>
+        {recommendations.map(rec => {
+          const meta     = SEVERITY_META[rec.severity] || SEVERITY_META.low
+          const isPushed = pushed.has(rec.id)
+          return (
+            <div
+              key={rec.id}
+              className={styles.wiItem}
+              style={{
+                '--wi-color':  meta.color,
+                '--wi-bg':     meta.bg,
+                '--wi-border': meta.border,
+              }}
+            >
+              <div className={styles.wiItemLeft}>
+                <span className={styles.wiIcon}>{rec.icon}</span>
+                <span className={styles.wiSeverityLabel} style={{ color: meta.color }}>
+                  {meta.label}
+                </span>
+              </div>
+
+              <div className={styles.wiItemBody}>
+                <div className={styles.wiItemTop}>
+                  <span className={styles.wiTitle}>{rec.title}</span>
+                  <span className={styles.wiModulePill}>
+                    {MODULE_LABEL[rec.module] || rec.module}
+                  </span>
+                </div>
+                <p className={styles.wiMessage}>{rec.message}</p>
+                <p className={styles.wiAction}>→ {rec.recommendedAction}</p>
+              </div>
+
+              <button
+                className={`${styles.wiPushBtn} ${isPushed ? styles.wiPushBtnDone : ''}`}
+                onClick={() => pushToAlerts(rec)}
+                disabled={isPushed}
+                title={isPushed ? 'Added to alerts' : 'Push to Operations Alerts'}
+              >
+                {isPushed ? '✓ Added' : '+ Alert'}
+              </button>
+            </div>
+          )
+        })}
+      </div>
+
+      {highUnpushed > 0 && (
+        <div className={styles.wiFooter}>
+          <button className={styles.wiPushAllBtn} onClick={pushAllHigh}>
+            Push {highUnpushed} High-Priority Alert{highUnpushed !== 1 ? 's' : ''} →
+          </button>
+          <span className={styles.wiFooterSub}>Adds to Operations Alerts on this Dashboard</span>
+        </div>
+      )}
+    </div>
+  )
+}
