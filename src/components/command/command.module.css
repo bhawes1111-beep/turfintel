@@ -1,0 +1,249 @@
+/* ── Overlay backdrop ───────────────────────────────────────────────────── */
+
+.cpOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  z-index: 9500;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 14vh;
+  animation: cpBackdropIn 0.15s ease forwards;
+}
+
+@keyframes cpBackdropIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Palette shell ──────────────────────────────────────────────────────── */
+
+.cpPalette {
+  width: 560px;
+  max-width: calc(100vw - 24px);
+  background: var(--color-card, #111e11);
+  border: 1px solid rgba(74, 158, 74, 0.22);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  display: flex;
+  flex-direction: column;
+  animation: cpPaletteIn 0.15s ease forwards;
+}
+
+@keyframes cpPaletteIn {
+  from { opacity: 0; transform: translateY(-8px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+/* ── Search input row ───────────────────────────────────────────────────── */
+
+.cpInputRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--color-border, #1e341e);
+}
+
+.cpSearchIcon {
+  flex-shrink: 0;
+  color: var(--color-text-muted, #7a9e7a);
+  display: flex;
+  align-items: center;
+}
+
+.cpInput {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  font-size: 0.95rem;
+  color: var(--color-text, #e8f0e8);
+  font-family: inherit;
+}
+
+.cpInput::placeholder {
+  color: var(--color-text-muted, #7a9e7a);
+}
+
+.cpEscHint {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-family: inherit;
+  color: var(--color-text-muted, #7a9e7a);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+/* ── Results list ───────────────────────────────────────────────────────── */
+
+.cpResults {
+  max-height: 380px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(74, 158, 74, 0.2) transparent;
+}
+
+.cpResults::-webkit-scrollbar {
+  width: 4px;
+}
+
+.cpResults::-webkit-scrollbar-thumb {
+  background: rgba(74, 158, 74, 0.2);
+  border-radius: 4px;
+}
+
+/* ── Group header ───────────────────────────────────────────────────────── */
+
+.cpGroupHeader {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.9px;
+  color: var(--color-text-muted, #7a9e7a);
+  padding: 10px 16px 4px;
+  user-select: none;
+}
+
+/* ── Individual command item ────────────────────────────────────────────── */
+
+.cpItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 16px;
+  border: none;
+  border-left: 3px solid transparent;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  color: var(--color-text, #e8f0e8);
+  font-family: inherit;
+  font-size: 0.875rem;
+  transition: background 0.1s;
+  box-sizing: border-box;
+}
+
+.cpItem:hover,
+.cpItemActive {
+  background: rgba(74, 158, 74, 0.08);
+  border-left-color: rgba(74, 158, 74, 0.5);
+}
+
+.cpItemActive {
+  background: rgba(74, 158, 74, 0.12);
+  border-left-color: #4ecb4e;
+}
+
+.cpItemIcon {
+  flex-shrink: 0;
+  font-size: 1rem;
+  width: 22px;
+  text-align: center;
+  line-height: 1;
+}
+
+.cpItemBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.cpItemLabel {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cpItemDesc {
+  font-size: 0.78rem;
+  color: var(--color-text-muted, #7a9e7a);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cpItemGroup {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted, #7a9e7a);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+/* ── Empty state ────────────────────────────────────────────────────────── */
+
+.cpEmpty {
+  padding: 24px 16px;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--color-text-muted, #7a9e7a);
+  margin: 0;
+}
+
+/* ── Footer hints ───────────────────────────────────────────────────────── */
+
+.cpFooter {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 8px 16px;
+  border-top: 1px solid var(--color-border, #1e341e);
+  font-size: 11px;
+  color: var(--color-text-muted, #7a9e7a);
+  user-select: none;
+}
+
+.cpFooter kbd {
+  font-family: inherit;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 10px;
+  margin-right: 3px;
+}
+
+/* ── Mobile ─────────────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .cpOverlay {
+    align-items: flex-start;
+    padding-top: 8px;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .cpPalette {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 10px;
+  }
+
+  .cpResults {
+    max-height: 55vh;
+  }
+
+  .cpItemGroup {
+    display: none;
+  }
+
+  .cpFooter {
+    display: none;
+  }
+}
