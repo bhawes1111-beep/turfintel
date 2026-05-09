@@ -45,6 +45,23 @@
   gap: var(--grid-gap);
 }
 
+/* ── Agronomy intelligence row (GDD + App Effectiveness side by side) ────── */
+
+.agronomySection {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--grid-gap);
+  padding: var(--grid-padding);
+  border-bottom: 1px solid var(--color-border);
+}
+
+@media (max-width: 768px) {
+  .agronomySection {
+    grid-template-columns: 1fr;
+    padding: var(--grid-padding-mobile);
+  }
+}
+
 /* ── Operations Calendar section ────────────────────────────────────────── */
 
 .calendarSection {

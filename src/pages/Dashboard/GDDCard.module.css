@@ -1,0 +1,112 @@
+/* ── Growing Degree Days card (gdd*) ─────────────────────────────────────── */
+
+.gddWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gddEmpty {
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+/* ── Stat row ────────────────────────────────────────────────────────────── */
+
+.gddStats {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.gddStat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 10px 8px;
+  background: rgba(74,158,74,0.04);
+}
+
+.gddStatDivider {
+  width: 1px;
+  background: var(--color-border);
+  flex-shrink: 0;
+}
+
+.gddStatValue {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.gddStatLabel {
+  font-size: 0.58rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+/* ── Type rows ───────────────────────────────────────────────────────────── */
+
+.gddList {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.gddRow {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.gddRowHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.gddRowLabel {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.gddBadge {
+  font-size: 0.64rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+}
+
+/* ── Progress track ──────────────────────────────────────────────────────── */
+
+.gddTrack {
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255,255,255,0.07);
+  overflow: hidden;
+}
+
+.gddFill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+/* ── Status note ─────────────────────────────────────────────────────────── */
+
+.gddNote {
+  font-size: 0.68rem;
+  color: var(--color-muted);
+  font-style: italic;
+}

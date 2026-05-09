@@ -1,8 +1,16 @@
+import { useWeather } from '../../../utils/weather/useWeather'
+import ETCard from '../../../components/shared/weather/ETCard'
 import styles from '../Irrigation.module.css'
 
 export default function IrrigationDashboard() {
+  const { current, etTrend } = useWeather()
+
   return (
     <div className={styles.irDashWrap}>
+
+      {/* ET card — live weather-driven evapotranspiration data */}
+      <ETCard current={current} trend={etTrend} />
+
       <div className={styles.irDashGrid}>
 
         <div className={styles.irDashCard}>

@@ -1,0 +1,123 @@
+/* ── Application Effectiveness card (ae*) ───────────────────────────────── */
+
+.aeWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.aeEmpty {
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+/* ── Score display ───────────────────────────────────────────────────────── */
+
+.aeScore {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.02);
+}
+
+.aeScoreNumber {
+  font-size: 2.2rem;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.aeScoreRight {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.aeRatingBadge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  display: inline-block;
+}
+
+.aeRatingLabel {
+  font-size: 0.64rem;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ── Factor bars ─────────────────────────────────────────────────────────── */
+
+.aeFactors {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.aeFactor {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.aeFactorLabel {
+  font-size: 0.68rem;
+  color: var(--color-muted);
+  width: 52px;
+  flex-shrink: 0;
+}
+
+.aeTrack {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.07);
+  overflow: hidden;
+}
+
+.aeFill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+
+.aeFactorPts {
+  font-size: 0.64rem;
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+  width: 28px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ── Positive / negative notes ───────────────────────────────────────────── */
+
+.aeNotes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.aeNote {
+  font-size: 0.7rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  line-height: 1.4;
+}
+
+.aeNoteIcon {
+  flex-shrink: 0;
+  font-size: 0.65rem;
+  margin-top: 1px;
+}
+
+.aePositive { color: var(--color-accent); }
+.aeNegative { color: #e07070; }

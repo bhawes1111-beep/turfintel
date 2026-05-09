@@ -20,15 +20,6 @@ function IconCloud({ size = 15 }) {
   )
 }
 
-function IconDroplet({ size = 15 }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75"
-      strokeLinecap="round" strokeLinejoin="round" width={size} height={size} aria-hidden="true">
-      <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
-    </svg>
-  )
-}
-
 function IconWind({ size = 12 }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75"
@@ -53,28 +44,6 @@ function forecastCondition(day) {
   if (day.sprayWindow === 'ideal')   return { label: 'Good Conditions', color: sw.color, bg: sw.bg, border: sw.border }
   if (day.sprayWindow === 'caution') return { label: 'Marginal',        color: sw.color, bg: sw.bg, border: sw.border }
   return { label: 'Poor Conditions', color: sw.color, bg: sw.bg, border: sw.border }
-}
-
-// ── ET bar chart ──────────────────────────────────────────────────────────────
-
-function ETBarChart({ data }) {
-  const maxEt = Math.max(...data.map(d => d.et), 0.01)
-  return (
-    <div className={styles.wsBarChart}>
-      {data.map(d => {
-        const heightPct = Math.round((d.et / maxEt) * 100)
-        return (
-          <div key={d.day} className={styles.wsBarCol}>
-            <span className={styles.wsBarValue}>{d.et.toFixed(2)}</span>
-            <div className={styles.wsBarTrack}>
-              <div className={styles.wsBar} style={{ height: `${heightPct}%` }} />
-            </div>
-            <span className={styles.wsBarDay}>{d.day}</span>
-          </div>
-        )
-      })}
-    </div>
-  )
 }
 
 // ── Weather Insights card ─────────────────────────────────────────────────────
@@ -178,49 +147,6 @@ function WeatherInsightsCard({ current, forecastDay0, irrigationRec, isLive, isS
   )
 }
 
-// ── Evapotranspiration card ───────────────────────────────────────────────────
-
-function ETSectionCard({ current, etTrend }) {
-  const w       = current
-  const sevenDay = etTrend.reduce((sum, d) => sum + d.et, 0).toFixed(2)
-
-  return (
-    <div className={styles.wsCard}>
-
-      <div className={styles.wsCardHeader}>
-        <div className={styles.wsCardHeaderLeft}>
-          <span className={styles.wsCardIconWrap}><IconDroplet size={15} /></span>
-          <div className={styles.wsCardTitle}>Evapotranspiration</div>
-        </div>
-        <span className={styles.wsETWeekTotal}>7-day total: {sevenDay}"</span>
-      </div>
-
-      <div className={styles.wsETValues}>
-        <div className={styles.wsETValueBlock}>
-          <span className={styles.wsETLabel}>ET Rate Today</span>
-          <div className={styles.wsETBigRow}>
-            <span className={styles.wsETBig}>{w.etRate.toFixed(2)}</span>
-            <span className={styles.wsETUnit}>" / day</span>
-          </div>
-        </div>
-        <div className={styles.wsETValueBlock}>
-          <span className={styles.wsETLabel}>ET Deficit</span>
-          <div className={styles.wsETBigRow}>
-            <span className={`${styles.wsETBig} ${styles.wsETDeficit}`}>{w.etDeficit.toFixed(2)}</span>
-            <span className={styles.wsETUnit}>" to restore</span>
-          </div>
-        </div>
-      </div>
-
-      <div className={styles.wsChartSection}>
-        <span className={styles.wsChartTitle}>7-Day ET Trend</span>
-        <ETBarChart data={etTrend} />
-      </div>
-
-    </div>
-  )
-}
-
 // ── 7-day forecast row ────────────────────────────────────────────────────────
 
 function ForecastRow({ forecast }) {
@@ -273,7 +199,7 @@ function ForecastRow({ forecast }) {
 // ── Main export ───────────────────────────────────────────────────────────────
 
 export default function WeatherSection({ alerts = [], onDismissAlert }) {
-  const { current, forecast, etTrend, loading, error, isLive, isStale, refresh } = useWeather()
+  const { current, forecast, loading, error, isLive, isStale, refresh } = useWeather()
   const { recApplication } = computeIrrigationSummary(current, forecast)
 
   return (
@@ -298,18 +224,15 @@ export default function WeatherSection({ alerts = [], onDismissAlert }) {
         </div>
       )}
 
-      <div className={styles.wsTopRow}>
-        <WeatherInsightsCard
-          current={current}
-          forecastDay0={forecast[0]}
-          irrigationRec={recApplication}
-          isLive={isLive}
-          isStale={isStale}
-          loading={loading}
-          onRefresh={refresh}
-        />
-        <ETSectionCard current={current} etTrend={etTrend} />
-      </div>
+      <WeatherInsightsCard
+        current={current}
+        forecastDay0={forecast[0]}
+        irrigationRec={recApplication}
+        isLive={isLive}
+        isStale={isStale}
+        loading={loading}
+        onRefresh={refresh}
+      />
 
       <ForecastRow forecast={forecast} />
 

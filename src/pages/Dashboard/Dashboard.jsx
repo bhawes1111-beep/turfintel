@@ -6,6 +6,8 @@ import WeatherSection from './WeatherSection'
 import OperationsCalendar from './OperationsCalendar'
 import WeatherIntelligence from './WeatherIntelligence'
 import IrrigationIntelligence from './IrrigationIntelligence'
+import GDDCard from './GDDCard'
+import AppEffectivenessCard from './AppEffectivenessCard'
 import { useOperations } from '../../utils/operations/OperationsContext'
 import { acknowledgeAlert, dismissAlert } from '../../utils/operations/actions'
 import styles from './Dashboard.module.css'
@@ -45,7 +47,17 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Operations Calendar — directly below weather */}
+      {/* Agronomy intelligence — GDD + Application Effectiveness side by side */}
+      <div className={styles.agronomySection}>
+        <DashboardCard title="Growing Degree Days">
+          <GDDCard />
+        </DashboardCard>
+        <DashboardCard title="Application Effectiveness">
+          <AppEffectivenessCard />
+        </DashboardCard>
+      </div>
+
+      {/* Operations Calendar — directly below agronomy */}
       <div className={styles.calendarSection}>
         <OperationsCalendar />
       </div>
