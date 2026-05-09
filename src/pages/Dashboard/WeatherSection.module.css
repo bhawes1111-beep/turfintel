@@ -18,6 +18,43 @@
   gap: 6px;
 }
 
+/* ── Error banner ────────────────────────────────────────────────────────── */
+
+.wsErrorBanner {
+  padding: 7px 12px;
+  border-radius: 6px;
+  background: rgba(210,130,40,0.10);
+  border: 1px solid rgba(210,130,40,0.30);
+  color: var(--color-muted);
+  font-size: 0.74rem;
+}
+
+/* ── Live / stale source badges ──────────────────────────────────────────── */
+
+.wsLiveBadge,
+.wsStaleBadge {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 0.52rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 1px 5px;
+  border-radius: 4px;
+  vertical-align: middle;
+}
+
+.wsLiveBadge {
+  background: rgba(74,158,74,0.15);
+  color: var(--color-accent);
+  border: 1px solid rgba(74,158,74,0.30);
+}
+
+.wsStaleBadge {
+  background: rgba(210,130,40,0.15);
+  color: #d4883a;
+  border: 1px solid rgba(210,130,40,0.30);
+}
+
 /* ── Top row: two cards side by side ─────────────────────────────────────── */
 
 .wsTopRow {

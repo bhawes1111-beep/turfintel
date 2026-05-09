@@ -1,13 +1,11 @@
 import {
-  PLACEHOLDER_CURRENT,
-  PLACEHOLDER_ET_TREND,
-  PLACEHOLDER_FORECAST,
   SPRAY_WINDOW_TOKENS,
   DISEASE_PRESSURE_TOKENS,
   WEATHER_ICONS,
   formatTimestamp,
 } from '../../components/shared/weather/weatherTokens'
 import { WeatherAlertBanner } from '../../components/shared/weather'
+import { useWeather } from '../../utils/weather/useWeather'
 import styles from './WeatherSection.module.css'
 
 // ── Inline SVG icons ──────────────────────────────────────────────────────────
@@ -51,12 +49,12 @@ function forecastCondition(day) {
     return { label: 'Monitor', color: '#d4883a', bg: 'rgba(210,130,40,0.12)', border: 'rgba(210,130,40,0.3)' }
   }
   const sw = SPRAY_WINDOW_TOKENS[day.sprayWindow]
-  if (day.sprayWindow === 'ideal')   return { label: 'Good Conditions', color: sw.color, bg: sw.bg,  border: sw.border  }
-  if (day.sprayWindow === 'caution') return { label: 'Marginal',        color: sw.color, bg: sw.bg,  border: sw.border  }
+  if (day.sprayWindow === 'ideal')   return { label: 'Good Conditions', color: sw.color, bg: sw.bg, border: sw.border }
+  if (day.sprayWindow === 'caution') return { label: 'Marginal',        color: sw.color, bg: sw.bg, border: sw.border }
   return { label: 'Poor Conditions', color: sw.color, bg: sw.bg, border: sw.border }
 }
 
-// ── ET bar chart (pure CSS + flex) ────────────────────────────────────────────
+// ── ET bar chart ──────────────────────────────────────────────────────────────
 
 function ETBarChart({ data }) {
   const maxEt = Math.max(...data.map(d => d.et), 0.01)
@@ -80,37 +78,39 @@ function ETBarChart({ data }) {
 
 // ── Weather Insights card ─────────────────────────────────────────────────────
 
-function WeatherInsightsCard() {
-  const w = PLACEHOLDER_CURRENT
-  const sw  = SPRAY_WINDOW_TOKENS[w.sprayWindow]
-  const dp  = DISEASE_PRESSURE_TOKENS[w.diseasePressure]
-  const icon = WEATHER_ICONS[PLACEHOLDER_FORECAST[0].icon] || '⛅'
+function WeatherInsightsCard({ current, forecastDay0, isLive, isStale }) {
+  const w   = current
+  const sw  = SPRAY_WINDOW_TOKENS[w.sprayWindow] ?? SPRAY_WINDOW_TOKENS.caution
+  const dp  = DISEASE_PRESSURE_TOKENS[w.diseasePressure] ?? DISEASE_PRESSURE_TOKENS.low
+  const icon = WEATHER_ICONS[forecastDay0?.icon] || '⛅'
 
   const METRICS = [
-    { label: 'Humidity',    value: `${w.humidity}%`           },
+    { label: 'Humidity',    value: `${w.humidity}%`             },
     { label: 'Wind',        value: `${w.wind} mph ${w.windDir}` },
-    { label: 'Dew Point',   value: `${w.dewPoint}°F`          },
-    { label: 'Soil Temp',   value: `${w.soilTemp}°F`          },
-    { label: '24h Rain',    value: `${w.rainfall24h}"`        },
-    { label: 'Solar Rad',   value: `${w.solarRadiation} W/m²` },
+    { label: 'Dew Point',   value: `${w.dewPoint}°F`            },
+    { label: 'Soil Temp',   value: w.soilTemp != null ? `${w.soilTemp}°F` : '—' },
+    { label: '24h Rain',    value: `${w.rainfall24h}"`          },
+    { label: 'Solar Rad',   value: w.solarRadiation != null ? `${w.solarRadiation} W/m²` : '—' },
   ]
 
   return (
     <div className={styles.wsCard}>
 
-      {/* Card header */}
       <div className={styles.wsCardHeader}>
         <div className={styles.wsCardHeaderLeft}>
           <span className={styles.wsCardIconWrap}><IconCloud size={15} /></span>
           <div>
-            <div className={styles.wsCardTitle}>Weather Insights</div>
+            <div className={styles.wsCardTitle}>
+              Weather Insights
+              {isLive  && <span className={styles.wsLiveBadge}>LIVE</span>}
+              {isStale && <span className={styles.wsStaleBadge}>STALE</span>}
+            </div>
             <div className={styles.wsCardLocation}>{w.location}</div>
           </div>
         </div>
         <div className={styles.wsUpdated}>Updated {formatTimestamp(w.timestamp)}</div>
       </div>
 
-      {/* Main display */}
       <div className={styles.wsMainDisplay}>
         <span className={styles.wsWeatherEmoji} role="img" aria-label="weather">{icon}</span>
         <div className={styles.wsTempBlock}>
@@ -128,7 +128,6 @@ function WeatherInsightsCard() {
         </div>
       </div>
 
-      {/* 6 metrics grid */}
       <div className={styles.wsMetricsGrid}>
         {METRICS.map(m => (
           <div key={m.label} className={styles.wsMetric}>
@@ -138,7 +137,6 @@ function WeatherInsightsCard() {
         ))}
       </div>
 
-      {/* Bottom status strip */}
       <div className={styles.wsStatusStrip}>
         <div className={styles.wsStatusItem}>
           <span className={styles.wsStatusLabel}>Disease Pressure</span>
@@ -161,14 +159,13 @@ function WeatherInsightsCard() {
 
 // ── Evapotranspiration card ───────────────────────────────────────────────────
 
-function ETSectionCard() {
-  const w = PLACEHOLDER_CURRENT
-  const sevenDay = PLACEHOLDER_ET_TREND.reduce((sum, d) => sum + d.et, 0).toFixed(2)
+function ETSectionCard({ current, etTrend }) {
+  const w       = current
+  const sevenDay = etTrend.reduce((sum, d) => sum + d.et, 0).toFixed(2)
 
   return (
     <div className={styles.wsCard}>
 
-      {/* Card header */}
       <div className={styles.wsCardHeader}>
         <div className={styles.wsCardHeaderLeft}>
           <span className={styles.wsCardIconWrap}><IconDroplet size={15} /></span>
@@ -177,7 +174,6 @@ function ETSectionCard() {
         <span className={styles.wsETWeekTotal}>7-day total: {sevenDay}"</span>
       </div>
 
-      {/* Main ET values */}
       <div className={styles.wsETValues}>
         <div className={styles.wsETValueBlock}>
           <span className={styles.wsETLabel}>ET Rate Today</span>
@@ -195,25 +191,24 @@ function ETSectionCard() {
         </div>
       </div>
 
-      {/* Divider + chart title */}
       <div className={styles.wsChartSection}>
         <span className={styles.wsChartTitle}>7-Day ET Trend</span>
-        <ETBarChart data={PLACEHOLDER_ET_TREND} />
+        <ETBarChart data={etTrend} />
       </div>
 
     </div>
   )
 }
 
-// ── Full-width 7-day forecast row ─────────────────────────────────────────────
+// ── 7-day forecast row ────────────────────────────────────────────────────────
 
-function ForecastRow() {
+function ForecastRow({ forecast }) {
   return (
     <div className={styles.wsForecastOuter}>
       <div className={styles.wsForecastRow}>
-        {PLACEHOLDER_FORECAST.map((day, i) => {
+        {forecast.map((day, i) => {
           const isToday = i === 0
-          const cond = forecastCondition(day)
+          const cond    = forecastCondition(day)
           return (
             <div
               key={day.day}
@@ -257,10 +252,11 @@ function ForecastRow() {
 // ── Main export ───────────────────────────────────────────────────────────────
 
 export default function WeatherSection({ alerts = [], onDismissAlert }) {
+  const { current, forecast, etTrend, loading, error, isLive, isStale } = useWeather()
+
   return (
     <div className={styles.wsSection}>
 
-      {/* Alert banners */}
       {alerts.length > 0 && (
         <div className={styles.wsAlerts}>
           {alerts.map(alert => (
@@ -274,14 +270,23 @@ export default function WeatherSection({ alerts = [], onDismissAlert }) {
         </div>
       )}
 
-      {/* Top row: Weather Insights + ET */}
+      {error && (
+        <div className={styles.wsErrorBanner}>
+          {error} Showing sample data.
+        </div>
+      )}
+
       <div className={styles.wsTopRow}>
-        <WeatherInsightsCard />
-        <ETSectionCard />
+        <WeatherInsightsCard
+          current={current}
+          forecastDay0={forecast[0]}
+          isLive={isLive}
+          isStale={isStale}
+        />
+        <ETSectionCard current={current} etTrend={etTrend} />
       </div>
 
-      {/* Bottom row: 7-day forecast */}
-      <ForecastRow />
+      <ForecastRow forecast={forecast} />
 
     </div>
   )

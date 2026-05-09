@@ -171,3 +171,10 @@
   color: var(--color-muted);
   margin-top: 4px;
 }
+
+.wiSourceNote {
+  font-size: 0.66rem;
+  color: var(--color-accent);
+  margin: 0 0 6px;
+  opacity: 0.75;
+}

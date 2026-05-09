@@ -1,9 +1,6 @@
 import { useState, useMemo } from 'react'
-import {
-  PLACEHOLDER_CURRENT,
-  PLACEHOLDER_FORECAST,
-} from '../../components/shared/weather/weatherTokens'
 import { generateWeatherRecommendations } from '../../utils/weather/recommendations'
+import { useWeather } from '../../utils/weather/useWeather'
 import { useOperations } from '../../utils/operations/OperationsContext'
 import { createAlert } from '../../utils/operations/actions'
 import styles from './WeatherIntelligence.module.css'
@@ -23,14 +20,15 @@ const MODULE_LABEL = {
 }
 
 export default function WeatherIntelligence() {
-  const { dispatch }    = useOperations()
-  const [pushed, setPushed] = useState(new Set())
+  const { dispatch }             = useOperations()
+  const { current, forecast, loading, isLive } = useWeather()
+  const [pushed, setPushed]      = useState(new Set())
 
-  // Recommendations are generated once on mount from the current snapshot.
-  // When real weather data replaces placeholders, pass it in here.
+  // Regenerate recommendations when live data arrives (current/forecast object identity changes).
+  // useMemo deps are object references — stable while data is unchanged, new on live data load.
   const recommendations = useMemo(
-    () => generateWeatherRecommendations(PLACEHOLDER_CURRENT, PLACEHOLDER_FORECAST),
-    []
+    () => generateWeatherRecommendations(current, forecast),
+    [current, forecast]
   )
 
   function pushToAlerts(rec) {
@@ -54,12 +52,17 @@ export default function WeatherIntelligence() {
 
   const highUnpushed = recommendations.filter(r => r.severity === 'high' && !pushed.has(r.id)).length
 
+  if (loading) {
+    return <p className={styles.wiEmpty}>Loading weather data…</p>
+  }
+
   if (recommendations.length === 0) {
     return <p className={styles.wiEmpty}>No weather advisories at this time. Conditions are favorable.</p>
   }
 
   return (
     <div className={styles.wiWrap}>
+      {isLive && <p className={styles.wiSourceNote}>Based on live NWS data for KSAV</p>}
       <div className={styles.wiList}>
         {recommendations.map(rec => {
           const meta     = SEVERITY_META[rec.severity] || SEVERITY_META.low
