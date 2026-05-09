@@ -4,6 +4,8 @@ import { useOperations } from '../../../utils/operations/OperationsContext'
 import { useToast } from '../../../utils/feedback/toastContext'
 import { createCalendarEvent, createAlert, deductInventory } from '../../../utils/operations/actions'
 import ContextActions from '../../../components/contextActions/ContextActions'
+import ExpandableSection from '../../../components/expandable/ExpandableSection'
+import exStyles from '../../../components/expandable/expandable.module.css'
 import styles from '../Spray.module.css'
 
 const TODAY  = new Date().toISOString().slice(0, 10)
@@ -116,6 +118,7 @@ export default function BuildSpraySheet() {
   const [selected,     setSelected]     = useState(new Set())
   const [modalRecord,  setModalRecord]  = useState(null)
   const [hoveredId,    setHoveredId]    = useState(null)
+  const [expandedId,   setExpandedId]   = useState(null)
 
   function handleAddToCalendar() {
     // ── Calendar events ──────────────────────────────────────────────────────
@@ -411,64 +414,124 @@ export default function BuildSpraySheet() {
                     onMouseEnter={() => setHoveredId(r.id)}
                     onMouseLeave={() => setHoveredId(null)}
                   >
-                    <button
-                      className={styles.ssCheckbox}
-                      onClick={() => toggleSelect(r.id)}
-                      aria-label={isSelected ? 'Deselect application' : 'Select application'}
-                      aria-pressed={isSelected}
-                    >
-                      <span className={`${styles.ssCheckboxBox} ${isSelected ? styles.ssCheckboxChecked : ''}`}>
-                        {isSelected && '✓'}
-                      </span>
-                    </button>
-
-                    <button className={styles.ssAppCardBody} onClick={() => setModalRecord(r)}>
-                      <div className={styles.ssAppCardHeader}>
-                        <div className={styles.ssAppCardTitle}>
-                          <span className={styles.recordProduct}>
-                            {r.products.map(p => p.name).join(' + ')}
-                          </span>
-                          {r.products.length > 1 && (
-                            <span className={styles.mixBadge}>Tank Mix</span>
-                          )}
-                          <span
-                            className={styles.recordTypePill}
-                            style={{ background: colors.bg, color: colors.text, borderColor: colors.border }}
-                          >
-                            {primaryType}{r.products.length > 1 ? ' +' : ''}
-                          </span>
-                        </div>
-                        <span className={styles.recordDate}>{r.date}</span>
-                      </div>
-
-                      <div className={styles.ssAppCardMeta}>
-                        <span><span className={styles.ssMetaKey}>Area</span>{r.area}</span>
-                        <span><span className={styles.ssMetaKey}>Holes</span>{holesLabel(r.holes)}</span>
-                        <span><span className={styles.ssMetaKey}>Target</span>{r.targetPest || '—'}</span>
-                        <span><span className={styles.ssMetaKey}>Operator</span>{r.applicator || '—'}</span>
-                        <span><span className={styles.ssMetaKey}>Conditions</span>{condSummary(r.conditions)}</span>
-                        <span><span className={styles.ssMetaKey}>Gallons</span>{r.totalVolume ? `${r.totalVolume} gal` : '—'}</span>
-                      </div>
-
-                      <div className={styles.ssAppCardFooter}>
-                        <span className={`${styles.statusBadge} ${statusMeta.cls || ''}`}>
-                          {statusMeta.label || r.status}
+                    <div className={styles.ssCardRow}>
+                      <button
+                        className={styles.ssCheckbox}
+                        onClick={() => toggleSelect(r.id)}
+                        aria-label={isSelected ? 'Deselect application' : 'Select application'}
+                        aria-pressed={isSelected}
+                      >
+                        <span className={`${styles.ssCheckboxBox} ${isSelected ? styles.ssCheckboxChecked : ''}`}>
+                          {isSelected && '✓'}
                         </span>
-                        {r.rei > 0 && <span className={styles.reiBadge}>REI {r.rei}h</span>}
-                        {r.phi > 0 && <span className={styles.ssPhiBadge}>PHI {r.phi}d</span>}
-                        <span className={styles.viewDetail}>Details →</span>
-                      </div>
+                      </button>
+
+                      <button className={styles.ssAppCardBody} onClick={() => setModalRecord(r)}>
+                        <div className={styles.ssAppCardHeader}>
+                          <div className={styles.ssAppCardTitle}>
+                            <span className={styles.recordProduct}>
+                              {r.products.map(p => p.name).join(' + ')}
+                            </span>
+                            {r.products.length > 1 && (
+                              <span className={styles.mixBadge}>Tank Mix</span>
+                            )}
+                            <span
+                              className={styles.recordTypePill}
+                              style={{ background: colors.bg, color: colors.text, borderColor: colors.border }}
+                            >
+                              {primaryType}{r.products.length > 1 ? ' +' : ''}
+                            </span>
+                          </div>
+                          <span className={styles.recordDate}>{r.date}</span>
+                        </div>
+
+                        <div className={styles.ssAppCardMeta}>
+                          <span><span className={styles.ssMetaKey}>Area</span>{r.area}</span>
+                          <span><span className={styles.ssMetaKey}>Holes</span>{holesLabel(r.holes)}</span>
+                          <span><span className={styles.ssMetaKey}>Target</span>{r.targetPest || '—'}</span>
+                          <span><span className={styles.ssMetaKey}>Operator</span>{r.applicator || '—'}</span>
+                          <span><span className={styles.ssMetaKey}>Conditions</span>{condSummary(r.conditions)}</span>
+                          <span><span className={styles.ssMetaKey}>Gallons</span>{r.totalVolume ? `${r.totalVolume} gal` : '—'}</span>
+                        </div>
+
+                        <div className={styles.ssAppCardFooter}>
+                          <span className={`${styles.statusBadge} ${statusMeta.cls || ''}`}>
+                            {statusMeta.label || r.status}
+                          </span>
+                          {r.rei > 0 && <span className={styles.reiBadge}>REI {r.rei}h</span>}
+                          {r.phi > 0 && <span className={styles.ssPhiBadge}>PHI {r.phi}d</span>}
+                          <span className={styles.viewDetail}>Details →</span>
+                        </div>
+                      </button>
+
+                      <ContextActions
+                        hovered={hoveredId === r.id}
+                        actions={[{
+                          id: 'details',
+                          label: '📄 Details',
+                          onClick: e => { e.stopPropagation(); setModalRecord(r) },
+                          title: 'View application details',
+                        }]}
+                      />
+                    </div>
+
+                    <button
+                      className={`${exStyles.esExpandBar} ${expandedId === r.id ? exStyles.esExpandBarOpen : ''}`}
+                      onClick={e => { e.stopPropagation(); setExpandedId(prev => prev === r.id ? null : r.id) }}
+                      aria-expanded={expandedId === r.id}
+                    >
+                      {expandedId === r.id ? '▲ Less' : '▼ Products & conditions'}
                     </button>
 
-                    <ContextActions
-                      hovered={hoveredId === r.id}
-                      actions={[{
-                        id: 'details',
-                        label: '📄 Details',
-                        onClick: e => { e.stopPropagation(); setModalRecord(r) },
-                        title: 'View application details',
-                      }]}
-                    />
+                    <ExpandableSection expanded={expandedId === r.id}>
+                      <div className={exStyles.esBody} style={{ padding: '10px 14px 10px' }}>
+                        <div className={exStyles.esGrid}>
+                          <div className={exStyles.esField}>
+                            <span className={exStyles.esLabel}>Carrier Volume</span>
+                            <span className={exStyles.esValue}>{r.carrierVolume || '—'}</span>
+                          </div>
+                          <div className={exStyles.esField}>
+                            <span className={exStyles.esLabel}>Total Volume</span>
+                            <span className={exStyles.esValue}>{r.totalVolume ? `${r.totalVolume} gal` : '—'}</span>
+                          </div>
+                          {r.conditions && (
+                            <>
+                              <div className={exStyles.esField}>
+                                <span className={exStyles.esLabel}>Wind</span>
+                                <span className={exStyles.esValue}>{r.conditions.wind || '—'}</span>
+                              </div>
+                              <div className={exStyles.esField}>
+                                <span className={exStyles.esLabel}>Temp</span>
+                                <span className={exStyles.esValue}>{r.conditions.temp ? `${r.conditions.temp}°F` : '—'}</span>
+                              </div>
+                              <div className={exStyles.esField}>
+                                <span className={exStyles.esLabel}>Humidity</span>
+                                <span className={exStyles.esValue}>{r.conditions.humidity ? `${r.conditions.humidity}%` : '—'}</span>
+                              </div>
+                              <div className={exStyles.esField}>
+                                <span className={exStyles.esLabel}>Soil Temp</span>
+                                <span className={exStyles.esValue}>{r.conditions.soilTemp ? `${r.conditions.soilTemp}°F` : '—'}</span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                        {r.products.length > 0 && (
+                          <div className={exStyles.esPartsList}>
+                            <span className={exStyles.esLabel}>
+                              {r.products.length > 1 ? 'Tank Mix' : 'Product'}
+                            </span>
+                            {r.products.map((p, i) => (
+                              <div key={i} className={exStyles.esPartsItem}>
+                                <span className={exStyles.esPartsBadge}>{p.type}</span>
+                                <span>{p.name}</span>
+                                <span className={exStyles.esPartsItemCost}>{p.rate}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {r.notes && <p className={exStyles.esNote}>{r.notes}</p>}
+                      </div>
+                    </ExpandableSection>
                   </div>
                 )
               })}

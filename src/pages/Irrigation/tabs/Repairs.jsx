@@ -5,6 +5,8 @@ import { useToast } from '../../../utils/feedback/toastContext'
 import { createCalendarEvent, createAlert, updateRepairOverride } from '../../../utils/operations/actions'
 import { mergeRepairs } from '../../../utils/operations/repairUtils'
 import ContextActions from '../../../components/contextActions/ContextActions'
+import ExpandableSection from '../../../components/expandable/ExpandableSection'
+import exStyles from '../../../components/expandable/expandable.module.css'
 import UploadCenter from '../../../components/uploads/UploadCenter'
 import { buildIrrigationRepairReport, buildIrrigationRepairSummaryReport } from '../../../utils/reports/reportBuilder'
 import { createAttachmentRef } from '../../../utils/reports/reportSchemas'
@@ -81,6 +83,7 @@ export default function Repairs() {
   const [activeReport,   setActiveReport]   = useState(null)
   const [reportLoading,  setReportLoading]  = useState(false)
   const [hoveredId,      setHoveredId]      = useState(null)
+  const [expandedId,     setExpandedId]     = useState(null)
   const [reportThumbs,   setReportThumbs]   = useState([])
   const attachSectionRef                     = useRef(null)
 
@@ -410,8 +413,58 @@ export default function Repairs() {
                   <span className={styles.irPriorityLabel} style={{ color: accent }}>
                     {repair.priority.charAt(0).toUpperCase() + repair.priority.slice(1)}
                   </span>
+                  <button
+                    className={`${exStyles.esToggleBtn} ${expandedId === repair.repairId ? exStyles.esToggleBtnOpen : ''}`}
+                    onClick={e => { e.stopPropagation(); setExpandedId(prev => prev === repair.repairId ? null : repair.repairId) }}
+                    aria-expanded={expandedId === repair.repairId}
+                    aria-label={expandedId === repair.repairId ? 'Collapse details' : 'Show details'}
+                  >
+                    {expandedId === repair.repairId ? '▲' : '▼'}
+                  </button>
                 </div>
               </div>
+
+              {/* ── Expandable detail ───────────────────────────────────── */}
+              <ExpandableSection expanded={expandedId === repair.repairId}>
+                <div className={exStyles.esBody}>
+                  <div className={exStyles.esGrid}>
+                    <div className={exStyles.esField}>
+                      <span className={exStyles.esLabel}>Reported</span>
+                      <span className={exStyles.esValue}>{repair.dateReported}</span>
+                    </div>
+                    <div className={exStyles.esField}>
+                      <span className={exStyles.esLabel}>Assigned To</span>
+                      <span className={exStyles.esValue}>{repair.assignedTo || '—'}</span>
+                    </div>
+                    {repair.laborHours > 0 && (
+                      <div className={exStyles.esField}>
+                        <span className={exStyles.esLabel}>Labor Logged</span>
+                        <span className={exStyles.esValue}>{repair.laborHours}h</span>
+                      </div>
+                    )}
+                    {repair.dateCompleted && (
+                      <div className={exStyles.esField}>
+                        <span className={exStyles.esLabel}>Completed</span>
+                        <span className={exStyles.esValue}>{repair.dateCompleted}</span>
+                      </div>
+                    )}
+                  </div>
+                  {repair.notes && (
+                    <p className={exStyles.esNote}>{repair.notes}</p>
+                  )}
+                  {repair.partsUsed.length > 0 && (
+                    <div className={exStyles.esPartsList}>
+                      <span className={exStyles.esLabel}>Parts Used</span>
+                      {repair.partsUsed.map((p, i) => (
+                        <div key={i} className={exStyles.esPartsItem}>
+                          <span className={exStyles.esPartsBadge}>×{p.qty}</span>
+                          <span>{p.part}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </ExpandableSection>
 
               {/* ── Inline actions ──────────────────────────────────────── */}
               <div className={styles.irCardActions}>

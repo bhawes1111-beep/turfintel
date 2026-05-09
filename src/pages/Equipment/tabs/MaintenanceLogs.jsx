@@ -9,6 +9,8 @@ import { buildMaintenanceLogReport } from '../../../utils/reports/reportBuilder'
 import { createAttachmentRef } from '../../../utils/reports/reportSchemas'
 import { getMediaByModule, getThumbnailBlob } from '../../../utils/media/mediaStore'
 import ContextActions from '../../../components/contextActions/ContextActions'
+import ExpandableSection from '../../../components/expandable/ExpandableSection'
+import exStyles from '../../../components/expandable/expandable.module.css'
 import UploadCenter from '../../../components/uploads/UploadCenter'
 import ReportPreviewModal from '../../../components/reports/ReportPreviewModal'
 import styles from '../Equipment.module.css'
@@ -62,6 +64,7 @@ export default function MaintenanceLogs() {
   const [activeReport,   setActiveReport]  = useState(null)
   const [reportLoading,  setReportLoading] = useState(false)
   const [hoveredId,      setHoveredId]     = useState(null)
+  const [expandedId,     setExpandedId]    = useState(null)
   const [reportThumbs,   setReportThumbs]  = useState([])
   const attachSectionRef                    = useRef(null)
 
@@ -364,6 +367,7 @@ export default function MaintenanceLogs() {
                 onMouseEnter={() => setHoveredId(log.id)}
                 onMouseLeave={() => setHoveredId(null)}
               >
+                <div className={styles.mlCardRow}>
                 {/* Left: equipment + service info */}
                 <div className={styles.eqCardMain}>
                   <div className={styles.eqCardTitleRow}>
@@ -467,7 +471,65 @@ export default function MaintenanceLogs() {
                     </span>
                   )}
                   <span className={styles.eqViewDetail}>Details →</span>
+                  <button
+                    className={`${exStyles.esToggleBtn} ${expandedId === log.id ? exStyles.esToggleBtnOpen : ''}`}
+                    onClick={e => { e.stopPropagation(); setExpandedId(prev => prev === log.id ? null : log.id) }}
+                    aria-expanded={expandedId === log.id}
+                    aria-label={expandedId === log.id ? 'Collapse details' : 'Show details'}
+                  >
+                    {expandedId === log.id ? '▲' : '▼'}
+                  </button>
                 </div>
+                </div>{/* end mlCardRow */}
+
+                {/* ── Expandable detail ── */}
+                <ExpandableSection expanded={expandedId === log.id}>
+                  <div className={exStyles.esBody}>
+                    <div className={exStyles.esGrid}>
+                      <div className={exStyles.esField}>
+                        <span className={exStyles.esLabel}>Service Date</span>
+                        <span className={exStyles.esValue}>{log.date}</span>
+                      </div>
+                      <div className={exStyles.esField}>
+                        <span className={exStyles.esLabel}>Hours at Service</span>
+                        <span className={exStyles.esValue}>{log.hoursAtService.toLocaleString()} hrs</span>
+                      </div>
+                      {log.nextDueHours && (
+                        <div className={exStyles.esField}>
+                          <span className={exStyles.esLabel}>Next Due</span>
+                          <span className={exStyles.esValue}>{log.nextDueHours.toLocaleString()} hrs</span>
+                        </div>
+                      )}
+                      {log.cost > 0 && (
+                        <div className={exStyles.esField}>
+                          <span className={exStyles.esLabel}>Cost</span>
+                          <span className={exStyles.esValue}>${log.cost.toFixed(2)}</span>
+                        </div>
+                      )}
+                      {log.completedDate && (
+                        <div className={exStyles.esField}>
+                          <span className={exStyles.esLabel}>Completed</span>
+                          <span className={exStyles.esValue}>{log.completedDate}</span>
+                        </div>
+                      )}
+                    </div>
+                    {log.notes && <p className={exStyles.esNote}>{log.notes}</p>}
+                    {log.partsUsed.length > 0 && (
+                      <div className={exStyles.esPartsList}>
+                        <span className={exStyles.esLabel}>Parts Used</span>
+                        {log.partsUsed.map((p, i) => (
+                          <div key={i} className={exStyles.esPartsItem}>
+                            <span className={exStyles.esPartsBadge}>×{p.quantity}</span>
+                            <span>{p.part}</span>
+                            {p.unitCost > 0 && (
+                              <span className={exStyles.esPartsItemCost}>${p.unitCost.toFixed(2)}</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </ExpandableSection>
               </div>
             )
           })}

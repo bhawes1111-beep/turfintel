@@ -547,10 +547,15 @@
   border-radius: var(--card-radius);
   padding: 14px 16px;
   display: flex;
-  align-items: flex-start;
-  gap: 16px;
+  flex-direction: column;
   cursor: pointer;
   transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.mlCardRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
 }
 
 .mlCard:hover {
