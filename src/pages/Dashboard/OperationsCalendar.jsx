@@ -100,7 +100,9 @@ export default function OperationsCalendar() {
   const { state } = useOperations()
   const calendarEvents = state.calendarEvents
 
-  const [view, setView] = useState('month')
+  const [view, setView] = useState(() =>
+    typeof window !== 'undefined' && window.innerWidth < 768 ? 'list' : 'month'
+  )
   const [navDate, setNavDate] = useState(TODAY)
   const [activeCategories, setActiveCategories] = useState(
     new Set(['spray', 'crew', 'maintenance', 'agronomy', 'irrigation'])

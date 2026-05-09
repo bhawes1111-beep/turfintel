@@ -36,12 +36,17 @@ export default function Dashboard() {
         <h1 className={styles.title}>Dashboard</h1>
       </div>
 
-      {/* Weather section — redesigned */}
+      {/* Weather section */}
       <div className={styles.weatherSection}>
         <WeatherSection
           alerts={weatherAlerts}
           onDismissAlert={handleDismissWeatherAlert}
         />
+      </div>
+
+      {/* Operations Calendar — directly below weather */}
+      <div className={styles.calendarSection}>
+        <OperationsCalendar />
       </div>
 
       {/* Responsive card grid */}
@@ -79,9 +84,6 @@ export default function Dashboard() {
           <WeatherIntelligence />
         </DashboardCard>
 
-        <DashboardCard full>
-          <OperationsCalendar />
-        </DashboardCard>
 
       </div>
 
