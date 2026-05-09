@@ -14,11 +14,11 @@ export const COMMANDS = [
   },
   {
     id:          'nav-crew',
-    label:       'Crew',
-    description: 'Staff scheduling, hours, and tasks',
+    label:       'Operations Board',
+    description: 'Daily task board, crew, and operational command center',
     icon:        '👥',
     group:       'Navigate',
-    keywords:    ['staff', 'team', 'employees', 'schedule', 'shifts', 'hours', 'labor'],
+    keywords:    ['staff', 'team', 'employees', 'schedule', 'shifts', 'hours', 'labor', 'operations', 'tasks', 'board'],
     route:       '/crew',
   },
   {

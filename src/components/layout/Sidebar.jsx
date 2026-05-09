@@ -119,19 +119,49 @@ const ICONS = {
   ),
 }
 
-const NAV_ITEMS = [
-  { to: '/dashboard',          label: 'Dashboard',          icon: 'dashboard'          },
-  { to: '/crew',               label: 'Operations Board',   icon: 'crew'               },
-  { to: '/chemical',           label: 'Chemical',           icon: 'chemical'           },
-  { to: '/spray',              label: 'Spray',              icon: 'spray'              },
-  { to: '/disease',            label: 'Disease',            icon: 'disease'            },
-  { to: '/plant-nutrition',    label: 'Plant Nutrition',    icon: 'plant-nutrition'    },
-  { to: '/cultural-practices', label: 'Cultural Practices', icon: 'cultural-practices' },
-  { to: '/budget',             label: 'Budget',             icon: 'budget'             },
-  { to: '/inventory',          label: 'Inventory',          icon: 'inventory'          },
-  { to: '/equipment',          label: 'Equipment',          icon: 'equipment'          },
-  { to: '/irrigation',         label: 'Irrigation',         icon: 'irrigation'         },
-  { to: '/activity',           label: 'Activity',           icon: 'activity'           },
+const NAV_GROUPS = [
+  {
+    label: 'Dashboard',
+    items: [
+      { to: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
+    ],
+  },
+  {
+    label: 'Plant Health',
+    items: [
+      { to: '/disease',             label: 'Disease Monitoring', icon: 'disease'             },
+      { to: '/plant-nutrition',     label: 'Plant Nutrition',    icon: 'plant-nutrition'     },
+      { to: '/cultural-practices',  label: 'Cultural Practices', icon: 'cultural-practices'  },
+    ],
+  },
+  {
+    label: 'Sprays',
+    items: [
+      { to: '/spray',    label: 'Spray / Applications',  icon: 'spray'    },
+      { to: '/chemical', label: 'Chemical Labels / SDS', icon: 'chemical' },
+    ],
+  },
+  {
+    label: 'Daily Operations',
+    items: [
+      { to: '/crew',       label: 'Operations Board', icon: 'crew'       },
+      { to: '/irrigation', label: 'Irrigation',       icon: 'irrigation' },
+      { to: '/activity',   label: 'Activity Feed',    icon: 'activity'   },
+    ],
+  },
+  {
+    label: 'Inventory',
+    items: [
+      { to: '/inventory', label: 'Inventory', icon: 'inventory' },
+      { to: '/budget',    label: 'Budget',    icon: 'budget'    },
+    ],
+  },
+  {
+    label: 'Equipment',
+    items: [
+      { to: '/equipment', label: 'Equipment', icon: 'equipment' },
+    ],
+  },
 ]
 
 export default function Sidebar({ isOpen, onClose }) {
@@ -175,25 +205,29 @@ export default function Sidebar({ isOpen, onClose }) {
 
       </div>
 
-      {/* Main navigation — scrollable */}
+      {/* Main navigation — scrollable, grouped */}
       <ul className={styles.nav}>
-        {NAV_ITEMS.map(item => (
-          <li key={item.to}>
-            <NavLink
-              to={item.to}
-              onClick={onClose}
-              title={item.label}
-              className={({ isActive }) =>
-                `${styles.link} ${isActive ? styles.active : ''}`
-              }
-            >
-              <span className={styles.iconWrap}>
-                <span className={styles.navIcon}>
-                  {ICONS[item.icon]}
+        {NAV_GROUPS.map(group => (
+          <li key={group.label} className={styles.navGroup}>
+            <span className={styles.navGroupLabel}>{group.label}</span>
+            {group.items.map(item => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                onClick={onClose}
+                title={item.label}
+                className={({ isActive }) =>
+                  `${styles.link} ${isActive ? styles.active : ''}`
+                }
+              >
+                <span className={styles.iconWrap}>
+                  <span className={styles.navIcon}>
+                    {ICONS[item.icon]}
+                  </span>
                 </span>
-              </span>
-              <span className={styles.label}>{item.label}</span>
-            </NavLink>
+                <span className={styles.label}>{item.label}</span>
+              </NavLink>
+            ))}
           </li>
         ))}
       </ul>
