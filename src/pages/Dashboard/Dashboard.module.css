@@ -136,6 +136,35 @@
   }
 }
 
+/* ── Operations Command section ──────────────────────────────────────────── */
+
+.opsSection {
+  grid-column: span 3;
+  display: flex;
+  flex-direction: column;
+  gap: var(--grid-gap);
+  background: rgba(74, 158, 74, 0.025);
+  border: 1px solid rgba(74, 158, 74, 0.12);
+  border-left: 3px solid rgba(74, 158, 74, 0.35);
+  border-radius: 10px;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.opsSectionLabel {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: rgba(74, 158, 74, 0.75);
+}
+
+@media (max-width: 1100px) {
+  .opsSection {
+    grid-column: span 2;
+  }
+}
+
 /* ── Mobile: 1 column ────────────────────────────────────────────────────── */
 
 @media (max-width: 768px) {
@@ -155,7 +184,16 @@
 
   .grid {
     grid-template-columns: 1fr;
-    gap: 12px;
+    gap: 10px;
     padding: var(--grid-padding-mobile);
+  }
+
+  .opsSection {
+    grid-column: span 1;
+    padding: 12px;
+  }
+
+  .placeholderCard {
+    display: none;
   }
 }

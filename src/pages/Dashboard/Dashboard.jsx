@@ -70,6 +70,7 @@ export default function Dashboard() {
       {/* Responsive card grid */}
       <div className={styles.grid}>
 
+        {/* ── Urgent ── */}
         <DashboardCard title={`Alerts${activeAlerts.length > 0 ? ` (${activeAlerts.length})` : ''}`} wide tall>
           <AlertList
             alerts={activeAlerts}
@@ -82,22 +83,26 @@ export default function Dashboard() {
           />
         </DashboardCard>
 
+        {/* ── Actions ── */}
         <DashboardCard title="Quick Actions" full>
           <QuickActions />
         </DashboardCard>
 
-        <DashboardCard title="Today's Briefing" full>
-          <OperationalSummary />
-        </DashboardCard>
+        {/* ── Operations Command — Briefing + Action Required + Scheduling ── */}
+        <div className={styles.opsSection}>
+          <span className={styles.opsSectionLabel}>Operations Command</span>
+          <DashboardCard title="Today's Briefing">
+            <OperationalSummary />
+          </DashboardCard>
+          <DashboardCard title="Action Required">
+            <ActionQueue />
+          </DashboardCard>
+          <DashboardCard title="Scheduling Awareness">
+            <SchedulingAwareness />
+          </DashboardCard>
+        </div>
 
-        <DashboardCard title="Action Required" full>
-          <ActionQueue />
-        </DashboardCard>
-
-        <DashboardCard title="Scheduling Awareness" full>
-          <SchedulingAwareness />
-        </DashboardCard>
-
+        {/* ── Intelligence ── */}
         <DashboardCard title="Weather Intelligence" wide>
           <WeatherIntelligence />
         </DashboardCard>
@@ -106,23 +111,25 @@ export default function Dashboard() {
           <IrrigationIntelligence />
         </DashboardCard>
 
-        <DashboardCard title="Crew Status">
+        {/* ── Placeholder cards — hidden on mobile ── */}
+        <DashboardCard title="Crew Status" className={styles.placeholderCard}>
           <p className={styles.empty}>No crew data.</p>
         </DashboardCard>
 
-        <DashboardCard title="Equipment Alerts">
+        <DashboardCard title="Equipment Alerts" className={styles.placeholderCard}>
           <p className={styles.empty}>No alerts.</p>
         </DashboardCard>
 
+        {/* ── Operations ── */}
         <DashboardCard title="Recent Activity" full>
           <RecentActivity />
         </DashboardCard>
 
-        <DashboardCard title="Upcoming Applications" wide>
+        <DashboardCard title="Upcoming Applications" wide className={styles.placeholderCard}>
           <p className={styles.empty}>No applications scheduled.</p>
         </DashboardCard>
 
-        <DashboardCard title="Recent Notes">
+        <DashboardCard title="Recent Notes" className={styles.placeholderCard}>
           <p className={styles.empty}>No recent activity.</p>
         </DashboardCard>
 
