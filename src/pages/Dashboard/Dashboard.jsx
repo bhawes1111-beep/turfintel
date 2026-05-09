@@ -12,6 +12,7 @@ import { useOperations } from '../../utils/operations/OperationsContext'
 import { acknowledgeAlert, dismissAlert } from '../../utils/operations/actions'
 import RecentActivity from './RecentActivity'
 import QuickActions from './QuickActions'
+import OperationalSummary from './OperationalSummary'
 import styles from './Dashboard.module.css'
 
 export default function Dashboard() {
@@ -81,6 +82,10 @@ export default function Dashboard() {
 
         <DashboardCard title="Quick Actions" full>
           <QuickActions />
+        </DashboardCard>
+
+        <DashboardCard title="Today's Briefing" full>
+          <OperationalSummary />
         </DashboardCard>
 
         <DashboardCard title="Weather Intelligence" wide>
