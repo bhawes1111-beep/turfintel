@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useReducer } from 'react'
+import { loadSync, save, migrate } from '../persistence/persistence'
 import { CALENDAR_EVENTS } from '../../data/dashboardCalendarEvents'
 import { DASHBOARD_ALERTS } from '../../data/dashboardAlerts'
 import { PRODUCTS, CHEMICALS } from '../../data/inventory'
@@ -50,27 +51,18 @@ const seedState = {
 }
 
 // ── Persistence adapter ────────────────────────────────────────────────────────
-// Replace loadState / saveState to migrate to API, Cloudflare D1, Supabase,
-// or Firebase — reducers and consuming modules remain unchanged.
+// Delegates to src/utils/persistence/persistence.js — never call localStorage
+// directly here. Swap the persistence layer there, not here.
 
 function loadState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return null
-    return JSON.parse(raw)
-  } catch {
-    console.warn('[operations] Corrupt localStorage state — resetting to defaults.')
-    localStorage.removeItem(STORAGE_KEY)
-    return null
-  }
+  // Synchronous read from localStorage — safe for the useReducer lazy initializer.
+  // IndexedDB (primary store) is populated asynchronously via migrate() on mount.
+  return loadSync(STORAGE_KEY)
 }
 
 function saveState(state) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
-  } catch {
-    // Quota exceeded or restricted storage — fail silently.
-  }
+  // Dual-write: localStorage sync first (immediate backup), then IDB async.
+  save(STORAGE_KEY, state)
 }
 
 // Merge loaded state with seed defaults so new state keys added in future
@@ -191,10 +183,16 @@ export function OperationsProvider({ children }) {
     },
   )
 
-  // Write-back: persists on every state change.
+  // Write-back: persists on every state change (dual-write LS + IDB).
   useEffect(() => {
     saveState(state)
   }, [state])
+
+  // One-time migration: promotes existing localStorage data into IndexedDB.
+  // No-op if IDB already has data or is unavailable. Safe to call every mount.
+  useEffect(() => {
+    migrate(STORAGE_KEY)
+  }, [])
 
   return (
     <OperationsContext.Provider value={{ state, dispatch }}>
