@@ -11,7 +11,7 @@
   color: var(--color-muted);
 }
 
-/* ── Stat row ────────────────────────────────────────────────────────────── */
+/* ── 4-stat row ──────────────────────────────────────────────────────────── */
 
 .gddStats {
   display: flex;
@@ -27,7 +27,7 @@
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  padding: 10px 8px;
+  padding: 9px 6px;
   background: rgba(74,158,74,0.04);
 }
 
@@ -38,7 +38,7 @@
 }
 
 .gddStatValue {
-  font-size: 1.05rem;
+  font-size: 1rem;
   font-weight: 700;
   color: var(--color-text);
   line-height: 1;
@@ -46,12 +46,13 @@
 }
 
 .gddStatLabel {
-  font-size: 0.58rem;
+  font-size: 0.56rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--color-muted);
   white-space: nowrap;
+  text-align: center;
 }
 
 /* ── Type rows ───────────────────────────────────────────────────────────── */
@@ -59,7 +60,7 @@
 .gddList {
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: 10px;
 }
 
 .gddRow {
@@ -88,19 +89,56 @@
   border: 1px solid transparent;
 }
 
-/* ── Progress track ──────────────────────────────────────────────────────── */
+/* ── Zone-colored scale track ────────────────────────────────────────────── */
 
-.gddTrack {
-  height: 5px;
-  border-radius: 3px;
-  background: rgba(255,255,255,0.07);
-  overflow: hidden;
+.gddScaleWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.gddFill {
+.gddScaleTrack {
+  position: relative;
+  height: 7px;
+  border-radius: 4px;
+  overflow: visible;
+}
+
+.gddScaleFill {
+  position: absolute;
+  top: 0;
+  left: 0;
   height: 100%;
-  border-radius: 3px;
-  transition: width 0.4s ease;
+  border-radius: 4px;
+  transition: width 0.45s ease;
+  opacity: 0.85;
+}
+
+.gddScaleMarker {
+  position: absolute;
+  top: -2px;
+  width: 1px;
+  height: calc(100% + 4px);
+  background: rgba(255,255,255,0.25);
+  transform: translateX(-50%);
+}
+
+/* ── Zone label row ──────────────────────────────────────────────────────── */
+
+.gddScaleLabels {
+  position: relative;
+  height: 12px;
+}
+
+.gddZoneLabel {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 0.56rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(130, 160, 130, 0.5);
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 /* ── Status note ─────────────────────────────────────────────────────────── */

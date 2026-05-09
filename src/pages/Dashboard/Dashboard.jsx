@@ -39,25 +39,25 @@ export default function Dashboard() {
         <h1 className={styles.title}>Dashboard</h1>
       </div>
 
-      {/* Weather section */}
-      <div className={styles.weatherSection}>
-        <WeatherSection
-          alerts={weatherAlerts}
-          onDismissAlert={handleDismissWeatherAlert}
-        />
+      {/* Intelligence row — unified weather card + agronomy intelligence */}
+      <div className={styles.intelligenceRow}>
+        <div className={styles.intelligenceWeather}>
+          <WeatherSection
+            alerts={weatherAlerts}
+            onDismissAlert={handleDismissWeatherAlert}
+          />
+        </div>
+        <div className={styles.intelligenceRight}>
+          <DashboardCard title="Growing Degree Days">
+            <GDDCard />
+          </DashboardCard>
+          <DashboardCard title="Application Effectiveness">
+            <AppEffectivenessCard />
+          </DashboardCard>
+        </div>
       </div>
 
-      {/* Agronomy intelligence — GDD + Application Effectiveness side by side */}
-      <div className={styles.agronomySection}>
-        <DashboardCard title="Growing Degree Days">
-          <GDDCard />
-        </DashboardCard>
-        <DashboardCard title="Application Effectiveness">
-          <AppEffectivenessCard />
-        </DashboardCard>
-      </div>
-
-      {/* Operations Calendar — directly below agronomy */}
+      {/* Operations Calendar — below intelligence row */}
       <div className={styles.calendarSection}>
         <OperationsCalendar />
       </div>

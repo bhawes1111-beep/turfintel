@@ -20,52 +20,42 @@ function IconCloud({ size = 15 }) {
   )
 }
 
-function IconWind({ size = 12 }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75"
-      strokeLinecap="round" strokeLinejoin="round" width={size} height={size} aria-hidden="true">
-      <path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2"/>
-      <path d="M9.6 4.6A2 2 0 1 1 11 8H2"/>
-      <path d="M12.6 19.4A2 2 0 1 0 14 16H2"/>
-    </svg>
-  )
-}
-
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function forecastCondition(day) {
   if (day.rainfall >= 0.5) {
-    return { label: 'Wet Conditions', color: '#3a8ad4', bg: 'rgba(58,138,212,0.12)', border: 'rgba(58,138,212,0.4)' }
+    return { label: 'Wet',     color: '#3a8ad4', bg: 'rgba(58,138,212,0.12)', border: 'rgba(58,138,212,0.4)' }
   }
   if (day.rainfall > 0.1) {
     return { label: 'Monitor', color: '#d4883a', bg: 'rgba(210,130,40,0.12)', border: 'rgba(210,130,40,0.3)' }
   }
   const sw = SPRAY_WINDOW_TOKENS[day.sprayWindow]
-  if (day.sprayWindow === 'ideal')   return { label: 'Good Conditions', color: sw.color, bg: sw.bg, border: sw.border }
-  if (day.sprayWindow === 'caution') return { label: 'Marginal',        color: sw.color, bg: sw.bg, border: sw.border }
-  return { label: 'Poor Conditions', color: sw.color, bg: sw.bg, border: sw.border }
+  if (day.sprayWindow === 'ideal')   return { label: 'Good',     color: sw.color, bg: sw.bg, border: sw.border }
+  if (day.sprayWindow === 'caution') return { label: 'Marginal', color: sw.color, bg: sw.bg, border: sw.border }
+  return { label: 'Poor', color: sw.color, bg: sw.bg, border: sw.border }
 }
 
-// ── Weather Insights card ─────────────────────────────────────────────────────
+// ── Unified Weather Insights card (with embedded forecast) ────────────────────
 
-function WeatherInsightsCard({ current, forecastDay0, irrigationRec, isLive, isStale, loading, onRefresh }) {
-  const w   = current
-  const sw  = SPRAY_WINDOW_TOKENS[w.sprayWindow] ?? SPRAY_WINDOW_TOKENS.caution
-  const dp  = DISEASE_PRESSURE_TOKENS[w.diseasePressure] ?? DISEASE_PRESSURE_TOKENS.low
-  const icon = WEATHER_ICONS[forecastDay0?.icon] || '⛅'
+function WeatherInsightsCard({ current, forecast, irrigationRec, isLive, isStale, loading, onRefresh }) {
+  const w    = current
+  const sw   = SPRAY_WINDOW_TOKENS[w.sprayWindow] ?? SPRAY_WINDOW_TOKENS.caution
+  const dp   = DISEASE_PRESSURE_TOKENS[w.diseasePressure] ?? DISEASE_PRESSURE_TOKENS.low
+  const icon = WEATHER_ICONS[forecast[0]?.icon] || '⛅'
 
   const METRICS = [
-    { label: 'Humidity',    value: `${w.humidity}%`             },
-    { label: 'Wind',        value: `${w.wind} mph ${w.windDir}` },
-    { label: 'Dew Point',   value: `${w.dewPoint}°F`            },
-    { label: 'Soil Temp',   value: w.soilTemp != null ? `${w.soilTemp}°F` : '—' },
-    { label: '24h Rain',    value: `${w.rainfall24h}"`          },
-    { label: 'Solar Rad',   value: w.solarRadiation != null ? `${w.solarRadiation} W/m²` : '—' },
+    { label: 'Humidity',  value: `${w.humidity}%`             },
+    { label: 'Wind',      value: `${w.wind} mph ${w.windDir}` },
+    { label: 'Dew Point', value: `${w.dewPoint}°F`            },
+    { label: 'Soil Temp', value: w.soilTemp != null ? `${w.soilTemp}°F` : '—' },
+    { label: '24h Rain',  value: `${w.rainfall24h}"`          },
+    { label: 'Solar',     value: w.solarRadiation != null ? `${w.solarRadiation} W/m²` : '—' },
   ]
 
   return (
     <div className={styles.wsCard}>
 
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className={styles.wsCardHeader}>
         <div className={styles.wsCardHeaderLeft}>
           <span className={styles.wsCardIconWrap}><IconCloud size={15} /></span>
@@ -79,6 +69,12 @@ function WeatherInsightsCard({ current, forecastDay0, irrigationRec, isLive, isS
           </div>
         </div>
         <div className={styles.wsHeaderRight}>
+          <span
+            className={styles.wsCondBadge}
+            style={{ color: sw.color, background: sw.bg, borderColor: sw.border }}
+          >
+            {sw.icon}&nbsp;{sw.label}
+          </span>
           <div className={styles.wsUpdated}>Updated {formatTimestamp(w.timestamp)}</div>
           <button
             className={styles.wsRefreshBtn}
@@ -92,32 +88,26 @@ function WeatherInsightsCard({ current, forecastDay0, irrigationRec, isLive, isS
         </div>
       </div>
 
+      {/* ── Main conditions ─────────────────────────────────────────────────── */}
       <div className={styles.wsMainDisplay}>
-        <span className={styles.wsWeatherEmoji} role="img" aria-label="weather">{icon}</span>
-        <div className={styles.wsTempBlock}>
-          <span className={styles.wsCurrentTemp}>{w.currentTemp}°</span>
-          <span className={styles.wsUnit}>Fahrenheit</span>
+        <div className={styles.wsMainLeft}>
+          <div className={styles.wsTempRow}>
+            <span className={styles.wsWeatherEmoji} role="img" aria-label="weather">{icon}</span>
+            <span className={styles.wsCurrentTemp}>{w.currentTemp}°</span>
+          </div>
           <span className={styles.wsFeelsLike}>Feels like {w.feelsLike}°F</span>
         </div>
-        <div className={styles.wsCondBadgeWrap}>
-          <span
-            className={styles.wsCondBadge}
-            style={{ color: sw.color, background: sw.bg, borderColor: sw.border }}
-          >
-            {sw.icon}&nbsp;{sw.label}
-          </span>
+        <div className={styles.wsMetricsGrid}>
+          {METRICS.map(m => (
+            <div key={m.label} className={styles.wsMetric}>
+              <span className={styles.wsMetricLabel}>{m.label}</span>
+              <span className={styles.wsMetricValue}>{m.value}</span>
+            </div>
+          ))}
         </div>
       </div>
 
-      <div className={styles.wsMetricsGrid}>
-        {METRICS.map(m => (
-          <div key={m.label} className={styles.wsMetric}>
-            <span className={styles.wsMetricLabel}>{m.label}</span>
-            <span className={styles.wsMetricValue}>{m.value}</span>
-          </div>
-        ))}
-      </div>
-
+      {/* ── Status strip ─────────────────────────────────────────────────────── */}
       <div className={styles.wsStatusStrip}>
         <div className={styles.wsStatusItem}>
           <span className={styles.wsStatusLabel}>Disease Pressure</span>
@@ -143,47 +133,33 @@ function WeatherInsightsCard({ current, forecastDay0, irrigationRec, isLive, isS
         </div>
       </div>
 
-    </div>
-  )
-}
-
-// ── 7-day forecast row ────────────────────────────────────────────────────────
-
-function ForecastRow({ forecast }) {
-  return (
-    <div className={styles.wsForecastOuter}>
-      <div className={styles.wsForecastRow}>
-        {forecast.map((day) => {
+      {/* ── Embedded compact 7-day forecast ──────────────────────────────────── */}
+      <div className={styles.wsEmbForecast}>
+        {forecast.map(day => {
           const isToday = day.day === 'Today'
           const cond    = forecastCondition(day)
           return (
             <div
               key={day.day}
-              className={`${styles.wsForecastCard} ${isToday ? styles.wsForecastCardToday : ''}`}
+              className={`${styles.wsEmbFcastCard} ${isToday ? styles.wsEmbFcastCardToday : ''}`}
             >
-              <div className={styles.wsFcastDayLabel}>{day.day}</div>
-              <div className={styles.wsFcastDate}>{day.date}</div>
-
-              <div className={styles.wsFcastIcon} role="img" aria-label={day.icon}>
+              <div className={styles.wsEmbFcastDay}>{day.day}</div>
+              <div className={styles.wsEmbFcastDate}>{day.date}</div>
+              <div className={styles.wsEmbFcastIcon} role="img" aria-label={day.icon}>
                 {WEATHER_ICONS[day.icon] || '☀'}
               </div>
-
-              <div className={styles.wsFcastTemps}>
-                <span className={styles.wsFcastHigh}>{day.high}°</span>
-                <span className={styles.wsFcastSep}>/</span>
-                <span className={styles.wsFcastLow}>{day.low}°</span>
+              <div className={styles.wsEmbFcastTemps}>
+                <span className={styles.wsEmbFcastHigh}>{day.high}°</span>
+                <span className={styles.wsEmbFcastSep}>/</span>
+                <span className={styles.wsEmbFcastLow}>{day.low}°</span>
               </div>
-
               {day.rainfall > 0 ? (
-                <div className={styles.wsFcastRain}>&#x1F4A7;&nbsp;{day.rainfall.toFixed(2)}"</div>
+                <div className={styles.wsEmbFcastRain}>&#x1F4A7;&nbsp;{day.rainfall.toFixed(2)}"</div>
               ) : (
-                <div className={styles.wsFcastNoRain}>No rain</div>
+                <div className={styles.wsEmbFcastNoRain}>No rain</div>
               )}
-
-              <div className={styles.wsFcastET}>ET {day.etRate.toFixed(2)}"</div>
-
               <span
-                className={styles.wsFcastBadge}
+                className={styles.wsEmbFcastBadge}
                 style={{ color: cond.color, background: cond.bg, borderColor: cond.border }}
               >
                 {cond.label}
@@ -192,6 +168,7 @@ function ForecastRow({ forecast }) {
           )
         })}
       </div>
+
     </div>
   )
 }
@@ -226,15 +203,13 @@ export default function WeatherSection({ alerts = [], onDismissAlert }) {
 
       <WeatherInsightsCard
         current={current}
-        forecastDay0={forecast[0]}
+        forecast={forecast}
         irrigationRec={recApplication}
         isLive={isLive}
         isStale={isStale}
         loading={loading}
         onRefresh={refresh}
       />
-
-      <ForecastRow forecast={forecast} />
 
     </div>
   )

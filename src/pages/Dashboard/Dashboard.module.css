@@ -45,20 +45,44 @@
   gap: var(--grid-gap);
 }
 
-/* ── Agronomy intelligence row (GDD + App Effectiveness side by side) ────── */
+/* ── Intelligence row — weather (2fr) + agronomy cards (1fr) ────────────── */
 
-.agronomySection {
+.intelligenceRow {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 2fr 1fr;
   gap: var(--grid-gap);
   padding: var(--grid-padding);
   border-bottom: 1px solid var(--color-border);
+  align-items: stretch;
+}
+
+.intelligenceWeather {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.intelligenceRight {
+  display: flex;
+  flex-direction: column;
+  gap: var(--grid-gap);
+  min-width: 0;
+}
+
+.intelligenceRight > * {
+  flex: 1;
+}
+
+@media (max-width: 1100px) {
+  .intelligenceRow {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 768px) {
-  .agronomySection {
-    grid-template-columns: 1fr;
+  .intelligenceRow {
     padding: var(--grid-padding-mobile);
+    gap: 12px;
   }
 }
 

@@ -3,6 +3,40 @@ import { useWeather } from '../../utils/weather/useWeather'
 import { computeApplicationEffectiveness } from '../../utils/agronomy/applicationEffectiveness'
 import styles from './AppEffectivenessCard.module.css'
 
+function CircleGauge({ score, color }) {
+  const r    = 30
+  const circ = 2 * Math.PI * r
+  const off  = circ * (1 - score / 100)
+  return (
+    <svg width="76" height="76" viewBox="0 0 76 76" aria-hidden="true">
+      <circle
+        cx="38" cy="38" r={r}
+        fill="none"
+        stroke="rgba(255,255,255,0.07)"
+        strokeWidth="6"
+      />
+      <circle
+        cx="38" cy="38" r={r}
+        fill="none"
+        stroke={color}
+        strokeWidth="6"
+        strokeDasharray={circ}
+        strokeDashoffset={off}
+        strokeLinecap="round"
+        transform="rotate(-90 38 38)"
+        style={{ transition: 'stroke-dashoffset 0.5s ease' }}
+      />
+    </svg>
+  )
+}
+
+function recText(score) {
+  if (score >= 80) return 'Conditions are favorable — applications made today should perform well.'
+  if (score >= 60) return 'Acceptable window. Monitor wind and humidity before spraying.'
+  if (score >= 40) return 'Marginal conditions. Consider delaying non-critical applications.'
+  return 'Poor conditions. Delay applications until weather improves.'
+}
+
 export default function AppEffectivenessCard() {
   const { current, forecast, loading } = useWeather()
 
@@ -13,58 +47,39 @@ export default function AppEffectivenessCard() {
 
   if (loading || !result) return <p className={styles.aeEmpty}>Loading conditions…</p>
 
-  const { score, rating, factors, positives, negatives } = result
+  const { score, rating, positives, negatives } = result
 
   return (
     <div className={styles.aeWrap}>
 
-      <div className={styles.aeScore} style={{ borderColor: rating.border }}>
-        <span className={styles.aeScoreNumber} style={{ color: rating.color }}>
-          {score}%
-        </span>
-        <div className={styles.aeScoreRight}>
-          <span
-            className={styles.aeRatingBadge}
-            style={{ color: rating.color, background: rating.bg, borderColor: rating.border }}
-          >
-            {rating.label}
-          </span>
-          <span className={styles.aeRatingLabel}>Application Conditions</span>
+      <div className={styles.aeBody}>
+
+        <div className={styles.aeGaugeWrap}>
+          <CircleGauge score={score} color={rating.color} />
+          <div className={styles.aeGaugeCenter}>
+            <span className={styles.aeScoreNum} style={{ color: rating.color }}>{score}</span>
+            <span className={styles.aeRatingTag} style={{ color: rating.color }}>{rating.label}</span>
+          </div>
         </div>
-      </div>
 
-      <div className={styles.aeFactors}>
-        {factors.map(f => {
-          const pct   = (f.pts / f.max) * 100
-          const color = pct >= 75 ? '#4ecb4e' : pct >= 50 ? '#d4883a' : '#e07070'
-          return (
-            <div key={f.label} className={styles.aeFactor}>
-              <span className={styles.aeFactorLabel}>{f.label}</span>
-              <div className={styles.aeTrack}>
-                <div className={styles.aeFill} style={{ width: `${pct}%`, background: color }} />
-              </div>
-              <span className={styles.aeFactorPts}>{f.pts}/{f.max}</span>
-            </div>
-          )
-        })}
-      </div>
-
-      {(positives.length > 0 || negatives.length > 0) && (
-        <div className={styles.aeNotes}>
+        <div className={styles.aeFactors}>
           {positives.map(note => (
-            <div key={note} className={`${styles.aeNote} ${styles.aePositive}`}>
-              <span className={styles.aeNoteIcon}>✓</span>
-              <span>{note}</span>
+            <div key={note} className={`${styles.aeFactorRow} ${styles.aePos}`}>
+              <span className={styles.aeFactorIcon}>✓</span>
+              <span className={styles.aeFactorText}>{note}</span>
             </div>
           ))}
           {negatives.map(note => (
-            <div key={note} className={`${styles.aeNote} ${styles.aeNegative}`}>
-              <span className={styles.aeNoteIcon}>✕</span>
-              <span>{note}</span>
+            <div key={note} className={`${styles.aeFactorRow} ${styles.aeNeg}`}>
+              <span className={styles.aeFactorIcon}>✕</span>
+              <span className={styles.aeFactorText}>{note}</span>
             </div>
           ))}
         </div>
-      )}
+
+      </div>
+
+      <p className={styles.aeRec}>{recText(score)}</p>
 
     </div>
   )

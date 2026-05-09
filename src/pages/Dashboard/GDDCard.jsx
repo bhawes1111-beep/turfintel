@@ -9,6 +9,37 @@ const TYPE_ROWS = [
   { key: 'nutrient',  label: 'Nutrient' },
 ]
 
+function GDDScale({ current, windows, color }) {
+  const { optimalStart, optimalEnd, expired } = windows
+  const pct = Math.min(100, (current / expired) * 100)
+  const m1  = (optimalStart / expired) * 100
+  const m2  = (optimalEnd   / expired) * 100
+
+  const trackBg = `linear-gradient(to right,
+    rgba(58,138,212,0.22) 0%, rgba(58,138,212,0.22) ${m1}%,
+    rgba(74,158,74,0.22) ${m1}%, rgba(74,158,74,0.22) ${m2}%,
+    rgba(210,130,40,0.22) ${m2}%, rgba(210,130,40,0.22) 100%
+  )`
+
+  return (
+    <div className={styles.gddScaleWrap}>
+      <div className={styles.gddScaleTrack} style={{ background: trackBg }}>
+        <div
+          className={styles.gddScaleFill}
+          style={{ width: `${pct}%`, background: color }}
+        />
+        <div className={styles.gddScaleMarker} style={{ left: `${m1}%` }} />
+        <div className={styles.gddScaleMarker} style={{ left: `${m2}%` }} />
+      </div>
+      <div className={styles.gddScaleLabels}>
+        <span className={styles.gddZoneLabel} style={{ left: `${m1 / 2}%` }}>Early</span>
+        <span className={styles.gddZoneLabel} style={{ left: `${(m1 + m2) / 2}%` }}>Optimal</span>
+        <span className={styles.gddZoneLabel} style={{ left: `${(m2 + 100) / 2}%` }}>Late</span>
+      </div>
+    </div>
+  )
+}
+
 export default function GDDCard() {
   const { forecast, loading } = useWeather()
   const gdd = useMemo(() => computeGDDSummary(forecast), [forecast])
@@ -26,7 +57,12 @@ export default function GDDCard() {
         <div className={styles.gddStatDivider} />
         <div className={styles.gddStat}>
           <span className={styles.gddStatValue}>{gdd.sevenDayGDD}</span>
-          <span className={styles.gddStatLabel}>7-Day GDD</span>
+          <span className={styles.gddStatLabel}>7-Day Accum.</span>
+        </div>
+        <div className={styles.gddStatDivider} />
+        <div className={styles.gddStat}>
+          <span className={styles.gddStatValue}>{gdd.avgDailyGDD}</span>
+          <span className={styles.gddStatLabel}>Daily Avg</span>
         </div>
         <div className={styles.gddStatDivider} />
         <div className={styles.gddStat}>
@@ -39,7 +75,6 @@ export default function GDDCard() {
         {TYPE_ROWS.map(({ key, label }) => {
           const { status, daysTo } = gdd[key]
           const meta = gdd.statusMeta[status]
-          const pct  = Math.min(100, (gdd.sevenDayGDD / gdd.windows[key].expired) * 100)
           return (
             <div key={key} className={styles.gddRow}>
               <div className={styles.gddRowHeader}>
@@ -51,12 +86,11 @@ export default function GDDCard() {
                   {meta.label}
                 </span>
               </div>
-              <div className={styles.gddTrack}>
-                <div
-                  className={styles.gddFill}
-                  style={{ width: `${pct}%`, background: meta.color }}
-                />
-              </div>
+              <GDDScale
+                current={gdd.sevenDayGDD}
+                windows={gdd.windows[key]}
+                color={meta.color}
+              />
               {status === 'early' && daysTo > 0 && (
                 <span className={styles.gddNote}>
                   ~{daysTo} day{daysTo !== 1 ? 's' : ''} to optimal window
