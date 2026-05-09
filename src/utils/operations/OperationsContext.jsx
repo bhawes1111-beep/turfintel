@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useReducer } from 'react'
 import { CALENDAR_EVENTS } from '../../data/dashboardCalendarEvents'
 import { DASHBOARD_ALERTS } from '../../data/dashboardAlerts'
+import { PRODUCTS, CHEMICALS } from '../../data/inventory'
 import {
   CREATE_CALENDAR_EVENT,
   CREATE_ALERT,
@@ -8,9 +9,30 @@ import {
   RESERVE_EQUIPMENT,
   DISMISS_ALERT,
   ACKNOWLEDGE_ALERT,
+  DEDUCT_INVENTORY,
 } from './actions'
 
 const STORAGE_KEY = 'turfintel-operations'
+
+// ── Inventory normalization ────────────────────────────────────────────────────
+// Unifies PRODUCTS (category field) and CHEMICALS (type field) into one pool.
+// IDs are prefixed ('p-' / 'c-') to prevent collision between datasets.
+
+function toInventoryProduct(p, prefix) {
+  return {
+    id:           `${prefix}${p.id}`,
+    name:         p.name,
+    category:     p.category || p.type || 'Other',
+    unit:         p.unit,
+    quantity:     p.quantity,
+    reorderLevel: p.reorderLevel,
+    location:     p.location  || '',
+    vendor:       p.vendor    || '',
+    notes:        p.notes     || (p.expiryDate ? `Expires: ${p.expiryDate}` : ''),
+    costPerUnit:  p.costPerUnit != null ? p.costPerUnit : null,
+    relatedUsage: p.relatedUsage || [],
+  }
+}
 
 // ── Static seeds ───────────────────────────────────────────────────────────────
 // Used on first load or when persisted state is absent / corrupt.
@@ -20,6 +42,11 @@ const seedState = {
   alerts:                [...DASHBOARD_ALERTS],
   crewAssignments:       [],
   equipmentReservations: [],
+  inventoryProducts:     [
+    ...PRODUCTS.map(p  => toInventoryProduct(p, 'p-')),
+    ...CHEMICALS.map(c => toInventoryProduct(c, 'c-')),
+  ],
+  inventoryUsage:        [],
 }
 
 // ── Persistence adapter ────────────────────────────────────────────────────────
@@ -44,6 +71,16 @@ function saveState(state) {
   } catch {
     // Quota exceeded or restricted storage — fail silently.
   }
+}
+
+// Merge loaded state with seed defaults so new state keys added in future
+// deploys are automatically initialized without corrupting persisted data.
+function mergeWithSeed(loaded) {
+  const merged = { ...seedState }
+  for (const key of Object.keys(seedState)) {
+    if (loaded[key] !== undefined) merged[key] = loaded[key]
+  }
+  return merged
 }
 
 // ── Reducer ────────────────────────────────────────────────────────────────────
@@ -106,6 +143,34 @@ function operationsReducer(state, { type, payload }) {
         ),
       }
 
+    case DEDUCT_INVENTORY: {
+      // payload is a makeInventoryUsage() record — contains productName + quantityUsed.
+      // Pure arithmetic only — alert dispatch happens before this action is fired.
+      const { productName, quantityUsed } = payload
+      const lc = productName.toLowerCase()
+
+      let matchIdx = state.inventoryProducts.findIndex(p => p.name === productName)
+      if (matchIdx === -1) {
+        matchIdx = state.inventoryProducts.findIndex(p => p.name.toLowerCase() === lc)
+      }
+
+      if (matchIdx === -1) {
+        // Product not tracked — record the usage attempt without deducting.
+        return { ...state, inventoryUsage: [...state.inventoryUsage, payload] }
+      }
+
+      const product = state.inventoryProducts[matchIdx]
+      const newQty  = Math.max(0, product.quantity - quantityUsed)
+
+      return {
+        ...state,
+        inventoryProducts: state.inventoryProducts.map((p, i) =>
+          i === matchIdx ? { ...p, quantity: newQty } : p
+        ),
+        inventoryUsage: [...state.inventoryUsage, payload],
+      }
+    }
+
     default:
       return state
   }
@@ -116,11 +181,14 @@ function operationsReducer(state, { type, payload }) {
 const OperationsContext = createContext(null)
 
 export function OperationsProvider({ children }) {
-  // Lazy initializer: reads localStorage once on mount, falls back to seedState.
+  // Lazy initializer: reads localStorage once on mount, merges with seed defaults.
   const [state, dispatch] = useReducer(
     operationsReducer,
     undefined,
-    () => loadState() ?? seedState,
+    () => {
+      const loaded = loadState()
+      return loaded ? mergeWithSeed(loaded) : seedState
+    },
   )
 
   // Write-back: persists on every state change.

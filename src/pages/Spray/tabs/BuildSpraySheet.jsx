@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { SPRAY_RECORDS, TYPE_COLORS } from '../../../data/spray'
 import { useOperations } from '../../../utils/operations/OperationsContext'
-import { createCalendarEvent, createAlert } from '../../../utils/operations/actions'
+import { createCalendarEvent, createAlert, deductInventory } from '../../../utils/operations/actions'
 import styles from '../Spray.module.css'
 
 const TODAY  = new Date().toISOString().slice(0, 10)
@@ -36,6 +36,20 @@ const AREA_OPTS   = ['All', 'Greens', 'Tees', 'Fairways', 'All Roughs', 'Greens 
 const STATUS_OPTS = ['All', 'planned', 'in-progress', 'pending-review', 'completed']
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+// Extract the leading numeric value from a rate string, e.g. '1.5 lbs / 1,000 sq ft' → 1.5
+function parseRateQty(rateStr) {
+  const match = rateStr && rateStr.match(/^(\d+\.?\d*)/)
+  return match ? parseFloat(match[1]) : 0
+}
+
+// Mirrors the stockStatus function in InventoryProducts without importing it
+function invStockStatus(qty, reorderLevel) {
+  if (qty <= 0)                   return 'out'
+  if (qty <= reorderLevel * 0.5)  return 'critical'
+  if (qty <= reorderLevel)        return 'low'
+  return 'good'
+}
 
 function holesLabel(holes) {
   if (!holes || holes.length === 0) return '—'
@@ -91,7 +105,7 @@ function buildPPE(records) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function BuildSpraySheet() {
-  const { dispatch }                     = useOperations()
+  const { state, dispatch }              = useOperations()
   const [search,       setSearch]       = useState('')
   const [dateFilter,   setDateFilter]   = useState('')
   const [areaFilter,   setAreaFilter]   = useState('All')
@@ -106,6 +120,7 @@ export default function BuildSpraySheet() {
   }
 
   function handleAddToCalendar() {
+    // ── Calendar events ──────────────────────────────────────────────────────
     selectedRecords.forEach(r => {
       const isPrimary    = r.products.some(p => p.type === 'Fungicide' || p.type === 'Insecticide')
       const categoryPrio = isPrimary ? 'high' : 'medium'
@@ -139,6 +154,62 @@ export default function BuildSpraySheet() {
         sourceId:    selectedRecords[0]?.id,
       }))
     }
+
+    // ── Inventory deductions ─────────────────────────────────────────────────
+    // Skip records whose products have already been deducted (duplicate protection).
+    const alreadyProcessed = new Set(state.inventoryUsage.map(u => u.sourceId))
+
+    selectedRecords.forEach(r => {
+      if (alreadyProcessed.has(r.id)) return
+
+      r.products.forEach(p => {
+        const qty = parseRateQty(p.rate)
+        if (qty <= 0) return
+
+        // Match by exact name, then case-insensitive fallback
+        const invItem = state.inventoryProducts.find(i => i.name === p.name)
+          ?? state.inventoryProducts.find(i => i.name.toLowerCase() === p.name.toLowerCase())
+        if (!invItem) return  // Not tracked in inventory — skip silently
+
+        if (invItem.quantity < qty) {
+          dispatch(createAlert({
+            title:    `Insufficient Stock — ${p.name}`,
+            message:  `Spray requires ${qty} ${invItem.unit} but only ${invItem.quantity} ${invItem.unit} on hand. Deduction skipped.`,
+            module:   'inventory',
+            priority: 'high',
+            sourceId: r.id,
+          }))
+          return
+        }
+
+        // Fire low/critical/out-of-stock alert if this deduction crosses a threshold
+        const newQty     = Math.max(0, invItem.quantity - qty)
+        const prevStatus = invStockStatus(invItem.quantity, invItem.reorderLevel)
+        const nextStatus = invStockStatus(newQty, invItem.reorderLevel)
+        if (prevStatus !== nextStatus && nextStatus !== 'good') {
+          const alertTitle = nextStatus === 'out'
+            ? `Out of Stock — ${p.name}`
+            : `${nextStatus === 'critical' ? 'Critical' : 'Low'} Stock — ${p.name}`
+          dispatch(createAlert({
+            title:    alertTitle,
+            message:  `${p.name} at ${newQty} ${invItem.unit} after spray application — min. threshold ${invItem.reorderLevel} ${invItem.unit}.`,
+            module:   'inventory',
+            priority: nextStatus === 'out' || nextStatus === 'critical' ? 'high' : 'medium',
+            sourceId: r.id,
+          }))
+        }
+
+        dispatch(deductInventory({
+          productName:  p.name,
+          quantityUsed: qty,
+          unit:         invItem.unit,
+          sourceId:     r.id,
+          date:         r.date,
+          area:         r.area,
+          applicator:   r.applicator,
+        }))
+      })
+    })
 
     showToast(
       `${selectedRecords.length} event${selectedRecords.length !== 1 ? 's' : ''} added to Operations Calendar`

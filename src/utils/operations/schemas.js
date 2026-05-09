@@ -144,3 +144,35 @@ export function makeEquipmentReservation({
     createdAt:      new Date().toISOString(),
   }
 }
+
+// ── Inventory usage record factory ────────────────────────────────────────────
+//
+// Records a product deduction event. DEDUCT_INVENTORY uses this as its payload
+// so the usage record is simultaneously the audit trail and the action.
+//
+// API-READY: swap dispatch for POST /api/inventory/deduct — optimistic update
+// the local state, then reconcile with the server-returned record.
+
+export function makeInventoryUsage({
+  productName,
+  quantityUsed,
+  unit,
+  eventId    = null,
+  sourceId   = null,
+  date       = '',
+  area       = '',
+  applicator = '',
+} = {}) {
+  return {
+    id:          uid('iu'),
+    productName,
+    quantityUsed,
+    unit,
+    eventId,
+    sourceId,
+    date,
+    area,
+    applicator,
+    createdAt:   new Date().toISOString(),
+  }
+}

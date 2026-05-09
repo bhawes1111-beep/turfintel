@@ -1,8 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
-import { PRODUCTS } from '../../../data/inventory'
+import { useOperations } from '../../../utils/operations/OperationsContext'
 import styles from '../Inventory.module.css'
 
-const CATEGORIES = ['All', 'Substrate', 'Seed', 'Soil Amendment', 'Tools', 'Misc']
 const STOCK_FILTERS = ['All', 'Good', 'Low', 'Critical', 'Out of Stock']
 
 function stockStatus(quantity, reorderLevel) {
@@ -24,27 +23,42 @@ const FILTER_KEY = { 'Good': 'good', 'Low': 'low', 'Critical': 'critical', 'Out 
 const SORT_STATUS = { out: 0, critical: 1, low: 2, good: 3 }
 
 export default function InventoryProducts() {
+  const { state }       = useOperations()
+  const inventoryProducts = state.inventoryProducts
+
   const [search,    setSearch]    = useState('')
   const [catFilter, setCatFilter] = useState('All')
   const [stkFilter, setStkFilter] = useState('All')
-  const [selected,  setSelected]  = useState(null)
+  const [selectedId, setSelectedId] = useState(null)
+
+  // Derive selected product from live state so modal reflects current quantities
+  const selected = useMemo(
+    () => inventoryProducts.find(p => p.id === selectedId) ?? null,
+    [selectedId, inventoryProducts]
+  )
 
   useEffect(() => {
     if (!selected) return
-    const onKey = e => { if (e.key === 'Escape') setSelected(null) }
+    const onKey = e => { if (e.key === 'Escape') setSelectedId(null) }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [selected])
 
+  // Categories derived from live data so chemical types appear automatically
+  const categories = useMemo(
+    () => ['All', ...new Set(inventoryProducts.map(p => p.category))],
+    [inventoryProducts]
+  )
+
   const counts = useMemo(() => {
     const c = { good: 0, low: 0, critical: 0, out: 0 }
-    PRODUCTS.forEach(p => { c[stockStatus(p.quantity, p.reorderLevel)]++ })
+    inventoryProducts.forEach(p => { c[stockStatus(p.quantity, p.reorderLevel)]++ })
     return c
-  }, [])
+  }, [inventoryProducts])
 
   const visible = useMemo(() => {
     const q = search.toLowerCase()
-    return PRODUCTS
+    return inventoryProducts
       .filter(p => {
         const status = stockStatus(p.quantity, p.reorderLevel)
         const matchCat = catFilter === 'All' || p.category === catFilter
@@ -61,7 +75,7 @@ export default function InventoryProducts() {
         SORT_STATUS[stockStatus(a.quantity, a.reorderLevel)] -
         SORT_STATUS[stockStatus(b.quantity, b.reorderLevel)]
       )
-  }, [search, catFilter, stkFilter])
+  }, [search, catFilter, stkFilter, inventoryProducts])
 
   return (
     <div className={styles.tabContent}>
@@ -97,7 +111,7 @@ export default function InventoryProducts() {
           aria-label="Search products"
         />
         <div className={styles.filterRow}>
-          {CATEGORIES.map(c => (
+          {categories.map(c => (
             <button
               key={c}
               className={`${styles.filterBtn} ${catFilter === c ? styles.filterBtnActive : ''}`}
@@ -140,7 +154,7 @@ export default function InventoryProducts() {
               <button
                 key={p.id}
                 className={`${styles.ipCard} ${styles[`ipCard_${status}`]}`}
-                onClick={() => setSelected(p)}
+                onClick={() => setSelectedId(p.id)}
                 aria-label={`View details for ${p.name}`}
               >
                 {/* Left: name + category + location */}
@@ -193,7 +207,7 @@ export default function InventoryProducts() {
         return (
           <div
             className={styles.ipModalOverlay}
-            onClick={() => setSelected(null)}
+            onClick={() => setSelectedId(null)}
             role="dialog"
             aria-modal="true"
             aria-label="Product details"
@@ -216,7 +230,7 @@ export default function InventoryProducts() {
                   <span className={`${styles.stockBadge} ${meta.cls}`}>{meta.label}</span>
                   <button
                     className={styles.ipModalClose}
-                    onClick={() => setSelected(null)}
+                    onClick={() => setSelectedId(null)}
                     aria-label="Close"
                   >
                     ✕
@@ -237,10 +251,6 @@ export default function InventoryProducts() {
                     <div className={styles.ipModalField}>
                       <span className={styles.ipModalFieldLabel}>Unit</span>
                       <span className={styles.ipModalFieldValue}>{selected.unit}</span>
-                    </div>
-                    <div className={styles.ipModalField}>
-                      <span className={styles.ipModalFieldLabel}>Last Updated</span>
-                      <span className={styles.ipModalFieldValue}>{selected.lastUpdated || '—'}</span>
                     </div>
                     <div className={styles.ipModalField}>
                       <span className={styles.ipModalFieldLabel}>Stock Status</span>
@@ -269,7 +279,7 @@ export default function InventoryProducts() {
                         style={{ color: selected.quantity >= selected.reorderLevel ? '#4ecb4e' : '#e05050' }}
                       >
                         {selected.quantity >= selected.reorderLevel
-                          ? `+${selected.quantity - selected.reorderLevel} above threshold`
+                          ? `+${(selected.quantity - selected.reorderLevel).toFixed ? (selected.quantity - selected.reorderLevel) : selected.quantity - selected.reorderLevel} above threshold`
                           : `${selected.quantity - selected.reorderLevel} below threshold`
                         }
                       </span>
@@ -295,52 +305,56 @@ export default function InventoryProducts() {
                 </section>
 
                 {/* Storage / Vendor */}
-                <section className={styles.ipModalSection}>
-                  <h3 className={styles.ipModalSectionTitle}>Storage / Vendor</h3>
-                  <div className={styles.ipModalGrid}>
-                    <div className={styles.ipModalField}>
-                      <span className={styles.ipModalFieldLabel}>Storage Location</span>
-                      <span className={styles.ipModalFieldValue}>{selected.location}</span>
+                {(selected.location || selected.vendor) && (
+                  <section className={styles.ipModalSection}>
+                    <h3 className={styles.ipModalSectionTitle}>Storage / Vendor</h3>
+                    <div className={styles.ipModalGrid}>
+                      {selected.location && (
+                        <div className={styles.ipModalField}>
+                          <span className={styles.ipModalFieldLabel}>Storage Location</span>
+                          <span className={styles.ipModalFieldValue}>{selected.location}</span>
+                        </div>
+                      )}
+                      {selected.vendor && (
+                        <div className={styles.ipModalField}>
+                          <span className={styles.ipModalFieldLabel}>Vendor</span>
+                          <span className={styles.ipModalFieldValue}>{selected.vendor}</span>
+                        </div>
+                      )}
                     </div>
-                    <div className={styles.ipModalField}>
-                      <span className={styles.ipModalFieldLabel}>Vendor</span>
-                      <span className={styles.ipModalFieldValue}>{selected.vendor || '—'}</span>
-                    </div>
-                  </div>
-                </section>
+                  </section>
+                )}
 
                 {/* Cost Information */}
-                <section className={styles.ipModalSection}>
-                  <h3 className={styles.ipModalSectionTitle}>Cost Information</h3>
-                  <div className={styles.ipModalGrid}>
-                    <div className={styles.ipModalField}>
-                      <span className={styles.ipModalFieldLabel}>Cost per {selected.unit}</span>
-                      <span className={styles.ipModalFieldValue}>
-                        {selected.costPerUnit != null ? `$${selected.costPerUnit.toFixed(2)}` : '—'}
-                      </span>
+                {selected.costPerUnit != null && (
+                  <section className={styles.ipModalSection}>
+                    <h3 className={styles.ipModalSectionTitle}>Cost Information</h3>
+                    <div className={styles.ipModalGrid}>
+                      <div className={styles.ipModalField}>
+                        <span className={styles.ipModalFieldLabel}>Cost per {selected.unit}</span>
+                        <span className={styles.ipModalFieldValue}>
+                          ${selected.costPerUnit.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className={styles.ipModalField}>
+                        <span className={styles.ipModalFieldLabel}>Current Stock Value</span>
+                        <span className={styles.ipModalFieldValue}>
+                          ${(selected.quantity * selected.costPerUnit).toFixed(2)}
+                        </span>
+                      </div>
+                      {selected.quantity < selected.reorderLevel && (
+                        <div className={styles.ipModalField}>
+                          <span className={styles.ipModalFieldLabel}>Reorder Cost (to min)</span>
+                          <span className={styles.ipModalFieldValue}>
+                            ${((selected.reorderLevel - selected.quantity) * selected.costPerUnit).toFixed(2)}
+                          </span>
+                        </div>
+                      )}
                     </div>
-                    <div className={styles.ipModalField}>
-                      <span className={styles.ipModalFieldLabel}>Current Stock Value</span>
-                      <span className={styles.ipModalFieldValue}>
-                        {selected.costPerUnit != null
-                          ? `$${(selected.quantity * selected.costPerUnit).toFixed(2)}`
-                          : '—'
-                        }
-                      </span>
-                    </div>
-                    <div className={styles.ipModalField}>
-                      <span className={styles.ipModalFieldLabel}>Reorder Cost (to min)</span>
-                      <span className={styles.ipModalFieldValue}>
-                        {selected.costPerUnit != null && selected.quantity < selected.reorderLevel
-                          ? `$${((selected.reorderLevel - selected.quantity) * selected.costPerUnit).toFixed(2)}`
-                          : '—'
-                        }
-                      </span>
-                    </div>
-                  </div>
-                </section>
+                  </section>
+                )}
 
-                {/* Usage Tracking placeholder */}
+                {/* Usage Tracking */}
                 {selected.relatedUsage && selected.relatedUsage.length > 0 && (
                   <section className={styles.ipModalSection}>
                     <h3 className={styles.ipModalSectionTitle}>Usage Tracking</h3>
@@ -349,9 +363,6 @@ export default function InventoryProducts() {
                         <span key={i} className={styles.ipUsageTag}>{u}</span>
                       ))}
                     </div>
-                    <p className={styles.ipUsagePlaceholder}>
-                      Usage history and deduction tracking coming soon.
-                    </p>
                   </section>
                 )}
 

@@ -6,6 +6,7 @@ export const ASSIGN_CREW           = 'ASSIGN_CREW'
 export const RESERVE_EQUIPMENT     = 'RESERVE_EQUIPMENT'
 export const DISMISS_ALERT         = 'DISMISS_ALERT'
 export const ACKNOWLEDGE_ALERT     = 'ACKNOWLEDGE_ALERT'
+export const DEDUCT_INVENTORY      = 'DEDUCT_INVENTORY'
 
 // ── Pure action creators ──────────────────────────────────────────────────────
 //
@@ -22,6 +23,7 @@ import {
   makeAlert,
   makeCrewAssignment,
   makeEquipmentReservation,
+  makeInventoryUsage,
 } from './schemas'
 
 export function createCalendarEvent(fields) {
@@ -46,4 +48,8 @@ export function dismissAlert(id) {
 
 export function acknowledgeAlert(id) {
   return { type: ACKNOWLEDGE_ALERT, payload: { id } }
+}
+
+export function deductInventory(fields) {
+  return { type: DEDUCT_INVENTORY, payload: makeInventoryUsage(fields) }
 }
