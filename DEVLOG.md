@@ -2,6 +2,83 @@
 
 ---
 
+## Session 7 — 2026-05-08
+
+**Commit:** Weather stabilization pass  
+**Build:** 163 modules, 0 errors · known warning: bundle chunk >500 kB (not blocking)
+
+### Weather System Stabilization + Operational Accuracy Pass
+
+#### Source Diagnostics (`src/utils/weather/api.js`)
+- Added internal `fetchCurrentWithSource()` returning `{ data, source }` — distinguishes NWS vs METAR without exposing the detail externally
+- `fetchWeatherBundle()` now logs to `console.debug` at each resolution step:
+  - `source=cache age=Xmin cached-at=<ISO>` on fresh cache hit
+  - `source=nws|metar forecastDays=N fetched-at=<ISO>` on live fetch
+  - `source=stale-cache age=Xmin stale=true cached-at=<ISO>` on stale fallback
+  - `all sources failed — no data available` when everything is down
+- `readCache()` now attaches `_cacheAgeMs` to return value for diagnostics; stripped before any external return or write
+
+#### Forecast Accuracy Improvements (`src/utils/weather/normalize.js`)
+- **Rainfall estimation**: replaced PoP-only formula with `estimateRainfallIn(pop, shortForecast)` — combines probability with NWS text keywords: `heavy` (×1.8), `thunder/storm` (×1.2), `scattered/isolated` (×0.5), `slight/light` (×0.3), `drizzle` (×0.15), default (×0.8). Capped at 3.0 in.
+- **Forecast spray window**: new `computeForecastSprayWindow(windMph, pop, highF, shortForecast)` — marks poor when PoP > 60% or rain keywords present; caution when PoP > 25% or temp > 88°F; otherwise ideal
+- **Icon matching**: `ICON_MAP` reordered most-specific-first to prevent substring shadowing (e.g. "Mostly Cloudy" must precede bare "Cloudy"). Added: `T-Storm`, `Rain And`, `Showers And`, `Wintry Mix`, `Sleet`, `Haze`, `Smoke`, `Breezy`, `Mostly Sunny`, `Mostly Clear`. Case-insensitive fallback catches non-standard NWS strings.
+
+#### Disease Pressure Refinement (`src/utils/weather/normalize.js`)
+- **Observation**: `computeDiseasePressure()` extended with `inActiveRange` (65–88°F — dollar spot / pythium sweet spot). Same humidity + spread thresholds now escalate one level when temps are in active range. Near-saturation guard: spread ≤ 3°F OR humidity ≥ 92% → critical regardless.
+- **Forecast multi-day escalation**: `baseForecastDisease()` scores single-day risk; a second pass over the `days` array tracks `wetStreak` (consecutive days with rainfall > 0.1 in) and escalates: streak ≥ 3 + rainfall > 0.2 in → critical; streak ≥ 2 + warm overnight low (≥ 62°F) → high; streak ≥ 2 → medium floor. Reflects real fungal pressure accumulation across wet windows.
+
+#### ET Approximation Refinement (`src/utils/weather/normalize.js`)
+- `estimateET()` gains `solarFactor` parameter (default 1.0 = clear sky, 0.55 = fully overcast)
+- `solarFactorFromPoP(pop)` computes factor: `1.0 − (pop/100) × 0.45` — linear interpolation
+- Forecast ET now passes `sf = solarFactorFromPoP(pop)` per day: sunny days get full solar contribution; rainy days reduced by 45%
+- Observation ET unchanged (no PoP available for current conditions) — uses solarFactor=1.0
+
+#### Weather Failure Handling
+- If forecast fails but current succeeds: `forecast: []` written to cache; hook falls back to `PLACEHOLDER_FORECAST` via `resolvedForecast` guard
+- If current fails but stale cache exists: stale bundle returned with `stale: true`; hook sets `isStale=true`, STALE badge shown on card
+- If all sources fail: returns null; hook sets error, UI shows placeholder data with error banner; no hard failures anywhere in the render tree
+
+#### Refresh Controls (`src/pages/Dashboard/WeatherSection.jsx`)
+- `useWeather()` now destructures `refresh` and passes it to `WeatherInsightsCard`
+- `WeatherInsightsCard` receives `loading` + `onRefresh` props
+- Refresh button (↻) added to card header right of "Updated" timestamp; disabled + shows `…` while loading; hover shows green accent color
+- CSS: `.wsHeaderRight` flex wrapper + `.wsRefreshBtn` styles added to `WeatherSection.module.css`
+
+---
+
+## Session 6 — 2026-05-08
+
+**Commits:** `2259037` (persistence) · `7d58f3d` (metrics fix) · `95edf6e` (inventory automation) · `f3f4d43` (weather engine) · `23890f6` (live weather)  
+**Build:** 163 modules, 0 errors
+
+### OperationsContext Persistence Layer
+- `STORAGE_KEY = 'turfintel-operations'`; lazy `useReducer` initializer reads localStorage once on mount
+- `mergeWithSeed(loaded)` for rolling upgrades — iterates seedState keys, preserves loaded values when not undefined; new keys get seed defaults
+- `loadState()` / `saveState()` isolated adapter functions — swap for API/D1/Supabase without touching reducer
+- `useEffect([state])` write-back on every reducer change
+- Dedup guard in `CREATE_CALENDAR_EVENT`: rejects `sourceId + category + date` duplicates
+
+### Operations Calendar Metrics Fix
+- Weekly metrics (`spray`, `crew`, `maintenance`, `openRepairs`) now derived from `state.calendarEvents` via `useMemo` — no more static dataset imports; survives refresh
+
+### Inventory ↔ Spray Automation
+- `inventoryProducts` and `inventoryUsage` added to seedState; `DEDUCT_INVENTORY` reducer action
+- `toInventoryProduct(p, prefix)` normalizes PRODUCTS (`p-` prefix) + CHEMICALS (`c-` prefix) to unified shape
+- `BuildSpraySheet.handleAddToCalendar()` pre-computes threshold crossings (low/critical/out) and dispatches alerts before `deductInventory`; pure reducer constraint maintained
+- `InventoryProducts.jsx` reads live `state.inventoryProducts`; stores `selectedId` not object to avoid stale modal
+
+### Weather Operations Engine Phase 1
+- `src/utils/weather/evaluator.js` — 6 pure evaluator functions (spray window, disease pressure, ET demand, frost risk, rain delay, heat stress)
+- `src/utils/weather/recommendations.js` — `generateWeatherRecommendations()` orchestrates all evaluators, stamps IDs, sorts by severity
+- `WeatherIntelligence.jsx` — Dashboard card; push-to-alerts pattern; `pushed` Set prevents double-dispatch
+
+### Live Weather Integration Phase 2
+- `src/utils/weather/normalize.js` — NWS observation + METAR normalization; ET estimation; disease pressure; spray window; feels-like
+- `src/utils/weather/api.js` — 4-source fallback chain; 15-min localStorage cache
+- `src/utils/weather/useWeather.js` — React hook; resolves to placeholders on error; exposes `isLive`, `isStale`, `refresh`
+
+---
+
 ## Session 5 — 2026-05-08
 
 **Commits:** Spray Sheet tab · Operations Layer · Persistence + dedup  

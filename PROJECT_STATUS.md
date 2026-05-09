@@ -3,25 +3,30 @@
 **Stack:** React 19 + Vite 8 · Plain JavaScript · CSS Modules · React Router DOM v7  
 **Deployed:** Cloudflare Pages (auto-deploy on push to `master`)  
 **Repo:** https://github.com/bhawes1111-beep/turfintel  
-**Latest Commit:** (see DEVLOG Session 5)
+**Latest Commit:** (see DEVLOG Session 7)
 
 ---
 
 ## Checkpoint Summary (2026-05-08)
 
-Working tree is clean. Master is pushed. Build passes at 156 modules, 0 errors.
-Known warning: bundle chunk-size >500 kB — not blocking, resolves with code-splitting when app grows.
+Working tree is clean. Build passes at 163 modules, 0 errors.
+Known warning: bundle chunk-size >500 kB — not blocking.
 
-Session 5 additions: Spray Sheet tab (full printable worksheet system) + shared operational
-actions layer (`src/utils/operations/`) with localStorage persistence. All cross-module
-state mutations now survive browser refreshes. Duplicate-event guard added to reducer.
+Session 7: Weather stabilization pass — improved forecast rainfall estimation, icon resolution,
+disease pressure (multi-day consecutive-wet escalation), ET solar factor, source diagnostics
+(console.debug only), and manual refresh button in the Weather Insights card.
 
-Fourteen full-data workflows shipped across five sessions. Dashboard/UX systems:
-Operations Calendar · Crew Scheduling Board · Dashboard Weather Redesign.
+Session 6: Live NWS weather integration (4-source fallback chain + 15-min cache),
+inventory ↔ spray automation, Operations Calendar metrics wired to live state,
+OperationsContext localStorage persistence, and the Weather Intelligence Dashboard card.
 
-Every data workflow follows the same pattern: real static dataset in `src/data/`, full-featured
-tab component with stat row + search + filter chips + sortable list cards + detail modal,
-and a namespaced CSS block in the module's `.module.css`.
+Session 5: Spray Sheet tab + shared Operations Layer with localStorage persistence.
+
+Fourteen+ full-data workflows across seven sessions. Dashboard/UX systems:
+Operations Calendar · Crew Scheduling Board · Dashboard Weather Section (live data).
+
+Every data workflow: real static dataset in `src/data/`, full-featured tab component
+(stat row + search + filter chips + sortable list cards + detail modal), namespaced CSS prefix.
 
 ---
 
@@ -196,6 +201,46 @@ and a namespaced CSS block in the module's `.module.css`.
 
 ## Architecture Reference
 
+### Weather Layer (`src/utils/weather/`)
+
+Live weather pipeline decoupled from all UI and operations layers. Evaluators and recommendations are pure functions — never modified when data sources change.
+
+| File | Purpose |
+|---|---|
+| `evaluator.js` | 6 pure evaluator functions — spray window, disease pressure, ET demand, frost risk, rain delay, heat stress. No React, no side effects. |
+| `recommendations.js` | `generateWeatherRecommendations(current, forecast)` — runs all evaluators, stamps IDs, sorts by severity. |
+| `normalize.js` | Converts raw NWS observation + METAR JSON → evaluator-compatible shapes. ET estimation, disease pressure heuristics, spray window, feels-like. |
+| `api.js` | Fetch layer: NWS KSAV → METAR → stale cache fallback chain. 15-min localStorage TTL. Source diagnostics via `console.debug`. |
+| `useWeather.js` | React hook: `{ current, forecast, etTrend, loading, error, isLive, isStale, refresh }`. Resolves to `PLACEHOLDER_*` on error — never blank. |
+
+**NWS Integration:**
+- Observation: `https://api.weather.gov/stations/KSAV/observations/latest` — temperature, humidity, wind, dew point, precipitation
+- Grid resolution: `https://api.weather.gov/points/32.1274,-81.2014` → forecast URL
+- Forecast: NWS gridpoint forecast — paired day/night periods, PoP, wind, temperature
+
+**METAR Fallback:** `https://aviationweather.gov/api/data/metar?ids=KSAV&format=json`
+
+**Cache:** `localStorage['turfintel-weather-cache']` — 15-min TTL. Stale cache used if all live sources fail. Bundle includes `source` label (nws/metar) and `timestamp`.
+
+**Normalization details:**
+- Celsius → Fahrenheit, km/h → mph, wind degrees → compass direction
+- Rainfall from PoP + NWS text keywords (heavy/scattered/light/drizzle multipliers)
+- Disease pressure: humidity + dew point spread + temperature range + consecutive-wet-day streak
+- ET: empirical formula (0.024 × VPD × wind factor × solar factor); solar factor from PoP
+- Spray window: wind + PoP + temperature + forecast rain keywords
+- Feels-like: heat index (≥80°F) or wind chill (≤50°F)
+
+**Source priority chain (fetchWeatherBundle):**
+1. Fresh localStorage cache (< 15 min)
+2. NWS KSAV observation (normalized)
+3. AviationWeather METAR (if NWS fails)
+4. Stale localStorage cache (any age)
+5. Hook resolves to `PLACEHOLDER_*` — no UI hard failures
+
+**Evaluator decoupling:** `evaluator.js` and `recommendations.js` accept plain JS objects matching the normalized shape. They are never aware of NWS, METAR, or cache — only `normalize.js` and `api.js` change when the data source changes.
+
+---
+
 ### Operations Layer (`src/utils/operations/`)
 
 Cross-module operational state — shared across all pages via React Context.
@@ -310,9 +355,8 @@ Drop missing files into `public/sidebar-icons/` — no code changes needed.
 | Low | `public/icons.svg` committed but unused | Delete file, push |
 | Low | Chunk size warning on build (>500 kB) | Not blocking — code-split when app grows |
 | Low | Calendar events hardcoded to May 2026 | Resolves with real data |
-| Low | Weather data is placeholder | Resolves with API integration |
 | Low | No auth route guard | Add protected route wrapper when backend ready |
-| Low | `weeklyMetrics` in Operations Calendar counts static data only | Will update when operations state replaces static datasets |
+| Low | NWS CORS policy may block browser-direct fetch in some environments | Covered by METAR + stale cache fallback chain |
 
 **Missing sidebar icons** (drop into `public/sidebar-icons/` when available — zero code changes needed):
 `disease.png` · `cultural-practices.png` · `budget.png` · `inventory.png` · `equipment.png` · `settings.png`
@@ -376,7 +420,12 @@ git push origin master
 | `src/pages/Dashboard/OperationsCalendar.module.css` | `oc*` styles |
 | `src/pages/Crew/tabs/CrewSchedule.jsx` | Scheduling board + edit panel + availability |
 | `src/components/shared/ModuleOverview.jsx` | StatCard, InfoCard, Badge |
-| `src/components/shared/weather/weatherTokens.js` | Placeholder weather data + token maps |
+| `src/components/shared/weather/weatherTokens.js` | Placeholder weather data + token maps (used as fallback when API unavailable) |
+| `src/utils/weather/evaluator.js` | 6 pure weather evaluator functions |
+| `src/utils/weather/recommendations.js` | `generateWeatherRecommendations()` orchestrator |
+| `src/utils/weather/normalize.js` | NWS + METAR normalization pipeline |
+| `src/utils/weather/api.js` | Fetch layer + cache + 4-source fallback chain |
+| `src/utils/weather/useWeather.js` | React hook — resolves to placeholder on error |
 | `src/data/crew.js` | HOURS_LOG, SCHEDULE, EMPLOYEES, TASKS |
 | `src/data/dashboardCalendarEvents.js` | CALENDAR_EVENTS — 36 events, 5 categories |
 | `src/data/equipment.js` | EQUIPMENT_LIST, SERVICE_LOG |

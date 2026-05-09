@@ -29,6 +29,7 @@ export function useWeather() {
         setLastUpdated(new Date())
         setIsStale(!!bundle.stale)
       } else {
+        console.debug('[TurfIntel Weather] hook: no bundle — falling back to placeholder data')
         setError('Live weather unavailable.')
       }
     } catch {

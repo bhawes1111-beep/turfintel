@@ -78,7 +78,7 @@ function ETBarChart({ data }) {
 
 // ── Weather Insights card ─────────────────────────────────────────────────────
 
-function WeatherInsightsCard({ current, forecastDay0, isLive, isStale }) {
+function WeatherInsightsCard({ current, forecastDay0, isLive, isStale, loading, onRefresh }) {
   const w   = current
   const sw  = SPRAY_WINDOW_TOKENS[w.sprayWindow] ?? SPRAY_WINDOW_TOKENS.caution
   const dp  = DISEASE_PRESSURE_TOKENS[w.diseasePressure] ?? DISEASE_PRESSURE_TOKENS.low
@@ -108,7 +108,18 @@ function WeatherInsightsCard({ current, forecastDay0, isLive, isStale }) {
             <div className={styles.wsCardLocation}>{w.location}</div>
           </div>
         </div>
-        <div className={styles.wsUpdated}>Updated {formatTimestamp(w.timestamp)}</div>
+        <div className={styles.wsHeaderRight}>
+          <div className={styles.wsUpdated}>Updated {formatTimestamp(w.timestamp)}</div>
+          <button
+            className={styles.wsRefreshBtn}
+            onClick={onRefresh}
+            disabled={loading}
+            title="Refresh weather data"
+            aria-label="Refresh weather"
+          >
+            {loading ? '…' : '↻'}
+          </button>
+        </div>
       </div>
 
       <div className={styles.wsMainDisplay}>
@@ -252,7 +263,7 @@ function ForecastRow({ forecast }) {
 // ── Main export ───────────────────────────────────────────────────────────────
 
 export default function WeatherSection({ alerts = [], onDismissAlert }) {
-  const { current, forecast, etTrend, loading, error, isLive, isStale } = useWeather()
+  const { current, forecast, etTrend, loading, error, isLive, isStale, refresh } = useWeather()
 
   return (
     <div className={styles.wsSection}>
@@ -282,6 +293,8 @@ export default function WeatherSection({ alerts = [], onDismissAlert }) {
           forecastDay0={forecast[0]}
           isLive={isLive}
           isStale={isStale}
+          loading={loading}
+          onRefresh={refresh}
         />
         <ETSectionCard current={current} etTrend={etTrend} />
       </div>

@@ -20,6 +20,8 @@ function parseWindKmh(value, unitCode = '') {
   return value * KMH_TO_MPH
 }
 
+// ── Feels-like ────────────────────────────────────────────────────────────────
+
 function heatIndex(tempF, rh) {
   if (tempF < 80 || rh < 40) return tempF
   const T = tempF, R = rh
@@ -36,17 +38,25 @@ function windChill(tempF, windMph) {
   return Math.round(35.74 + 0.6215*tempF - 35.75*V + 0.4275*tempF*V)
 }
 
-function feelsLike(tempF, rh, windMph) {
+function computeFeelsLike(tempF, rh, windMph) {
   if (tempF >= 80) return heatIndex(tempF, rh)
   if (tempF <= 50) return windChill(tempF, windMph)
   return tempF
 }
 
+// ── Disease pressure ──────────────────────────────────────────────────────────
+// Heuristic from single-observation humidity, dew point spread, and temperature range.
+// Dollar spot / pythium most active in the 65–88°F band with sustained leaf wetness.
+
 function computeDiseasePressure(tempF, humidity, dewPointF) {
-  const spread = tempF - dewPointF
-  if (humidity >= 90 && spread <= 5)  return 'critical'
-  if (humidity >= 85 && spread <= 8)  return 'high'
-  if (humidity >= 75 && spread <= 12) return 'medium'
+  const spread        = tempF - dewPointF
+  const inActiveRange = tempF >= 65 && tempF <= 88
+
+  if (spread <= 3 || humidity >= 92)                   return 'critical'
+  if (humidity >= 85 && spread <= 8)                   return 'high'
+  if (humidity >= 75 && spread <= 12 && inActiveRange) return 'high'
+  if (humidity >= 75 && spread <= 12)                  return 'medium'
+  if (humidity >= 65 && spread <= 15 && inActiveRange) return 'medium'
   return 'low'
 }
 
@@ -56,13 +66,59 @@ function computeSprayWindow(windMph, humidity, tempF) {
   return 'ideal'
 }
 
-// Empirical ET estimate calibrated to southeastern US turfgrass conditions
-// (0.024 coefficient yields ~0.22 in/day at 78°F, 72% RH, 8 mph — matches KSAV baseline)
-function estimateET(tempF, humidity, windMph) {
-  const t  = Math.max(0, tempF - 50)
+// ── ET estimation ─────────────────────────────────────────────────────────────
+// Empirical formula calibrated to southeastern US turfgrass conditions.
+// 0.024 base coefficient yields ~0.22 in/day at 78°F, 72% RH, 8 mph, clear sky.
+// solarFactor: 1.0 = clear sky, 0.55 = fully cloudy/raining (varies with PoP).
+
+function estimateET(tempF, humidity, windMph, solarFactor = 1.0) {
+  const t   = Math.max(0, tempF - 50)
   const vpd = Math.max(0, (100 - humidity) / 100)
   const wf  = 1 + Math.min(windMph, 30) / 50
-  return parseFloat((0.024 * t * vpd * wf).toFixed(2))
+  return parseFloat((0.024 * t * vpd * wf * solarFactor).toFixed(2))
+}
+
+// Linear interpolation: 0% PoP → 1.0 (clear sky), 100% PoP → 0.55 (overcast)
+function solarFactorFromPoP(pop) {
+  return parseFloat((1.0 - (pop / 100) * 0.45).toFixed(3))
+}
+
+// ── Rainfall estimation from PoP + NWS forecast wording ──────────────────────
+// Combines probability with intensity keywords — much more accurate than PoP alone.
+// Expected amount = P(rain) × conditional intensity given rain occurs.
+
+function estimateRainfallIn(pop, shortForecast) {
+  if (!pop || pop < 20) return 0
+  const p  = pop / 100
+  const lc = (shortForecast ?? '').toLowerCase()
+
+  if (lc.includes('heavy'))                                 return parseFloat(Math.min(p * 1.8, 3.0).toFixed(2))
+  if (lc.includes('thunder') || lc.includes('storm'))      return parseFloat(Math.min(p * 1.2, 2.5).toFixed(2))
+  if (lc.includes('scattered') || lc.includes('isolated')) return parseFloat((p * 0.5).toFixed(2))
+  if (lc.includes('slight') || lc.includes('light'))       return parseFloat((p * 0.3).toFixed(2))
+  if (lc.includes('drizzle'))                               return parseFloat((p * 0.15).toFixed(2))
+  return parseFloat((p * 0.8).toFixed(2))
+}
+
+// ── Forecast spray window ─────────────────────────────────────────────────────
+
+function computeForecastSprayWindow(windMph, pop, highF, shortForecast) {
+  const lc      = (shortForecast ?? '').toLowerCase()
+  const hasRain = lc.includes('rain') || lc.includes('shower') || lc.includes('storm') || lc.includes('thunder')
+  if (windMph > 10 || highF > 95 || pop > 60 || hasRain) return 'poor'
+  if (windMph > 7  || pop > 25  || highF > 88)           return 'caution'
+  return 'ideal'
+}
+
+// ── Forecast disease pressure (single-day base) ───────────────────────────────
+// Caller applies consecutive-wet-day escalation in a second pass.
+
+function baseForecastDisease(rainfall, lowF, pop) {
+  if (rainfall > 0.5)                          return 'high'
+  if (rainfall > 0.2)                          return 'medium'
+  if (pop > 50 && lowF != null && lowF >= 60)  return 'medium'
+  if (rainfall > 0.05)                         return 'medium'
+  return 'low'
 }
 
 // ── normalizeObservation ───────────────────────────────────────────────────────
@@ -95,7 +151,7 @@ export function normalizeObservation(obs) {
   return {
     location:        'Savannah, GA',
     currentTemp:     tempF,
-    feelsLike:       feelsLike(tempF, humidity, windMph),
+    feelsLike:       computeFeelsLike(tempF, humidity, windMph),
     humidity:        Math.round(humidity),
     wind:            windMph,
     windDir,
@@ -115,23 +171,34 @@ export function normalizeObservation(obs) {
 // Input: NWS gridpoint forecast response body (parsed JSON)
 // Output: evaluator-compatible 7-element `forecast` array
 
+// Most-specific patterns first to prevent substring shadowing.
+// e.g. "Mostly Cloudy" must precede bare "Cloudy" or it will never match.
 const ICON_MAP = [
-  ['Sunny',         'sunny'],
-  ['Clear',         'sunny'],
+  ['Thunderstorm',  'stormy'],
+  ['Thunder',       'stormy'],
+  ['T-Storm',       'stormy'],
+  ['Heavy Rain',    'rainy'],
+  ['Rain And',      'rainy'],
+  ['Showers And',   'rainy'],
+  ['Rain',          'rainy'],
+  ['Showers',       'rainy'],
+  ['Drizzle',       'rainy'],
+  ['Wintry Mix',    'rainy'],
+  ['Sleet',         'rainy'],
+  ['Fog',           'foggy'],
+  ['Haze',          'foggy'],
+  ['Smoke',         'foggy'],
+  ['Mostly Cloudy', 'cloudy'],
+  ['Overcast',      'cloudy'],
   ['Mostly Sunny',  'sunny'],
   ['Mostly Clear',  'sunny'],
   ['Partly Cloudy', 'partlyCloudy'],
   ['Partly Sunny',  'partlyCloudy'],
-  ['Mostly Cloudy', 'cloudy'],
-  ['Overcast',      'cloudy'],
-  ['Cloudy',        'cloudy'],
-  ['Thunderstorm',  'stormy'],
-  ['Thunder',       'stormy'],
-  ['Rain',          'rainy'],
-  ['Showers',       'rainy'],
-  ['Drizzle',       'rainy'],
-  ['Fog',           'foggy'],
+  ['Breezy',        'windy'],
   ['Windy',         'windy'],
+  ['Cloudy',        'cloudy'],
+  ['Sunny',         'sunny'],
+  ['Clear',         'sunny'],
 ]
 
 function resolveIcon(shortForecast) {
@@ -139,9 +206,12 @@ function resolveIcon(shortForecast) {
   for (const [key, val] of ICON_MAP) {
     if (shortForecast.includes(key)) return val
   }
+  // Case-insensitive fallback for non-standard strings
   const lc = shortForecast.toLowerCase()
   if (lc.includes('rain') || lc.includes('shower')) return 'rainy'
-  if (lc.includes('storm')) return 'stormy'
+  if (lc.includes('storm'))                          return 'stormy'
+  if (lc.includes('cloud'))                          return 'cloudy'
+  if (lc.includes('fog') || lc.includes('haze'))    return 'foggy'
   return 'partlyCloudy'
 }
 
@@ -165,26 +235,41 @@ export function normalizeForecast(forecastJson) {
     const lowF    = night?.temperature ?? Math.round(highF - 15)
     const pop     = p.probabilityOfPrecipitation?.value ?? 0
     const windMph = parseWindMph(p.windSpeed)
+    const sf      = solarFactorFromPoP(pop)
 
-    // Rough rainfall estimate from precipitation probability
-    const rainfall = pop >= 70 ? parseFloat((pop / 100 * 1.1).toFixed(2)) :
-                     pop >= 30 ? parseFloat((pop / 100 * 0.5).toFixed(2)) : 0
-
-    // Forecast periods don't include humidity — use neutral estimate
-    const humidity        = 68
-    const etRate          = estimateET(highF, humidity, windMph)
-    const sprayWindow     = computeSprayWindow(windMph, humidity, highF)
-    const diseasePressure = rainfall > 0.3 ? 'high' : rainfall > 0.1 ? 'medium' : 'low'
+    const rainfall        = estimateRainfallIn(pop, p.shortForecast)
+    const etRate          = estimateET(highF, 68, windMph, sf)
+    const sprayWindow     = computeForecastSprayWindow(windMph, pop, highF, p.shortForecast)
+    const diseasePressure = baseForecastDisease(rainfall, lowF, pop)
 
     const startDate = new Date(p.startTime)
     const dayLabel  = days.length === 0 ? 'Today'
       : startDate.toLocaleDateString('en-US', { weekday: 'short' })
     const dateLabel = startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 
-    days.push({ day: dayLabel, date: dateLabel, high: highF, low: lowF, icon: resolveIcon(p.shortForecast), rainfall, etRate, sprayWindow, diseasePressure })
+    days.push({ day: dayLabel, date: dateLabel, high: highF, low: lowF, icon: resolveIcon(p.shortForecast), rainfall, etRate, sprayWindow, diseasePressure, _pop: pop })
     i += 2
   }
-  return days
+
+  // Second pass: escalate disease pressure for consecutive wet periods.
+  // Golf industry standard — sustained wet windows compound fungal risk even if
+  // individual days read only "medium".
+  let wetStreak = 0
+  for (const day of days) {
+    const isWet    = day.rainfall > 0.1
+    wetStreak      = isWet ? wetStreak + 1 : 0
+    const warmNight = day.low != null && day.low >= 62
+
+    if (wetStreak >= 3 && day.rainfall > 0.2) {
+      day.diseasePressure = 'critical'
+    } else if (wetStreak >= 2 && warmNight && day.diseasePressure !== 'critical') {
+      day.diseasePressure = 'high'
+    } else if (wetStreak >= 2 && day.diseasePressure === 'low') {
+      day.diseasePressure = 'medium'
+    }
+  }
+
+  return days.map(({ _pop, ...rest }) => rest)
 }
 
 // ── normalizeMetar ─────────────────────────────────────────────────────────────
@@ -208,7 +293,7 @@ export function normalizeMetar(metarArr) {
   return {
     location:        'Savannah, GA',
     currentTemp:     tempF,
-    feelsLike:       feelsLike(tempF, humidity, windMph),
+    feelsLike:       computeFeelsLike(tempF, humidity, windMph),
     humidity,
     wind:            windMph,
     windDir,

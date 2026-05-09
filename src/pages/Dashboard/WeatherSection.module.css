@@ -31,6 +31,47 @@
 
 /* ── Live / stale source badges ──────────────────────────────────────────── */
 
+/* ── Card header right cluster: timestamp + refresh button ───────────────── */
+
+.wsHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ── Manual refresh button ───────────────────────────────────────────────── */
+
+.wsRefreshBtn {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 5px;
+  color: var(--color-muted);
+  font-size: 0.9rem;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+  padding: 0;
+  line-height: 1;
+}
+
+.wsRefreshBtn:hover:not(:disabled) {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.wsRefreshBtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ── Live / stale source badges ──────────────────────────────────────────── */
+
 .wsLiveBadge,
 .wsStaleBadge {
   display: inline-block;
