@@ -4,13 +4,8 @@ import {
   generateIrrigationRecommendations,
   computeIrrigationSummary,
 } from '../../utils/weather/irrigationEngine'
+import { IRRIGATION_SEVERITY_TOKENS } from '../../utils/intelligence/severity'
 import styles from './IrrigationIntelligence.module.css'
-
-const SEVERITY_META = {
-  high:   { label: 'High',   color: '#3a8ad4', bg: 'rgba(58,138,212,0.10)', border: 'rgba(58,138,212,0.28)' },
-  medium: { label: 'Medium', color: '#4a9e4a', bg: 'rgba(74,158,74,0.10)',  border: 'rgba(74,158,74,0.28)'  },
-  low:    { label: 'Low',    color: '#7a9e7a', bg: 'rgba(74,158,74,0.06)',  border: 'rgba(74,158,74,0.18)'  },
-}
 
 export default function IrrigationIntelligence() {
   const { current, forecast, loading } = useWeather()
@@ -65,7 +60,7 @@ export default function IrrigationIntelligence() {
         <>
           <div className={styles.iiList}>
             {recommendations.map(rec => {
-              const meta = SEVERITY_META[rec.severity] ?? SEVERITY_META.low
+              const meta = IRRIGATION_SEVERITY_TOKENS[rec.severity] ?? IRRIGATION_SEVERITY_TOKENS.low
               return (
                 <div
                   key={rec.id}
@@ -88,7 +83,7 @@ export default function IrrigationIntelligence() {
                       <span className={styles.iiTitle}>{rec.title}</span>
                     </div>
                     <p className={styles.iiMessage}>{rec.message}</p>
-                    <p className={styles.iiAction}>→ {rec.recommendedAction}</p>
+                    <p className={styles.iiAction}>→ {rec.recommendation}</p>
                   </div>
                 </div>
               )

@@ -18,28 +18,18 @@ import {
   evaluateRainDelay,
   evaluateHeatStress,
 } from './evaluator'
-
-const SEVERITY_ORDER = { high: 0, medium: 1, low: 2 }
-
-function uid() {
-  return `wr-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
-}
+import {
+  createWeatherRecommendation,
+  sortRecommendations,
+} from '../intelligence/recommendationHelpers'
 
 // ── makeRecommendation ─────────────────────────────────────────────────────────
-// Stamps an evaluator result with a unique ID, source, and timestamp.
 
 export function makeRecommendation(fields) {
-  return {
-    id:        uid(),
-    source:    'weather-engine',
-    timestamp: new Date().toISOString(),
-    ...fields,
-  }
+  return createWeatherRecommendation(fields)
 }
 
 // ── generateWeatherRecommendations ────────────────────────────────────────────
-// Runs all evaluators, filters nulls, stamps IDs, and sorts by severity.
-// Returns an array of recommendation objects ready for display or alert dispatch.
 
 export function generateWeatherRecommendations(current, forecast = []) {
   const raw = [
@@ -51,10 +41,5 @@ export function generateWeatherRecommendations(current, forecast = []) {
     evaluateHeatStress(current, forecast),
   ]
 
-  return raw
-    .filter(Boolean)
-    .map(makeRecommendation)
-    .sort((a, b) =>
-      (SEVERITY_ORDER[a.severity] ?? 9) - (SEVERITY_ORDER[b.severity] ?? 9)
-    )
+  return sortRecommendations(raw.filter(Boolean).map(makeRecommendation))
 }

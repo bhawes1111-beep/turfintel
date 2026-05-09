@@ -4,6 +4,11 @@
 // recommendation descriptor or null when no advisory is warranted.
 // generateIrrigationRecommendations() is the public orchestrator.
 
+import {
+  createIrrigationRecommendation,
+  sortRecommendations,
+} from '../intelligence/recommendationHelpers'
+
 // ── Thresholds ────────────────────────────────────────────────────────────────
 
 const ET_CRITICAL_IN     = 0.25   // Significant moisture stress
@@ -236,12 +241,6 @@ export function evaluateSyringeSchedule(current, forecast = []) {
 // ── generateIrrigationRecommendations ────────────────────────────────────────
 // Runs all evaluators, filters nulls, stamps IDs, sorts by severity.
 
-const SEVERITY_ORDER = { high: 0, medium: 1, low: 2 }
-
-function uid() {
-  return `ir-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
-}
-
 export function generateIrrigationRecommendations(current, forecast = []) {
   const raw = [
     evaluateSaturation(current),
@@ -250,10 +249,7 @@ export function generateIrrigationRecommendations(current, forecast = []) {
     evaluateSyringeSchedule(current, forecast),
     evaluateWeeklyBalance(forecast),
   ]
-  return raw
-    .filter(Boolean)
-    .map(r => ({ id: uid(), source: 'irrigation-engine', timestamp: new Date().toISOString(), ...r }))
-    .sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 9) - (SEVERITY_ORDER[b.severity] ?? 9))
+  return sortRecommendations(raw.filter(Boolean).map(createIrrigationRecommendation))
 }
 
 // ── computeIrrigationSummary ──────────────────────────────────────────────────
