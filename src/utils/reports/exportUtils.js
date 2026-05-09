@@ -1,4 +1,4 @@
-import { buildPrintDocument } from './reportFormatter'
+import { buildPrintDocument, reportToJSON } from './reportFormatter'
 
 // ── Internal helper ────────────────────────────────────────────────────────────
 
@@ -44,12 +44,9 @@ export function triggerPrint(report, courseInfo = {}) {
  * @param {Object} report - TurfReport
  */
 export function downloadJSON(report) {
-  // Import lazily to avoid circular dependency if reportFormatter later imports exportUtils
-  import('./reportFormatter').then(({ reportToJSON }) => {
-    const content  = reportToJSON(report)
-    const blob     = new Blob([content], { type: 'application/json' })
-    triggerDownload(blob, `${report.id}.json`)
-  })
+  const content = reportToJSON(report)
+  const blob    = new Blob([content], { type: 'application/json' })
+  triggerDownload(blob, `${report.id}.json`)
 }
 
 /**

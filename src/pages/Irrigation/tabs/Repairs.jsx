@@ -3,6 +3,10 @@ import { REPAIRS } from '../../../data/irrigation'
 import { useOperations } from '../../../utils/operations/OperationsContext'
 import { createCalendarEvent, createAlert } from '../../../utils/operations/actions'
 import UploadCenter from '../../../components/uploads/UploadCenter'
+import { buildIrrigationRepairReport, buildIrrigationRepairSummaryReport } from '../../../utils/reports/reportBuilder'
+import { createAttachmentRef } from '../../../utils/reports/reportSchemas'
+import { getMediaByModule, getThumbnailBlob } from '../../../utils/media/mediaStore'
+import ReportPreviewModal from '../../../components/reports/ReportPreviewModal'
 import styles from '../Irrigation.module.css'
 
 const TODAY      = '2026-05-08'
@@ -69,10 +73,60 @@ export default function Repairs() {
   const [areaFilter,     setAreaFilter]     = useState('All')
   const [selected,       setSelected]       = useState(null)
   const [toast,          setToast]          = useState(null)
+  const [activeReport,   setActiveReport]   = useState(null)
+  const [reportLoading,  setReportLoading]  = useState(false)
+  const [reportThumbs,   setReportThumbs]   = useState([])
 
   function showToast(msg) {
     setToast(msg)
     setTimeout(() => setToast(null), 2800)
+  }
+
+  function handleCloseReport() {
+    reportThumbs.forEach(url => URL.revokeObjectURL(url))
+    setReportThumbs([])
+    setActiveReport(null)
+  }
+
+  async function generateRepairReport(repair) {
+    setReportLoading(true)
+    try {
+      const [photos, docs] = await Promise.all([
+        getMediaByModule(repair.repairId).catch(() => []),
+        getMediaByModule(`${repair.repairId}-docs`).catch(() => []),
+      ])
+      const allMedia  = [...photos, ...docs]
+      const thumbUrls = []
+
+      const attachmentRefs = await Promise.all(allMedia.map(async rec => {
+        let thumbnailUrl = null
+        if (rec.type === 'image') {
+          try {
+            const blob = await getThumbnailBlob(rec.id)
+            if (blob) {
+              thumbnailUrl = URL.createObjectURL(blob)
+              thumbUrls.push(thumbnailUrl)
+            }
+          } catch {}
+        }
+        return createAttachmentRef({
+          id:           rec.id,
+          filename:     rec.filename,
+          type:         rec.type,
+          thumbnailUrl,
+          size:         rec.size,
+        })
+      }))
+
+      setReportThumbs(thumbUrls)
+      setActiveReport(buildIrrigationRepairReport(repair, attachmentRefs))
+    } finally {
+      setReportLoading(false)
+    }
+  }
+
+  function generateSummaryReport() {
+    setActiveReport(buildIrrigationRepairSummaryReport(REPAIRS))
   }
 
   function handleScheduleRepair(repair) {
@@ -187,6 +241,9 @@ export default function Repairs() {
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
+        <button className="opActionBtn" onClick={generateSummaryReport}>
+          Summary Report
+        </button>
       </div>
 
       {/* ── Status chips ─────────────────────────────────────────────────── */}
@@ -465,6 +522,13 @@ export default function Repairs() {
                 <div className="opActionRow">
                   <button
                     className="opActionBtn"
+                    onClick={() => generateRepairReport(selected)}
+                    disabled={reportLoading}
+                  >
+                    {reportLoading ? 'Loading…' : 'Generate Report'}
+                  </button>
+                  <button
+                    className="opActionBtn"
                     onClick={() => { handleScheduleRepair(selected); setSelected(null) }}
                     disabled={selected.status === 'completed'}
                     title={selected.status === 'completed' ? 'Already completed' : 'Add to Operations Calendar'}
@@ -483,6 +547,11 @@ export default function Repairs() {
       })()}
 
       {toast && <div className="opToast">{toast}</div>}
+
+      <ReportPreviewModal
+        report={activeReport}
+        onClose={handleCloseReport}
+      />
 
     </div>
   )
