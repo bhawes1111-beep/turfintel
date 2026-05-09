@@ -1,5 +1,10 @@
 import { useState, useMemo, useEffect } from 'react'
-import { EQUIPMENT_LIST } from '../../../data/equipment'
+import { EQUIPMENT_LIST, SERVICE_LOG } from '../../../data/equipment'
+import { buildMaintenanceLogReport } from '../../../utils/reports/reportBuilder'
+import { createAttachmentRef } from '../../../utils/reports/reportSchemas'
+import { getMediaByModule, getThumbnailBlob } from '../../../utils/media/mediaStore'
+import UploadCenter from '../../../components/uploads/UploadCenter'
+import ReportPreviewModal from '../../../components/reports/ReportPreviewModal'
 import styles from '../Equipment.module.css'
 
 const CATEGORIES   = ['All', 'Greens Mower', 'Fairway Mower', 'Rough Mower', 'Spray', 'Utility', 'Specialty']
@@ -49,7 +54,10 @@ export default function EquipmentList() {
   const [search,     setSearch]    = useState('')
   const [catFilter,  setCatFilter] = useState('All')
   const [staFilter,  setStaFilter] = useState('All')
-  const [selected,   setSelected]  = useState(null)
+  const [selected,      setSelected]     = useState(null)
+  const [activeReport,  setActiveReport]  = useState(null)
+  const [reportLoading, setReportLoading] = useState(false)
+  const [reportThumbs,  setReportThumbs]  = useState([])
 
   useEffect(() => {
     if (!selected) return
@@ -57,6 +65,63 @@ export default function EquipmentList() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [selected])
+
+  function handleCloseReport() {
+    reportThumbs.forEach(url => URL.revokeObjectURL(url))
+    setReportThumbs([])
+    setActiveReport(null)
+  }
+
+  async function generateEquipmentHistory(equipment) {
+    setReportLoading(true)
+    try {
+      const [photos, docs] = await Promise.all([
+        getMediaByModule(equipment.id).catch(() => []),
+        getMediaByModule(`${equipment.id}-docs`).catch(() => []),
+      ])
+      const allMedia  = [...photos, ...docs]
+      const thumbUrls = []
+
+      const attachmentRefs = await Promise.all(allMedia.map(async rec => {
+        let thumbnailUrl = null
+        if (rec.type === 'image') {
+          try {
+            const blob = await getThumbnailBlob(rec.id)
+            if (blob) {
+              thumbnailUrl = URL.createObjectURL(blob)
+              thumbUrls.push(thumbnailUrl)
+            }
+          } catch {}
+        }
+        return createAttachmentRef({
+          id:           rec.id,
+          filename:     rec.filename,
+          type:         rec.type,
+          thumbnailUrl,
+          size:         rec.size,
+        })
+      }))
+
+      const logs = SERVICE_LOG
+        .filter(l => l.equipmentId === equipment.id)
+        .map(l => ({
+          date:        l.completedDate ?? l.date,
+          type:        l.serviceType,
+          description: l.notes || `${l.serviceType} — ${l.equipmentName}`,
+          technician:  l.technician || 'Unassigned',
+          cost:        l.cost,
+        }))
+
+      setReportThumbs(thumbUrls)
+      setActiveReport(buildMaintenanceLogReport(
+        { ...equipment, type: equipment.category },
+        logs,
+        { dateRange: 'All Time' },
+      ))
+    } finally {
+      setReportLoading(false)
+    }
+  }
 
   const counts = useMemo(() => {
     const c = { operational: 0, 'in-service': 0, 'needs-maintenance': 0, 'out-of-service': 0 }
@@ -415,11 +480,43 @@ export default function EquipmentList() {
                   </section>
                 )}
 
+                {/* Attachments */}
+                <section className={styles.eqModalSection}>
+                  <h3 className={styles.eqModalSectionTitle}>Attachments</h3>
+                  <UploadCenter
+                    module={selected.id}
+                    type="image"
+                    tags={[selected.category, selected.status].filter(Boolean)}
+                    title="Photos"
+                  />
+                  <UploadCenter
+                    module={`${selected.id}-docs`}
+                    type="document"
+                    tags={[selected.category, selected.status].filter(Boolean)}
+                    title="Documents"
+                  />
+                </section>
+
+              </div>
+
+              <div className="opActionRow">
+                <button
+                  className="opActionBtn"
+                  onClick={() => generateEquipmentHistory(selected)}
+                  disabled={reportLoading}
+                >
+                  {reportLoading ? 'Loading…' : 'Equipment History Report'}
+                </button>
               </div>
             </div>
           </div>
         )
       })()}
+
+      <ReportPreviewModal
+        report={activeReport}
+        onClose={handleCloseReport}
+      />
 
     </div>
   )

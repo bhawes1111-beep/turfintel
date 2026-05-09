@@ -1,8 +1,13 @@
 import { useState, useMemo, useEffect } from 'react'
-import { SERVICE_LOG } from '../../../data/equipment'
+import { SERVICE_LOG, EQUIPMENT_LIST } from '../../../data/equipment'
 import { useOperations } from '../../../utils/operations/OperationsContext'
 import { makeCalendarEvent } from '../../../utils/operations/schemas'
 import { CREATE_CALENDAR_EVENT, reserveEquipment } from '../../../utils/operations/actions'
+import { buildMaintenanceLogReport } from '../../../utils/reports/reportBuilder'
+import { createAttachmentRef } from '../../../utils/reports/reportSchemas'
+import { getMediaByModule, getThumbnailBlob } from '../../../utils/media/mediaStore'
+import UploadCenter from '../../../components/uploads/UploadCenter'
+import ReportPreviewModal from '../../../components/reports/ReportPreviewModal'
 import styles from '../Equipment.module.css'
 
 const THIS_MONTH = '2026-05'
@@ -46,8 +51,11 @@ export default function MaintenanceLogs() {
   const [search,     setSearch]  = useState('')
   const [staFilter,  setStaFilter] = useState('All')
   const [priFilter,  setPriFilter] = useState('All')
-  const [selected,   setSelected]  = useState(null)
-  const [toast,      setToast]   = useState(null)
+  const [selected,      setSelected]     = useState(null)
+  const [toast,         setToast]        = useState(null)
+  const [activeReport,  setActiveReport]  = useState(null)
+  const [reportLoading, setReportLoading] = useState(false)
+  const [reportThumbs,  setReportThumbs]  = useState([])
 
   function showToast(msg) {
     setToast(msg)
@@ -93,6 +101,81 @@ export default function MaintenanceLogs() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [selected])
+
+  function handleCloseReport() {
+    reportThumbs.forEach(url => URL.revokeObjectURL(url))
+    setReportThumbs([])
+    setActiveReport(null)
+  }
+
+  function resolveEquipment(log) {
+    return EQUIPMENT_LIST.find(e => e.id === log.equipmentId)
+      ?? { name: log.equipmentName, type: log.category, category: log.category, model: '', status: log.status }
+  }
+
+  function normalizeLog(l) {
+    return {
+      date:        l.completedDate ?? l.date,
+      type:        l.serviceType,
+      description: l.notes || `${l.serviceType} — ${l.equipmentName}`,
+      technician:  l.technician || 'Unassigned',
+      cost:        l.cost,
+    }
+  }
+
+  async function generateMaintenanceReport(log) {
+    setReportLoading(true)
+    try {
+      const [photos, docs] = await Promise.all([
+        getMediaByModule(log.id).catch(() => []),
+        getMediaByModule(`${log.id}-docs`).catch(() => []),
+      ])
+      const allMedia  = [...photos, ...docs]
+      const thumbUrls = []
+
+      const attachmentRefs = await Promise.all(allMedia.map(async rec => {
+        let thumbnailUrl = null
+        if (rec.type === 'image') {
+          try {
+            const blob = await getThumbnailBlob(rec.id)
+            if (blob) {
+              thumbnailUrl = URL.createObjectURL(blob)
+              thumbUrls.push(thumbnailUrl)
+            }
+          } catch {}
+        }
+        return createAttachmentRef({
+          id:           rec.id,
+          filename:     rec.filename,
+          type:         rec.type,
+          thumbnailUrl,
+          size:         rec.size,
+        })
+      }))
+
+      const equipment = resolveEquipment(log)
+      setReportThumbs(thumbUrls)
+      setActiveReport(buildMaintenanceLogReport(
+        { ...equipment, type: equipment.category ?? equipment.type },
+        [normalizeLog(log)],
+        { dateRange: log.completedDate ?? log.date },
+      ))
+    } finally {
+      setReportLoading(false)
+    }
+  }
+
+  function generateEquipmentHistory(log) {
+    const equipment = resolveEquipment(log)
+    const logs = SERVICE_LOG
+      .filter(l => l.equipmentId === log.equipmentId)
+      .map(normalizeLog)
+    setActiveReport(buildMaintenanceLogReport(
+      { ...equipment, type: equipment.category ?? equipment.type },
+      logs,
+      { dateRange: 'All Time' },
+    ))
+  }
 
   const counts = useMemo(() => {
     let open = 0, completedMonth = 0, overdue = 0, totalCost = 0
@@ -485,6 +568,43 @@ export default function MaintenanceLogs() {
                   </section>
                 )}
 
+                {/* Attachments */}
+                <section className={styles.eqModalSection}>
+                  <h3 className={styles.eqModalSectionTitle}>Attachments</h3>
+                  <UploadCenter
+                    module={selected.id}
+                    type="image"
+                    tags={[selected.category, selected.serviceType, selected.priority].filter(Boolean)}
+                    title="Photos"
+                  />
+                  <UploadCenter
+                    module={`${selected.id}-docs`}
+                    type="document"
+                    tags={[selected.category, selected.serviceType, selected.priority].filter(Boolean)}
+                    title="Documents"
+                  />
+                </section>
+
+                {/* Report actions */}
+                <section className={styles.eqModalSection}>
+                  <div className="opActionRow">
+                    <button
+                      className="opActionBtn"
+                      onClick={() => generateMaintenanceReport(selected)}
+                      disabled={reportLoading}
+                    >
+                      {reportLoading ? 'Loading…' : 'Generate Report'}
+                    </button>
+                    <button
+                      className="opActionBtn"
+                      onClick={() => generateEquipmentHistory(selected)}
+                      disabled={reportLoading}
+                    >
+                      Equipment History
+                    </button>
+                  </div>
+                </section>
+
                 {/* Operations actions */}
                 <section className={styles.eqModalSection}>
                   <div className="opActionRow">
@@ -507,6 +627,11 @@ export default function MaintenanceLogs() {
       })()}
 
       {toast && <div className="opToast">{toast}</div>}
+
+      <ReportPreviewModal
+        report={activeReport}
+        onClose={handleCloseReport}
+      />
 
     </div>
   )
