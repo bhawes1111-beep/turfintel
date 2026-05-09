@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { REPAIRS } from '../../../data/irrigation'
 import { useOperations } from '../../../utils/operations/OperationsContext'
 import { createCalendarEvent, createAlert } from '../../../utils/operations/actions'
+import UploadCenter from '../../../components/uploads/UploadCenter'
 import styles from '../Irrigation.module.css'
 
 const TODAY      = '2026-05-08'
@@ -298,6 +299,7 @@ export default function Repairs() {
         const sm         = STATUS_META[selected.status] || { label: selected.status, cls: '' }
         const accent     = PRIORITY_ACCENT[selected.priority] || 'var(--color-accent)'
         const issueLabel = ISSUE_TYPE_LABELS[selected.issueType] || selected.issueType
+        const repairTags = [selected.priority, selected.issueType, selected.area].filter(Boolean)
 
         return (
           <div className={styles.irModalOverlay} onClick={() => setSelected(null)}>
@@ -441,6 +443,23 @@ export default function Repairs() {
                       Toro Lynx / QIS integration · GPS coordinates · Layer overlay
                     </span>
                   </div>
+                </div>
+
+                {/* Attachments */}
+                <div className={styles.irModalSection}>
+                  <p className={styles.irModalSectionTitle}>Attachments</p>
+                  <UploadCenter
+                    module={selected.repairId}
+                    type="image"
+                    tags={repairTags}
+                    title="Photos"
+                  />
+                  <UploadCenter
+                    module={`${selected.repairId}-docs`}
+                    type="document"
+                    tags={repairTags}
+                    title="Documents"
+                  />
                 </div>
 
                 <div className="opActionRow">

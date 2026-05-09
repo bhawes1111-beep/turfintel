@@ -19,7 +19,7 @@ import styles from './uploads.module.css'
  * @param {string}  [type]       - 'image' | 'document'  (default 'image')
  * @param {string[]} [tags]      - Tags applied to all new uploads in this instance
  */
-export default function UploadCenter({ module, type = 'image', tags = [] }) {
+export default function UploadCenter({ module, type = 'image', tags = [], title }) {
   const [records, setRecords]         = useState([])
   const [loading, setLoading]         = useState(true)
   const [previewRecord, setPreview]   = useState(null)
@@ -52,7 +52,7 @@ export default function UploadCenter({ module, type = 'image', tags = [] }) {
     if (previewRecord?.id === id) setPreview(null)
   }
 
-  const moduleLabel = MODULE_LABELS[module] ?? module
+  const moduleLabel = title ?? MODULE_LABELS[module] ?? module
 
   return (
     <div className={styles.centerWrap}>
