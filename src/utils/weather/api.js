@@ -14,7 +14,7 @@
 import { normalizeObservation, normalizeForecast, normalizeMetar } from './normalize'
 
 const CACHE_KEY      = 'turfintel-weather-cache'
-const CACHE_TTL_MS   = 15 * 60 * 1000
+const CACHE_TTL_MS   = 10 * 60 * 1000
 const STATION        = 'KSAV'
 const NWS_OBS_URL    = `https://api.weather.gov/stations/${STATION}/observations/latest`
 const NWS_POINTS_URL = 'https://api.weather.gov/points/32.1274,-81.2014'

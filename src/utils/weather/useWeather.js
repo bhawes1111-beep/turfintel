@@ -39,7 +39,11 @@ export function useWeather() {
     }
   }, [])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load()
+    const id = setInterval(load, 10 * 60 * 1000)
+    return () => clearInterval(id)
+  }, [load])
 
   // Fall back to placeholder data while loading or on error
   const resolvedCurrent  = current                ?? PLACEHOLDER_CURRENT
