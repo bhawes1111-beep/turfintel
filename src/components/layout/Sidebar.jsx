@@ -105,6 +105,12 @@ const ICONS = {
       <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
     </SVG>
   ),
+  activity: (
+    <SVG>
+      <circle cx="12" cy="12" r="9"/>
+      <polyline points="12 7 12 12 15 15"/>
+    </SVG>
+  ),
   settings: (
     <SVG>
       <circle cx="12" cy="12" r="3"/>
@@ -125,6 +131,7 @@ const NAV_ITEMS = [
   { to: '/inventory',          label: 'Inventory',          icon: 'inventory'          },
   { to: '/equipment',          label: 'Equipment',          icon: 'equipment'          },
   { to: '/irrigation',         label: 'Irrigation',         icon: 'irrigation'         },
+  { to: '/activity',           label: 'Activity',           icon: 'activity'           },
 ]
 
 export default function Sidebar({ isOpen, onClose }) {

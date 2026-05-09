@@ -15,6 +15,7 @@ import Inventory from './pages/Inventory/Inventory'
 import Equipment  from './pages/Equipment/Equipment'
 import Irrigation from './pages/Irrigation/Irrigation'
 import Settings   from './pages/Settings/Settings'
+import Activity   from './pages/Activity/Activity'
 
 export default function App() {
   return (
@@ -40,6 +41,7 @@ export default function App() {
           <Route path="equipment/*"  element={<Equipment />} />
           <Route path="irrigation/*" element={<Irrigation />} />
           <Route path="settings/*"   element={<Settings />} />
+          <Route path="activity/*"  element={<Activity />} />
         </Route>
       </Routes>
     </BrowserRouter>
