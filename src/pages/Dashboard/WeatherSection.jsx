@@ -217,8 +217,8 @@ function ForecastRow({ forecast }) {
   return (
     <div className={styles.wsForecastOuter}>
       <div className={styles.wsForecastRow}>
-        {forecast.map((day, i) => {
-          const isToday = i === 0
+        {forecast.map((day) => {
+          const isToday = day.day === 'Today'
           const cond    = forecastCondition(day)
           return (
             <div

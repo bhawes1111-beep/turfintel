@@ -242,8 +242,9 @@ export function normalizeForecast(forecastJson) {
     const sprayWindow     = computeForecastSprayWindow(windMph, pop, highF, p.shortForecast)
     const diseasePressure = baseForecastDisease(rainfall, lowF, pop)
 
-    const startDate = new Date(p.startTime)
-    const dayLabel  = days.length === 0 ? 'Today'
+    const startDate  = new Date(p.startTime)
+    const isActuallyToday = startDate.toDateString() === new Date().toDateString()
+    const dayLabel  = (days.length === 0 && isActuallyToday) ? 'Today'
       : startDate.toLocaleDateString('en-US', { weekday: 'short' })
     const dateLabel = startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 
