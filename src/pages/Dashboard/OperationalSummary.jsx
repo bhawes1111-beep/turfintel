@@ -6,7 +6,8 @@ import { SERVICE_LOG } from '../../data/equipment'
 import { SPRAY_RECORDS } from '../../data/spray'
 import { aggregateAll } from '../../utils/activity/activityBuilder'
 import { SEVERITY_TOKENS } from '../../utils/intelligence/severity'
-import { mergeRepairs } from '../../utils/operations/repairUtils'
+import { mergeRepairs }      from '../../utils/operations/repairUtils'
+import { mergeServiceLogs } from '../../utils/operations/equipmentUtils'
 import styles from './OperationalSummary.module.css'
 
 // Build once — static data, no async needed
@@ -16,7 +17,7 @@ const ALL_ACTIVITIES = aggregateAll()
 // Returns an array of { icon, text, severity } briefing items derived from
 // real operational data. Items are ordered by operational relevance.
 
-function buildSummaryItems(alerts, repairOverrides = {}) {
+function buildSummaryItems(alerts, repairOverrides = {}, equipmentOverrides = {}) {
   const items = []
 
   // 1. Alert status — derived from OperationsContext (respects dismissals)
@@ -90,7 +91,8 @@ function buildSummaryItems(alerts, repairOverrides = {}) {
   }
 
   // 5. Equipment maintenance — overdue or critical-open
-  const overdueItems = SERVICE_LOG.filter(l =>
+  const svcLogs     = mergeServiceLogs(SERVICE_LOG, equipmentOverrides)
+  const overdueItems = svcLogs.filter(l =>
     l.status === 'overdue' || (l.status === 'open' && l.priority === 'critical')
   )
   if (overdueItems.length > 0) {
@@ -145,8 +147,9 @@ export default function OperationalSummary() {
     () => buildSummaryItems(
       state.alerts.filter(a => a.status !== 'resolved'),
       state.repairOverrides,
+      state.equipmentOverrides,
     ),
-    [state.alerts, state.repairOverrides],
+    [state.alerts, state.repairOverrides, state.equipmentOverrides],
   )
 
   const dateLabel = new Date().toLocaleDateString('en-US', {

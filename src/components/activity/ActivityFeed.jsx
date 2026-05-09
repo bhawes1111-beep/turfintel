@@ -32,8 +32,8 @@ export default function ActivityFeed() {
   const [filters, setFilters] = useState(DEFAULT_FILTERS)
 
   const ALL_ACTIVITIES = useMemo(
-    () => aggregateAll(state.repairOverrides),
-    [state.repairOverrides],
+    () => aggregateAll(state.repairOverrides, state.equipmentOverrides),
+    [state.repairOverrides, state.equipmentOverrides],
   )
 
   const visible = useMemo(() => {

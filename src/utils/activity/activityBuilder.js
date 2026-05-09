@@ -4,6 +4,7 @@ import { SERVICE_LOG }       from '../../data/equipment'
 import { DASHBOARD_ALERTS }  from '../../data/dashboardAlerts'
 import { ACTIVITY_TYPE, ACTIVITY_MODULE, createActivity } from './activitySchemas'
 import { mergeRepairs }      from '../operations/repairUtils'
+import { mergeServiceLogs } from '../operations/equipmentUtils'
 
 // ── Severity helpers ──────────────────────────────────────────────────────────
 
@@ -140,13 +141,14 @@ export function buildFromAlerts(alerts = DASHBOARD_ALERTS) {
 
 // ── Aggregate ─────────────────────────────────────────────────────────────────
 
-export function aggregateAll(repairOverrides = {}) {
+export function aggregateAll(repairOverrides = {}, equipmentOverrides = {}) {
   const repairs = mergeRepairs(REPAIRS, repairOverrides)
+  const logs    = mergeServiceLogs(SERVICE_LOG, equipmentOverrides)
   const seen = new Set()
   return [
     ...buildFromSprayRecords(),
     ...buildFromIrrigationRepairs(repairs),
-    ...buildFromMaintenanceLogs(),
+    ...buildFromMaintenanceLogs(logs),
     ...buildFromAlerts(),
   ]
     .filter(a => {

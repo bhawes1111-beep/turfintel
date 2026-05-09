@@ -5,7 +5,8 @@ import { REPAIRS } from '../../data/irrigation'
 import { SERVICE_LOG } from '../../data/equipment'
 import { SPRAY_RECORDS } from '../../data/spray'
 import { SEVERITY_TOKENS, SEVERITY_ORDER } from '../../utils/intelligence/severity'
-import { mergeRepairs } from '../../utils/operations/repairUtils'
+import { mergeRepairs }      from '../../utils/operations/repairUtils'
+import { mergeServiceLogs } from '../../utils/operations/equipmentUtils'
 import styles from './ActionQueue.module.css'
 
 // ── Route mapping ─────────────────────────────────────────────────────────────
@@ -110,8 +111,8 @@ function fromRepairs(repairs = REPAIRS) {
     }))
 }
 
-function fromServiceLog() {
-  return SERVICE_LOG
+function fromServiceLog(logs = SERVICE_LOG) {
+  return logs
     .filter(l => l.status === 'overdue' || (l.status === 'open' && l.priority === 'critical'))
     .map(l => ({
       id:        `aq-svc-${l.id}`,
@@ -140,13 +141,14 @@ function fromSpray() {
 
 // ── Aggregate + dedupe + sort ─────────────────────────────────────────────────
 
-function buildQueue(alerts, repairOverrides = {}) {
+function buildQueue(alerts, repairOverrides = {}, equipmentOverrides = {}) {
   const repairs = mergeRepairs(REPAIRS, repairOverrides)
+  const logs    = mergeServiceLogs(SERVICE_LOG, equipmentOverrides)
   const seen = new Set()
   return [
     ...fromAlerts(alerts),
     ...fromRepairs(repairs),
-    ...fromServiceLog(),
+    ...fromServiceLog(logs),
     ...fromSpray(),
   ]
     .filter(item => {
@@ -166,8 +168,8 @@ export default function ActionQueue() {
   const navigate  = useNavigate()
 
   const items = useMemo(
-    () => buildQueue(state.alerts, state.repairOverrides),
-    [state.alerts, state.repairOverrides],
+    () => buildQueue(state.alerts, state.repairOverrides, state.equipmentOverrides),
+    [state.alerts, state.repairOverrides, state.equipmentOverrides],
   )
 
   if (items.length === 0) {

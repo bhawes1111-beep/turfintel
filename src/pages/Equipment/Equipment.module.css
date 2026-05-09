@@ -547,7 +547,7 @@
   border-radius: var(--card-radius);
   padding: 14px 16px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 16px;
   cursor: pointer;
   transition: border-color 0.2s, box-shadow 0.2s;
@@ -717,6 +717,63 @@
   color: var(--color-text);
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+/* ── Inline card actions ─────────────────────────────────────────────────── */
+
+.mlCardActions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding-top: 10px;
+  margin-top: 8px;
+  border-top: 1px solid rgba(255,255,255,0.07);
+}
+
+.mlActionBtn {
+  appearance: none;
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 5px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-family: inherit;
+  padding: 3px 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  transition: background .12s, color .12s, border-color .12s;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.mlActionBtn:hover {
+  background: rgba(255,255,255,.07);
+  color: var(--color-text);
+  border-color: rgba(255,255,255,.2);
+}
+
+.mlActionBtn:disabled {
+  opacity: .45;
+  cursor: default;
+}
+
+.mlActionBtnGreen {
+  color: #4ecb4e;
+  border-color: rgba(74,158,74,.4);
+  background: rgba(74,158,74,.06);
+}
+
+.mlActionBtnGreen:hover {
+  background: rgba(74,158,74,.14);
+  border-color: #4ecb4e;
+}
+
+.mlActionBtnMuted {
+  color: var(--color-text-muted);
+  opacity: .7;
 }
 
 /* ── Total cost highlight ─────────────────────────────────────────────────── */

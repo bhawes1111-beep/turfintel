@@ -1,8 +1,9 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { SERVICE_LOG, EQUIPMENT_LIST } from '../../../data/equipment'
 import { useOperations } from '../../../utils/operations/OperationsContext'
 import { makeCalendarEvent } from '../../../utils/operations/schemas'
-import { CREATE_CALENDAR_EVENT, reserveEquipment } from '../../../utils/operations/actions'
+import { CREATE_CALENDAR_EVENT, reserveEquipment, updateEquipmentOverride } from '../../../utils/operations/actions'
+import { mergeServiceLogs } from '../../../utils/operations/equipmentUtils'
 import { buildMaintenanceLogReport } from '../../../utils/reports/reportBuilder'
 import { createAttachmentRef } from '../../../utils/reports/reportSchemas'
 import { getMediaByModule, getThumbnailBlob } from '../../../utils/media/mediaStore'
@@ -36,8 +37,10 @@ const SERVICE_TYPE_COLORS = {
   'Overhaul':   { bg: 'rgba(150,80,220,0.12)', color: '#a060e0', border: 'rgba(150,80,220,0.28)' },
 }
 
-const SORT_STATUS = { overdue: 0, open: 1, 'in-progress': 2, completed: 3 }
-const SORT_PRIORITY = { critical: 0, high: 1, routine: 2 }
+const SORT_STATUS    = { overdue: 0, open: 1, 'in-progress': 2, completed: 3 }
+const SORT_PRIORITY  = { critical: 0, high: 1, routine: 2 }
+const PRIORITY_CYCLE = { critical: 'high', high: 'routine', routine: 'critical' }
+const PRIORITY_COLOR = { critical: '#e05050', high: '#d4883a', routine: '#4ecb4e' }
 
 const FILTER_STATUS_KEY = {
   'Open':        'open',
@@ -47,19 +50,77 @@ const FILTER_STATUS_KEY = {
 }
 
 export default function MaintenanceLogs() {
-  const { dispatch }             = useOperations()
-  const [search,     setSearch]  = useState('')
-  const [staFilter,  setStaFilter] = useState('All')
-  const [priFilter,  setPriFilter] = useState('All')
-  const [selected,      setSelected]     = useState(null)
-  const [toast,         setToast]        = useState(null)
-  const [activeReport,  setActiveReport]  = useState(null)
-  const [reportLoading, setReportLoading] = useState(false)
-  const [reportThumbs,  setReportThumbs]  = useState([])
+  const { state, dispatch }         = useOperations()
+  const [search,      setSearch]    = useState('')
+  const [staFilter,   setStaFilter] = useState('All')
+  const [priFilter,   setPriFilter] = useState('All')
+  const [selected,       setSelected]      = useState(null)
+  const [selectedSection,setSelectedSection]= useState(null)
+  const [toast,          setToast]         = useState(null)
+  const [activeReport,   setActiveReport]  = useState(null)
+  const [reportLoading,  setReportLoading] = useState(false)
+  const [reportThumbs,   setReportThumbs]  = useState([])
+  const attachSectionRef                    = useRef(null)
 
   function showToast(msg) {
     setToast(msg)
     setTimeout(() => setToast(null), 2800)
+  }
+
+  function closeModal() {
+    setSelected(null)
+    setSelectedSection(null)
+  }
+
+  useEffect(() => {
+    if (selected && selectedSection === 'attachments' && attachSectionRef.current) {
+      const timer = setTimeout(() => {
+        attachSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 80)
+      return () => clearTimeout(timer)
+    }
+  }, [selected, selectedSection])
+
+  // ── Inline action handlers ─────────────────────────────────────────────────
+
+  function handleMarkComplete(log, e) {
+    e.stopPropagation()
+    const isCompleted = log.status === 'completed'
+    if (isCompleted) {
+      const base = SERVICE_LOG.find(l => l.id === log.id)
+      const baseStatus = (base?.status === 'completed') ? 'open' : (base?.status || 'open')
+      dispatch(updateEquipmentOverride(log.id, { status: baseStatus, completedDate: null }))
+      showToast('Service record reopened')
+    } else {
+      dispatch(updateEquipmentOverride(log.id, {
+        status:        'completed',
+        completedDate: new Date().toISOString().slice(0, 10),
+      }))
+      showToast('Service marked complete ✓')
+    }
+  }
+
+  function handleCyclePriority(log, e) {
+    e.stopPropagation()
+    const next = PRIORITY_CYCLE[log.priority] || 'routine'
+    dispatch(updateEquipmentOverride(log.id, { priority: next }))
+    showToast(`Priority set to ${next}`)
+  }
+
+  function handleInlineSchedule(log, e) {
+    e.stopPropagation()
+    handleScheduleService(log)
+  }
+
+  function handleInlineReport(log, e) {
+    e.stopPropagation()
+    generateMaintenanceReport(log)
+  }
+
+  function handleOpenAttachments(log, e) {
+    e.stopPropagation()
+    setSelected(log)
+    setSelectedSection('attachments')
   }
 
   function handleScheduleService(log) {
@@ -97,7 +158,7 @@ export default function MaintenanceLogs() {
 
   useEffect(() => {
     if (!selected) return
-    const onKey = e => { if (e.key === 'Escape') setSelected(null) }
+    const onKey = e => { if (e.key === 'Escape') closeModal() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [selected])
@@ -167,7 +228,7 @@ export default function MaintenanceLogs() {
 
   function generateEquipmentHistory(log) {
     const equipment = resolveEquipment(log)
-    const logs = SERVICE_LOG
+    const logs = mergedLogs
       .filter(l => l.equipmentId === log.equipmentId)
       .map(normalizeLog)
     setActiveReport(buildMaintenanceLogReport(
@@ -177,20 +238,25 @@ export default function MaintenanceLogs() {
     ))
   }
 
+  const mergedLogs = useMemo(
+    () => mergeServiceLogs(SERVICE_LOG, state.equipmentOverrides),
+    [state.equipmentOverrides],
+  )
+
   const counts = useMemo(() => {
     let open = 0, completedMonth = 0, overdue = 0, totalCost = 0
-    SERVICE_LOG.forEach(log => {
+    mergedLogs.forEach(log => {
       if (log.status === 'open' || log.status === 'in-progress') open++
       if (log.status === 'overdue') overdue++
       if (log.status === 'completed' && log.completedDate?.startsWith(THIS_MONTH)) completedMonth++
       totalCost += log.cost || 0
     })
     return { open, completedMonth, overdue, totalCost }
-  }, [])
+  }, [mergedLogs])
 
   const visible = useMemo(() => {
     const q = search.toLowerCase()
-    return SERVICE_LOG
+    return mergedLogs
       .filter(log => {
         const matchSta = staFilter === 'All' || log.status === FILTER_STATUS_KEY[staFilter]
         const matchPri = priFilter === 'All' || log.priority === priFilter.toLowerCase()
@@ -206,7 +272,7 @@ export default function MaintenanceLogs() {
         SORT_STATUS[a.status]   - SORT_STATUS[b.status] ||
         SORT_PRIORITY[a.priority] - SORT_PRIORITY[b.priority]
       )
-  }, [search, staFilter, priFilter])
+  }, [search, staFilter, priFilter, mergedLogs])
 
   const totalPartsOnLog = log =>
     log.partsUsed.reduce((sum, p) => sum + p.quantity * p.unitCost, 0)
@@ -286,11 +352,16 @@ export default function MaintenanceLogs() {
             const typeColors   = SERVICE_TYPE_COLORS[log.serviceType] || SERVICE_TYPE_COLORS.Inspection
             const hasParts     = log.partsUsed && log.partsUsed.length > 0
             const priorityCls  = `mlCard_${log.priority}`
+            const completed    = log.status === 'completed'
+            const accentColor  = PRIORITY_COLOR[log.priority] || '#4ecb4e'
             return (
-              <button
+              <div
                 key={log.id}
                 className={`${styles.mlCard} ${styles[priorityCls]}`}
                 onClick={() => setSelected(log)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setSelected(log) }}
                 aria-label={`View details for ${log.equipmentName} ${log.serviceType}`}
               >
                 {/* Left: equipment + service info */}
@@ -329,6 +400,55 @@ export default function MaintenanceLogs() {
                     )}
                     {log.notes && <span className={styles.mlHasNotes}>Note</span>}
                   </div>
+
+                  {/* ── Inline actions ── */}
+                  <div className={styles.mlCardActions} onClick={e => e.stopPropagation()}>
+                    <button
+                      className={`${styles.mlActionBtn} ${completed ? styles.mlActionBtnMuted : styles.mlActionBtnGreen}`}
+                      onClick={e => handleMarkComplete(log, e)}
+                      title={completed ? 'Reopen service record' : 'Mark as completed'}
+                    >
+                      {completed ? '↩ Reopen' : '✓ Complete'}
+                    </button>
+
+                    {!completed && (
+                      <button
+                        className={styles.mlActionBtn}
+                        style={{ color: accentColor, borderColor: accentColor }}
+                        onClick={e => handleCyclePriority(log, e)}
+                        title="Cycle priority: critical → high → routine"
+                      >
+                        ↕ {log.priority.charAt(0).toUpperCase() + log.priority.slice(1)}
+                      </button>
+                    )}
+
+                    {!completed && (
+                      <button
+                        className={styles.mlActionBtn}
+                        onClick={e => handleInlineSchedule(log, e)}
+                        title="Add to Operations Calendar"
+                      >
+                        📅 Schedule
+                      </button>
+                    )}
+
+                    <button
+                      className={styles.mlActionBtn}
+                      onClick={e => handleInlineReport(log, e)}
+                      disabled={reportLoading}
+                      title="Generate service report"
+                    >
+                      📄 Report
+                    </button>
+
+                    <button
+                      className={styles.mlActionBtn}
+                      onClick={e => handleOpenAttachments(log, e)}
+                      title="View attachments"
+                    >
+                      📎 Attachments
+                    </button>
+                  </div>
                 </div>
 
                 {/* Right: cost */}
@@ -355,7 +475,7 @@ export default function MaintenanceLogs() {
                   )}
                   <span className={styles.eqViewDetail}>Details →</span>
                 </div>
-              </button>
+              </div>
             )
           })}
         </div>
@@ -376,7 +496,7 @@ export default function MaintenanceLogs() {
         return (
           <div
             className={styles.eqModalOverlay}
-            onClick={() => setSelected(null)}
+            onClick={closeModal}
             role="dialog"
             aria-modal="true"
             aria-label="Maintenance log details"
@@ -406,7 +526,7 @@ export default function MaintenanceLogs() {
                   </span>
                   <button
                     className={styles.eqModalClose}
-                    onClick={() => setSelected(null)}
+                    onClick={closeModal}
                     aria-label="Close"
                   >
                     ✕
@@ -569,7 +689,7 @@ export default function MaintenanceLogs() {
                 )}
 
                 {/* Attachments */}
-                <section className={styles.eqModalSection}>
+                <section className={styles.eqModalSection} ref={attachSectionRef}>
                   <h3 className={styles.eqModalSectionTitle}>Attachments</h3>
                   <UploadCenter
                     module={selected.id}
@@ -610,7 +730,7 @@ export default function MaintenanceLogs() {
                   <div className="opActionRow">
                     <button
                       className="opActionBtn"
-                      onClick={() => { handleScheduleService(selected); setSelected(null) }}
+                      onClick={() => { handleScheduleService(selected); closeModal() }}
                     >
                       + Add to Operations Calendar
                     </button>
