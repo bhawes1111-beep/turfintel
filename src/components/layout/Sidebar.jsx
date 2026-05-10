@@ -189,79 +189,32 @@ const ICONS = {
 }
 
 /* ── Navigation tree ──────────────────────────────────────────────────────
-   Only routes that exist today appear here. Sections without any
-   existing routes (Weather) are intentionally omitted until pages are built.
-   The recursive renderer supports arbitrary depth — adding sub-routes later
-   is a one-line change in this tree.                                       */
+   FLAT workspace-first structure (Phase 1 of the workspace migration).
+   Each entry opens its own operational workspace. Sub-navigation lives
+   inside each workspace via PageShell's button-mode pill/segmented control.
+   No more dropdown groups in the sidebar.
+
+   Routes intentionally point at existing modules during Phase 1:
+     - Operations → /crew     (OperationsBoard component)
+     - Agronomy   → /disease  (will become an Agronomy workspace shell)
+     - Weather    → /weather  (lightweight placeholder until Phase 5)
+     - Reports    → /reports  (lightweight placeholder until Phase 6)
+
+   Other routes (/activity, /plant-nutrition, /cultural-practices,
+   /chemical, /course-map, /budget) stay reachable via direct URL —
+   they just don't appear in the sidebar anymore.                          */
 
 const NAV_TREE = [
-  { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', to: '/dashboard' },
-
-  {
-    id: 'operations',
-    label: 'Operations',
-    icon: 'operations',
-    children: [
-      { id: 'opsBoard', label: 'Operations Board', icon: 'crew',     to: '/crew'     },
-      { id: 'activity', label: 'Activity Feed',    icon: 'activity', to: '/activity' },
-    ],
-  },
-
-  {
-    id: 'agronomy',
-    label: 'Agronomy',
-    icon: 'agronomy',
-    children: [
-      { id: 'disease',    label: 'Disease Monitoring', icon: 'disease',             to: '/disease'             },
-      { id: 'nutrition',  label: 'Plant Nutrition',    icon: 'plant-nutrition',     to: '/plant-nutrition'     },
-      { id: 'cultural',   label: 'Cultural Practices', icon: 'cultural-practices',  to: '/cultural-practices'  },
-    ],
-  },
-
-  {
-    id: 'sprays',
-    label: 'Sprays',
-    icon: 'spray',
-    children: [
-      { id: 'sprayApps', label: 'Spray Applications',  icon: 'spray',    to: '/spray'    },
-      { id: 'chemical',  label: 'Chemical Labels',     icon: 'chemical', to: '/chemical' },
-    ],
-  },
-
-  {
-    id: 'irrigation',
-    label: 'Irrigation',
-    icon: 'irrigation',
-    children: [
-      { id: 'irrigationHome', label: 'Irrigation', icon: 'irrigation', to: '/irrigation' },
-      { id: 'courseMap',      label: 'Course Map', icon: 'map',        to: '/course-map' },
-    ],
-  },
-
-  { id: 'inventory', label: 'Inventory', icon: 'inventory', to: '/inventory' },
-  { id: 'equipment', label: 'Equipment', icon: 'equipment', to: '/equipment' },
-
-  // Weather currently routes to /dashboard (where the weather widgets live).
-  // Replace `to` with a dedicated route once a standalone Weather page exists.
-  { id: 'weather',   label: 'Weather',   icon: 'weather',   to: '/dashboard' },
-
-  {
-    id: 'reports',
-    label: 'Reports',
-    icon: 'reports',
-    children: [
-      { id: 'budget', label: 'Budget', icon: 'budget', to: '/budget' },
-    ],
-  },
-
-  {
-    id: 'administration',
-    label: 'Administration',
-    icon: 'administration',
-    children: [
-      { id: 'settings', label: 'Settings', icon: 'settings', to: '/settings' },
-    ],
-  },
+  { id: 'dashboard',  label: 'Dashboard',  icon: 'dashboard',  to: '/dashboard'  },
+  { id: 'operations', label: 'Operations', icon: 'operations', to: '/crew'       },
+  { id: 'agronomy',   label: 'Agronomy',   icon: 'agronomy',   to: '/disease'    },
+  { id: 'sprays',     label: 'Sprays',     icon: 'spray',      to: '/spray'      },
+  { id: 'irrigation', label: 'Irrigation', icon: 'irrigation', to: '/irrigation' },
+  { id: 'equipment',  label: 'Equipment',  icon: 'equipment',  to: '/equipment'  },
+  { id: 'inventory',  label: 'Inventory',  icon: 'inventory',  to: '/inventory'  },
+  { id: 'weather',    label: 'Weather',    icon: 'weather',    to: '/weather'    },
+  { id: 'reports',    label: 'Reports',    icon: 'reports',    to: '/reports'    },
+  { id: 'settings',   label: 'Settings',   icon: 'settings',   to: '/settings'   },
 ]
 
 /* ── Persistence ──────────────────────────────────────────────────────── */

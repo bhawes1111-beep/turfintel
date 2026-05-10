@@ -18,6 +18,8 @@ import Irrigation from './pages/Irrigation/Irrigation'
 import Settings   from './pages/Settings/Settings'
 import Activity   from './pages/Activity/Activity'
 import CourseMapPreview from './pages/CourseMapPreview/CourseMapPreview'
+import Weather from './pages/Weather/Weather'
+import Reports from './pages/Reports/Reports'
 
 export default function App() {
   return (
@@ -46,6 +48,8 @@ export default function App() {
           <Route path="settings/*"   element={<Settings />} />
           <Route path="activity/*"  element={<Activity />} />
           <Route path="course-map"  element={<CourseMapPreview />} />
+          <Route path="weather"     element={<Weather />} />
+          <Route path="reports"     element={<Reports />} />
         </Route>
       </Routes>
     </BrowserRouter>
