@@ -16,6 +16,7 @@ import ReportPreviewModal from '../../../components/reports/ReportPreviewModal'
 import { EmptyState } from '../../../components/shared/EmptyState'
 import WorkspaceSection from '../../../components/shared/WorkspaceSection'
 import SideDrawer from '../../../components/primitives/SideDrawer'
+import StatusBoard from '../../../components/primitives/StatusBoard'
 import styles from '../Equipment.module.css'
 
 const THIS_MONTH = '2026-05'
@@ -282,26 +283,20 @@ export default function MaintenanceLogs() {
       >
 
       {/* ── Stat row ── */}
-      <div className={styles.eqStats}>
-        <div className={`${styles.eqStat} ${styles.mlStatOpen}`}>
-          <span className={styles.eqStatValue}>{counts.open}</span>
-          <span className={styles.eqStatLabel}>Open Services</span>
-        </div>
-        <div className={`${styles.eqStat} ${styles.mlStatMonth}`}>
-          <span className={styles.eqStatValue}>{counts.completedMonth}</span>
-          <span className={styles.eqStatLabel}>Completed This Month</span>
-        </div>
-        <div className={`${styles.eqStat} ${styles.mlStatOverdue}`}>
-          <span className={styles.eqStatValue}>{counts.overdue}</span>
-          <span className={styles.eqStatLabel}>Overdue</span>
-        </div>
-        <div className={`${styles.eqStat} ${styles.mlStatCost}`}>
-          <span className={`${styles.eqStatValue} ${styles.mlCostValue}`}>
-            ${counts.totalCost.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-          </span>
-          <span className={styles.eqStatLabel}>Total Service Cost</span>
-        </div>
-      </div>
+      <StatusBoard columns={4}>
+        <StatusBoard.Tile value={counts.open}            label="Open Services"         tone="info" />
+        <StatusBoard.Tile value={counts.completedMonth}  label="Completed This Month"  tone="ok" />
+        <StatusBoard.Tile value={counts.overdue}         label="Overdue"               tone="critical" />
+        <StatusBoard.Tile
+          value={
+            <span style={{ fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
+              ${counts.totalCost.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+            </span>
+          }
+          label="Total Service Cost"
+          tone="neutral"
+        />
+      </StatusBoard>
 
       {/* ── Toolbar ── */}
       <div className={styles.eqToolbar}>
