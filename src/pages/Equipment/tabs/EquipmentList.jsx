@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { EQUIPMENT_LIST, SERVICE_LOG } from '../../../data/equipment'
 import { buildMaintenanceLogReport } from '../../../utils/reports/reportBuilder'
 import { createAttachmentRef } from '../../../utils/reports/reportSchemas'
@@ -7,6 +7,7 @@ import UploadCenter from '../../../components/uploads/UploadCenter'
 import ReportPreviewModal from '../../../components/reports/ReportPreviewModal'
 import { EmptyState } from '../../../components/shared/EmptyState'
 import WorkspaceSection from '../../../components/shared/WorkspaceSection'
+import SideDrawer from '../../../components/primitives/SideDrawer'
 import styles from '../Equipment.module.css'
 
 const CATEGORIES   = ['All', 'Greens Mower', 'Fairway Mower', 'Rough Mower', 'Spray', 'Utility', 'Specialty']
@@ -60,13 +61,6 @@ export default function EquipmentList() {
   const [activeReport,  setActiveReport]  = useState(null)
   const [reportLoading, setReportLoading] = useState(false)
   const [reportThumbs,  setReportThumbs]  = useState([])
-
-  useEffect(() => {
-    if (!selected) return
-    const onKey = e => { if (e.key === 'Escape') setSelected(null) }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [selected])
 
   function handleCloseReport() {
     reportThumbs.forEach(url => URL.revokeObjectURL(url))
@@ -292,8 +286,9 @@ export default function EquipmentList() {
 
       </WorkspaceSection>
 
-      {/* ── Detail Modal ── */}
-      {selected && (() => {
+      {/* ── Detail drawer ── */}
+      {(() => {
+        if (!selected) return null
         const statusMeta = STATUS_META[selected.status] || {}
         const svcWarn    = serviceWarning(selected.hours, selected.nextServiceHours)
         const fuelStyle  = FUEL_COLORS[selected.fuelType] || FUEL_COLORS.Gas
@@ -304,46 +299,28 @@ export default function EquipmentList() {
           'out-of-service':    '#e05050',
         }
         return (
-          <div
-            className={styles.eqModalOverlay}
-            onClick={() => setSelected(null)}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Equipment details"
+          <SideDrawer
+            open={!!selected}
+            onClose={() => setSelected(null)}
+            accentColor={accentColors[selected.status] || '#4a9e4a'}
+            ariaLabel="Equipment details"
           >
-            <div
-              className={styles.eqModalPanel}
-              onClick={e => e.stopPropagation()}
-            >
-              <div
-                className={styles.eqModalAccent}
-                style={{ background: accentColors[selected.status] || '#4a9e4a' }}
-              />
+            <SideDrawer.Header
+              title={selected.name}
+              subtitle={
+                `${selected.manufacturer} ${selected.model}` +
+                (selected.year ? ` · ${selected.year}` : '') +
+                (selected.serialNumber ? ` · S/N: ${selected.serialNumber}` : '')
+              }
+              status={
+                <span className={`${styles.eqStatusBadge} ${statusMeta.cls || ''}`}>
+                  {statusMeta.label}
+                </span>
+              }
+              onClose={() => setSelected(null)}
+            />
 
-              <div className={styles.eqModalHeader}>
-                <div>
-                  <h2 className={styles.eqModalTitle}>{selected.name}</h2>
-                  <p className={styles.eqModalSubtitle}>
-                    {selected.manufacturer} {selected.model}
-                    {selected.year ? ` · ${selected.year}` : ''}
-                    {selected.serialNumber ? ` · S/N: ${selected.serialNumber}` : ''}
-                  </p>
-                </div>
-                <div className={styles.eqModalHeaderRight}>
-                  <span className={`${styles.eqStatusBadge} ${statusMeta.cls || ''}`}>
-                    {statusMeta.label}
-                  </span>
-                  <button
-                    className={styles.eqModalClose}
-                    onClick={() => setSelected(null)}
-                    aria-label="Close"
-                  >
-                    ✕
-                  </button>
-                </div>
-              </div>
-
-              <div className={styles.eqModalBody}>
+            <SideDrawer.Body>
 
                 {/* Equipment Overview */}
                 <section className={styles.eqModalSection}>
@@ -516,19 +493,18 @@ export default function EquipmentList() {
                   />
                 </section>
 
-              </div>
+            </SideDrawer.Body>
 
-              <div className="opActionRow">
-                <button
-                  className="opActionBtn"
-                  onClick={() => generateEquipmentHistory(selected)}
-                  disabled={reportLoading}
-                >
-                  {reportLoading ? 'Loading…' : 'Equipment History Report'}
-                </button>
-              </div>
-            </div>
-          </div>
+            <SideDrawer.Footer>
+              <button
+                className="opActionBtn"
+                onClick={() => generateEquipmentHistory(selected)}
+                disabled={reportLoading}
+              >
+                {reportLoading ? 'Loading…' : 'Equipment History Report'}
+              </button>
+            </SideDrawer.Footer>
+          </SideDrawer>
         )
       })()}
 
