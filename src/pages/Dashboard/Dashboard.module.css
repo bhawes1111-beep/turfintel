@@ -6,19 +6,6 @@
   flex-direction: column;
   min-height: min-content;
   overflow-x: hidden;
-  transition: padding-right 0.25s ease-out;
-}
-
-/* Customize mode reserves space for the fixed CustomizePanel (272px + 16px gutter) */
-.page[data-customizing='true'] {
-  padding-right: 288px;
-}
-
-/* Mobile: panel goes full-screen with backdrop, so no padding needed */
-@media (max-width: 768px) {
-  .page[data-customizing='true'] {
-    padding-right: 0;
-  }
 }
 
 /* ── Header ─────────────────────────────────────────────────────────────── */
