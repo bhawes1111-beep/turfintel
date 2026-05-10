@@ -137,62 +137,65 @@
   outline-offset: -2px;
 }
 
-/* Hover the card → bump handle visibility for discoverability. */
-.customizable:hover .handleRight,
-.customizable:hover .handleBottom,
-.customizable:hover .handleCorner {
-  background: rgba(74, 222, 128, 0.18);
-  border-color: rgba(74, 222, 128, 0.32);
-}
-
 .handleRight,
 .handleBottom,
 .handleCorner {
   position: absolute;
-  background: rgba(74, 222, 128, 0.07);
-  border: 1px solid rgba(74, 222, 128, 0.14);
+  background: rgba(74, 222, 128, 0.14);
+  border: 1px solid rgba(74, 222, 128, 0.3);
   z-index: 5;
   touch-action: none;
   transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
 }
 
 .handleRight {
-  top: 8px;
-  right: -3px;
-  bottom: 22px;
-  width: 6px;
+  top: 10px;
+  right: 2px;
+  bottom: 24px;
+  width: 8px;
   border-radius: 3px;
   cursor: ew-resize;
 }
 
 .handleBottom {
-  left: 8px;
-  right: 22px;
-  bottom: -3px;
-  height: 6px;
+  left: 10px;
+  right: 24px;
+  bottom: 2px;
+  height: 8px;
   border-radius: 3px;
   cursor: ns-resize;
 }
 
 .handleCorner {
-  right: -4px;
-  bottom: -4px;
-  width: 16px;
-  height: 16px;
+  right: 2px;
+  bottom: 2px;
+  width: 18px;
+  height: 18px;
   border-radius: 4px;
   cursor: nwse-resize;
-  background: rgba(74, 222, 128, 0.18);
-  border-color: rgba(74, 222, 128, 0.32);
-  box-shadow: inset 0 0 0 1px rgba(7, 18, 11, 0.45);
+  background: rgba(74, 222, 128, 0.26);
+  border-color: rgba(74, 222, 128, 0.46);
+  box-shadow: inset 0 0 0 1px rgba(7, 18, 11, 0.4);
+}
+
+/* Card hover bumps handle visibility for discoverability */
+.customizable:hover .handleRight,
+.customizable:hover .handleBottom {
+  background: rgba(74, 222, 128, 0.24);
+  border-color: rgba(74, 222, 128, 0.45);
+}
+.customizable:hover .handleCorner {
+  background: rgba(74, 222, 128, 0.36);
+  border-color: rgba(74, 222, 128, 0.6);
 }
 
 /* Hovered handle (regardless of card hover) — strongest visibility */
 .handleRight:hover,
 .handleBottom:hover,
 .handleCorner:hover {
-  background: rgba(74, 222, 128, 0.32) !important;
-  border-color: rgba(74, 222, 128, 0.55) !important;
-  box-shadow: 0 0 8px rgba(74, 222, 128, 0.28);
+  background: rgba(74, 222, 128, 0.42) !important;
+  border-color: rgba(74, 222, 128, 0.65) !important;
+  box-shadow: 0 0 9px rgba(74, 222, 128, 0.34);
 }
 
 /* Active drag — card outline + glow pulse */

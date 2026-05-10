@@ -84,7 +84,11 @@ export default function Dashboard() {
   })
 
   return (
-    <div className={styles.page} data-density={prefs.density}>
+    <div
+      className={styles.page}
+      data-density={prefs.density}
+      data-customizing={customizing ? 'true' : undefined}
+    >
 
       {/* Page header */}
       <div className={styles.header}>
