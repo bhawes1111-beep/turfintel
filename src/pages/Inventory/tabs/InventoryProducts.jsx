@@ -3,6 +3,7 @@ import { useOperations } from '../../../utils/operations/OperationsContext'
 import { EmptyState } from '../../../components/shared/EmptyState'
 import WorkspaceSection from '../../../components/shared/WorkspaceSection'
 import SideDrawer from '../../../components/primitives/SideDrawer'
+import StatusBoard from '../../../components/primitives/StatusBoard'
 import styles from '../Inventory.module.css'
 
 const STOCK_FILTERS = ['All', 'Good', 'Low', 'Critical', 'Out of Stock']
@@ -81,24 +82,12 @@ export default function InventoryProducts() {
       >
 
       {/* ── Stat row ── */}
-      <div className={styles.ipStats}>
-        <div className={`${styles.ipStat} ${styles.ipStatOut}`}>
-          <span className={styles.ipStatValue}>{counts.out}</span>
-          <span className={styles.ipStatLabel}>Out of Stock</span>
-        </div>
-        <div className={`${styles.ipStat} ${styles.ipStatCrit}`}>
-          <span className={styles.ipStatValue}>{counts.critical}</span>
-          <span className={styles.ipStatLabel}>Critical</span>
-        </div>
-        <div className={`${styles.ipStat} ${styles.ipStatLow}`}>
-          <span className={styles.ipStatValue}>{counts.low}</span>
-          <span className={styles.ipStatLabel}>Low Stock</span>
-        </div>
-        <div className={`${styles.ipStat} ${styles.ipStatGood}`}>
-          <span className={styles.ipStatValue}>{counts.good}</span>
-          <span className={styles.ipStatLabel}>Good</span>
-        </div>
-      </div>
+      <StatusBoard columns={4}>
+        <StatusBoard.Tile value={counts.out}      label="Out of Stock" tone="critical" />
+        <StatusBoard.Tile value={counts.critical} label="Critical"     tone="critical" />
+        <StatusBoard.Tile value={counts.low}      label="Low Stock"    tone="warn" />
+        <StatusBoard.Tile value={counts.good}     label="Good"         tone="ok" />
+      </StatusBoard>
 
       {/* ── Toolbar ── */}
       <div className={styles.toolbar}>
