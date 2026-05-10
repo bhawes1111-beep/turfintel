@@ -136,6 +136,14 @@
   letter-spacing: 0.02em;
 }
 
+/* ── Sidebar wrapper (stacks LayerToggle + ImportPanel) ─────────────────── */
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 /* ── Layer toggle panel (sidebar) ────────────────────────────────────────── */
 
 .toggleList {
@@ -247,4 +255,188 @@
 .emptySub {
   font-size: 11px;
   color: rgba(212, 237, 212, 0.32);
+}
+
+/* ── Import panel ────────────────────────────────────────────────────────── */
+
+.importPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(4, 12, 6, 0.72);
+  border: 1px solid rgba(34, 197, 94, 0.16);
+  border-radius: 8px;
+  padding: 10px 11px 11px;
+}
+
+.importHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.importTitle {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(212, 237, 212, 0.45);
+}
+
+.importHint {
+  font-size: 9px;
+  color: rgba(212, 237, 212, 0.28);
+  letter-spacing: 0.02em;
+}
+
+.importRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.importLabel {
+  font-size: 10px;
+  font-weight: 500;
+  color: rgba(212, 237, 212, 0.4);
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+}
+
+.importSelect {
+  flex: 1;
+  padding: 6px 8px;
+  background: rgba(4, 12, 6, 0.85);
+  border: 1px solid rgba(74, 158, 74, 0.18);
+  border-radius: 5px;
+  color: rgba(212, 237, 212, 0.82);
+  font-size: 11px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.13s;
+  appearance: none;
+}
+
+.importSelect:focus {
+  border-color: rgba(74, 222, 128, 0.4);
+}
+
+.importBtn {
+  flex: 1;
+  padding: 7px 10px;
+  background: rgba(34, 197, 94, 0.14);
+  border: 1px solid rgba(34, 197, 94, 0.32);
+  border-radius: 6px;
+  color: #4ade80;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.13s, box-shadow 0.13s;
+  white-space: nowrap;
+}
+
+.importBtn:hover {
+  background: rgba(34, 197, 94, 0.22);
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.18);
+}
+
+.importClearBtn {
+  padding: 7px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(239, 68, 68, 0.22);
+  border-radius: 6px;
+  color: rgba(248, 113, 113, 0.65);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.13s, color 0.13s;
+  flex-shrink: 0;
+}
+
+.importClearBtn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: rgba(248, 113, 113, 0.95);
+}
+
+.importStatus {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 6px 9px;
+  border-radius: 5px;
+  letter-spacing: 0.01em;
+  line-height: 1.4;
+}
+
+.importStatusSuccess {
+  background: rgba(34, 197, 94, 0.1);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.22);
+}
+
+.importStatusError {
+  background: rgba(239, 68, 68, 0.08);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.importStatusInfo {
+  background: rgba(212, 237, 212, 0.04);
+  color: rgba(212, 237, 212, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.importCounts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.importCountChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 11px;
+  font-size: 9.5px;
+  font-weight: 500;
+  color: rgba(212, 237, 212, 0.7);
+}
+
+.importClearAllBtn {
+  margin-left: auto;
+  padding: 3px 9px;
+  background: none;
+  border: 1px solid rgba(239, 68, 68, 0.18);
+  border-radius: 11px;
+  color: rgba(248, 113, 113, 0.55);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 0.13s, color 0.13s;
+}
+
+.importClearAllBtn:hover {
+  background: rgba(239, 68, 68, 0.08);
+  color: rgba(248, 113, 113, 0.92);
+}
+
+.importFootnote {
+  font-size: 9.5px;
+  color: rgba(212, 237, 212, 0.32);
+  line-height: 1.45;
+  font-style: italic;
+}
+
+.importFootnote em {
+  color: rgba(74, 222, 128, 0.55);
+  font-style: normal;
+  font-weight: 500;
 }

@@ -7,12 +7,16 @@
  *      a. Each MapLayer in zIndex order (rough → fairways → tees → bunkers
  *         → greens → routes → points)
  *
+ * Data:
+ *   useCourseGeoStore merges static base geometry with runtime imports
+ *   (KML / future Emlid / Toro) and persists imports to localStorage.
+ *
  * Phase 1: renderer is SVG, no pan/zoom. The `bounds` from CourseContext
  * define the SVG viewBox; consumers size the wrapper via CSS and the SVG
  * scales to fit.
  *
  * Future renderers (Leaflet/MapLibre) consume the exact same:
- *   - GeoJSON FeatureCollections from src/data/courseGeo.js
+ *   - GeoJSON FeatureCollections from useCourseGeoStore
  *   - LayerSpecs from src/utils/geo/featureRegistry.js
  *   - course.geo.bounds from CourseContext
  *
@@ -22,25 +26,28 @@
  *   onFeatureClick    func     - optional: (feature, layerKey) => void
  *   showToggles       bool     - show layer toggle panel (default: true)
  *   showLegend        bool     - show legend (default: true)
+ *   showImportPanel   bool     - show KML import panel (default: false)
  */
 
 import { useMemo, useState } from 'react'
 import { useCourse } from '../../../context/CourseContext'
-import { getCourseGeo } from '../../../data/courseGeo'
+import { useCourseGeoStore } from '../../../utils/geo/geoStore'
 import { LAYERS, LAYER_KEYS, layersInRenderOrder, DEFAULT_VISIBILITY } from '../../../utils/geo/featureRegistry'
 import { makeProjector, viewBoxForBounds } from '../../../utils/geo/projection'
 import AerialBackground from './AerialBackground'
 import MapLayer from './MapLayer'
 import LayerToggle from './LayerToggle'
 import MapLegend from './MapLegend'
+import ImportPanel from './ImportPanel'
 import styles from './CourseMap.module.css'
 
 export default function CourseMap({
   courseId,
   initialLayers,
   onFeatureClick,
-  showToggles = true,
-  showLegend  = true,
+  showToggles     = true,
+  showLegend      = true,
+  showImportPanel = false,
 }) {
   const { courses, activeCourse } = useCourse()
 
@@ -49,6 +56,9 @@ export default function CourseMap({
     if (courseId != null) return courses.find(c => c.id === courseId) ?? null
     return activeCourse
   }, [courseId, courses, activeCourse])
+
+  const resolvedCourseId = course?.id ?? 0
+  const { geo, addFeatures, clearImports, importCounts } = useCourseGeoStore(resolvedCourseId)
 
   // Initial visibility — explicit prop list, or default (all on).
   const [visibility, setVisibility] = useState(() => {
@@ -88,7 +98,6 @@ export default function CourseMap({
     [bounds, vbW, vbH],
   )
 
-  const geo            = getCourseGeo(course.id)
   const orderedLayers  = layersInRenderOrder(LAYER_KEYS)
 
   return (
@@ -133,9 +142,18 @@ export default function CourseMap({
         )}
       </div>
 
-      {showToggles && (
-        <LayerToggle visibility={visibility} onToggle={toggleLayer} />
-      )}
+      <div className={styles.sidebar}>
+        {showToggles && (
+          <LayerToggle visibility={visibility} onToggle={toggleLayer} />
+        )}
+        {showImportPanel && (
+          <ImportPanel
+            addFeatures={addFeatures}
+            clearImports={clearImports}
+            importCounts={importCounts}
+          />
+        )}
+      </div>
     </div>
   )
 }

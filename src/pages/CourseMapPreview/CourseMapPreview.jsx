@@ -34,7 +34,7 @@ export default function CourseMapPreview() {
       </div>
 
       <div className={styles.mapBox}>
-        <CourseMap courseId={activeCourse?.id} />
+        <CourseMap courseId={activeCourse?.id} showImportPanel />
       </div>
 
       <div className={styles.notes}>
