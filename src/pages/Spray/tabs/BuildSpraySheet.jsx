@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { SPRAY_RECORDS, TYPE_COLORS } from '../../../data/spray'
 import { useOperations } from '../../../utils/operations/OperationsContext'
@@ -8,6 +8,7 @@ import ContextActions from '../../../components/contextActions/ContextActions'
 import ExpandableSection from '../../../components/expandable/ExpandableSection'
 import { EmptyState } from '../../../components/shared/EmptyState'
 import WorkspaceSection from '../../../components/shared/WorkspaceSection'
+import SideDrawer from '../../../components/primitives/SideDrawer'
 import exStyles from '../../../components/expandable/expandable.module.css'
 import styles from '../Spray.module.css'
 
@@ -220,13 +221,6 @@ export default function BuildSpraySheet() {
       `${selectedRecords.length} event${selectedRecords.length !== 1 ? 's' : ''} added to Operations Calendar`
     )
   }
-
-  useEffect(() => {
-    if (!modalRecord) return
-    const onKey = e => { if (e.key === 'Escape') setModalRecord(null) }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [modalRecord])
 
   const visible = useMemo(() => {
     return SPRAY_RECORDS.filter(r => {
@@ -803,30 +797,24 @@ export default function BuildSpraySheet() {
         </div>
       </div>
 
-      {/* ── Detail Modal ── */}
+      {/* ── Detail drawer ── */}
       {modalRecord && (() => {
         const r      = modalRecord
         const colors = TYPE_COLORS[r.products[0]?.type] || {}
         return (
-          <div
-            className={styles.modalOverlay}
-            onClick={() => setModalRecord(null)}
-            role="dialog"
-            aria-modal="true"
+          <SideDrawer
+            open={!!modalRecord}
+            onClose={() => setModalRecord(null)}
+            accentColor={colors.text || '#4a9e4a'}
+            ariaLabel="Spray application details"
           >
-            <div className={styles.modalPanel} onClick={e => e.stopPropagation()}>
-              <div
-                className={styles.modalAccent}
-                style={{ background: colors.text || '#4a9e4a' }}
-              />
-              <div className={styles.modalHeader}>
-                <div>
-                  <h2 className={styles.modalTitle}>{r.products.map(p => p.name).join(' + ')}</h2>
-                  <p className={styles.modalSubtitle}>{r.date} · {r.course}</p>
-                </div>
-                <button className={styles.modalClose} onClick={() => setModalRecord(null)} aria-label="Close">✕</button>
-              </div>
-              <div className={styles.modalBody}>
+            <SideDrawer.Header
+              title={r.products.map(p => p.name).join(' + ')}
+              subtitle={`${r.date} · ${r.course}`}
+              onClose={() => setModalRecord(null)}
+            />
+
+            <SideDrawer.Body>
 
                 <section className={styles.modalSection}>
                   <h3 className={styles.modalSectionTitle}>Application</h3>
@@ -897,9 +885,8 @@ export default function BuildSpraySheet() {
                   </section>
                 )}
 
-              </div>
-            </div>
-          </div>
+            </SideDrawer.Body>
+          </SideDrawer>
         )
       })()}
 

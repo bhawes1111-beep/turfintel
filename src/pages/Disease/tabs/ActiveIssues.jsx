@@ -1,7 +1,9 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import styles from '../Disease.module.css'
 import { ACTIVE_ISSUES } from '../../../data/disease'
 import { EmptyState } from '../../../components/shared/EmptyState'
+import SideDrawer from '../../../components/primitives/SideDrawer'
+import StatusBoard from '../../../components/primitives/StatusBoard'
 
 const SEV_ORDER    = { high: 0, medium: 1, low: 2 }
 const STATUS_ORDER = { active: 0, monitoring: 1, resolved: 2 }
@@ -30,13 +32,6 @@ export default function ActiveIssues() {
   const [sevFilter, setSevFilter] = useState('All')
   const [staFilter, setStaFilter] = useState('All')
   const [selected, setSelected]   = useState(null)
-
-  useEffect(() => {
-    if (!selected) return
-    const onKey = e => { if (e.key === 'Escape') setSelected(null) }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [selected])
 
   const counts = useMemo(() => ({
     active:     ACTIVE_ISSUES.filter(i => i.status === 'active').length,
@@ -69,24 +64,12 @@ export default function ActiveIssues() {
     <div className={styles.aiRoot}>
 
       {/* ── Stat row ── */}
-      <div className={styles.aiStats}>
-        <div className={`${styles.aiStat} ${styles.aiStatRed}`}>
-          <span className={styles.aiStatValue}>{counts.active}</span>
-          <span className={styles.aiStatLabel}>Active</span>
-        </div>
-        <div className={`${styles.aiStat} ${styles.aiStatOrange}`}>
-          <span className={styles.aiStatValue}>{counts.monitoring}</span>
-          <span className={styles.aiStatLabel}>Monitoring</span>
-        </div>
-        <div className={`${styles.aiStat} ${styles.aiStatGreen}`}>
-          <span className={styles.aiStatValue}>{counts.resolved}</span>
-          <span className={styles.aiStatLabel}>Resolved</span>
-        </div>
-        <div className={`${styles.aiStat} ${styles.aiStatCritical}`}>
-          <span className={styles.aiStatValue}>{counts.high}</span>
-          <span className={styles.aiStatLabel}>High Severity</span>
-        </div>
-      </div>
+      <StatusBoard columns={4}>
+        <StatusBoard.Tile value={counts.active}     label="Active"        tone="critical" />
+        <StatusBoard.Tile value={counts.monitoring} label="Monitoring"    tone="warn" />
+        <StatusBoard.Tile value={counts.resolved}   label="Resolved"      tone="ok" />
+        <StatusBoard.Tile value={counts.high}       label="High Severity" tone="critical" />
+      </StatusBoard>
 
       {/* ── Toolbar ── */}
       <div className={styles.aiToolbar}>
@@ -210,47 +193,31 @@ export default function ActiveIssues() {
         </div>
       )}
 
-      {/* ── Detail Modal ── */}
+      {/* ── Detail drawer ── */}
       {selected && (
-        <div
-          className={styles.aiModalOverlay}
-          onClick={() => setSelected(null)}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Issue details"
+        <SideDrawer
+          open={!!selected}
+          onClose={() => setSelected(null)}
+          accentColor={SEV_COLORS[selected.severity]?.accent || '#4a9e4a'}
+          ariaLabel="Issue details"
         >
-          <div
-            className={styles.aiModalPanel}
-            onClick={e => e.stopPropagation()}
-          >
-            <div
-              className={styles.aiModalAccent}
-              style={{ background: SEV_COLORS[selected.severity]?.accent || '#4a9e4a' }}
-            />
-
-            <div className={styles.aiModalHeader}>
-              <div>
-                <h2 className={styles.aiModalTitle}>{selected.name}</h2>
-                <p className={styles.aiModalSubtitle}>{selected.pathogen}</p>
-              </div>
-              <div className={styles.aiModalHeaderRight}>
+          <SideDrawer.Header
+            title={selected.name}
+            subtitle={selected.pathogen}
+            status={
+              <>
                 <span className={`${styles.severityBadge} ${SEV_COLORS[selected.severity]?.cls}`}>
                   {selected.severity}
                 </span>
                 <span className={`${styles.statusBadge} ${STATUS_META[selected.status]?.cls || ''}`}>
                   {STATUS_META[selected.status]?.label || selected.status}
                 </span>
-                <button
-                  className={styles.aiModalClose}
-                  onClick={() => setSelected(null)}
-                  aria-label="Close"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
+              </>
+            }
+            onClose={() => setSelected(null)}
+          />
 
-            <div className={styles.aiModalBody}>
+          <SideDrawer.Body>
 
               {/* Location */}
               <section className={styles.aiModalSection}>
@@ -335,9 +302,8 @@ export default function ActiveIssues() {
                 </section>
               )}
 
-            </div>
-          </div>
-        </div>
+          </SideDrawer.Body>
+        </SideDrawer>
       )}
 
     </div>
