@@ -1,4 +1,6 @@
 import { useState, useMemo } from 'react'
+import WorkspaceSection from '../../../components/shared/WorkspaceSection'
+import { EmptyState } from '../../../components/shared/EmptyState'
 import styles from '../Spray.module.css'
 
 export default function MixCalculator() {
@@ -25,6 +27,10 @@ export default function MixCalculator() {
 
   return (
     <div className={styles.tabContent}>
+      <WorkspaceSection
+        title="Mix Calculator"
+        subtitle="Compute total product, water volume, and tank loads for an application."
+      >
       <div className={styles.calcLayout}>
 
         {/* Inputs */}
@@ -89,7 +95,11 @@ export default function MixCalculator() {
           <p className={styles.calcPanelTitle}>Results</p>
 
           {!results ? (
-            <p className={styles.emptyState}>Enter area and rate to calculate.</p>
+            <EmptyState
+              compact
+              title="Awaiting inputs."
+              description="Enter application area and product rate to calculate."
+            />
           ) : (
             <div className={styles.resultGrid}>
               <div className={styles.resultItem}>
@@ -132,6 +142,7 @@ export default function MixCalculator() {
         </div>
 
       </div>
+      </WorkspaceSection>
     </div>
   )
 }

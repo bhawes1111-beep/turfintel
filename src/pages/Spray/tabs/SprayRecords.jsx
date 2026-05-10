@@ -6,6 +6,7 @@ import { getMediaByModule, getThumbnailBlob } from '../../../utils/media/mediaSt
 import UploadCenter from '../../../components/uploads/UploadCenter'
 import ReportPreviewModal from '../../../components/reports/ReportPreviewModal'
 import { EmptyState } from '../../../components/shared/EmptyState'
+import WorkspaceSection from '../../../components/shared/WorkspaceSection'
 import styles from '../Spray.module.css'
 
 const TYPE_FILTERS = ['All', 'Fungicide', 'Herbicide', 'Insecticide', 'PGR', 'Fertilizer']
@@ -121,6 +122,10 @@ export default function SprayRecords() {
 
   return (
     <div className={styles.tabContent}>
+      <WorkspaceSection
+        title="Spray Records"
+        subtitle="Completed, in-progress, planned, and pending-review applications."
+      >
 
       {/* ── Toolbar ── */}
       <div className={styles.toolbar}>
@@ -175,7 +180,11 @@ export default function SprayRecords() {
             description="Completed and planned spray applications will appear here."
           />
         ) : (
-          <p className={styles.emptyState}>No records match your search.</p>
+          <EmptyState
+            compact
+            title="No matches."
+            description="No records match the current filters."
+          />
         )
       ) : (
         <div className={styles.recordList}>
@@ -253,6 +262,8 @@ export default function SprayRecords() {
           })}
         </div>
       )}
+
+      </WorkspaceSection>
 
       {/* ── Detail Modal ── */}
       {selected && (

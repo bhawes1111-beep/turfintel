@@ -1,5 +1,6 @@
 import { PLANNED_PROGRAMS } from '../../../data/spray'
 import { EmptyState } from '../../../components/shared/EmptyState'
+import WorkspaceSection from '../../../components/shared/WorkspaceSection'
 import styles from '../Spray.module.css'
 
 const STATUS_CLASS = {
@@ -11,16 +12,25 @@ export default function PlannedPrograms() {
   if (PLANNED_PROGRAMS.length === 0) {
     return (
       <div className={styles.tabContent}>
-        <EmptyState
-          title="No spray programs planned."
-          description="Recurring spray programs and seasonal schedules will appear here once defined."
-        />
+        <WorkspaceSection
+          title="Planned Programs"
+          subtitle="Recurring spray programs and seasonal schedules."
+        >
+          <EmptyState
+            title="No spray programs planned."
+            description="Recurring spray programs and seasonal schedules will appear here once defined."
+          />
+        </WorkspaceSection>
       </div>
     )
   }
 
   return (
     <div className={styles.tabContent}>
+      <WorkspaceSection
+        title="Planned Programs"
+        subtitle="Recurring spray programs and seasonal schedules."
+      >
       <div className={styles.programList}>
         {PLANNED_PROGRAMS.map(p => (
           <div key={p.id} className={styles.programCard}>
@@ -58,6 +68,7 @@ export default function PlannedPrograms() {
           </div>
         ))}
       </div>
+      </WorkspaceSection>
     </div>
   )
 }

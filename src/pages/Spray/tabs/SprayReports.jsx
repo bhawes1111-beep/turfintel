@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { SPRAY_RECORDS } from '../../../data/spray'
 import { buildSpraySummaryReport } from '../../../utils/reports/reportBuilder'
 import ReportPreviewModal from '../../../components/reports/ReportPreviewModal'
+import WorkspaceSection from '../../../components/shared/WorkspaceSection'
 import styles from '../Spray.module.css'
 
 // Flatten multi-product records to the shape buildSpraySummaryReport expects
@@ -62,6 +63,10 @@ export default function SprayReports() {
 
   return (
     <div className={styles.tabContent}>
+      <WorkspaceSection
+        title="Reports"
+        subtitle="Generate spray summaries and audit reports."
+      >
       <div className={styles.reportsGrid}>
         {REPORT_DEFS.map(r => (
           <div key={r.id} className={styles.reportCard}>
@@ -79,6 +84,7 @@ export default function SprayReports() {
         ))}
       </div>
 
+      </WorkspaceSection>
       <ReportPreviewModal
         report={activeReport}
         onClose={() => setActiveReport(null)}

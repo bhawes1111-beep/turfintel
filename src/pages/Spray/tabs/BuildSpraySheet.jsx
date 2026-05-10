@@ -6,6 +6,7 @@ import { createCalendarEvent, createAlert, deductInventory } from '../../../util
 import ContextActions from '../../../components/contextActions/ContextActions'
 import ExpandableSection from '../../../components/expandable/ExpandableSection'
 import { EmptyState } from '../../../components/shared/EmptyState'
+import WorkspaceSection from '../../../components/shared/WorkspaceSection'
 import exStyles from '../../../components/expandable/expandable.module.css'
 import styles from '../Spray.module.css'
 
@@ -292,6 +293,10 @@ export default function BuildSpraySheet() {
 
   return (
     <div className={styles.tabContent}>
+      <WorkspaceSection
+        title="Build Spray Sheet"
+        subtitle="Select applications and assemble a crew-ready spray sheet."
+      >
 
       {/* ── Toolbar ── */}
       <div className={styles.ssToolbar}>
@@ -852,6 +857,7 @@ export default function BuildSpraySheet() {
         )
       })()}
 
+      </WorkspaceSection>
     </div>
   )
 }

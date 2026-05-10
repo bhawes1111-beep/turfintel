@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { SPRAY_EVENTS, TYPE_COLORS } from '../../../data/spray'
 import { CalendarGrid, MonthNavigation } from '../../../components/shared/calendar'
+import WorkspaceSection from '../../../components/shared/WorkspaceSection'
 import styles from '../Spray.module.css'
 
 // Map spray events → shared calendar event structure.
@@ -32,6 +33,10 @@ export default function SprayCalendar() {
 
   return (
     <div className={styles.tabContent}>
+      <WorkspaceSection
+        title="Spray Calendar"
+        subtitle="Monthly view of completed and planned applications."
+      >
 
       {/* Spray-specific type legend */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
@@ -65,6 +70,7 @@ export default function SprayCalendar() {
         maxEventsPerDay={4}
       />
 
+      </WorkspaceSection>
     </div>
   )
 }
