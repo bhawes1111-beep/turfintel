@@ -34,53 +34,35 @@ export const WEATHER_ICONS = {
   foggy:        '🌫',
 }
 
-// ── Placeholder: current conditions ───────────────────────────────────────
-// Shape mirrors what a future NOAA / Weather.gov feed will provide.
+// ── Current conditions — empty until weather feed is wired ────────────────
+// Shape mirrors what a future NOAA / Weather.gov feed will provide. Values
+// are null/empty so consumers can detect "no data yet" via simple checks.
 export const PLACEHOLDER_CURRENT = {
-  location:        'Savannah, GA',
-  currentTemp:     78,
-  feelsLike:       81,
-  humidity:        72,
-  wind:            8,
-  windDir:         'SSW',
-  rainfall24h:     0.12,
-  soilTemp:        68,
-  solarRadiation:  620,
-  dewPoint:        67,
-  etRate:          0.22,
-  etDeficit:       0.18,
-  diseasePressure: 'high',
-  sprayWindow:     'caution',
-  timestamp:       '2026-05-07T14:00',
+  location:        '',
+  currentTemp:     null,
+  feelsLike:       null,
+  humidity:        null,
+  wind:            null,
+  windDir:         '',
+  rainfall24h:     null,
+  soilTemp:        null,
+  solarRadiation:  null,
+  dewPoint:        null,
+  etRate:          null,
+  etDeficit:       null,
+  diseasePressure: null,
+  sprayWindow:     null,
+  timestamp:       null,
 }
 
-// ── Placeholder: 7-day ET trend ────────────────────────────────────────────
-export const PLACEHOLDER_ET_TREND = [
-  { day: 'Tue', date: 'May 1',  et: 0.18 },
-  { day: 'Wed', date: 'May 2',  et: 0.24 },
-  { day: 'Thu', date: 'May 3',  et: 0.21 },
-  { day: 'Fri', date: 'May 4',  et: 0.19 },
-  { day: 'Sat', date: 'May 5',  et: 0.26 },
-  { day: 'Sun', date: 'May 6',  et: 0.15 },
-  { day: 'Mon', date: 'May 7',  et: 0.22 },
-]
+// ── 7-day ET trend — empty until feed is wired ────────────────────────────
+export const PLACEHOLDER_ET_TREND = []
 
-// ── Placeholder: 7-day forecast ────────────────────────────────────────────
-export const PLACEHOLDER_FORECAST = [
-  { day: 'Today', date: 'May 7',  high: 78, low: 63, icon: 'partlyCloudy', rainfall: 0.12, etRate: 0.22, sprayWindow: 'caution', diseasePressure: 'high'     },
-  { day: 'Wed',   date: 'May 8',  high: 82, low: 64, icon: 'sunny',        rainfall: 0,    etRate: 0.28, sprayWindow: 'ideal',   diseasePressure: 'medium'   },
-  { day: 'Thu',   date: 'May 9',  high: 85, low: 67, icon: 'sunny',        rainfall: 0,    etRate: 0.31, sprayWindow: 'ideal',   diseasePressure: 'medium'   },
-  { day: 'Fri',   date: 'May 10', high: 79, low: 66, icon: 'partlyCloudy', rainfall: 0.05, etRate: 0.20, sprayWindow: 'caution', diseasePressure: 'high'     },
-  { day: 'Sat',   date: 'May 11', high: 72, low: 61, icon: 'rainy',        rainfall: 0.85, etRate: 0.12, sprayWindow: 'poor',    diseasePressure: 'critical' },
-  { day: 'Sun',   date: 'May 12', high: 68, low: 58, icon: 'rainy',        rainfall: 0.40, etRate: 0.10, sprayWindow: 'poor',    diseasePressure: 'high'     },
-  { day: 'Mon',   date: 'May 13', high: 74, low: 60, icon: 'cloudy',       rainfall: 0,    etRate: 0.18, sprayWindow: 'caution', diseasePressure: 'medium'   },
-]
+// ── 7-day forecast — empty until feed is wired ────────────────────────────
+export const PLACEHOLDER_FORECAST = []
 
-// ── Placeholder: weather alert banners ────────────────────────────────────
-export const PLACEHOLDER_WEATHER_ALERTS = [
-  { id: 'wa-1', severity: 'danger',  message: 'High disease pressure: Dollar Spot conditions favorable for 6 consecutive days. Curative window opens tomorrow.' },
-  { id: 'wa-2', severity: 'caution', message: 'Spray conditions marginal — wind 8 mph SSW, humidity 72%. Monitor before application.' },
-]
+// ── Weather alert banners — empty until feed is wired ─────────────────────
+export const PLACEHOLDER_WEATHER_ALERTS = []
 
 // ── Helper functions ───────────────────────────────────────────────────────
 

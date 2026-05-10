@@ -1,20 +1,7 @@
 import styles from '../Crew.module.css'
 
-// Placeholder notes — replace with API feed when backend is ready
-const PLACEHOLDER_NOTES = [
-  {
-    id: 1,
-    author: 'Derek L.',
-    time: 'Today, 6:42 AM',
-    text: 'Greens are running fast this morning — remind crew to double-cut on 7 and 14.',
-  },
-  {
-    id: 2,
-    author: 'Carlos M.',
-    time: 'Yesterday, 3:15 PM',
-    text: 'Fairway mower blade on unit #4 needs inspection before tomorrow\'s shift.',
-  },
-]
+// Crew notes — empty in production until live notes are added.
+const PLACEHOLDER_NOTES = []
 
 export default function CrewNotes() {
   return (

@@ -31,9 +31,6 @@ const COURSES = [
       aerialUrl:  '/courses/crosswinds-aerial.png',
     },
   },
-  { id: 2, name: 'Demo Course',  geo: null },
-  { id: 3, name: 'North Course', geo: null },
-  { id: 4, name: 'South Course', geo: null },
 ]
 
 const CourseContext = createContext(null)

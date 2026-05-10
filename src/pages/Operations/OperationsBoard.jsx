@@ -36,10 +36,10 @@ const BLANK_TASK = {
 }
 
 const INITIAL_NOTES = {
-  Daily:   'Morning greens cut in progress. Pre-emergent applied to front nine. Bunker work deferred — James T. absent.',
-  Weather: '68°F at 6:00 AM. Wind 8 mph SW. Low humidity (64%). No precipitation. Ideal spray window 6–10 AM.',
+  Daily:   '',
+  Weather: '',
   Super:   '',
-  Geo:     'Championship Course: Holes 1–18. Member-Guest tournament begins May 11. Priority: presentation quality.',
+  Geo:     '',
   Alerts:  '',
 }
 
