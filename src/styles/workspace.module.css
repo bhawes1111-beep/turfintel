@@ -1,0 +1,149 @@
+/* ── TurfIntel workspace primitives ──────────────────────────────────────
+   Shared layout language for every workspace tab. Any tab can import these
+   classes to inherit consistent spacing, rhythm, and visual structure.
+
+   Use directly:
+     import workspace from 'src/styles/workspace.module.css'
+     <div className={workspace.workspaceSection}> ... </div>
+
+   Or via the optional wrapper components:
+     <WorkspaceSection title="..." actions={...} filters={...}>
+       ...
+     </WorkspaceSection>
+
+   Phase 2.1 — primitives only. No consumers updated yet.
+─────────────────────────────────────────────────────────────────────── */
+
+/* ── Section ───────────────────────────────────────────────────────────── */
+/* Standard vertical rhythm + outer wrapper for one logical block of a tab. */
+
+.workspaceSection {
+  display: block;
+  margin-bottom: 18px;
+}
+
+.workspaceSection:last-child {
+  margin-bottom: 0;
+}
+
+/* Section header — title + optional inline meta/actions row */
+.workspaceSectionHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.workspaceSectionTitle {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(74, 222, 128, 0.78);
+  margin: 0;
+}
+
+.workspaceSectionSubtitle {
+  font-size: 11.5px;
+  font-weight: 400;
+  color: rgba(212, 237, 212, 0.42);
+  margin: 0 0 10px;
+  line-height: 1.5;
+}
+
+.workspaceSectionMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ── Actions row ───────────────────────────────────────────────────────── */
+/* Use for inline action buttons within a section header or filter strip. */
+
+.workspaceActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.workspaceActionsRight {
+  justify-content: flex-end;
+}
+
+/* ── Filter row ────────────────────────────────────────────────────────── */
+/* Horizontal filter strip — appears between section header and content. */
+
+.workspaceFilters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  background: rgba(4, 12, 6, 0.4);
+  border: 1px solid rgba(74, 158, 74, 0.16);
+  border-radius: 8px;
+}
+
+.workspaceFiltersLabel {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(212, 237, 212, 0.42);
+  flex-shrink: 0;
+}
+
+/* ── Grid (auto-fill card layout) ──────────────────────────────────────── */
+
+.workspaceGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.workspaceGridNarrow {
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+}
+
+.workspaceGridWide {
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+}
+
+/* ── Card shell (low-key for inline use in tabs) ───────────────────────── */
+
+.workspaceCard {
+  background: linear-gradient(160deg, var(--color-card) 0%, var(--color-bg) 100%);
+  border: 1px solid rgba(74, 158, 74, 0.16);
+  border-radius: 10px;
+  padding: 14px 16px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+/* ── Table wrapper ─────────────────────────────────────────────────────── */
+
+.workspaceTableWrap {
+  width: 100%;
+  background: rgba(4, 12, 6, 0.3);
+  border: 1px solid rgba(74, 158, 74, 0.14);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* ── Mobile ────────────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .workspaceSection {
+    margin-bottom: 14px;
+  }
+  .workspaceSectionHeader {
+    margin-bottom: 8px;
+  }
+  .workspaceFilters {
+    padding: 8px 10px;
+  }
+}
