@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { aggregateAll } from '../../utils/activity/activityBuilder'
 import { useOperations } from '../../utils/operations/OperationsContext'
+import { useEquipmentData } from '../../utils/equipment/equipmentStore'
 import ActivityFilters from './ActivityFilters'
 import ActivityCard from './ActivityCard'
 import styles from './activity.module.css'
@@ -29,11 +30,12 @@ function inDateRange(timestamp, range) {
 
 export default function ActivityFeed() {
   const { state }         = useOperations()
+  const { serviceLog }    = useEquipmentData()
   const [filters, setFilters] = useState(DEFAULT_FILTERS)
 
   const ALL_ACTIVITIES = useMemo(
-    () => aggregateAll(state.repairOverrides, state.equipmentOverrides),
-    [state.repairOverrides, state.equipmentOverrides],
+    () => aggregateAll({ serviceLog, repairOverrides: state.repairOverrides }),
+    [serviceLog, state.repairOverrides],
   )
 
   const visible = useMemo(() => {

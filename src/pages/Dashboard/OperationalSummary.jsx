@@ -1,24 +1,20 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useOperations } from '../../utils/operations/OperationsContext'
+import { useEquipmentData } from '../../utils/equipment/equipmentStore'
 import { REPAIRS } from '../../data/irrigation'
-import { SERVICE_LOG } from '../../data/equipment'
 import { SPRAY_RECORDS } from '../../data/spray'
 import { aggregateAll } from '../../utils/activity/activityBuilder'
 import { SEVERITY_TOKENS } from '../../utils/intelligence/severity'
 import { mergeRepairs }      from '../../utils/operations/repairUtils'
-import { mergeServiceLogs } from '../../utils/operations/equipmentUtils'
 import { EmptyState } from '../../components/shared/EmptyState'
 import styles from './OperationalSummary.module.css'
-
-// Build once — static data, no async needed
-const ALL_ACTIVITIES = aggregateAll()
 
 // ── Summary builder ───────────────────────────────────────────────────────────
 // Returns an array of { icon, text, severity } briefing items derived from
 // real operational data. Items are ordered by operational relevance.
 
-function buildSummaryItems(alerts, repairOverrides = {}, equipmentOverrides = {}) {
+function buildSummaryItems(alerts, { serviceLog = [], repairOverrides = {}, allActivities = [] } = {}) {
   const items = []
 
   // 1. Alert status — derived from OperationsContext (respects dismissals)
@@ -92,8 +88,8 @@ function buildSummaryItems(alerts, repairOverrides = {}, equipmentOverrides = {}
   }
 
   // 5. Equipment maintenance — overdue or critical-open
-  const svcLogs     = mergeServiceLogs(SERVICE_LOG, equipmentOverrides)
-  const overdueItems = svcLogs.filter(l =>
+  // Phase 5.1a: serviceLog is the live D1-backed truth from equipmentStore.
+  const overdueItems = serviceLog.filter(l =>
     l.status === 'overdue' || (l.status === 'open' && l.priority === 'critical')
   )
   if (overdueItems.length > 0) {
@@ -123,7 +119,7 @@ function buildSummaryItems(alerts, repairOverrides = {}, equipmentOverrides = {}
   }
 
   // 7. Recent operational activity — last 7 days
-  const recentCount = ALL_ACTIVITIES.filter(a => {
+  const recentCount = allActivities.filter(a => {
     return (Date.now() - new Date(a.timestamp).getTime()) / 86_400_000 <= 7
   }).length
   if (recentCount > 0) {
@@ -141,16 +137,25 @@ function buildSummaryItems(alerts, repairOverrides = {}, equipmentOverrides = {}
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function OperationalSummary() {
-  const { state } = useOperations()
-  const navigate  = useNavigate()
+  const { state }      = useOperations()
+  const { serviceLog } = useEquipmentData()
+  const navigate       = useNavigate()
+
+  const allActivities = useMemo(
+    () => aggregateAll({ serviceLog, repairOverrides: state.repairOverrides }),
+    [serviceLog, state.repairOverrides],
+  )
 
   const items = useMemo(
     () => buildSummaryItems(
       state.alerts.filter(a => a.status !== 'resolved'),
-      state.repairOverrides,
-      state.equipmentOverrides,
+      {
+        serviceLog,
+        repairOverrides: state.repairOverrides,
+        allActivities,
+      },
     ),
-    [state.alerts, state.repairOverrides, state.equipmentOverrides],
+    [state.alerts, serviceLog, state.repairOverrides, allActivities],
   )
 
   const dateLabel = new Date().toLocaleDateString('en-US', {

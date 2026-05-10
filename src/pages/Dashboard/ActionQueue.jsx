@@ -1,12 +1,11 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useOperations } from '../../utils/operations/OperationsContext'
+import { useEquipmentData } from '../../utils/equipment/equipmentStore'
 import { REPAIRS } from '../../data/irrigation'
-import { SERVICE_LOG } from '../../data/equipment'
 import { SPRAY_RECORDS } from '../../data/spray'
 import { SEVERITY_TOKENS, SEVERITY_ORDER } from '../../utils/intelligence/severity'
 import { mergeRepairs }      from '../../utils/operations/repairUtils'
-import { mergeServiceLogs } from '../../utils/operations/equipmentUtils'
 import { EmptyState } from '../../components/shared/EmptyState'
 import styles from './ActionQueue.module.css'
 
@@ -112,7 +111,7 @@ function fromRepairs(repairs = REPAIRS) {
     }))
 }
 
-function fromServiceLog(logs = SERVICE_LOG) {
+function fromServiceLog(logs = []) {
   return logs
     .filter(l => l.status === 'overdue' || (l.status === 'open' && l.priority === 'critical'))
     .map(l => ({
@@ -142,14 +141,15 @@ function fromSpray() {
 
 // ── Aggregate + dedupe + sort ─────────────────────────────────────────────────
 
-function buildQueue(alerts, repairOverrides = {}, equipmentOverrides = {}) {
+// Phase 5.1a: serviceLog is now a parameter (server-of-truth from
+// equipmentStore). Repairs still use the override-overlay pattern.
+function buildQueue(alerts, { serviceLog = [], repairOverrides = {} } = {}) {
   const repairs = mergeRepairs(REPAIRS, repairOverrides)
-  const logs    = mergeServiceLogs(SERVICE_LOG, equipmentOverrides)
   const seen = new Set()
   return [
     ...fromAlerts(alerts),
     ...fromRepairs(repairs),
-    ...fromServiceLog(logs),
+    ...fromServiceLog(serviceLog),
     ...fromSpray(),
   ]
     .filter(item => {
@@ -165,12 +165,16 @@ function buildQueue(alerts, repairOverrides = {}, equipmentOverrides = {}) {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function ActionQueue() {
-  const { state } = useOperations()
-  const navigate  = useNavigate()
+  const { state }      = useOperations()
+  const { serviceLog } = useEquipmentData()
+  const navigate       = useNavigate()
 
   const items = useMemo(
-    () => buildQueue(state.alerts, state.repairOverrides, state.equipmentOverrides),
-    [state.alerts, state.repairOverrides, state.equipmentOverrides],
+    () => buildQueue(state.alerts, {
+      serviceLog,
+      repairOverrides: state.repairOverrides,
+    }),
+    [state.alerts, serviceLog, state.repairOverrides],
   )
 
   if (items.length === 0) {

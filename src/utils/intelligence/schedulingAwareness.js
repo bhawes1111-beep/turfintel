@@ -1,8 +1,7 @@
 import { REPAIRS }               from '../../data/irrigation'
-import { EQUIPMENT_LIST, SERVICE_LOG } from '../../data/equipment'
 import { mergeRepairs }          from '../operations/repairUtils'
-import { mergeServiceLogs }      from '../operations/equipmentUtils'
 import { SEVERITY_ORDER }        from './severity'
+// Phase 5.1a — equipment + serviceLog are passed in by the React caller.
 
 // Reference date anchored to the demo data era (2026-05-09).
 // In production with live data, replace with: new Date()
@@ -32,7 +31,7 @@ function bySeverity(a, b) {
 
 // ── Equipment awareness ───────────────────────────────────────────────────────
 
-function equipmentItems(mergedLogs) {
+function equipmentItems(mergedLogs, equipment) {
   const items = []
 
   const overdue = mergedLogs.filter(l => l.status === 'overdue')
@@ -58,7 +57,7 @@ function equipmentItems(mergedLogs) {
   }
 
   // Equipment within 25 operating hours of next service threshold
-  const approaching = EQUIPMENT_LIST.filter(eq => {
+  const approaching = equipment.filter(eq => {
     if (!eq.nextServiceHours || eq.status === 'out-of-service') return false
     const rem = eq.nextServiceHours - eq.hours
     return rem > 0 && rem <= 25
@@ -231,15 +230,17 @@ function schedulingItems(calendarEvents) {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-export function buildAwarenessGroups(state, repairOverrides = {}, equipmentOverrides = {}) {
+// Phase 5.1a — accept equipment + serviceLog as parameters (server-of-truth
+// from equipmentStore). repairOverrides remains until the Repairs vertical
+// migrates.
+export function buildAwarenessGroups(state, { equipment = [], serviceLog = [], repairOverrides = {} } = {}) {
   const mergedRepairs = mergeRepairs(REPAIRS, repairOverrides)
-  const mergedLogs    = mergeServiceLogs(SERVICE_LOG, equipmentOverrides)
   const calEvents     = state.calendarEvents || []
 
   return [
-    { id: 'equipment',  label: 'Equipment',            icon: '⚙️', items: equipmentItems(mergedLogs)    },
-    { id: 'irrigation', label: 'Irrigation',            icon: '💧', items: irrigationItems(mergedRepairs) },
-    { id: 'spray',      label: 'Spray & Applications',  icon: '🌿', items: sprayItems(calEvents)         },
-    { id: 'scheduling', label: 'Scheduling',             icon: '📅', items: schedulingItems(calEvents)    },
+    { id: 'equipment',  label: 'Equipment',            icon: '⚙️', items: equipmentItems(serviceLog, equipment) },
+    { id: 'irrigation', label: 'Irrigation',            icon: '💧', items: irrigationItems(mergedRepairs)        },
+    { id: 'spray',      label: 'Spray & Applications',  icon: '🌿', items: sprayItems(calEvents)                 },
+    { id: 'scheduling', label: 'Scheduling',             icon: '📅', items: schedulingItems(calEvents)            },
   ].filter(g => g.items.length > 0)
 }

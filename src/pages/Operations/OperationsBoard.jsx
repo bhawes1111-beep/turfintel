@@ -2,7 +2,6 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from '../../utils/feedback/toastContext'
 import { EMPLOYEES, TASKS, HOURS_LOG } from '../../data/crew'
-import { EQUIPMENT_LIST } from '../../data/equipment'
 import CrewSchedule  from '../Crew/tabs/CrewSchedule'
 import CrewEmployees from '../Crew/tabs/CrewEmployees'
 import CrewHours     from '../Crew/tabs/CrewHours'
@@ -104,7 +103,7 @@ export default function OperationsBoard() {
   const navigate = useNavigate()
   const addTaskRef = useRef(null)
   const { current: weatherCurrent } = useWeather()
-  const { serviceLog } = useEquipmentData()
+  const { equipment, serviceLog }   = useEquipmentData()
 
   // ── Tab / layout ─────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState('board')
@@ -166,9 +165,9 @@ export default function OperationsBoard() {
 
   const eqByCategory = useMemo(() => {
     const map = {}
-    EQUIPMENT_LIST.forEach(eq => { if (!map[eq.category]) map[eq.category] = eq })
+    equipment.forEach(eq => { if (!map[eq.category]) map[eq.category] = eq })
     return map
-  }, [])
+  }, [equipment])
 
   // ── Cross-module signal: Maintenance → Operations ──────────────────────
   // Categories with at least one overdue service log entry — surfaced as a
