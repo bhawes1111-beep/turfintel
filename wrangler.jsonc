@@ -15,14 +15,18 @@
   //         npx wrangler d1 create turfintel-db
   //         # Copy the database_id printed by wrangler.
   //    2. Uncomment the d1_databases block below and paste the id.
-  //    3. Run the schema migration:
-  //         npx wrangler d1 execute turfintel-db --remote --file=./worker/migrations/0001_init.sql
+  //    3. Apply all migrations (Phase 5.1d migration runner):
+  //         npm run db:migrate:remote
   //    4. Redeploy:
   //         npm run build && npx wrangler deploy
   //
   //  For local development:
-  //         npx wrangler d1 execute turfintel-db --local --file=./worker/migrations/0001_init.sql
+  //         npm run db:migrate:local
   //         npx wrangler dev
+  //
+  //  Verifying migration state:
+  //         npm run db:status:local
+  //         npm run db:status:remote
   //
   //  Until D1 is activated, /api/* gracefully returns empty data (no crash).
   //
