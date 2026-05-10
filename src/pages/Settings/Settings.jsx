@@ -6,13 +6,23 @@
  *   - 'dropdown'  → wraps in PageShell (existing dropdown UX)
  *   - 'buttons'   → custom shell with a pill-row across the top
  *
- * Sections live in ./sections/ — one small file per section to keep
- * this file focused on layout + nav switching only.
+ * Settings search:
+ *   - Local query state filters SECTIONS by section title + keywords
+ *     (which mirror each section's labels, descriptions, integration
+ *     names, status copy).
+ *   - In both nav modes the filtered list drives the switcher.
+ *   - When the active section drops out of the filtered list, the
+ *     active section auto-switches to the first match.
+ *   - When zero sections match, an EmptyState replaces the section
+ *     content area; the nav switcher hides.
+ *
+ * Sections live in ./sections/ — one small file per section.
  */
 
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useCourse } from '../../context/CourseContext'
 import { useAppPrefs } from '../../utils/prefs/useAppPrefs'
+import { EmptyState } from '../../components/shared/EmptyState'
 import PageShell from '../../components/layout/PageShell'
 
 import ProfileSection         from './sections/ProfileSection'
@@ -26,26 +36,199 @@ import SystemInfoSection      from './sections/SystemInfoSection'
 
 import styles from './Settings.module.css'
 
+/**
+ * Section metadata.
+ *   keywords: array of lowercase tokens that mirror what each section
+ *             actually renders (labels, descriptions, integration names,
+ *             status copy). Hand-curated so search doesn't depend on
+ *             scraping DOM at runtime. Add to this list when you add new
+ *             rows inside a section.
+ */
 const SECTIONS = [
-  { key: 'profile',      label: 'Profile',              component: ProfileSection         },
-  { key: 'course',       label: 'Course',               component: CourseSection          },
-  { key: 'app',          label: 'App Preferences',      component: AppPreferencesSection  },
-  { key: 'weather',      label: 'Weather & Data',       component: WeatherDataSection     },
-  { key: 'team',         label: 'Team & Permissions',   component: TeamSection            },
-  { key: 'data',         label: 'Data Management',      component: DataManagementSection  },
-  { key: 'integrations', label: 'Integrations',         component: IntegrationsSection    },
-  { key: 'system',       label: 'System Info',          component: SystemInfoSection      },
+  {
+    key: 'profile',
+    label: 'Profile',
+    component: ProfileSection,
+    keywords: [
+      'profile', 'account', 'user',
+      'name', 'role', 'title',
+      'email', 'phone',
+      'course', 'facility',
+    ],
+  },
+  {
+    key: 'course',
+    label: 'Course',
+    component: CourseSection,
+    keywords: [
+      'course', 'facility', 'crosswinds',
+      'name', 'location', 'time zone', 'timezone',
+      'routing', 'press & roll', 'units',
+      'weather station', 'coordinates', 'anchor',
+      'bounds', 'bounding box',
+      'aerial', 'image', 'map zoom', 'default zoom',
+    ],
+  },
+  {
+    key: 'app',
+    label: 'App Preferences',
+    component: AppPreferencesSection,
+    keywords: [
+      'app preferences', 'preferences',
+      'theme', 'dark', 'light', 'mode',
+      'sidebar', 'default behavior', 'collapsed', 'expanded',
+      'dashboard', 'density',
+      'notifications',
+      'page navigation', 'page nav', 'navigation style',
+      'dropdown', 'menu', 'buttons', 'button navigation',
+    ],
+  },
+  {
+    key: 'weather',
+    label: 'Weather & Data',
+    component: WeatherDataSection,
+    keywords: [
+      'weather', 'data sources', 'data',
+      'station', 'noaa', 'weather.gov', 'ksav', 'savannah',
+      'rainfall', 'rain', 'precipitation',
+      'et', 'evapotranspiration',
+      'soil temperature', 'soil temp',
+      'integration', 'live', 'cached',
+      'last sync', 'sync',
+    ],
+  },
+  {
+    key: 'team',
+    label: 'Team & Permissions',
+    component: TeamSection,
+    keywords: [
+      'team', 'permissions',
+      'users', 'invite', 'roles', 'access', 'access levels',
+      'permission groups', 'superintendent', 'crew lead', 'crew', 'read-only',
+    ],
+  },
+  {
+    key: 'data',
+    label: 'Data Management',
+    component: DataManagementSection,
+    keywords: [
+      'data management', 'data',
+      'import', 'export', 'backup',
+      'clear', 'reset', 'wipe',
+      'sidebar prefs', 'sidebar preferences',
+      'weather cache',
+      'kml', 'course imports', 'geo imports',
+      'operations state', 'local state',
+    ],
+  },
+  {
+    key: 'integrations',
+    label: 'Integrations',
+    component: IntegrationsSection,
+    keywords: [
+      'integrations',
+      'cloudflare', 'cloudflare workers', 'workers',
+      'google earth', 'kml',
+      'noaa', 'weather.gov',
+      'toro', 'lynx', 'irx', 'irrigation',
+      'emlid', 'reach', 'rs2', 'gps',
+      'mapping tools', 'qgis', 'geojson',
+      'connected', 'stub', 'not configured', 'status',
+    ],
+  },
+  {
+    key: 'system',
+    label: 'System Info',
+    component: SystemInfoSection,
+    keywords: [
+      'system info', 'system',
+      'app', 'version',
+      'environment', 'production', 'cloudflare', 'workers',
+      'live url', 'url',
+      'last sync',
+      'storage', 'localstorage', 'local storage',
+      'browser',
+    ],
+  },
 ]
 
-const SECTION_LABELS = SECTIONS.map(s => s.label)
+/* ── Filtering ────────────────────────────────────────────────────────── */
+
+function matchesQuery(section, q) {
+  if (!q) return true
+  const haystack = [
+    section.label.toLowerCase(),
+    ...(section.keywords ?? []),
+  ].join(' ')
+  return haystack.includes(q)
+}
+
+/* ── Search bar ───────────────────────────────────────────────────────── */
+
+function SearchBar({ query, onChange, matchCount, totalCount }) {
+  return (
+    <div className={styles.searchBlock}>
+      <div className={styles.searchWrap}>
+        <span className={styles.searchIcon} aria-hidden="true">⌕</span>
+        <input
+          type="search"
+          className={styles.searchInput}
+          placeholder="Search settings…"
+          value={query}
+          onChange={(e) => onChange(e.target.value)}
+          aria-label="Search settings"
+          autoComplete="off"
+        />
+        {query && (
+          <button
+            type="button"
+            className={styles.searchClearBtn}
+            onClick={() => onChange('')}
+            aria-label="Clear search"
+          >
+            ×
+          </button>
+        )}
+      </div>
+      {query && (
+        <span className={styles.searchCount}>
+          {matchCount} of {totalCount} sections
+        </span>
+      )}
+    </div>
+  )
+}
+
+/* ── Component ────────────────────────────────────────────────────────── */
 
 export default function Settings() {
   const { activeCourse } = useCourse()
   const { prefs } = useAppPrefs()
+
+  const [query, setQuery]             = useState('')
   const [activeLabel, setActiveLabel] = useState(SECTIONS[0].label)
 
-  const active   = SECTIONS.find(s => s.label === activeLabel) ?? SECTIONS[0]
-  const Section  = active.component
+  const normalizedQuery = query.trim().toLowerCase()
+
+  const visibleSections = useMemo(
+    () => SECTIONS.filter(s => matchesQuery(s, normalizedQuery)),
+    [normalizedQuery]
+  )
+
+  // If the current active section drops out of the filtered list,
+  // jump to the first visible match.
+  useEffect(() => {
+    if (visibleSections.length === 0) return
+    if (!visibleSections.some(s => s.label === activeLabel)) {
+      setActiveLabel(visibleSections[0].label)
+    }
+  }, [visibleSections, activeLabel])
+
+  const active  = SECTIONS.find(s => s.label === activeLabel) ?? SECTIONS[0]
+  const Section = active.component
+
+  const noResults = visibleSections.length === 0
+  const visibleLabels = visibleSections.map(s => s.label)
 
   // ── Button navigation mode ─────────────────────────────────────────────
   if (prefs.pageNavStyle === 'buttons') {
@@ -58,23 +241,41 @@ export default function Settings() {
           )}
         </div>
 
-        <div className={styles.buttonNav} role="tablist" aria-label="Settings sections">
-          {SECTIONS.map(sec => (
-            <button
-              key={sec.key}
-              type="button"
-              role="tab"
-              aria-selected={active.key === sec.key}
-              className={`${styles.navBtn} ${active.key === sec.key ? styles.navBtnActive : ''}`}
-              onClick={() => setActiveLabel(sec.label)}
-            >
-              {sec.label}
-            </button>
-          ))}
+        <div className={styles.searchBar}>
+          <SearchBar
+            query={query}
+            onChange={setQuery}
+            matchCount={visibleSections.length}
+            totalCount={SECTIONS.length}
+          />
         </div>
 
+        {!noResults && (
+          <div className={styles.buttonNav} role="tablist" aria-label="Settings sections">
+            {visibleSections.map(sec => (
+              <button
+                key={sec.key}
+                type="button"
+                role="tab"
+                aria-selected={active.key === sec.key}
+                className={`${styles.navBtn} ${active.key === sec.key ? styles.navBtnActive : ''}`}
+                onClick={() => setActiveLabel(sec.label)}
+              >
+                {sec.label}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className={styles.content}>
-          <Section />
+          {noResults ? (
+            <EmptyState
+              title="No settings found."
+              description="Try a different search term."
+            />
+          ) : (
+            <Section />
+          )}
         </div>
       </div>
     )
@@ -84,11 +285,24 @@ export default function Settings() {
   return (
     <PageShell
       title="Settings"
-      tabs={SECTION_LABELS}
-      activeTab={activeLabel}
+      tabs={visibleLabels}
+      activeTab={visibleLabels.includes(activeLabel) ? activeLabel : ''}
       onTabChange={setActiveLabel}
     >
-      <Section />
+      <SearchBar
+        query={query}
+        onChange={setQuery}
+        matchCount={visibleSections.length}
+        totalCount={SECTIONS.length}
+      />
+      {noResults ? (
+        <EmptyState
+          title="No settings found."
+          description="Try a different search term."
+        />
+      ) : (
+        <Section />
+      )}
     </PageShell>
   )
 }
