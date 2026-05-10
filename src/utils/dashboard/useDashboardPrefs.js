@@ -20,35 +20,6 @@ export const SIZEABLE_CARDS = [
 
 export const LOCKED_FULL_WIDTH = ['opsCommand']
 
-export const MAX_COLS_BY_TIER = {
-  desktop: 3,
-  tablet:  2,
-  mobile:  1,
-}
-
-// Decompose a preset into its (cols, isTall) primitives.
-// 'small' is treated as 'default' for drag math — it remains a valid stored value
-// but is unreachable via drag (snapping always yields default/tall/wide/wide-tall/full).
-export function decomposeSize(size) {
-  switch (size) {
-    case 'wide':      return { cols: 2, isTall: false }
-    case 'wide-tall': return { cols: 2, isTall: true  }
-    case 'full':      return { cols: 3, isTall: false }
-    case 'tall':      return { cols: 1, isTall: true  }
-    case 'small':
-    case 'default':
-    default:          return { cols: 1, isTall: false }
-  }
-}
-
-// Recompose (cols, isTall) into the nearest preset.
-// (3, true) clamps to 'full' since no full-tall preset exists.
-export function recomposeSize(cols, isTall) {
-  if (cols >= 3) return 'full'
-  if (cols === 2) return isTall ? 'wide-tall' : 'wide'
-  return isTall ? 'tall' : 'default'
-}
-
 export const ALL_VISIBILITY_KEYS = [
   'alerts',
   'quickActions',

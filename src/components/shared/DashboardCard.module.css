@@ -25,10 +25,7 @@
   /* Subtle top-edge highlight for glass feel — no backdrop-filter needed */
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 
-  transition:
-    border-color 0.2s ease,
-    box-shadow  0.2s ease,
-    min-height  0.18s ease-out;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 /* Very faint green tint in the top-left corner — gives warmth without gimmickry */
@@ -125,107 +122,5 @@
   /* Mobile: tall + wideTall keep their height; small still shorter */
   .wideTall {
     min-height: var(--card-tall-height);
-  }
-}
-
-/* ── Customize mode + drag handles ──────────────────────────────────────── */
-
-/* When customize mode is on, give the card a faint dashed outline so it's
-   discoverable even before hover. */
-.customizable {
-  outline: 1px dashed rgba(74, 158, 74, 0.18);
-  outline-offset: -2px;
-}
-
-/* Hover the card → bump handle visibility for discoverability. */
-.customizable:hover .handleRight,
-.customizable:hover .handleBottom,
-.customizable:hover .handleCorner {
-  background: rgba(74, 222, 128, 0.18);
-  border-color: rgba(74, 222, 128, 0.32);
-}
-
-.handleRight,
-.handleBottom,
-.handleCorner {
-  position: absolute;
-  background: rgba(74, 222, 128, 0.07);
-  border: 1px solid rgba(74, 222, 128, 0.14);
-  z-index: 5;
-  touch-action: none;
-  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
-}
-
-.handleRight {
-  top: 8px;
-  right: -3px;
-  bottom: 22px;
-  width: 6px;
-  border-radius: 3px;
-  cursor: ew-resize;
-}
-
-.handleBottom {
-  left: 8px;
-  right: 22px;
-  bottom: -3px;
-  height: 6px;
-  border-radius: 3px;
-  cursor: ns-resize;
-}
-
-.handleCorner {
-  right: -4px;
-  bottom: -4px;
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
-  cursor: nwse-resize;
-  background: rgba(74, 222, 128, 0.18);
-  border-color: rgba(74, 222, 128, 0.32);
-  box-shadow: inset 0 0 0 1px rgba(7, 18, 11, 0.45);
-}
-
-/* Hovered handle (regardless of card hover) — strongest visibility */
-.handleRight:hover,
-.handleBottom:hover,
-.handleCorner:hover {
-  background: rgba(74, 222, 128, 0.32) !important;
-  border-color: rgba(74, 222, 128, 0.55) !important;
-  box-shadow: 0 0 8px rgba(74, 222, 128, 0.28);
-}
-
-/* Active drag — card outline + glow pulse */
-@keyframes dcDragPulse {
-  0%, 100% {
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.04),
-      0 0 0 1px rgba(74, 222, 128, 0.45),
-      0 0 22px rgba(74, 222, 128, 0.22);
-  }
-  50% {
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.04),
-      0 0 0 1px rgba(74, 222, 128, 0.65),
-      0 0 30px rgba(74, 222, 128, 0.38);
-  }
-}
-
-.dragging {
-  border-color: rgba(74, 222, 128, 0.55) !important;
-  outline: none !important;
-  animation: dcDragPulse 1.1s ease-in-out infinite;
-  z-index: 6;
-}
-
-/* Hide handles entirely on mobile — sizing is fixed there. */
-@media (max-width: 768px) {
-  .handleRight,
-  .handleBottom,
-  .handleCorner {
-    display: none;
-  }
-  .customizable {
-    outline: none;
   }
 }

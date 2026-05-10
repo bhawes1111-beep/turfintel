@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import DashboardCard from '../../components/shared/DashboardCard'
 import { AlertList } from '../../components/shared/alerts'
 import { PLACEHOLDER_WEATHER_ALERTS } from '../../components/shared/weather'
@@ -15,7 +15,7 @@ import QuickActions from './QuickActions'
 import OperationalSummary from './OperationalSummary'
 import ActionQueue from './ActionQueue'
 import SchedulingAwareness from './SchedulingAwareness'
-import { useDashboardPrefs, MAX_COLS_BY_TIER } from '../../utils/dashboard/useDashboardPrefs'
+import { useDashboardPrefs } from '../../utils/dashboard/useDashboardPrefs'
 import CustomizePanel from './CustomizePanel'
 import { Icon } from '../../components/shared/icons'
 import styles from './Dashboard.module.css'
@@ -25,7 +25,6 @@ export default function Dashboard() {
   const alerts                            = state.alerts
   const [weatherAlerts, setWeatherAlerts] = useState(PLACEHOLDER_WEATHER_ALERTS)
   const [panelOpen, setPanelOpen]         = useState(false)
-  const [bannerVisible, setBannerVisible] = useState(false)
   const {
     prefs,
     tier,
@@ -36,30 +35,6 @@ export default function Dashboard() {
     setSize,
     resetCurrentLayout,
   } = useDashboardPrefs()
-
-  // Customize mode is tied to panel visibility, but only enables drag handles
-  // on non-mobile tiers.
-  const customizing = panelOpen && tier !== 'mobile'
-  const maxCols     = MAX_COLS_BY_TIER[tier] ?? 3
-
-  // Floating banner: fade out after 6s when customize mode opens.
-  useEffect(() => {
-    if (!customizing) {
-      setBannerVisible(false)
-      return
-    }
-    setBannerVisible(true)
-    const t = setTimeout(() => setBannerVisible(false), 6000)
-    return () => clearTimeout(t)
-  }, [customizing])
-
-  // ESC closes panel + exits customize mode (one-step).
-  useEffect(() => {
-    if (!panelOpen) return
-    const handler = (e) => { if (e.key === 'Escape') setPanelOpen(false) }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [panelOpen])
 
   function handleDismissWeatherAlert(id) {
     setWeatherAlerts(prev => prev.filter(a => a.id !== id))
@@ -75,14 +50,6 @@ export default function Dashboard() {
 
   const activeAlerts = alerts.filter(a => a.status !== 'resolved')
 
-  // Common props passed to every sizeable card.
-  const resizeProps = (key) => ({
-    customizing,
-    cardKey: key,
-    onResize: setSize,
-    maxCols,
-  })
-
   return (
     <div className={styles.page} data-density={prefs.density}>
 
@@ -90,21 +57,14 @@ export default function Dashboard() {
       <div className={styles.header}>
         <h1 className={styles.title}>Dashboard</h1>
         <button
-          className={`${styles.customizeBtn} ${panelOpen ? styles.customizeBtnActive : ''}`}
-          onClick={() => setPanelOpen(o => !o)}
-          aria-label={panelOpen ? 'Done customizing' : 'Customize dashboard'}
+          className={styles.customizeBtn}
+          onClick={() => setPanelOpen(true)}
+          aria-label="Customize dashboard"
         >
           <Icon name="settings" size={13} />
-          {panelOpen ? 'Done' : 'Customize'}
+          Customize
         </button>
       </div>
-
-      {/* Floating customize banner — fades out after ~6s */}
-      {customizing && (
-        <div className={`${styles.banner} ${!bannerVisible ? styles.bannerHidden : ''}`}>
-          Resize cards by dragging edges or corners
-        </div>
-      )}
 
       {/* Intelligence row — always visible (primary weather + agronomic data) */}
       <div className={styles.intelligenceRow}>
@@ -141,7 +101,6 @@ export default function Dashboard() {
           <DashboardCard
             title={`Alerts${activeAlerts.length > 0 ? ` (${activeAlerts.length})` : ''}`}
             size={sizeFor('alerts')}
-            {...resizeProps('alerts')}
           >
             <AlertList
               alerts={activeAlerts}
@@ -157,11 +116,7 @@ export default function Dashboard() {
 
         {/* ── Quick Actions ── */}
         {visible('quickActions') && (
-          <DashboardCard
-            title="Quick Actions"
-            size={sizeFor('quickActions')}
-            {...resizeProps('quickActions')}
-          >
+          <DashboardCard title="Quick Actions" size={sizeFor('quickActions')}>
             <QuickActions />
           </DashboardCard>
         )}
@@ -169,10 +124,7 @@ export default function Dashboard() {
         {/* ── Operations Command — locked full-width composite ── */}
         {(visible('opsCommand') || visible('schedulingAwareness')) && (
           <div className={styles.opsSection}>
-            <span className={styles.opsSectionLabel}>
-              Operations Command
-              {customizing && <span className={styles.lockedBadge} title="Locked full-width">🔒</span>}
-            </span>
+            <span className={styles.opsSectionLabel}>Operations Command</span>
             {visible('opsCommand') && (
               <>
                 <DashboardCard title="Today's Briefing">
@@ -184,11 +136,7 @@ export default function Dashboard() {
               </>
             )}
             {visible('schedulingAwareness') && (
-              <DashboardCard
-                title="Scheduling Awareness"
-                size={sizeFor('schedulingAwareness')}
-                {...resizeProps('schedulingAwareness')}
-              >
+              <DashboardCard title="Scheduling Awareness" size={sizeFor('schedulingAwareness')}>
                 <SchedulingAwareness />
               </DashboardCard>
             )}
@@ -197,21 +145,13 @@ export default function Dashboard() {
 
         {/* ── Intelligence ── */}
         {visible('weatherIntelligence') && (
-          <DashboardCard
-            title="Weather Intelligence"
-            size={sizeFor('weatherIntelligence')}
-            {...resizeProps('weatherIntelligence')}
-          >
+          <DashboardCard title="Weather Intelligence" size={sizeFor('weatherIntelligence')}>
             <WeatherIntelligence />
           </DashboardCard>
         )}
 
         {visible('irrigationIntelligence') && (
-          <DashboardCard
-            title="Irrigation Intelligence"
-            size={sizeFor('irrigationIntelligence')}
-            {...resizeProps('irrigationIntelligence')}
-          >
+          <DashboardCard title="Irrigation Intelligence" size={sizeFor('irrigationIntelligence')}>
             <IrrigationIntelligence />
           </DashboardCard>
         )}
@@ -221,7 +161,6 @@ export default function Dashboard() {
             title="Equipment Alerts"
             size={sizeFor('equipmentAlerts')}
             className={styles.placeholderCard}
-            {...resizeProps('equipmentAlerts')}
           >
             <p className={styles.empty}>No alerts.</p>
           </DashboardCard>
@@ -229,11 +168,7 @@ export default function Dashboard() {
 
         {/* ── Activity ── */}
         {visible('activity') && (
-          <DashboardCard
-            title="Recent Activity"
-            size={sizeFor('activity')}
-            {...resizeProps('activity')}
-          >
+          <DashboardCard title="Recent Activity" size={sizeFor('activity')}>
             <RecentActivity />
           </DashboardCard>
         )}
@@ -244,7 +179,6 @@ export default function Dashboard() {
             title="Upcoming Applications"
             size={sizeFor('upcomingApplications')}
             className={styles.placeholderCard}
-            {...resizeProps('upcomingApplications')}
           >
             <p className={styles.empty}>No applications scheduled.</p>
           </DashboardCard>
@@ -255,7 +189,6 @@ export default function Dashboard() {
             title="Recent Notes"
             size={sizeFor('recentNotes')}
             className={styles.placeholderCard}
-            {...resizeProps('recentNotes')}
           >
             <p className={styles.empty}>No recent activity.</p>
           </DashboardCard>
@@ -271,6 +204,7 @@ export default function Dashboard() {
           onClose={() => setPanelOpen(false)}
           setDensity={setDensity}
           toggleSection={toggleSection}
+          setSize={setSize}
           resetCurrentLayout={resetCurrentLayout}
         />
       )}
