@@ -198,13 +198,23 @@ const NAV_TREE = [
   { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', to: '/dashboard' },
 
   {
-    id: 'plantHealth',
-    label: 'Plant Health',
+    id: 'operations',
+    label: 'Operations',
+    icon: 'operations',
+    children: [
+      { id: 'opsBoard', label: 'Operations Board', icon: 'crew',     to: '/crew'     },
+      { id: 'activity', label: 'Activity Feed',    icon: 'activity', to: '/activity' },
+    ],
+  },
+
+  {
+    id: 'agronomy',
+    label: 'Agronomy',
     icon: 'agronomy',
     children: [
-      { id: 'disease',   label: 'Disease Monitoring', icon: 'disease',             to: '/disease'             },
-      { id: 'nutrition', label: 'Plant Nutrition',    icon: 'plant-nutrition',     to: '/plant-nutrition'     },
-      { id: 'cultural',  label: 'Cultural Practices', icon: 'cultural-practices',  to: '/cultural-practices'  },
+      { id: 'disease',    label: 'Disease Monitoring', icon: 'disease',             to: '/disease'             },
+      { id: 'nutrition',  label: 'Plant Nutrition',    icon: 'plant-nutrition',     to: '/plant-nutrition'     },
+      { id: 'cultural',   label: 'Cultural Practices', icon: 'cultural-practices',  to: '/cultural-practices'  },
     ],
   },
 
@@ -213,44 +223,43 @@ const NAV_TREE = [
     label: 'Sprays',
     icon: 'spray',
     children: [
-      { id: 'newSprays', label: 'New Sprays', icon: 'spray',    to: '/spray/new' },
-      { id: 'labels',    label: 'Labels',     icon: 'chemical', to: '/chemical'  },
-      { id: 'sprayLog',  label: 'Spray Log',  icon: 'spray',    to: '/spray'     },
-    ],
-  },
-
-  { id: 'dailyOperations', label: 'Daily Operations', icon: 'operations', to: '/operations' },
-
-  {
-    id: 'inventory',
-    label: 'Inventory',
-    icon: 'inventory',
-    children: [
-      { id: 'irrigationParts', label: 'Irrigation Parts', icon: 'irrigation', to: '/inventory/irrigation-parts' },
-      { id: 'equipmentParts',  label: 'Equipment Parts',  icon: 'equipment',  to: '/inventory/equipment-parts'  },
+      { id: 'sprayApps', label: 'Spray Applications',  icon: 'spray',    to: '/spray'    },
+      { id: 'chemical',  label: 'Chemical Labels',     icon: 'chemical', to: '/chemical' },
     ],
   },
 
   {
-    id: 'equipment',
-    label: 'Equipment',
-    icon: 'equipment',
+    id: 'irrigation',
+    label: 'Irrigation',
+    icon: 'irrigation',
     children: [
-      { id: 'periodicMaint',     label: 'Periodic Maintenance', icon: 'cultural-practices', to: '/equipment/maintenance'         },
-      { id: 'vinNumbers',        label: 'VIN Numbers',          icon: 'reports',            to: '/equipment/vin-numbers'         },
-      { id: 'depreciation',      label: 'Depreciation',         icon: 'budget',             to: '/equipment/depreciation'        },
-      { id: 'newEquipmentNeeds', label: 'New Equipment Needs',  icon: 'equipment',          to: '/equipment/new-equipment-needs' },
+      { id: 'irrigationHome', label: 'Irrigation', icon: 'irrigation', to: '/irrigation' },
+      { id: 'courseMap',      label: 'Course Map', icon: 'map',        to: '/course-map' },
+    ],
+  },
+
+  { id: 'inventory', label: 'Inventory', icon: 'inventory', to: '/inventory' },
+  { id: 'equipment', label: 'Equipment', icon: 'equipment', to: '/equipment' },
+
+  // Weather currently routes to /dashboard (where the weather widgets live).
+  // Replace `to` with a dedicated route once a standalone Weather page exists.
+  { id: 'weather',   label: 'Weather',   icon: 'weather',   to: '/dashboard' },
+
+  {
+    id: 'reports',
+    label: 'Reports',
+    icon: 'reports',
+    children: [
+      { id: 'budget', label: 'Budget', icon: 'budget', to: '/budget' },
     ],
   },
 
   {
-    id: 'weather',
-    label: 'Weather',
-    icon: 'weather',
+    id: 'administration',
+    label: 'Administration',
+    icon: 'administration',
     children: [
-      { id: 'weatherHistory', label: 'History',              icon: 'weather', to: '/weather/history'              },
-      { id: 'rainTotals',     label: 'Rain Totals',          icon: 'weather', to: '/weather/rain-totals'          },
-      { id: 'tempAverages',   label: 'Temperature Averages', icon: 'weather', to: '/weather/temperature-averages' },
+      { id: 'settings', label: 'Settings', icon: 'settings', to: '/settings' },
     ],
   },
 ]
