@@ -1,5 +1,6 @@
 import { FUEL } from '../../../data/inventory'
 import { EmptyState } from '../../../components/shared/EmptyState'
+import WorkspaceSection from '../../../components/shared/WorkspaceSection'
 import styles from '../Inventory.module.css'
 
 function fuelPct(current, capacity) {
@@ -24,42 +25,48 @@ const STATUS_CLASS  = { ok: styles.stockOk, low: styles.stockLow, critical: styl
 export default function InventoryFuel() {
   return (
     <div className={styles.tabContent}>
-      {FUEL.length === 0 && (
+      <WorkspaceSection
+        title="Fuel"
+        subtitle="Diesel, gasoline, and other fuel storage levels."
+      >
+      {FUEL.length === 0 ? (
         <EmptyState
           title="No fuel tanks tracked yet."
           description="Diesel, gasoline, and other fuel storage will appear here once configured."
         />
+      ) : (
+        <div className={styles.fuelGrid}>
+          {FUEL.map(f => {
+            const pct    = fuelPct(f.currentLevel, f.tankCapacity)
+            const status = stockStatus(pct)
+            return (
+              <div key={f.id} className={styles.fuelCard}>
+                <div className={styles.cardTop}>
+                  <span className={styles.fuelType}>{f.type}</span>
+                  <span className={`${styles.stockBadge} ${STATUS_CLASS[status]}`}>
+                    {STATUS_LABEL[status]}
+                  </span>
+                </div>
+                <span className={styles.fuelLocation}>{f.location}</span>
+                <div className={styles.fuelStats}>
+                  <span className={styles.fuelLevel}>
+                    {f.currentLevel} <span className={styles.fuelCapacity}>/ {f.tankCapacity} {f.unit}</span>
+                  </span>
+                  <span className={styles.fuelCapacity}>{pct}%</span>
+                </div>
+                <div className={styles.fuelBarWrap}>
+                  <div
+                    className={`${styles.fuelBar} ${fuelBarClass(pct)}`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+                <span className={styles.fuelLastFill}>Last fill: {f.lastFill}</span>
+              </div>
+            )
+          })}
+        </div>
       )}
-      <div className={styles.fuelGrid}>
-        {FUEL.map(f => {
-          const pct    = fuelPct(f.currentLevel, f.tankCapacity)
-          const status = stockStatus(pct)
-          return (
-            <div key={f.id} className={styles.fuelCard}>
-              <div className={styles.cardTop}>
-                <span className={styles.fuelType}>{f.type}</span>
-                <span className={`${styles.stockBadge} ${STATUS_CLASS[status]}`}>
-                  {STATUS_LABEL[status]}
-                </span>
-              </div>
-              <span className={styles.fuelLocation}>{f.location}</span>
-              <div className={styles.fuelStats}>
-                <span className={styles.fuelLevel}>
-                  {f.currentLevel} <span className={styles.fuelCapacity}>/ {f.tankCapacity} {f.unit}</span>
-                </span>
-                <span className={styles.fuelCapacity}>{pct}%</span>
-              </div>
-              <div className={styles.fuelBarWrap}>
-                <div
-                  className={`${styles.fuelBar} ${fuelBarClass(pct)}`}
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
-              <span className={styles.fuelLastFill}>Last fill: {f.lastFill}</span>
-            </div>
-          )
-        })}
-      </div>
+      </WorkspaceSection>
     </div>
   )
 }

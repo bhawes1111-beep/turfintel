@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { CHEMICALS } from '../../../data/inventory'
 import { EmptyState } from '../../../components/shared/EmptyState'
+import WorkspaceSection from '../../../components/shared/WorkspaceSection'
 import styles from '../Inventory.module.css'
 
 const TYPES = ['All', 'Fungicide', 'Herbicide', 'Insecticide', 'PGR']
@@ -29,6 +30,10 @@ export default function InventoryChemicals() {
 
   return (
     <div className={styles.tabContent}>
+      <WorkspaceSection
+        title="Chemicals"
+        subtitle="Fungicides, herbicides, insecticides, and PGRs."
+      >
       <div className={styles.toolbar}>
         <input
           type="search"
@@ -58,7 +63,11 @@ export default function InventoryChemicals() {
             description="Fungicides, herbicides, insecticides, and PGRs will appear here once stocked."
           />
         ) : (
-          <p className={styles.emptyState}>No chemicals match your search.</p>
+          <EmptyState
+            compact
+            title="No matches."
+            description="No chemicals match the current filters."
+          />
         )
       ) : (
         <div className={styles.cardGrid}>
@@ -96,6 +105,7 @@ export default function InventoryChemicals() {
           })}
         </div>
       )}
+      </WorkspaceSection>
     </div>
   )
 }

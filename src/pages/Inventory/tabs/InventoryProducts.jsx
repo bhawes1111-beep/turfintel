@@ -1,5 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useOperations } from '../../../utils/operations/OperationsContext'
+import { EmptyState } from '../../../components/shared/EmptyState'
+import WorkspaceSection from '../../../components/shared/WorkspaceSection'
 import styles from '../Inventory.module.css'
 
 const STOCK_FILTERS = ['All', 'Good', 'Low', 'Critical', 'Out of Stock']
@@ -79,6 +81,10 @@ export default function InventoryProducts() {
 
   return (
     <div className={styles.tabContent}>
+      <WorkspaceSection
+        title="Products"
+        subtitle="Operational stock, organized by category and stock status."
+      >
 
       {/* ── Stat row ── */}
       <div className={styles.ipStats}>
@@ -141,7 +147,18 @@ export default function InventoryProducts() {
 
       {/* ── Product list ── */}
       {visible.length === 0 ? (
-        <p className={styles.emptyState}>No products match your search.</p>
+        inventoryProducts.length === 0 ? (
+          <EmptyState
+            title="No products in inventory yet."
+            description="Products will appear here once added."
+          />
+        ) : (
+          <EmptyState
+            compact
+            title="No matches."
+            description="No products match the current filters."
+          />
+        )
       ) : (
         <div className={styles.ipList}>
           {visible.map(p => {
@@ -193,6 +210,8 @@ export default function InventoryProducts() {
           })}
         </div>
       )}
+
+      </WorkspaceSection>
 
       {/* ── Detail Modal ── */}
       {selected && (() => {

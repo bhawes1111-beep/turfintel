@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { PARTS } from '../../../data/inventory'
 import { EmptyState } from '../../../components/shared/EmptyState'
+import WorkspaceSection from '../../../components/shared/WorkspaceSection'
 import styles from '../Inventory.module.css'
 
 function stockStatus(quantity, reorderLevel) {
@@ -25,6 +26,10 @@ export default function InventoryParts() {
 
   return (
     <div className={styles.tabContent}>
+      <WorkspaceSection
+        title="Parts"
+        subtitle="Equipment and irrigation replacement parts."
+      >
       <div className={styles.toolbar}>
         <input
           type="search"
@@ -43,7 +48,11 @@ export default function InventoryParts() {
             description="Equipment and irrigation parts will appear here once added."
           />
         ) : (
-          <p className={styles.emptyState}>No parts match your search.</p>
+          <EmptyState
+            compact
+            title="No matches."
+            description="No parts match the current search."
+          />
         )
       ) : (
         <div className={styles.tableWrap}>
@@ -80,6 +89,7 @@ export default function InventoryParts() {
           </table>
         </div>
       )}
+      </WorkspaceSection>
     </div>
   )
 }

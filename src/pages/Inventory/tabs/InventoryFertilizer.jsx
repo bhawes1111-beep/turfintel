@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { FERTILIZERS } from '../../../data/inventory'
 import { EmptyState } from '../../../components/shared/EmptyState'
+import WorkspaceSection from '../../../components/shared/WorkspaceSection'
 import styles from '../Inventory.module.css'
 
 function stockStatus(quantity, reorderLevel) {
@@ -25,6 +26,10 @@ export default function InventoryFertilizer() {
 
   return (
     <div className={styles.tabContent}>
+      <WorkspaceSection
+        title="Fertilizer"
+        subtitle="Granular and liquid fertilizer stock."
+      >
       <div className={styles.toolbar}>
         <input
           type="search"
@@ -43,7 +48,11 @@ export default function InventoryFertilizer() {
             description="Granular and liquid fertilizers will appear here once stocked."
           />
         ) : (
-          <p className={styles.emptyState}>No fertilizers match your search.</p>
+          <EmptyState
+            compact
+            title="No matches."
+            description="No fertilizers match the current search."
+          />
         )
       ) : (
         <div className={styles.cardGrid}>
@@ -77,6 +86,7 @@ export default function InventoryFertilizer() {
           })}
         </div>
       )}
+      </WorkspaceSection>
     </div>
   )
 }

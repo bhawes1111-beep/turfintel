@@ -1,5 +1,6 @@
 import { PRODUCTS, CHEMICALS, FERTILIZERS, PARTS } from '../../../data/inventory'
 import { EmptyState } from '../../../components/shared/EmptyState'
+import WorkspaceSection from '../../../components/shared/WorkspaceSection'
 import styles from '../Inventory.module.css'
 
 function stockStatus(quantity, reorderLevel) {
@@ -45,6 +46,10 @@ export default function InventoryLowStock() {
 
   return (
     <div className={styles.tabContent}>
+      <WorkspaceSection
+        title="Low Stock"
+        subtitle="Items running below their reorder threshold."
+      >
 
       {allClear && (
         hasAnyInv ? (
@@ -104,6 +109,7 @@ export default function InventoryLowStock() {
         </div>
       )}
 
+      </WorkspaceSection>
     </div>
   )
 }
