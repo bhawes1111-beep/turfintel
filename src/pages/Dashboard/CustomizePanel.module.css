@@ -252,3 +252,143 @@
     font-size: 13px;
   }
 }
+
+/* ── Tier indicator bar ─────────────────────────────────────────────────── */
+
+.tierBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  background: rgba(74, 158, 74, 0.04);
+  flex-shrink: 0;
+}
+
+.tierDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4ade80;
+  box-shadow: 0 0 5px rgba(74, 222, 128, 0.6);
+  flex-shrink: 0;
+}
+
+.tierDot[data-tier='tablet']  { background: #fbbf24; box-shadow: 0 0 5px rgba(251, 191, 36, 0.55); }
+.tierDot[data-tier='mobile']  { background: #93c5fd; box-shadow: 0 0 5px rgba(147, 197, 253, 0.55); }
+
+.tierText {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(212, 237, 212, 0.55);
+}
+
+/* ── Card row (visibility + size combined) ──────────────────────────────── */
+
+.cardRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 9px 0 11px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.035);
+}
+
+.cardRow:last-child {
+  border-bottom: none;
+}
+
+.cardRowMain {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  outline: none;
+  transition: background 0.1s;
+}
+
+.cardRowMain:focus-visible {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 5px;
+}
+
+/* ── Size button row ────────────────────────────────────────────────────── */
+
+.sizeRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.sizeBtn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 7px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 5px;
+  color: rgba(212, 237, 212, 0.42);
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.13s, color 0.13s, border-color 0.13s;
+  white-space: nowrap;
+}
+
+.sizeBtn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(212, 237, 212, 0.78);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.sizeBtnActive {
+  background: rgba(74, 158, 74, 0.14);
+  border-color: rgba(74, 158, 74, 0.36);
+  color: #4ade80;
+}
+
+.sizeIcon {
+  font-size: 11px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.sizeLabel {
+  font-size: 10px;
+  letter-spacing: 0.01em;
+}
+
+/* ── Locked note (opsCommand) ───────────────────────────────────────────── */
+
+.lockedNote {
+  font-size: 10px;
+  color: rgba(212, 237, 212, 0.28);
+  font-style: italic;
+  padding: 2px 0 0 1px;
+}
+
+/* ── Reset button ───────────────────────────────────────────────────────── */
+
+.resetBtn {
+  width: 100%;
+  padding: 9px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  color: rgba(212, 237, 212, 0.55);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 0.13s, color 0.13s, border-color 0.13s;
+}
+
+.resetBtn:hover {
+  background: rgba(239, 68, 68, 0.08);
+  color: rgba(248, 113, 113, 0.85);
+  border-color: rgba(239, 68, 68, 0.24);
+}

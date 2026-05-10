@@ -25,8 +25,16 @@ export default function Dashboard() {
   const alerts                            = state.alerts
   const [weatherAlerts, setWeatherAlerts] = useState(PLACEHOLDER_WEATHER_ALERTS)
   const [panelOpen, setPanelOpen]         = useState(false)
-  const { prefs, setDensity, toggleSection } = useDashboardPrefs()
-  const vis = prefs.visibility
+  const {
+    prefs,
+    tier,
+    visible,
+    sizeFor,
+    setDensity,
+    toggleSection,
+    setSize,
+    resetCurrentLayout,
+  } = useDashboardPrefs()
 
   function handleDismissWeatherAlert(id) {
     setWeatherAlerts(prev => prev.filter(a => a.id !== id))
@@ -67,7 +75,7 @@ export default function Dashboard() {
           />
         </div>
         <div className={styles.intelligenceRight}>
-          {vis.gdd && (
+          {visible('gdd') && (
             <DashboardCard title="Growing Degree Days">
               <GDDCard />
             </DashboardCard>
@@ -79,7 +87,7 @@ export default function Dashboard() {
       </div>
 
       {/* Operations Calendar */}
-      {vis.calendar && (
+      {visible('calendar') && (
         <div className={styles.calendarSection}>
           <OperationsCalendar />
         </div>
@@ -89,8 +97,11 @@ export default function Dashboard() {
       <div className={styles.grid}>
 
         {/* ── Alerts ── */}
-        {vis.alerts && (
-          <DashboardCard title={`Alerts${activeAlerts.length > 0 ? ` (${activeAlerts.length})` : ''}`} wide tall>
+        {visible('alerts') && (
+          <DashboardCard
+            title={`Alerts${activeAlerts.length > 0 ? ` (${activeAlerts.length})` : ''}`}
+            size={sizeFor('alerts')}
+          >
             <AlertList
               alerts={activeAlerts}
               compact
@@ -104,17 +115,17 @@ export default function Dashboard() {
         )}
 
         {/* ── Quick Actions ── */}
-        {vis.quickActions && (
-          <DashboardCard title="Quick Actions" full>
+        {visible('quickActions') && (
+          <DashboardCard title="Quick Actions" size={sizeFor('quickActions')}>
             <QuickActions />
           </DashboardCard>
         )}
 
-        {/* ── Operations Command — Today's Briefing + Action Required + Scheduling ── */}
-        {(vis.opsCommand || vis.schedulingAwareness) && (
+        {/* ── Operations Command — locked full-width composite ── */}
+        {(visible('opsCommand') || visible('schedulingAwareness')) && (
           <div className={styles.opsSection}>
             <span className={styles.opsSectionLabel}>Operations Command</span>
-            {vis.opsCommand && (
+            {visible('opsCommand') && (
               <>
                 <DashboardCard title="Today's Briefing">
                   <OperationalSummary />
@@ -124,8 +135,8 @@ export default function Dashboard() {
                 </DashboardCard>
               </>
             )}
-            {vis.schedulingAwareness && (
-              <DashboardCard title="Scheduling Awareness">
+            {visible('schedulingAwareness') && (
+              <DashboardCard title="Scheduling Awareness" size={sizeFor('schedulingAwareness')}>
                 <SchedulingAwareness />
               </DashboardCard>
             )}
@@ -133,41 +144,52 @@ export default function Dashboard() {
         )}
 
         {/* ── Intelligence ── */}
-        {vis.weatherIntelligence && (
-          <DashboardCard title="Weather Intelligence" wide>
+        {visible('weatherIntelligence') && (
+          <DashboardCard title="Weather Intelligence" size={sizeFor('weatherIntelligence')}>
             <WeatherIntelligence />
           </DashboardCard>
         )}
 
-        {vis.irrigationIntelligence && (
-          <DashboardCard title="Irrigation Intelligence" wide>
+        {visible('irrigationIntelligence') && (
+          <DashboardCard title="Irrigation Intelligence" size={sizeFor('irrigationIntelligence')}>
             <IrrigationIntelligence />
           </DashboardCard>
         )}
 
-        {/* Equipment Alerts: placed after Irrigation to pair in the 3-col grid */}
-        {vis.equipmentAlerts && (
-          <DashboardCard title="Equipment Alerts" className={styles.placeholderCard}>
+        {visible('equipmentAlerts') && (
+          <DashboardCard
+            title="Equipment Alerts"
+            size={sizeFor('equipmentAlerts')}
+            className={styles.placeholderCard}
+          >
             <p className={styles.empty}>No alerts.</p>
           </DashboardCard>
         )}
 
         {/* ── Activity ── */}
-        {vis.activity && (
-          <DashboardCard title="Recent Activity" full>
+        {visible('activity') && (
+          <DashboardCard title="Recent Activity" size={sizeFor('activity')}>
             <RecentActivity />
           </DashboardCard>
         )}
 
         {/* ── Upcoming / Notes ── */}
-        {vis.upcomingApplications && (
-          <DashboardCard title="Upcoming Applications" wide className={styles.placeholderCard}>
+        {visible('upcomingApplications') && (
+          <DashboardCard
+            title="Upcoming Applications"
+            size={sizeFor('upcomingApplications')}
+            className={styles.placeholderCard}
+          >
             <p className={styles.empty}>No applications scheduled.</p>
           </DashboardCard>
         )}
 
-        {vis.recentNotes && (
-          <DashboardCard title="Recent Notes" className={styles.placeholderCard}>
+        {visible('recentNotes') && (
+          <DashboardCard
+            title="Recent Notes"
+            size={sizeFor('recentNotes')}
+            className={styles.placeholderCard}
+          >
             <p className={styles.empty}>No recent activity.</p>
           </DashboardCard>
         )}
@@ -178,9 +200,12 @@ export default function Dashboard() {
       {panelOpen && (
         <CustomizePanel
           prefs={prefs}
+          tier={tier}
           onClose={() => setPanelOpen(false)}
           setDensity={setDensity}
           toggleSection={toggleSection}
+          setSize={setSize}
+          resetCurrentLayout={resetCurrentLayout}
         />
       )}
 

@@ -71,6 +71,17 @@
   min-height: var(--card-tall-height);
 }
 
+/* Small: 1 column, shorter min-height — for low-priority compact widgets */
+.small {
+  min-height: calc(var(--card-min-height) * 0.7);
+}
+
+/* Wide + Tall: 2 columns, taller min-height — high-priority focal cards */
+.wideTall {
+  grid-column: span 2;
+  min-height: var(--card-tall-height);
+}
+
 /* ── Card internals ────────────────────────────────────────────────────── */
 
 .cardTitle {
@@ -101,9 +112,15 @@
     padding: var(--card-padding-mobile);
   }
 
-  /* Lock wide/full cards to single column on mobile */
+  /* Lock wide/full/wideTall cards to single column on mobile */
   .wide,
-  .full {
+  .full,
+  .wideTall {
     grid-column: span 1;
+  }
+
+  /* Mobile: tall + wideTall keep their height; small still shorter */
+  .wideTall {
+    min-height: var(--card-tall-height);
   }
 }
