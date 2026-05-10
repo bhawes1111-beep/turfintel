@@ -12,7 +12,7 @@ import PageShell from '../../components/layout/PageShell'
 import WorkspaceActions from '../../components/shared/WorkspaceActions'
 import Timeline from '../../components/primitives/Timeline'
 import { useWeather } from '../../utils/weather/useWeather'
-import { SERVICE_LOG } from '../../data/equipment'
+import { useEquipmentData } from '../../utils/equipment/equipmentStore'
 import workspace from '../../styles/workspace.module.css'
 import styles from './OperationsBoard.module.css'
 
@@ -104,6 +104,7 @@ export default function OperationsBoard() {
   const navigate = useNavigate()
   const addTaskRef = useRef(null)
   const { current: weatherCurrent } = useWeather()
+  const { serviceLog } = useEquipmentData()
 
   // ── Tab / layout ─────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState('board')
@@ -171,14 +172,15 @@ export default function OperationsBoard() {
 
   // ── Cross-module signal: Maintenance → Operations ──────────────────────
   // Categories with at least one overdue service log entry — surfaced as a
-  // contextual indicator on equipment chips within task cards.
+  // contextual indicator on equipment chips within task cards. Now driven
+  // by the live serviceLog from the equipmentStore (Phase 5.0).
   const overdueMaintCategories = useMemo(() => {
     const set = new Set()
-    SERVICE_LOG.forEach(log => {
+    serviceLog.forEach(log => {
       if (log.status === 'overdue') set.add(log.category)
     })
     return set
-  }, [])
+  }, [serviceLog])
 
   // ── Cross-module signal: Weather → Operations ──────────────────────────
   // Derive lightweight operational weather warnings from the live weather

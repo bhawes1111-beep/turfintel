@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { EQUIPMENT_LIST, SERVICE_LOG } from '../../../data/equipment'
+import { useEquipmentData } from '../../../utils/equipment/equipmentStore'
 import { EmptyState } from '../../../components/shared/EmptyState'
 import WorkspaceSection from '../../../components/shared/WorkspaceSection'
 import StatusBoard from '../../../components/primitives/StatusBoard'
@@ -94,16 +94,17 @@ function formatTickDate(offset) {
  * now-line, gridlines.
  */
 export default function ServiceSchedule({ onJumpToUnit, onJumpToMaintenance } = {}) {
+  const { equipment, serviceLog } = useEquipmentData()
 
   const rows = useMemo(() => {
-    return EQUIPMENT_LIST
+    return equipment
       .map(unit => {
         const status      = serviceStatus(unit)
         const projDays    = projectedDays(unit)
         const serviceType = SERVICE_TYPE_BY_CATEGORY[unit.category] ?? 'PM'
 
         // Latest completed log entry within range, if any
-        const recentLog = SERVICE_LOG
+        const recentLog = serviceLog
           .filter(l =>
             l.equipmentId === unit.id &&
             l.status === 'completed' &&
@@ -122,7 +123,7 @@ export default function ServiceSchedule({ onJumpToUnit, onJumpToMaintenance } = 
         STATUS_SORT[a.status] - STATUS_SORT[b.status] ||
         a.projDays - b.projDays
       )
-  }, [])
+  }, [equipment, serviceLog])
 
   const counts = useMemo(() => {
     let overdue = 0, dueSoon = 0, upcoming30 = 0, recentlyServiced = 0
@@ -135,7 +136,7 @@ export default function ServiceSchedule({ onJumpToUnit, onJumpToMaintenance } = 
     return { overdue, dueSoon, upcoming30, recentlyServiced }
   }, [rows])
 
-  const hasUnits = EQUIPMENT_LIST.length > 0
+  const hasUnits = equipment.length > 0
 
   return (
     <div className={styles.eqRoot}>

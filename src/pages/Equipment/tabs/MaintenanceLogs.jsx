@@ -1,10 +1,9 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { SERVICE_LOG, EQUIPMENT_LIST } from '../../../data/equipment'
+import { useEquipmentData, patchMaintenance } from '../../../utils/equipment/equipmentStore'
 import { useOperations } from '../../../utils/operations/OperationsContext'
 import { useToast } from '../../../utils/feedback/toastContext'
 import { makeCalendarEvent } from '../../../utils/operations/schemas'
-import { CREATE_CALENDAR_EVENT, reserveEquipment, updateEquipmentOverride } from '../../../utils/operations/actions'
-import { mergeServiceLogs } from '../../../utils/operations/equipmentUtils'
+import { CREATE_CALENDAR_EVENT, reserveEquipment } from '../../../utils/operations/actions'
 import { buildMaintenanceLogReport } from '../../../utils/reports/reportBuilder'
 import { createAttachmentRef } from '../../../utils/reports/reportSchemas'
 import { getMediaByModule, getThumbnailBlob } from '../../../utils/media/mediaStore'
@@ -58,7 +57,8 @@ const FILTER_STATUS_KEY = {
 }
 
 export default function MaintenanceLogs({ initialSearch = null } = {}) {
-  const { state, dispatch }         = useOperations()
+  const { dispatch }                 = useOperations()
+  const { equipment, serviceLog }    = useEquipmentData()
   const toast                        = useToast()
   // Seed search filter when arriving via Phase 3.4 click-through.
   const [search,      setSearch]    = useState(initialSearch ?? '')
@@ -93,24 +93,25 @@ export default function MaintenanceLogs({ initialSearch = null } = {}) {
     e.stopPropagation()
     const isCompleted = log.status === 'completed'
     if (isCompleted) {
-      const base = SERVICE_LOG.find(l => l.id === log.id)
-      const baseStatus = (base?.status === 'completed') ? 'open' : (base?.status || 'open')
-      dispatch(updateEquipmentOverride(log.id, { status: baseStatus, completedDate: null }))
-      toast.info('Service record reopened')
+      patchMaintenance(log.id, { status: 'open', completedDate: null })
+        .then(() => toast.info('Service record reopened'))
+        .catch(err => toast.error?.(`Save failed: ${err.message}`))
     } else {
-      dispatch(updateEquipmentOverride(log.id, {
+      patchMaintenance(log.id, {
         status:        'completed',
         completedDate: new Date().toISOString().slice(0, 10),
-      }))
-      toast.success('Service marked complete ✓')
+      })
+        .then(() => toast.success('Service marked complete ✓'))
+        .catch(err => toast.error?.(`Save failed: ${err.message}`))
     }
   }
 
   function handleCyclePriority(log, e) {
     e.stopPropagation()
     const next = PRIORITY_CYCLE[log.priority] || 'routine'
-    dispatch(updateEquipmentOverride(log.id, { priority: next }))
-    toast.info(`Priority set to ${next}`)
+    patchMaintenance(log.id, { priority: next })
+      .then(() => toast.info(`Priority set to ${next}`))
+      .catch(err => toast.error?.(`Save failed: ${err.message}`))
   }
 
   function handleInlineSchedule(log, e) {
@@ -169,7 +170,7 @@ export default function MaintenanceLogs({ initialSearch = null } = {}) {
   }
 
   function resolveEquipment(log) {
-    return EQUIPMENT_LIST.find(e => e.id === log.equipmentId)
+    return equipment.find(e => e.id === log.equipmentId)
       ?? { name: log.equipmentName, type: log.category, category: log.category, model: '', status: log.status }
   }
 
@@ -226,21 +227,21 @@ export default function MaintenanceLogs({ initialSearch = null } = {}) {
   }
 
   function generateEquipmentHistory(log) {
-    const equipment = resolveEquipment(log)
-    const logs = mergedLogs
+    const unit = resolveEquipment(log)
+    const logs = serviceLog
       .filter(l => l.equipmentId === log.equipmentId)
       .map(normalizeLog)
     setActiveReport(buildMaintenanceLogReport(
-      { ...equipment, type: equipment.category ?? equipment.type },
+      { ...unit, type: unit.category ?? unit.type },
       logs,
       { dateRange: 'All Time' },
     ))
   }
 
-  const mergedLogs = useMemo(
-    () => mergeServiceLogs(SERVICE_LOG, state.equipmentOverrides),
-    [state.equipmentOverrides],
-  )
+  // Server is the source of truth (Phase 5.0). The local-overlay
+  // mergeServiceLogs() pattern is no longer used by this consumer;
+  // mutations flow through patchMaintenance() and the store re-syncs.
+  const mergedLogs = serviceLog
 
   const counts = useMemo(() => {
     let open = 0, completedMonth = 0, overdue = 0, totalCost = 0
@@ -340,7 +341,7 @@ export default function MaintenanceLogs({ initialSearch = null } = {}) {
 
       {/* ── Log list ── */}
       {visible.length === 0 ? (
-        SERVICE_LOG.length === 0 ? (
+        serviceLog.length === 0 ? (
           <EmptyState
             title="No maintenance records yet."
             description="Service log entries, repairs, and inspections will appear here once recorded."

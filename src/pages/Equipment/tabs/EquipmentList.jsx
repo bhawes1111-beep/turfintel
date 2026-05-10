@@ -1,7 +1,5 @@
-import { useState, useMemo } from 'react'
-import { EQUIPMENT_LIST, SERVICE_LOG } from '../../../data/equipment'
-// SERVICE_LOG already imported above for report generation; reused below
-// as a cross-module signal source for the per-unit maintenance badge.
+import { useState, useMemo, useEffect, useRef } from 'react'
+import { useEquipmentData } from '../../../utils/equipment/equipmentStore'
 import { buildMaintenanceLogReport } from '../../../utils/reports/reportBuilder'
 import { createAttachmentRef } from '../../../utils/reports/reportSchemas'
 import { getMediaByModule, getThumbnailBlob } from '../../../utils/media/mediaStore'
@@ -57,14 +55,24 @@ function hoursUntilService(hours, nextServiceHours) {
 }
 
 export default function EquipmentList({ initialSelectedId = null, onJumpToMaintenance } = {}) {
+  const { equipment, serviceLog, loading, error } = useEquipmentData()
   const [search,     setSearch]    = useState('')
   const [catFilter,  setCatFilter] = useState('All')
   const [staFilter,  setStaFilter] = useState('All')
-  // Seed `selected` when navigated to from another workspace (Phase 3.4).
-  const initialSelected = initialSelectedId
-    ? EQUIPMENT_LIST.find(eq => eq.id === initialSelectedId) ?? null
-    : null
-  const [selected,      setSelected]     = useState(initialSelected)
+  const [selected,      setSelected]     = useState(null)
+
+  // Seed `selected` from initialSelectedId once equipment data is available
+  // (Phase 3.4 click-through, now async-aware). One-shot ref prevents re-
+  // opening the drawer when equipment data later refreshes.
+  const seedRef = useRef(initialSelectedId)
+  useEffect(() => {
+    if (!seedRef.current) return
+    const found = equipment.find(eq => eq.id === seedRef.current)
+    if (found) {
+      setSelected(found)
+      seedRef.current = null
+    }
+  }, [equipment])
   const [activeReport,  setActiveReport]  = useState(null)
   const [reportLoading, setReportLoading] = useState(false)
   const [reportThumbs,  setReportThumbs]  = useState([])
@@ -75,12 +83,12 @@ export default function EquipmentList({ initialSelectedId = null, onJumpToMainte
     setActiveReport(null)
   }
 
-  async function generateEquipmentHistory(equipment) {
+  async function generateEquipmentHistory(unit) {
     setReportLoading(true)
     try {
       const [photos, docs] = await Promise.all([
-        getMediaByModule(equipment.id).catch(() => []),
-        getMediaByModule(`${equipment.id}-docs`).catch(() => []),
+        getMediaByModule(unit.id).catch(() => []),
+        getMediaByModule(`${unit.id}-docs`).catch(() => []),
       ])
       const allMedia  = [...photos, ...docs]
       const thumbUrls = []
@@ -105,8 +113,8 @@ export default function EquipmentList({ initialSelectedId = null, onJumpToMainte
         })
       }))
 
-      const logs = SERVICE_LOG
-        .filter(l => l.equipmentId === equipment.id)
+      const logs = serviceLog
+        .filter(l => l.equipmentId === unit.id)
         .map(l => ({
           date:        l.completedDate ?? l.date,
           type:        l.serviceType,
@@ -117,7 +125,7 @@ export default function EquipmentList({ initialSelectedId = null, onJumpToMainte
 
       setReportThumbs(thumbUrls)
       setActiveReport(buildMaintenanceLogReport(
-        { ...equipment, type: equipment.category },
+        { ...unit, type: unit.category },
         logs,
         { dateRange: 'All Time' },
       ))
@@ -128,26 +136,26 @@ export default function EquipmentList({ initialSelectedId = null, onJumpToMainte
 
   const counts = useMemo(() => {
     const c = { operational: 0, 'in-service': 0, 'needs-maintenance': 0, 'out-of-service': 0 }
-    EQUIPMENT_LIST.forEach(eq => { if (c[eq.status] !== undefined) c[eq.status]++ })
+    equipment.forEach(eq => { if (c[eq.status] !== undefined) c[eq.status]++ })
     return c
-  }, [])
+  }, [equipment])
 
   // ── Cross-module signal: Maintenance → Equipment ───────────────────────
-  // Per-unit open / overdue service counts derived from SERVICE_LOG.
+  // Per-unit open / overdue service counts derived from the live serviceLog.
   // Surfaced as a single contextual badge on each equipment card.
   const serviceCountsByUnit = useMemo(() => {
     const map = {}
-    SERVICE_LOG.forEach(log => {
+    serviceLog.forEach(log => {
       const bucket = map[log.equipmentId] || (map[log.equipmentId] = { open: 0, overdue: 0 })
       if (log.status === 'overdue')                                 bucket.overdue++
       else if (log.status === 'open' || log.status === 'in-progress') bucket.open++
     })
     return map
-  }, [])
+  }, [serviceLog])
 
   const visible = useMemo(() => {
     const q = search.toLowerCase()
-    return EQUIPMENT_LIST
+    return equipment
       .filter(eq => {
         const matchCat = catFilter === 'All' || eq.category === catFilter
         const matchSta = staFilter === 'All' || eq.status === FILTER_KEY[staFilter]
@@ -163,7 +171,7 @@ export default function EquipmentList({ initialSelectedId = null, onJumpToMainte
       .sort((a, b) =>
         SORT_STATUS[a.status] - SORT_STATUS[b.status]
       )
-  }, [search, catFilter, staFilter])
+  }, [equipment, search, catFilter, staFilter])
 
   return (
     <div className={styles.eqRoot}>
@@ -221,7 +229,7 @@ export default function EquipmentList({ initialSelectedId = null, onJumpToMainte
 
       {/* ── Equipment list ── */}
       {visible.length === 0 ? (
-        EQUIPMENT_LIST.length === 0 ? (
+        equipment.length === 0 ? (
           <EmptyState
             title="No equipment tracked yet."
             description="Mowers, utility carts, sprayers, and other equipment will appear here once added."

@@ -1,8 +1,40 @@
 {
   "name": "turfintel",
   "compatibility_date": "2025-05-06",
+  "main": "worker/index.js",
   "assets": {
     "directory": "./dist",
+    "binding": "ASSETS",
     "not_found_handling": "single-page-application"
   }
+
+  // ──────────────────────────────────────────────────────────────────────
+  //  Phase 5.0 — D1 Activation (one-time bootstrap, requires Cloudflare CLI auth)
+  //
+  //  Until D1 is activated, /api/* gracefully returns empty data (no crash).
+  //  To activate persistence:
+  //
+  //    1. Create the database:
+  //         npx wrangler d1 create turfintel-db
+  //         # Copy the database_id printed by wrangler.
+  //
+  //    2. Uncomment the d1_databases block below and paste the id.
+  //
+  //    3. Run the schema migration against the remote DB:
+  //         npx wrangler d1 execute turfintel-db --remote --file=./worker/migrations/0001_init.sql
+  //
+  //    4. Redeploy:
+  //         npm run build && npx wrangler deploy
+  //
+  //  For local development:
+  //         npx wrangler d1 execute turfintel-db --local --file=./worker/migrations/0001_init.sql
+  //         npx wrangler dev
+  //
+  // "d1_databases": [
+  //   {
+  //     "binding": "DB",
+  //     "database_name": "turfintel-db",
+  //     "database_id": "PASTE_DATABASE_ID_HERE"
+  //   }
+  // ]
 }
