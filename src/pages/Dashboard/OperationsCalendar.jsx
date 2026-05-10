@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useOperations } from '../../utils/operations/OperationsContext'
-import { PLACEHOLDER_CURRENT, SPRAY_WINDOW_TOKENS } from '../../components/shared/weather/weatherTokens'
+import { PLACEHOLDER_CURRENT, SPRAY_WINDOW_TOKENS, resolveSprayWindow } from '../../components/shared/weather/weatherTokens'
 import styles from './OperationsCalendar.module.css'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -180,7 +180,8 @@ export default function OperationsCalendar() {
     return `${MONTH_NAMES[month]} ${year}`
   }, [view, month, year, weekDates])
 
-  const sprayWindowMeta = SPRAY_WINDOW_TOKENS[PLACEHOLDER_CURRENT.sprayWindow]
+  // Guard against null PLACEHOLDER_CURRENT.sprayWindow (no live weather feed yet)
+  const sprayWindowMeta = resolveSprayWindow(PLACEHOLDER_CURRENT.sprayWindow)
 
   function navPrev() {
     if (view === 'month') {
