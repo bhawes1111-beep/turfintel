@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import styles from '../Disease.module.css'
 import { DISEASE_ALERTS } from '../../../data/disease'
+import { EmptyState } from '../../../components/shared/EmptyState'
 
 const SEV_CLASS = { high: styles.severityHigh, medium: styles.severityMedium, low: styles.severityLow }
 
@@ -56,7 +57,10 @@ export default function DiseaseAlerts() {
       </div>
 
       {alerts.length === 0 && (
-        <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>No alerts at this time.</p>
+        <EmptyState
+          title="No disease alerts."
+          description="Pressure-driven and forecast-based disease alerts will appear here."
+        />
       )}
     </div>
   )

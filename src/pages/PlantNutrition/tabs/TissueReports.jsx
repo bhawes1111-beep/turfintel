@@ -1,5 +1,6 @@
 import styles from '../PlantNutrition.module.css'
 import { TISSUE_REPORTS } from '../../../data/plantNutrition'
+import { EmptyState } from '../../../components/shared/EmptyState'
 
 function clamp(v) { return Math.max(0, Math.min(100, v)) }
 
@@ -31,6 +32,16 @@ function statusClass(status, s) {
 }
 
 export default function TissueReports() {
+  if (TISSUE_REPORTS.length === 0) {
+    return (
+      <div>
+        <EmptyState
+          title="No tissue reports uploaded yet."
+          description="Upload tissue lab reports to monitor in-plant nutrient status."
+        />
+      </div>
+    )
+  }
   return (
     <div>
       {TISSUE_REPORTS.map(report => (

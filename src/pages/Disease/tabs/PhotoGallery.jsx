@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import styles from '../Disease.module.css'
 import { PHOTO_ITEMS } from '../../../data/disease'
+import { EmptyState } from '../../../components/shared/EmptyState'
 
 export default function PhotoGallery() {
   const [filter, setFilter] = useState('all')
@@ -43,6 +44,12 @@ export default function PhotoGallery() {
         ))}
       </div>
 
+      {photos.length === 0 && (
+        <EmptyState
+          title="No photos uploaded yet."
+          description="Upload disease photos above to start a visual record."
+        />
+      )}
       <div className={styles.photoGrid}>
         {photos.map(photo => (
           <div key={photo.id} className={styles.photoCard}>

@@ -13,6 +13,7 @@ import ExpandableSection from '../../../components/expandable/ExpandableSection'
 import exStyles from '../../../components/expandable/expandable.module.css'
 import UploadCenter from '../../../components/uploads/UploadCenter'
 import ReportPreviewModal from '../../../components/reports/ReportPreviewModal'
+import { EmptyState } from '../../../components/shared/EmptyState'
 import styles from '../Equipment.module.css'
 
 const THIS_MONTH = '2026-05'
@@ -344,7 +345,14 @@ export default function MaintenanceLogs() {
 
       {/* ── Log list ── */}
       {visible.length === 0 ? (
-        <p className={styles.eqEmpty}>No maintenance records match your search.</p>
+        SERVICE_LOG.length === 0 ? (
+          <EmptyState
+            title="No maintenance records yet."
+            description="Service log entries, repairs, and inspections will appear here once recorded."
+          />
+        ) : (
+          <p className={styles.eqEmpty}>No maintenance records match your search.</p>
+        )
       ) : (
         <div className={styles.eqList}>
           {visible.map(log => {

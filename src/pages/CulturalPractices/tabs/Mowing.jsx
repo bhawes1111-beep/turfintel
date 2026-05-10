@@ -1,9 +1,21 @@
 import { useState } from 'react'
 import styles from '../CulturalPractices.module.css'
 import { MOWING_SETTINGS, MOWING_LOG } from '../../../data/culturalPractices'
+import { EmptyState } from '../../../components/shared/EmptyState'
 
 export default function Mowing() {
   const [showLog, setShowLog] = useState(false)
+
+  if (MOWING_SETTINGS.length === 0 && MOWING_LOG.length === 0) {
+    return (
+      <div>
+        <EmptyState
+          title="No mowing configuration yet."
+          description="Mowing settings (HOC, frequency, equipment) and mow log entries will appear here."
+        />
+      </div>
+    )
+  }
 
   return (
     <div>
@@ -72,7 +84,14 @@ export default function Mowing() {
         </button>
       </div>
 
-      {showLog && (
+      {showLog && MOWING_LOG.length === 0 && (
+        <EmptyState
+          title="No mowing log entries yet."
+          description="Daily mowing activity will populate here as it's recorded."
+        />
+      )}
+
+      {showLog && MOWING_LOG.length > 0 && (
         <div style={{ overflowX: 'auto' }}>
           <table className={styles.rollingTable}>
             <thead>

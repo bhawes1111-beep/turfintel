@@ -12,6 +12,7 @@ import { buildIrrigationRepairReport, buildIrrigationRepairSummaryReport } from 
 import { createAttachmentRef } from '../../../utils/reports/reportSchemas'
 import { getMediaByModule, getThumbnailBlob } from '../../../utils/media/mediaStore'
 import ReportPreviewModal from '../../../components/reports/ReportPreviewModal'
+import { EmptyState } from '../../../components/shared/EmptyState'
 import styles from '../Irrigation.module.css'
 
 const TODAY      = '2026-05-08'
@@ -511,7 +512,14 @@ export default function Repairs() {
           )
         })}
         {filtered.length === 0 && (
-          <p className={styles.irEmpty}>No repairs match the current filters.</p>
+          REPAIRS.length === 0 ? (
+            <EmptyState
+              title="No irrigation repairs logged."
+              description="Repair tickets, stuck heads, and pipe issues will appear here once recorded."
+            />
+          ) : (
+            <p className={styles.irEmpty}>No repairs match the current filters.</p>
+          )
         )}
       </div>
 

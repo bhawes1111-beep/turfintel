@@ -1,5 +1,6 @@
 import styles from '../CulturalPractices.module.css'
 import { VERTICUT_EVENTS } from '../../../data/culturalPractices'
+import { EmptyState } from '../../../components/shared/EmptyState'
 
 function impactClass(impact, s) {
   if (impact === 'high')   return s.impactHigh
@@ -8,6 +9,16 @@ function impactClass(impact, s) {
 }
 
 export default function Verticutting() {
+  if (VERTICUT_EVENTS.length === 0) {
+    return (
+      <div>
+        <EmptyState
+          title="No verticutting events recorded."
+          description="Past and planned verticutting passes will appear here once logged."
+        />
+      </div>
+    )
+  }
   return (
     <div>
       {VERTICUT_EVENTS.map(ev => (

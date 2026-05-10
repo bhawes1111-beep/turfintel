@@ -1,5 +1,6 @@
 import styles from '../CulturalPractices.module.css'
 import { ROLLING_LOG, ROLLING_SUMMARY } from '../../../data/culturalPractices'
+import { EmptyState } from '../../../components/shared/EmptyState'
 
 const AREAS = ['greens', 'tees', 'fairways']
 const AREA_LABELS = { greens: 'Greens', tees: 'Tees', fairways: 'Fairways' }
@@ -39,6 +40,12 @@ export default function Rolling() {
       </div>
 
       <div className={styles.sectionTitle}>Recent Rolling Log</div>
+      {ROLLING_LOG.length === 0 ? (
+        <EmptyState
+          title="No rolling sessions logged."
+          description="Recent rolling activity across greens, tees, and fairways will appear here."
+        />
+      ) : (
       <div style={{ overflowX: 'auto' }}>
         <table className={styles.rollingTable}>
           <thead>
@@ -71,6 +78,7 @@ export default function Rolling() {
           </tbody>
         </table>
       </div>
+      )}
     </div>
   )
 }

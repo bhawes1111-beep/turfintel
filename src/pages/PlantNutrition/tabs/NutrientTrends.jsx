@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import styles from '../PlantNutrition.module.css'
 import { TREND_SERIES } from '../../../data/plantNutrition'
+import { EmptyState } from '../../../components/shared/EmptyState'
 
 function getTrendStatus(points, optimal) {
   const last = points[points.length - 1].value
@@ -28,6 +29,17 @@ export default function NutrientTrends() {
   const series = selected === 'all'
     ? TREND_SERIES
     : TREND_SERIES.filter(t => t.nutrient.startsWith(selected))
+
+  if (TREND_SERIES.length === 0) {
+    return (
+      <div>
+        <EmptyState
+          title="No nutrient trend data yet."
+          description="Trends across soil and tissue reports will graph here once enough data is collected."
+        />
+      </div>
+    )
+  }
 
   return (
     <div>

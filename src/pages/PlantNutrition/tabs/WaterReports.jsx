@@ -1,5 +1,6 @@
 import styles from '../PlantNutrition.module.css'
 import { WATER_REPORTS } from '../../../data/plantNutrition'
+import { EmptyState } from '../../../components/shared/EmptyState'
 
 function statusClass(status, s) {
   if (status === 'low')  return s.statusLow
@@ -28,6 +29,16 @@ const PARAMS = [
 ]
 
 export default function WaterReports() {
+  if (WATER_REPORTS.length === 0) {
+    return (
+      <div>
+        <EmptyState
+          title="No water reports uploaded yet."
+          description="Upload irrigation water lab reports to monitor pH, EC, and SAR."
+        />
+      </div>
+    )
+  }
   return (
     <div>
       {WATER_REPORTS.map(report => (

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import styles from '../Disease.module.css'
 import { MAP_PINS } from '../../../data/disease'
 import { useCourse } from '../../../context/CourseContext'
+import { EmptyState } from '../../../components/shared/EmptyState'
 
 export default function CourseMap() {
   const { activeCourse } = useCourse()
@@ -37,6 +38,16 @@ export default function CourseMap() {
       <div className={styles.mapContainer}>
         <div className={styles.mapBg} />
         <div className={styles.mapLabel}>{activeCourse.name} — Disease Map</div>
+
+        {MAP_PINS.length === 0 && (
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <EmptyState
+              compact
+              title="No disease locations mapped."
+              description="Pinned outbreaks will appear here once recorded."
+            />
+          </div>
+        )}
 
         {pins.map(pin => (
           <div

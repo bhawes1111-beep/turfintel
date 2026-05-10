@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import styles from '../Disease.module.css'
 import { DISEASE_LIBRARY } from '../../../data/disease'
+import { EmptyState } from '../../../components/shared/EmptyState'
 
 export default function DiseaseLibrary() {
   const [search, setSearch] = useState('')
@@ -88,7 +89,14 @@ export default function DiseaseLibrary() {
       </div>
 
       {results.length === 0 && (
-        <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>No diseases match your search.</p>
+        DISEASE_LIBRARY.length === 0 ? (
+          <EmptyState
+            title="No disease library entries yet."
+            description="Reference data on common golf-course diseases will appear here."
+          />
+        ) : (
+          <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>No diseases match your search.</p>
+        )
       )}
     </div>
   )

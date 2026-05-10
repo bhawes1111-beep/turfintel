@@ -1,4 +1,5 @@
 import { PLANNED_PROGRAMS } from '../../../data/spray'
+import { EmptyState } from '../../../components/shared/EmptyState'
 import styles from '../Spray.module.css'
 
 const STATUS_CLASS = {
@@ -7,6 +8,17 @@ const STATUS_CLASS = {
 }
 
 export default function PlannedPrograms() {
+  if (PLANNED_PROGRAMS.length === 0) {
+    return (
+      <div className={styles.tabContent}>
+        <EmptyState
+          title="No spray programs planned."
+          description="Recurring spray programs and seasonal schedules will appear here once defined."
+        />
+      </div>
+    )
+  }
+
   return (
     <div className={styles.tabContent}>
       <div className={styles.programList}>

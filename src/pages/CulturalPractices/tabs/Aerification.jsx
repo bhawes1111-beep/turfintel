@@ -1,5 +1,6 @@
 import styles from '../CulturalPractices.module.css'
 import { AERIFICATION_EVENTS } from '../../../data/culturalPractices'
+import { EmptyState } from '../../../components/shared/EmptyState'
 
 function recoveryBadgeClass(status, s) {
   if (status === 'recovered')  return s.statusRecovered
@@ -8,6 +9,16 @@ function recoveryBadgeClass(status, s) {
 }
 
 export default function Aerification() {
+  if (AERIFICATION_EVENTS.length === 0) {
+    return (
+      <div>
+        <EmptyState
+          title="No aerification events recorded."
+          description="Past and planned aerifications will appear here once logged."
+        />
+      </div>
+    )
+  }
   return (
     <div>
       {AERIFICATION_EVENTS.map(ev => (

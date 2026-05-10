@@ -1,5 +1,6 @@
 import styles from '../CulturalPractices.module.css'
 import { TOPDRESS_EVENTS } from '../../../data/culturalPractices'
+import { EmptyState } from '../../../components/shared/EmptyState'
 
 const TYPE_STYLE = {
   heavy: { color: '#7c5cbf', bg: 'rgba(124,92,191,0.1)', border: 'rgba(124,92,191,0.25)' },
@@ -7,6 +8,17 @@ const TYPE_STYLE = {
 }
 
 export default function Topdressing() {
+  if (TOPDRESS_EVENTS.length === 0) {
+    return (
+      <div>
+        <EmptyState
+          title="No topdressing events recorded."
+          description="Past and planned topdressing applications will appear here once logged."
+        />
+      </div>
+    )
+  }
+
   const totalMaterial = TOPDRESS_EVENTS.reduce((sum, ev) => {
     const tons = parseFloat(ev.totalMaterial)
     return isNaN(tons) ? sum : sum + tons

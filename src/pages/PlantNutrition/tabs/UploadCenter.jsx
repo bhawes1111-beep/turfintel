@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import styles from '../PlantNutrition.module.css'
 import { UPLOADED_FILES } from '../../../data/plantNutrition'
+import { EmptyState } from '../../../components/shared/EmptyState'
 
 const FILE_ICONS = { pdf: '📄', xlsx: '📊' }
 const CATEGORIES = ['All', 'Soil Report', 'Tissue Report', 'Water Report', 'Historical Data']
@@ -94,7 +95,14 @@ export default function UploadCenter() {
       </div>
 
       {visible.length === 0 && (
-        <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>No files in this category.</p>
+        UPLOADED_FILES.length === 0 ? (
+          <EmptyState
+            title="No files uploaded yet."
+            description="Soil, tissue, water, and historical lab reports will appear here once uploaded."
+          />
+        ) : (
+          <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>No files in this category.</p>
+        )
       )}
     </div>
   )

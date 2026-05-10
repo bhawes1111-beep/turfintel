@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import styles from '../PlantNutrition.module.css'
 import { RECOMMENDATIONS } from '../../../data/plantNutrition'
+import { EmptyState } from '../../../components/shared/EmptyState'
 
 function priorityClass(p, s) {
   if (p === 'high')   return s.priorityHigh
@@ -117,7 +118,14 @@ export default function Recommendations() {
       ))}
 
       {recs.length === 0 && (
-        <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>No recommendations match this filter.</p>
+        RECOMMENDATIONS.length === 0 ? (
+          <EmptyState
+            title="No agronomic recommendations yet."
+            description="Recommendations will populate based on uploaded soil, tissue, and water reports."
+          />
+        ) : (
+          <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>No recommendations match this filter.</p>
+        )
       )}
     </div>
   )

@@ -1,5 +1,6 @@
 import styles from '../PlantNutrition.module.css'
 import { SOIL_REPORTS } from '../../../data/plantNutrition'
+import { EmptyState } from '../../../components/shared/EmptyState'
 
 const BASE_SAT_COLORS = {
   ca: '#4a9e4a',
@@ -30,6 +31,17 @@ function phStatus(value, optimal) {
 }
 
 export default function SoilReports() {
+  if (SOIL_REPORTS.length === 0) {
+    return (
+      <div>
+        <EmptyState
+          title="No soil reports uploaded yet."
+          description="Upload soil lab reports to track pH, CEC, organic matter, and nutrient levels."
+        />
+      </div>
+    )
+  }
+
   return (
     <div>
       {SOIL_REPORTS.map(report => (

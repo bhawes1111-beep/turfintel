@@ -5,6 +5,7 @@ import { useToast } from '../../../utils/feedback/toastContext'
 import { createCalendarEvent, createAlert, deductInventory } from '../../../utils/operations/actions'
 import ContextActions from '../../../components/contextActions/ContextActions'
 import ExpandableSection from '../../../components/expandable/ExpandableSection'
+import { EmptyState } from '../../../components/shared/EmptyState'
 import exStyles from '../../../components/expandable/expandable.module.css'
 import styles from '../Spray.module.css'
 
@@ -398,7 +399,14 @@ export default function BuildSpraySheet() {
           </div>
 
           {visible.length === 0 ? (
-            <p className={styles.emptyState}>No applications match your filters.</p>
+            SPRAY_RECORDS.length === 0 ? (
+              <EmptyState
+                title="No spray records to build from."
+                description="Create spray applications to assemble crew sheets here."
+              />
+            ) : (
+              <p className={styles.emptyState}>No applications match your filters.</p>
+            )
           ) : (
             <div className={styles.ssCardList}>
               {visible.map(r => {
