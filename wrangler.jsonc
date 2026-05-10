@@ -9,26 +9,22 @@
   }
 
   // ──────────────────────────────────────────────────────────────────────
-  //  Phase 5.0 — D1 Activation (one-time bootstrap, requires Cloudflare CLI auth)
-  //
-  //  Until D1 is activated, /api/* gracefully returns empty data (no crash).
-  //  To activate persistence:
+  //  Phase 5.0 — D1 Activation (one-time bootstrap)
   //
   //    1. Create the database:
   //         npx wrangler d1 create turfintel-db
   //         # Copy the database_id printed by wrangler.
-  //
   //    2. Uncomment the d1_databases block below and paste the id.
-  //
-  //    3. Run the schema migration against the remote DB:
+  //    3. Run the schema migration:
   //         npx wrangler d1 execute turfintel-db --remote --file=./worker/migrations/0001_init.sql
-  //
   //    4. Redeploy:
   //         npm run build && npx wrangler deploy
   //
   //  For local development:
   //         npx wrangler d1 execute turfintel-db --local --file=./worker/migrations/0001_init.sql
   //         npx wrangler dev
+  //
+  //  Until D1 is activated, /api/* gracefully returns empty data (no crash).
   //
   // "d1_databases": [
   //   {
@@ -37,4 +33,21 @@
   //     "database_id": "PASTE_DATABASE_ID_HERE"
   //   }
   // ]
+  //
+  // ──────────────────────────────────────────────────────────────────────
+  //  Phase 5.1b — Mutation auth (one-time bootstrap)
+  //
+  //  Mutations (POST/PATCH/DELETE) require an x-admin-key header that
+  //  matches the env.ADMIN_KEY secret. Until the secret is set, every
+  //  mutation route responds 503 with a server-misconfigured message.
+  //  Reads (GET) remain public.
+  //
+  //  To activate auth:
+  //         npx wrangler secret put ADMIN_KEY
+  //         # When prompted, enter: TurfAdmin2025!
+  //
+  //  The same value is hardcoded in src/utils/equipment/equipmentStore.js
+  //  so the frontend automatically carries the header on its mutation
+  //  helpers. To rotate, update both places and run `wrangler secret put
+  //  ADMIN_KEY` again.
 }

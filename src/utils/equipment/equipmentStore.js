@@ -19,6 +19,22 @@ const API = {
   maintenance: '/api/maintenance',
 }
 
+// Phase 5.1b — mutation auth.
+//
+// Single shared admin key carried on every POST/PATCH/DELETE. This is
+// "obscurity, not security" — the key is bundled into the public SPA,
+// so anyone inspecting the network can read it. It does, however,
+// prevent casual unauthenticated requests against the Worker API.
+// Real per-user auth is a future phase.
+const ADMIN_KEY = 'TurfAdmin2025!'
+
+function mutationHeaders() {
+  return {
+    'Content-Type': 'application/json',
+    'x-admin-key':  ADMIN_KEY,
+  }
+}
+
 let state = {
   equipment:  [],
   serviceLog: [],
@@ -72,11 +88,41 @@ export async function patchEquipment(id, updates) {
   try {
     const saved = await fetchJSON(`${API.equipment}/${encodeURIComponent(id)}`, {
       method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: mutationHeaders(),
       body:    JSON.stringify(updates),
     })
     setState({ equipment: state.equipment.map(eq => eq.id === id ? saved : eq) })
     return saved
+  } catch (err) {
+    setState({ error: err.message })
+    refreshEquipmentData()
+    throw err
+  }
+}
+
+export async function createEquipment(payload) {
+  try {
+    const saved = await fetchJSON(API.equipment, {
+      method:  'POST',
+      headers: mutationHeaders(),
+      body:    JSON.stringify(payload),
+    })
+    setState({ equipment: [...state.equipment, saved] })
+    return saved
+  } catch (err) {
+    setState({ error: err.message })
+    throw err
+  }
+}
+
+export async function deleteEquipment(id) {
+  const prev = state.equipment
+  setState({ equipment: prev.filter(eq => eq.id !== id) })
+  try {
+    await fetchJSON(`${API.equipment}/${encodeURIComponent(id)}`, {
+      method:  'DELETE',
+      headers: mutationHeaders(),
+    })
   } catch (err) {
     setState({ error: err.message })
     refreshEquipmentData()
@@ -91,7 +137,7 @@ export async function patchMaintenance(id, updates) {
   try {
     const saved = await fetchJSON(`${API.maintenance}/${encodeURIComponent(id)}`, {
       method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: mutationHeaders(),
       body:    JSON.stringify(updates),
     })
     setState({ serviceLog: state.serviceLog.map(ml => ml.id === id ? saved : ml) })
@@ -107,7 +153,7 @@ export async function createMaintenance(payload) {
   try {
     const saved = await fetchJSON(API.maintenance, {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: mutationHeaders(),
       body:    JSON.stringify(payload),
     })
     setState({ serviceLog: [saved, ...state.serviceLog] })

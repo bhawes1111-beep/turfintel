@@ -5,6 +5,7 @@
 // for unknown paths is configured in wrangler.jsonc).
 
 import { json, notFound, serverError } from './lib/json.js'
+import { requireAdminKey, isMutation } from './lib/auth.js'
 import {
   listEquipment,
   getEquipment,
@@ -42,14 +43,28 @@ async function handleApi(request, env, url) {
 
   // ── /api/health ───────────────────────────────────────────────────────
   if (pathname === '/api/health') {
-    return json({ ok: true, db: !!env.DB, ts: new Date().toISOString() })
+    return json({
+      ok:   true,
+      db:   !!env.DB,
+      auth: !!env.ADMIN_KEY,
+      ts:   new Date().toISOString(),
+    })
+  }
+
+  // ── Mutation auth gate (Phase 5.1b) ─────────────────────────────────
+  // Every POST/PATCH/DELETE must carry a valid x-admin-key header.
+  // GETs remain public. The gate runs before the D1 check so that an
+  // unauthenticated mutation rejects with 401 even if D1 is unbound.
+  if (isMutation(method)) {
+    const check = requireAdminKey(request, env)
+    if (!check.ok) return json({ error: check.message }, check.status)
   }
 
   // Until the D1 binding is bootstrapped (see wrangler.jsonc), every
   // resource endpoint returns empty data instead of crashing. This keeps
   // the frontend functional with empty operational state.
   if (!env.DB) {
-    if (request.method === 'GET') return json([])
+    if (method === 'GET') return json([])
     return json({ error: 'D1 not configured yet — run the bootstrap commands in wrangler.jsonc' }, 503)
   }
 
