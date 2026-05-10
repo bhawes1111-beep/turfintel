@@ -9,6 +9,7 @@ import CrewNotes     from '../Crew/tabs/CrewNotes'
 import { EmptyState } from '../../components/shared/EmptyState'
 import PageShell from '../../components/layout/PageShell'
 import WorkspaceActions from '../../components/shared/WorkspaceActions'
+import Timeline from '../../components/primitives/Timeline'
 import workspace from '../../styles/workspace.module.css'
 import styles from './OperationsBoard.module.css'
 
@@ -206,9 +207,13 @@ export default function OperationsBoard() {
         const tasks     = effectiveTasks.filter(t => (t.assignedTo ?? []).includes(emp.employeeId))
         let cursor = startHour
         const blocks = tasks.map(task => {
-          const left  = Math.max(0, ((cursor - TIMELINE_START) / TIMELINE_SPAN) * 100)
-          const width = Math.min(100 - left, (task.estimatedHours / TIMELINE_SPAN) * 100)
-          const block = { taskId: task.id, title: task.title, status: task.status, left, width }
+          const block = {
+            taskId: task.id,
+            title:  task.title,
+            status: task.status,
+            startHr: cursor,
+            spanHr:  task.estimatedHours,
+          }
           cursor += task.estimatedHours
           return block
         })
@@ -578,41 +583,32 @@ export default function OperationsBoard() {
                   </button>
 
                   {timelineOpen && (
-                    <div className={styles.obTimelineBody}>
-                      <div className={styles.obTimelineInner}>
-                        <div className={styles.obTimelineScale}>
-                          <div />
-                          <div className={styles.obTimelineScaleRow}>
-                            {[5, 7, 9, 11, 13, 15].map(h => {
-                              const label = h < 12 ? `${h}A` : h === 12 ? 'N' : `${h - 12}P`
-                              const pct   = ((h - TIMELINE_START) / TIMELINE_SPAN) * 100
-                              return (
-                                <span key={h} className={styles.obTimelineHourTick} style={{ left: `${pct}%` }}>
-                                  {label}
-                                </span>
-                              )
-                            })}
-                          </div>
-                        </div>
-                        {timelineRows.map(({ emp, firstName, blocks }) => (
-                          <div key={emp.employeeId} className={styles.obTimelineRow}>
-                            <span className={styles.obTimelineLabel}>{firstName}</span>
-                            <div className={styles.obTimelineTrack}>
-                              {blocks.map(block => (
-                                <div
-                                  key={block.taskId}
-                                  className={styles.obTimelineBlock}
-                                  data-status={block.status}
-                                  style={{ left: `${block.left}%`, width: `${Math.max(block.width, 1.5)}%` }}
-                                  title={block.title}
-                                />
-                              ))}
-                              <div className={styles.obTimelineNow} style={{ left: `${nowPercent}%` }} />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                    <Timeline
+                      start={TIMELINE_START}
+                      end={TIMELINE_END}
+                      now={nowHour}
+                      gridlines={TIMELINE_SPAN}
+                      ariaLabel="Crew assignment timeline"
+                    >
+                      <Timeline.Scale
+                        ticks={[5, 7, 9, 11, 13, 15]}
+                        format={h => h < 12 ? `${h}A` : h === 12 ? 'N' : `${h - 12}P`}
+                      />
+                      {timelineRows.map(({ emp, firstName, blocks }) => (
+                        <Timeline.Row key={emp.employeeId} label={firstName} ariaLabel={emp.fullName}>
+                          {blocks.map(block => (
+                            <Timeline.Item
+                              key={block.taskId}
+                              start={block.startHr}
+                              span={block.spanHr}
+                              status={block.status}
+                              title={block.title}
+                              className={styles.obTimelineBlock}
+                            />
+                          ))}
+                        </Timeline.Row>
+                      ))}
+                    </Timeline>
                   )}
                 </div>
 

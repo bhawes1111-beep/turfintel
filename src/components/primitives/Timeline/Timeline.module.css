@@ -1,0 +1,140 @@
+/* ── Timeline primitive ───────────────────────────────────────────────────
+   Operational event rail. Positions items on a continuous numeric range,
+   renders a row label + track per Row, and draws a vertical "now" line if
+   the consumer supplies one.
+
+   Phase 3.2 — first introduction. Visual contract lifted from the
+   existing obTimeline so the inaugural migration lands with byte-for-
+   byte parity.
+─────────────────────────────────────────────────────────────────────── */
+
+.timeline {
+  flex-shrink: 0;
+}
+
+/* Horizontal scroll container. Inner element below enforces a minimum
+   width so narrow viewports get scrollable rails rather than crushed ones. */
+.body {
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(60, 140, 60, 0.12) transparent;
+}
+.body::-webkit-scrollbar { height: 3px; }
+.body::-webkit-scrollbar-thumb {
+  background: rgba(60, 140, 60, 0.15);
+  border-radius: 2px;
+}
+
+.inner {
+  padding: 6px 14px 8px;
+}
+
+/* ── Scale (tick header) ──────────────────────────────────────────────── */
+
+.scale {
+  display: grid;
+  margin-bottom: 3px;
+}
+
+.scaleSpacer {
+  /* empty grid cell that aligns with the row label column */
+}
+
+.scaleRow {
+  position: relative;
+  height: 13px;
+}
+
+.tick {
+  position: absolute;
+  font-size: 8px;
+  color: rgba(212, 237, 212, 0.18);
+  letter-spacing: 0.02em;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  line-height: 1;
+}
+
+/* ── Row ──────────────────────────────────────────────────────────────── */
+
+.row {
+  display: grid;
+  align-items: center;
+  height: 24px;
+  margin-bottom: 3px;
+}
+
+.label {
+  font-size: 10px;
+  color: rgba(212, 237, 212, 0.35);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: 8px;
+}
+
+.track {
+  position: relative;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.025);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+/* Optional subtle vertical gridlines — enabled when Timeline gridlines={N}
+   is set; Row writes the divisor onto --tl-divisor. */
+.track[data-gridlines]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to right,
+    transparent 0,
+    transparent calc(100% / var(--tl-divisor, 11) - 1px),
+    rgba(255, 255, 255, 0.035) calc(100% / var(--tl-divisor, 11) - 1px),
+    rgba(255, 255, 255, 0.035) calc(100% / var(--tl-divisor, 11))
+  );
+  pointer-events: none;
+}
+
+/* ── Item ─────────────────────────────────────────────────────────────── */
+
+.item {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  border-radius: 2px;
+  min-width: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+button.item {
+  cursor: pointer;
+  transition: filter 0.12s;
+}
+button.item:hover {
+  filter: brightness(1.18);
+}
+
+/* ── Now line ────────────────────────────────────────────────────────── */
+
+.nowLine {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(74, 222, 128, 0.52);
+  box-shadow: 0 0 4px rgba(74, 222, 128, 0.38);
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* ── Mobile ──────────────────────────────────────────────────────────── */
+/* The primitive does not stack on mobile — instead it scrolls horizontally
+   to preserve operational density. Consumers can override via CSS if a
+   stacked layout is required. */

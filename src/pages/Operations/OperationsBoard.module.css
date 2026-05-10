@@ -1223,110 +1223,15 @@
   transform: rotate(-90deg);
 }
 
-.obTimelineBody {
-  overflow-x: auto;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(60, 140, 60, 0.12) transparent;
-}
-.obTimelineBody::-webkit-scrollbar { height: 3px; }
-.obTimelineBody::-webkit-scrollbar-thumb {
-  background: rgba(60, 140, 60, 0.15);
-  border-radius: 2px;
-}
-
-.obTimelineInner {
-  min-width: 480px;
-  padding: 6px 14px 8px;
-}
-
-/* Scale row */
-.obTimelineScale {
-  display: grid;
-  grid-template-columns: 56px 1fr;
-  margin-bottom: 3px;
-}
-
-.obTimelineScaleRow {
-  position: relative;
-  height: 13px;
-}
-
-.obTimelineHourTick {
-  position: absolute;
-  font-size: 8px;
-  color: rgba(212, 237, 212, 0.18);
-  letter-spacing: 0.02em;
-  transform: translateX(-50%);
-  white-space: nowrap;
-  line-height: 1;
-}
-
-/* Employee row */
-.obTimelineRow {
-  display: grid;
-  grid-template-columns: 56px 1fr;
-  align-items: center;
-  height: 24px;
-  margin-bottom: 3px;
-}
-
-.obTimelineLabel {
-  font-size: 10px;
-  color: rgba(212, 237, 212, 0.35);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  padding-right: 8px;
-}
-
-.obTimelineTrack {
-  position: relative;
-  height: 100%;
-  background: rgba(255, 255, 255, 0.025);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-/* Subtle hour grid lines */
-.obTimelineTrack::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(
-    to right,
-    transparent 0,
-    transparent calc(100% / 11 - 1px),
-    rgba(255, 255, 255, 0.035) calc(100% / 11 - 1px),
-    rgba(255, 255, 255, 0.035) calc(100% / 11)
-  );
-  pointer-events: none;
-}
-
-.obTimelineBlock {
-  position: absolute;
-  top: 3px;
-  bottom: 3px;
-  border-radius: 2px;
-  min-width: 3px;
-}
+/* Status-specific block backgrounds — extension class applied via
+   Timeline.Item className= prop. Geometric/positioning rules live in
+   the Timeline primitive's own CSS module. */
 .obTimelineBlock[data-status='in-progress']  { background: rgba(34,  197, 94,  0.48); }
 .obTimelineBlock[data-status='completed']    { background: rgba(34,  197, 94,  0.22); }
 .obTimelineBlock[data-status='blocked']      { background: rgba(245, 158, 11,  0.48); }
 .obTimelineBlock[data-status='weather-hold'] { background: rgba(59,  130, 246, 0.48); }
 .obTimelineBlock[data-status='open'],
 .obTimelineBlock[data-status='pending']      { background: rgba(100, 116, 139, 0.35); }
-
-/* Current-time marker */
-.obTimelineNow {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background: rgba(74, 222, 128, 0.52);
-  box-shadow: 0 0 4px rgba(74, 222, 128, 0.38);
-  pointer-events: none;
-  z-index: 3;
-}
 
 /* ── Date picker ──────────────────────────────────────────────────────────── */
 .obDatePicker {
