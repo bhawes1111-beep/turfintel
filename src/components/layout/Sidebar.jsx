@@ -269,7 +269,9 @@ function defaultExpanded() {
 
 function loadInitialPrefs() {
   const saved = loadSync(PREFS_KEY)
-  if (!saved) return { collapsed: false, expanded: defaultExpanded() }
+  // First-time users get a collapsed icon-only sidebar by default.
+  // Returning users keep their saved state.
+  if (!saved) return { collapsed: true, expanded: defaultExpanded() }
   return {
     collapsed: !!saved.collapsed,
     // Merge so newly-added groups default to expanded if not in saved data
