@@ -21,6 +21,10 @@ const TEE_PATTERNS    = ['Diagonal', 'Standard', 'Striped', 'Cross']
 const BUNKER_OPTIONS  = ['Raked', 'Skip', 'Deep Rake', 'Edge Only']
 const NOTES_TABS      = ['Daily', 'Weather', 'Super', 'Geo', 'Alerts']
 
+const TIMELINE_START = 5
+const TIMELINE_END   = 16
+const TIMELINE_SPAN  = TIMELINE_END - TIMELINE_START
+
 const INITIAL_NOTES = {
   Daily:   'Morning greens cut in progress. Pre-emergent applied to front nine. Bunker work deferred — James T. absent.',
   Weather: '68°F at 6:00 AM. Wind 8 mph SW. Low humidity (64%). No precipitation. Ideal spray window 6–10 AM.',
@@ -58,6 +62,16 @@ const TABS = [
   { id: 'notes',     label: 'Notes' },
 ]
 
+function parseHour(timeStr) {
+  if (!timeStr) return null
+  const [time, meridiem] = timeStr.split(' ')
+  const [h, m] = time.split(':').map(Number)
+  let hour = h
+  if (meridiem === 'PM' && h !== 12) hour += 12
+  if (meridiem === 'AM' && h === 12) hour = 0
+  return hour + m / 60
+}
+
 export default function OperationsBoard() {
   const { activeCourse } = useCourse()
   const toast = useToast()
@@ -73,6 +87,12 @@ export default function OperationsBoard() {
   const [taskOverrides,   setTaskOverrides]   = useState({})
   const [expandedNoteIds, setExpandedNoteIds] = useState(new Set())
   const [openMenuId,      setOpenMenuId]      = useState(null)
+
+  // ── DnD state ─────────────────────────────────────────────────────────────
+  const [taskAssignments, setTaskAssignments] = useState({})
+  const [draggingEmpId,   setDraggingEmpId]   = useState(null)
+  const [dragOverTaskId,  setDragOverTaskId]  = useState(null)
+  const [timelineOpen,    setTimelineOpen]    = useState(true)
 
   // ── Live clock ────────────────────────────────────────────────────────────
   const [now, setNow] = useState(() => new Date())
@@ -115,8 +135,12 @@ export default function OperationsBoard() {
   }, [])
 
   const effectiveTasks = useMemo(() =>
-    TASKS.map(t => ({ ...t, status: taskOverrides[t.id]?.status ?? t.status })),
-  [taskOverrides])
+    TASKS.map(t => ({
+      ...t,
+      status:     taskOverrides[t.id]?.status ?? t.status,
+      assignedTo: taskAssignments[t.id]       ?? t.assignedTo,
+    })),
+  [taskOverrides, taskAssignments])
 
   const groupedTasks = useMemo(() =>
     TASK_GROUPS.map(g => ({
@@ -124,6 +148,28 @@ export default function OperationsBoard() {
       tasks: effectiveTasks.filter(t => g.statuses.includes(t.status)),
     })),
   [effectiveTasks])
+
+  const timelineRows = useMemo(() =>
+    EMPLOYEES
+      .filter(emp => {
+        const log = todayLog[emp.employeeId]
+        return !log || !['absent', 'call-out'].includes(log.status)
+      })
+      .map(emp => {
+        const log       = todayLog[emp.employeeId]
+        const startHour = parseHour(log?.startTime) ?? TIMELINE_START
+        const tasks     = effectiveTasks.filter(t => (t.assignedTo ?? []).includes(emp.employeeId))
+        let cursor = startHour
+        const blocks = tasks.map(task => {
+          const left  = Math.max(0, ((cursor - TIMELINE_START) / TIMELINE_SPAN) * 100)
+          const width = Math.min(100 - left, (task.estimatedHours / TIMELINE_SPAN) * 100)
+          const block = { taskId: task.id, title: task.title, status: task.status, left, width }
+          cursor += task.estimatedHours
+          return block
+        })
+        return { emp, firstName: emp.fullName.split(' ')[0], blocks }
+      }),
+  [effectiveTasks, todayLog])
 
   const mowNote = useMemo(() => {
     const parts = [`Greens: Pattern ${mowOps.greensPattern} — ${mowOps.greensDirection}`]
@@ -149,7 +195,9 @@ export default function OperationsBoard() {
     effectiveTasks.filter(t => t.status === 'completed').length,
   [effectiveTasks])
 
-  const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+  const timeStr    = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+  const nowHour    = now.getHours() + now.getMinutes() / 60
+  const nowPercent = Math.max(0, Math.min(100, ((nowHour - TIMELINE_START) / TIMELINE_SPAN) * 100))
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -183,7 +231,7 @@ export default function OperationsBoard() {
     } else if (action === 'delay') {
       toast.info('Delay scheduling coming soon')
     } else if (action === 'reassign') {
-      toast.info('Reassignment coming soon')
+      toast.info('Drag an employee from the roster to assign')
     }
   }
 
@@ -194,6 +242,55 @@ export default function OperationsBoard() {
     if (log.status === 'late')      return 'yellow'
     if (log.status === 'completed') return 'done'
     return 'dim'
+  }
+
+  // ── DnD handlers ──────────────────────────────────────────────────────────
+
+  function handleEmpDragStart(e, empId) {
+    setDraggingEmpId(empId)
+    e.dataTransfer.setData('text/plain', empId)
+    e.dataTransfer.effectAllowed = 'copy'
+  }
+
+  function handleEmpDragEnd() {
+    setDraggingEmpId(null)
+    setDragOverTaskId(null)
+  }
+
+  function handleTaskDragOver(e, taskId) {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'copy'
+    setDragOverTaskId(taskId)
+  }
+
+  function handleTaskDragLeave(e, taskId) {
+    if (e.currentTarget.contains(e.relatedTarget)) return
+    setDragOverTaskId(prev => prev === taskId ? null : prev)
+  }
+
+  function handleTaskDrop(e, taskId) {
+    e.preventDefault()
+    const empId = e.dataTransfer.getData('text/plain')
+    if (!empId) return
+    setDragOverTaskId(null)
+    assignEmployee(taskId, empId)
+  }
+
+  function assignEmployee(taskId, empId) {
+    const task    = effectiveTasks.find(t => t.id === taskId)
+    const current = task?.assignedTo ?? []
+    if (current.includes(empId)) return
+    const firstName = empById[empId]?.fullName.split(' ')[0] ?? empId
+    setTaskAssignments(p => ({ ...p, [taskId]: [...current, empId] }))
+    toast.success(`${firstName} assigned`)
+  }
+
+  function unassignEmployee(taskId, empId) {
+    const task    = effectiveTasks.find(t => t.id === taskId)
+    const current = task?.assignedTo ?? []
+    const firstName = empById[empId]?.fullName.split(' ')[0] ?? empId
+    setTaskAssignments(p => ({ ...p, [taskId]: current.filter(id => id !== empId) }))
+    toast.info(`${firstName} removed`)
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -294,11 +391,20 @@ export default function OperationsBoard() {
               <div className={styles.obColHeader}>Crew Today</div>
               <div className={styles.obRosterList}>
                 {EMPLOYEES.map(emp => {
-                  const log = todayLog[emp.employeeId]
-                  const dot = rosterDot(log)
+                  const log      = todayLog[emp.employeeId]
+                  const dot      = rosterDot(log)
+                  const isAbsent = dot === 'red'
                   const initials = emp.fullName.split(' ').map(n => n[0]).join('')
                   return (
-                    <div key={emp.employeeId} className={styles.obRosterCard} data-dot={dot}>
+                    <div
+                      key={emp.employeeId}
+                      className={styles.obRosterCard}
+                      data-dot={dot}
+                      draggable={!isAbsent}
+                      data-dragging={draggingEmpId === emp.employeeId ? 'true' : undefined}
+                      onDragStart={isAbsent ? undefined : e => handleEmpDragStart(e, emp.employeeId)}
+                      onDragEnd={isAbsent ? undefined : handleEmpDragEnd}
+                    >
                       <div className={styles.obRosterAvatar} data-dot={dot}>{initials}</div>
                       <div className={styles.obRosterInfo}>
                         <span className={styles.obRosterName}>
@@ -338,6 +444,76 @@ export default function OperationsBoard() {
 
               {/* Scrollable task area */}
               <div className={styles.obCenterScroll} data-density={density}>
+
+                {/* ── Schedule Overview Timeline ── */}
+                <div className={styles.obTimeline}>
+                  <button
+                    className={styles.obTimelineHeader}
+                    onClick={() => setTimelineOpen(o => !o)}
+                  >
+                    <span className={styles.obTimelineTitle}>Schedule Overview</span>
+                    <span className={styles.obTimelineSub}>Live assignment timeline</span>
+                    <span
+                      className={styles.obTimelineChevron}
+                      data-open={timelineOpen ? 'true' : 'false'}
+                    >▾</span>
+                  </button>
+
+                  {timelineOpen && (
+                    <div className={styles.obTimelineBody}>
+                      <div className={styles.obTimelineInner}>
+
+                        {/* Hour scale */}
+                        <div className={styles.obTimelineScale}>
+                          <div />
+                          <div className={styles.obTimelineScaleRow}>
+                            {[5, 7, 9, 11, 13, 15].map(h => {
+                              const label = h < 12 ? `${h}A` : h === 12 ? 'N' : `${h - 12}P`
+                              const pct   = ((h - TIMELINE_START) / TIMELINE_SPAN) * 100
+                              return (
+                                <span
+                                  key={h}
+                                  className={styles.obTimelineHourTick}
+                                  style={{ left: `${pct}%` }}
+                                >
+                                  {label}
+                                </span>
+                              )
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Employee rows */}
+                        {timelineRows.map(({ emp, firstName, blocks }) => (
+                          <div key={emp.employeeId} className={styles.obTimelineRow}>
+                            <span className={styles.obTimelineLabel}>{firstName}</span>
+                            <div className={styles.obTimelineTrack}>
+                              {blocks.map(block => (
+                                <div
+                                  key={block.taskId}
+                                  className={styles.obTimelineBlock}
+                                  data-status={block.status}
+                                  style={{
+                                    left:  `${block.left}%`,
+                                    width: `${Math.max(block.width, 1.5)}%`,
+                                  }}
+                                  title={block.title}
+                                />
+                              ))}
+                              <div
+                                className={styles.obTimelineNow}
+                                style={{ left: `${nowPercent}%` }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Task groups */}
                 <div className={styles.obTaskList}>
                   {groupedTasks.map(group => group.tasks.length === 0 ? null : (
                     <div key={group.key} className={styles.obGroup}>
@@ -373,7 +549,14 @@ export default function OperationsBoard() {
                                 key={task.id}
                                 className={styles.obTaskCard}
                                 data-status={task.status}
+                                data-dropover={dragOverTaskId === task.id ? 'true' : undefined}
+                                onDragOver={e => handleTaskDragOver(e, task.id)}
+                                onDragLeave={e => handleTaskDragLeave(e, task.id)}
+                                onDrop={e => handleTaskDrop(e, task.id)}
                               >
+                                {/* Drop hint — always in DOM, shown via CSS when data-dropover */}
+                                <div className={styles.obDropHint}>Drop to assign</div>
+
                                 {/* Title row */}
                                 <div className={styles.obTaskTop}>
                                   <div className={styles.obTaskTitleRow}>
@@ -398,6 +581,11 @@ export default function OperationsBoard() {
                                     {assignedEmps.map(emp => (
                                       <span key={emp.employeeId} className={styles.obEmpChip}>
                                         {emp.fullName.split(' ').map(n => n[0]).join('')}
+                                        <button
+                                          className={styles.obEmpChipRemove}
+                                          onClick={e => { e.stopPropagation(); unassignEmployee(task.id, emp.employeeId) }}
+                                          aria-label={`Remove ${emp.fullName.split(' ')[0]}`}
+                                        >×</button>
                                       </span>
                                     ))}
                                     <span className={styles.obAssignedNames}>
