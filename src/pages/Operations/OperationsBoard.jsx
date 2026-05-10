@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useCourse } from '../../context/CourseContext'
 import { useToast } from '../../utils/feedback/toastContext'
 import { EMPLOYEES, TASKS, HOURS_LOG } from '../../data/crew'
@@ -11,19 +11,29 @@ import styles from './OperationsBoard.module.css'
 
 const TODAY = '2026-05-08'
 
-const WEATHER = { temp: 68, wind: '8 mph SW', humidity: 64, frost: false }
-
 const ROUTING_OPTIONS = ['Press & Roll', 'Hammer', 'Normal', 'Modified', 'Event Prep']
-const PATTERN_OPTIONS = ['8-2', '6-2', '4-2', '2-2', 'Diagonal', 'Cross']
-const DIR_OPTIONS     = ['N/S', 'E/W', 'NE/SW', 'NW/SE']
-const FW_PATTERNS     = ['Striped', 'Diagonal', 'Checker', 'Standard']
-const TEE_PATTERNS    = ['Diagonal', 'Standard', 'Striped', 'Cross']
-const BUNKER_OPTIONS  = ['Raked', 'Skip', 'Deep Rake', 'Edge Only']
 const NOTES_TABS      = ['Daily', 'Weather', 'Super', 'Geo', 'Alerts']
 
 const TIMELINE_START = 5
 const TIMELINE_END   = 16
 const TIMELINE_SPAN  = TIMELINE_END - TIMELINE_START
+
+const TASK_TITLES = [
+  'Mow Greens', 'Roll Greens', 'Blow Fairways', 'Bunker Maintenance',
+  'Irrigation Repair', 'Course Setup', 'Spray Greens', 'Hand Water',
+  'Divot Repair', 'Cup Changing',
+]
+
+const EQ_CHIPS = ['Greens Mower', 'Roller', 'Blower', 'Utility Cart', 'Spray Rig', 'Hand Tools']
+
+const BLANK_TASK = {
+  title:          '',
+  estimatedHours: '1',
+  priority:       'routine',
+  status:         'pending',
+  notes:          '',
+  equipment:      [],
+}
 
 const INITIAL_NOTES = {
   Daily:   'Morning greens cut in progress. Pre-emergent applied to front nine. Bunker work deferred — James T. absent.',
@@ -82,6 +92,7 @@ function formatDate(isoStr) {
 export default function OperationsBoard() {
   const { activeCourse } = useCourse()
   const toast = useToast()
+  const addTaskRef = useRef(null)
 
   // ── Tab / layout ─────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState('board')
@@ -100,7 +111,14 @@ export default function OperationsBoard() {
 
   // ── Delete state ──────────────────────────────────────────────────────────
   const [deletedTaskIds, setDeletedTaskIds] = useState(new Set())
-  const [deleteConfirm,  setDeleteConfirm]  = useState(null) // { id, title } | null
+  const [deleteConfirm,  setDeleteConfirm]  = useState(null)
+
+  // ── Task creation ─────────────────────────────────────────────────────────
+  const [createdTasks, setCreatedTasks] = useState([])
+  const [newTask,      setNewTask]      = useState(BLANK_TASK)
+
+  // ── Settings ──────────────────────────────────────────────────────────────
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   // ── DnD state ─────────────────────────────────────────────────────────────
   const [taskAssignments, setTaskAssignments] = useState({})
@@ -115,26 +133,22 @@ export default function OperationsBoard() {
     return () => clearInterval(t)
   }, [])
 
-  // ── Escape closes delete modal ────────────────────────────────────────────
+  // ── Escape closes modals ──────────────────────────────────────────────────
   useEffect(() => {
-    if (!deleteConfirm) return
-    const handler = e => { if (e.key === 'Escape') setDeleteConfirm(null) }
+    if (!deleteConfirm && !settingsOpen) return
+    const handler = e => {
+      if (e.key === 'Escape') {
+        setDeleteConfirm(null)
+        setSettingsOpen(false)
+      }
+    }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [deleteConfirm])
+  }, [deleteConfirm, settingsOpen])
 
-  // ── Right panel ───────────────────────────────────────────────────────────
+  // ── Right panel notes ─────────────────────────────────────────────────────
   const [notesTab, setNotesTab] = useState('Daily')
   const [notes,    setNotes]    = useState(INITIAL_NOTES)
-  const [mowOps,   setMowOps]   = useState({
-    greensPattern:   '8-2',
-    greensDirection: 'N/S',
-    doubleCut:       false,
-    rollGreens:      true,
-    fairwayPattern:  'Striped',
-    teePattern:      'Diagonal',
-    bunkersStatus:   'Raked',
-  })
 
   // ── Derived data ──────────────────────────────────────────────────────────
 
@@ -156,15 +170,17 @@ export default function OperationsBoard() {
     return map
   }, [])
 
+  const allSourceTasks = useMemo(() => [...TASKS, ...createdTasks], [createdTasks])
+
   const effectiveTasks = useMemo(() =>
-    TASKS
+    allSourceTasks
       .filter(t => !deletedTaskIds.has(t.id))
       .map(t => ({
         ...t,
         status:     taskOverrides[t.id]?.status ?? t.status,
         assignedTo: taskAssignments[t.id]       ?? t.assignedTo,
       })),
-  [taskOverrides, taskAssignments, deletedTaskIds])
+  [taskOverrides, taskAssignments, deletedTaskIds, allSourceTasks])
 
   const groupedTasks = useMemo(() =>
     TASK_GROUPS.map(g => ({
@@ -195,16 +211,6 @@ export default function OperationsBoard() {
       }),
   [effectiveTasks, todayLog])
 
-  const mowNote = useMemo(() => {
-    const parts = [`Greens: Pattern ${mowOps.greensPattern} — ${mowOps.greensDirection}`]
-    if (mowOps.doubleCut)  parts.push('Double Cut')
-    if (mowOps.rollGreens) parts.push('Roll')
-    parts.push(`Fairways: ${mowOps.fairwayPattern}`)
-    parts.push(`Tees: ${mowOps.teePattern}`)
-    parts.push(`Bunkers: ${mowOps.bunkersStatus}`)
-    return parts.join(' · ')
-  }, [mowOps])
-
   const stats = useMemo(() => {
     const logs = Object.values(todayLog)
     return {
@@ -224,10 +230,6 @@ export default function OperationsBoard() {
   const nowPercent = Math.max(0, Math.min(100, ((nowHour - TIMELINE_START) / TIMELINE_SPAN) * 100))
 
   // ── Handlers ──────────────────────────────────────────────────────────────
-
-  function setMow(key, val) {
-    setMowOps(prev => ({ ...prev, [key]: val }))
-  }
 
   function shiftDate(delta) {
     const d = new Date(selectedDate + 'T00:00:00')
@@ -252,7 +254,7 @@ export default function OperationsBoard() {
   }
 
   function handleAction(taskId, action) {
-    const original = TASKS.find(t => t.id === taskId)?.status ?? 'open'
+    const original = allSourceTasks.find(t => t.id === taskId)?.status ?? 'open'
     const current  = taskOverrides[taskId]?.status ?? original
     if (action === 'complete') {
       setTaskOverrides(p => ({ ...p, [taskId]: { status: current === 'completed' ? original : 'completed' } }))
@@ -275,6 +277,41 @@ export default function OperationsBoard() {
     setDeletedTaskIds(prev => new Set([...prev, id]))
     toast.info(`"${title}" deleted`)
     setDeleteConfirm(null)
+  }
+
+  function setNewTaskField(key, val) {
+    setNewTask(prev => ({ ...prev, [key]: val }))
+  }
+
+  function toggleEqChip(chip) {
+    setNewTask(prev => ({
+      ...prev,
+      equipment: prev.equipment.includes(chip)
+        ? prev.equipment.filter(e => e !== chip)
+        : [...prev.equipment, chip],
+    }))
+  }
+
+  function handleAddTask() {
+    if (!newTask.title) {
+      toast.info('Select a task to add')
+      return
+    }
+    const task = {
+      id:             `ct-${Date.now()}`,
+      title:          newTask.title,
+      assignedArea:   '',
+      priority:       newTask.priority,
+      status:         newTask.status,
+      estimatedHours: parseFloat(newTask.estimatedHours) || 1,
+      completedHours: 0,
+      assignedTo:     [],
+      equipment:      [...newTask.equipment],
+      notes:          newTask.notes,
+    }
+    setCreatedTasks(prev => [...prev, task])
+    toast.success(`"${task.title}" added`)
+    setNewTask(BLANK_TASK)
   }
 
   function rosterDot(log) {
@@ -390,12 +427,7 @@ export default function OperationsBoard() {
             {/* Center: date selector */}
             <div className={styles.obHeaderCenter}>
               <div className={styles.obDatePicker}>
-                <button
-                  className={styles.obDateChevron}
-                  onClick={() => shiftDate(-1)}
-                  aria-label="Previous day"
-                >‹</button>
-
+                <button className={styles.obDateChevron} onClick={() => shiftDate(-1)} aria-label="Previous day">‹</button>
                 <label className={styles.obDateDisplay}>
                   <span className={styles.obDateIcon}>📅</span>
                   <span className={styles.obDateText}>{formatDate(selectedDate)}</span>
@@ -408,16 +440,11 @@ export default function OperationsBoard() {
                     aria-label="Select date"
                   />
                 </label>
-
-                <button
-                  className={styles.obDateChevron}
-                  onClick={() => shiftDate(1)}
-                  aria-label="Next day"
-                >›</button>
+                <button className={styles.obDateChevron} onClick={() => shiftDate(1)} aria-label="Next day">›</button>
               </div>
             </div>
 
-            {/* Right: stats + buttons */}
+            {/* Right: stats + actions */}
             <div className={styles.obHeaderRight}>
               <div className={styles.obStats}>
                 <div className={styles.obStat}>
@@ -437,7 +464,18 @@ export default function OperationsBoard() {
                   <span className={styles.obStatLbl}>Absent</span>
                 </div>
               </div>
-              <button className={styles.obQuickBtn}>+ Task</button>
+              <button
+                className={styles.obQuickBtn}
+                onClick={() => addTaskRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })}
+              >
+                + Task
+              </button>
+              <button
+                className={styles.obSettingsBtn}
+                onClick={() => setSettingsOpen(true)}
+              >
+                ⚙ Settings
+              </button>
               <button
                 className={`${styles.obPanelBtn} ${panelOpen ? styles.obPanelBtnActive : ''}`}
                 onClick={() => setPanelOpen(o => !o)}
@@ -487,7 +525,7 @@ export default function OperationsBoard() {
             {/* Center: Task Groups ─────────────────────────────────────── */}
             <div className={styles.obColCenter}>
 
-              {/* Sticky center header: title + density toggle */}
+              {/* Sticky center header */}
               <div className={styles.obCenterHeader}>
                 <div className={styles.obCenterTitle}>
                   Today's Operations
@@ -518,17 +556,12 @@ export default function OperationsBoard() {
                   >
                     <span className={styles.obTimelineTitle}>Schedule Overview</span>
                     <span className={styles.obTimelineSub}>Live assignment timeline</span>
-                    <span
-                      className={styles.obTimelineChevron}
-                      data-open={timelineOpen ? 'true' : 'false'}
-                    >▾</span>
+                    <span className={styles.obTimelineChevron} data-open={timelineOpen ? 'true' : 'false'}>▾</span>
                   </button>
 
                   {timelineOpen && (
                     <div className={styles.obTimelineBody}>
                       <div className={styles.obTimelineInner}>
-
-                        {/* Hour scale */}
                         <div className={styles.obTimelineScale}>
                           <div />
                           <div className={styles.obTimelineScaleRow}>
@@ -536,19 +569,13 @@ export default function OperationsBoard() {
                               const label = h < 12 ? `${h}A` : h === 12 ? 'N' : `${h - 12}P`
                               const pct   = ((h - TIMELINE_START) / TIMELINE_SPAN) * 100
                               return (
-                                <span
-                                  key={h}
-                                  className={styles.obTimelineHourTick}
-                                  style={{ left: `${pct}%` }}
-                                >
+                                <span key={h} className={styles.obTimelineHourTick} style={{ left: `${pct}%` }}>
                                   {label}
                                 </span>
                               )
                             })}
                           </div>
                         </div>
-
-                        {/* Employee rows */}
                         {timelineRows.map(({ emp, firstName, blocks }) => (
                           <div key={emp.employeeId} className={styles.obTimelineRow}>
                             <span className={styles.obTimelineLabel}>{firstName}</span>
@@ -558,24 +585,111 @@ export default function OperationsBoard() {
                                   key={block.taskId}
                                   className={styles.obTimelineBlock}
                                   data-status={block.status}
-                                  style={{
-                                    left:  `${block.left}%`,
-                                    width: `${Math.max(block.width, 1.5)}%`,
-                                  }}
+                                  style={{ left: `${block.left}%`, width: `${Math.max(block.width, 1.5)}%` }}
                                   title={block.title}
                                 />
                               ))}
-                              <div
-                                className={styles.obTimelineNow}
-                                style={{ left: `${nowPercent}%` }}
-                              />
+                              <div className={styles.obTimelineNow} style={{ left: `${nowPercent}%` }} />
                             </div>
                           </div>
                         ))}
-
                       </div>
                     </div>
                   )}
+                </div>
+
+                {/* ── Add Task section ── */}
+                <div className={styles.obAddTask} ref={addTaskRef}>
+                  <div className={styles.obAddTaskHeader}>
+                    <span className={styles.obAddTaskTitle}>Add Task</span>
+                    <span className={styles.obAddTaskHint}>Drag crew from roster to assign after creation</span>
+                  </div>
+
+                  <div className={styles.obAddTaskForm}>
+                    {/* Row 1: core fields */}
+                    <div className={styles.obAddTaskRow}>
+                      <select
+                        className={`${styles.obAddTaskSelect} ${styles.obAddTaskSelectTitle}`}
+                        value={newTask.title}
+                        onChange={e => setNewTaskField('title', e.target.value)}
+                      >
+                        <option value="">— Select task —</option>
+                        {TASK_TITLES.map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
+
+                      <div className={styles.obAddTaskHrsWrap}>
+                        <input
+                          type="number"
+                          className={styles.obAddTaskHrs}
+                          value={newTask.estimatedHours}
+                          min="0.5"
+                          step="0.5"
+                          onChange={e => setNewTaskField('estimatedHours', e.target.value)}
+                          aria-label="Estimated hours"
+                          title="Estimated hours"
+                        />
+                        <span className={styles.obAddTaskHrsLabel}>hrs</span>
+                      </div>
+
+                      <select
+                        className={styles.obAddTaskSelect}
+                        value={newTask.priority}
+                        onChange={e => setNewTaskField('priority', e.target.value)}
+                      >
+                        <option value="low">Low</option>
+                        <option value="routine">Routine</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                      </select>
+
+                      <select
+                        className={styles.obAddTaskSelect}
+                        value={newTask.status}
+                        onChange={e => setNewTaskField('status', e.target.value)}
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="in-progress">In Progress</option>
+                        <option value="weather-hold">Weather Hold</option>
+                        <option value="blocked">Blocked</option>
+                      </select>
+
+                      <div className={styles.obAddTaskBtns}>
+                        <button className={styles.obAddTaskSubmit} onClick={handleAddTask}>
+                          Add Task
+                        </button>
+                        <button className={styles.obAddTaskClear} onClick={() => setNewTask(BLANK_TASK)}>
+                          Clear
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Row 2: equipment chips */}
+                    <div className={styles.obAddTaskEqRow}>
+                      <span className={styles.obAddTaskEqLabel}>Equipment</span>
+                      <div className={styles.obAddTaskEqChips}>
+                        {EQ_CHIPS.map(chip => (
+                          <button
+                            key={chip}
+                            className={styles.obAddTaskEqChip}
+                            data-active={newTask.equipment.includes(chip) ? 'true' : 'false'}
+                            onClick={() => toggleEqChip(chip)}
+                            type="button"
+                          >
+                            {chip}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Row 3: notes */}
+                    <textarea
+                      className={styles.obAddTaskNotes}
+                      value={newTask.notes}
+                      onChange={e => setNewTaskField('notes', e.target.value)}
+                      placeholder="Notes (optional)..."
+                      rows={2}
+                    />
+                  </div>
                 </div>
 
                 {/* Task groups */}
@@ -583,17 +697,10 @@ export default function OperationsBoard() {
                   {groupedTasks.map(group => group.tasks.length === 0 ? null : (
                     <div key={group.key} className={styles.obGroup}>
 
-                      {/* Sticky group header */}
-                      <button
-                        className={styles.obGroupHeader}
-                        onClick={() => toggleGroup(group.key)}
-                      >
+                      <button className={styles.obGroupHeader} onClick={() => toggleGroup(group.key)}>
                         <span className={styles.obSectionLabel}>{group.label}</span>
                         <span className={styles.obSectionCount}>({group.tasks.length})</span>
-                        <span
-                          className={styles.obSectionChevron}
-                          data-collapsed={collapsedGroups.has(group.key)}
-                        >▾</span>
+                        <span className={styles.obSectionChevron} data-collapsed={collapsedGroups.has(group.key)}>▾</span>
                       </button>
 
                       {!collapsedGroups.has(group.key) && (
@@ -606,8 +713,7 @@ export default function OperationsBoard() {
                             const progress       = task.estimatedHours > 0
                               ? Math.min(100, Math.round((task.completedHours / task.estimatedHours) * 100))
                               : 0
-                            const assignedEmps = (task.assignedTo || [])
-                              .map(id => empById[id]).filter(Boolean)
+                            const assignedEmps = (task.assignedTo || []).map(id => empById[id]).filter(Boolean)
 
                             return (
                               <div
@@ -619,10 +725,8 @@ export default function OperationsBoard() {
                                 onDragLeave={e => handleTaskDragLeave(e, task.id)}
                                 onDrop={e => handleTaskDrop(e, task.id)}
                               >
-                                {/* Drop hint — always in DOM, shown via CSS when data-dropover */}
                                 <div className={styles.obDropHint}>Drop to assign</div>
 
-                                {/* Title row */}
                                 <div className={styles.obTaskTop}>
                                   <div className={styles.obTaskTitleRow}>
                                     <span className={`${styles.obTaskTitle} ${isCompleted ? styles.obTitleDone : ''}`}>
@@ -637,10 +741,10 @@ export default function OperationsBoard() {
                                   </span>
                                 </div>
 
-                                {/* Area */}
-                                <div className={styles.obTaskArea}>{task.assignedArea}</div>
+                                {task.assignedArea && (
+                                  <div className={styles.obTaskArea}>{task.assignedArea}</div>
+                                )}
 
-                                {/* Crew */}
                                 {assignedEmps.length > 0 ? (
                                   <div className={styles.obTaskAssigned}>
                                     {assignedEmps.map(emp => (
@@ -661,7 +765,6 @@ export default function OperationsBoard() {
                                   <div className={styles.obUnassigned}>Unassigned</div>
                                 )}
 
-                                {/* Progress */}
                                 {task.estimatedHours > 0 && (
                                   <div className={styles.obProgressRow}>
                                     <div className={styles.obProgressTrack}>
@@ -677,7 +780,6 @@ export default function OperationsBoard() {
                                   </div>
                                 )}
 
-                                {/* Equipment chips */}
                                 {task.equipment.length > 0 && (
                                   <div className={styles.obEqRow}>
                                     {task.equipment.map(name => {
@@ -698,26 +800,20 @@ export default function OperationsBoard() {
                                   </div>
                                 )}
 
-                                {/* Notes (expandable) */}
                                 {task.notes && (
                                   <div className={styles.obNoteWrap}>
                                     <div className={`${styles.obTaskNote} ${!isNoteExpanded && hasLongNote ? styles.obNoteClamp : ''}`}>
                                       {task.notes}
                                     </div>
                                     {hasLongNote && density !== 'expanded' && (
-                                      <button
-                                        className={styles.obNoteToggle}
-                                        onClick={() => toggleNote(task.id)}
-                                      >
+                                      <button className={styles.obNoteToggle} onClick={() => toggleNote(task.id)}>
                                         {isNoteExpanded ? '▲ less' : '▾ more'}
                                       </button>
                                     )}
                                   </div>
                                 )}
 
-                                {/* Quick actions */}
                                 <div className={styles.obCardActionsWrap}>
-                                  {/* Desktop: hover-reveal */}
                                   <div className={styles.obCardActions}>
                                     <button
                                       className={styles.obAction}
@@ -733,16 +829,10 @@ export default function OperationsBoard() {
                                     >
                                       ⛅ Hold
                                     </button>
-                                    <button
-                                      className={styles.obAction}
-                                      onClick={() => handleAction(task.id, 'delay')}
-                                    >
+                                    <button className={styles.obAction} onClick={() => handleAction(task.id, 'delay')}>
                                       ↷ Delay
                                     </button>
-                                    <button
-                                      className={styles.obAction}
-                                      onClick={() => handleAction(task.id, 'reassign')}
-                                    >
+                                    <button className={styles.obAction} onClick={() => handleAction(task.id, 'reassign')}>
                                       ↗ Reassign
                                     </button>
                                     {task.notes && (
@@ -756,40 +846,24 @@ export default function OperationsBoard() {
                                     )}
                                   </div>
 
-                                  {/* Mobile: overflow ⋮ */}
                                   <div className={styles.obOverflowWrap}>
                                     <button
                                       className={styles.obOverflowBtn}
                                       aria-label="More actions"
-                                      onClick={e => {
-                                        e.stopPropagation()
-                                        setOpenMenuId(openMenuId === task.id ? null : task.id)
-                                      }}
+                                      onClick={e => { e.stopPropagation(); setOpenMenuId(openMenuId === task.id ? null : task.id) }}
                                     >⋮</button>
                                     {openMenuId === task.id && (
                                       <div className={styles.obOverflowMenu}>
-                                        <button
-                                          className={styles.obOverflowItem}
-                                          onClick={() => { handleAction(task.id, 'complete'); setOpenMenuId(null) }}
-                                        >
+                                        <button className={styles.obOverflowItem} onClick={() => { handleAction(task.id, 'complete'); setOpenMenuId(null) }}>
                                           {isCompleted ? '↩ Undo Complete' : '✓ Complete'}
                                         </button>
-                                        <button
-                                          className={styles.obOverflowItem}
-                                          onClick={() => { handleAction(task.id, 'hold'); setOpenMenuId(null) }}
-                                        >
+                                        <button className={styles.obOverflowItem} onClick={() => { handleAction(task.id, 'hold'); setOpenMenuId(null) }}>
                                           ⛅ Weather Hold
                                         </button>
-                                        <button
-                                          className={styles.obOverflowItem}
-                                          onClick={() => { handleAction(task.id, 'delay'); setOpenMenuId(null) }}
-                                        >
+                                        <button className={styles.obOverflowItem} onClick={() => { handleAction(task.id, 'delay'); setOpenMenuId(null) }}>
                                           ↷ Delay
                                         </button>
-                                        <button
-                                          className={styles.obOverflowItem}
-                                          onClick={() => { handleAction(task.id, 'reassign'); setOpenMenuId(null) }}
-                                        >
+                                        <button className={styles.obOverflowItem} onClick={() => { handleAction(task.id, 'reassign'); setOpenMenuId(null) }}>
                                           ↗ Reassign
                                         </button>
                                         <button
@@ -799,10 +873,7 @@ export default function OperationsBoard() {
                                           🗑 Delete Task
                                         </button>
                                         {task.notes && (
-                                          <button
-                                            className={styles.obOverflowItem}
-                                            onClick={() => { toggleNote(task.id); setOpenMenuId(null) }}
-                                          >
+                                          <button className={styles.obOverflowItem} onClick={() => { toggleNote(task.id); setOpenMenuId(null) }}>
                                             {expandedNoteIds.has(task.id) ? '▲ Hide Notes' : '▾ Show Notes'}
                                           </button>
                                         )}
@@ -811,12 +882,8 @@ export default function OperationsBoard() {
                                   </div>
                                 </div>
 
-                                {/* Delete row — always visible, bottom of card */}
                                 <div className={styles.obDeleteRow}>
-                                  <button
-                                    className={styles.obDeleteBtn}
-                                    onClick={() => confirmDelete(task)}
-                                  >
+                                  <button className={styles.obDeleteBtn} onClick={() => confirmDelete(task)}>
                                     🗑 Delete Task
                                   </button>
                                 </div>
@@ -835,78 +902,60 @@ export default function OperationsBoard() {
             {/* Right: Operations Panel ─────────────────────────────────── */}
             <div className={`${styles.obColRight} ${panelOpen ? styles.obColRightOpen : ''}`}>
 
+              {/* Turf Operations — simplified info display */}
               <div className={styles.obPanelSec}>
                 <div className={styles.obPanelSecHeader}>Turf Operations</div>
 
-                <div className={styles.obPanelGroup}>
-                  <div className={styles.obGroupLabel}>Greens</div>
-                  <div className={styles.obCtrlRow}>
-                    <label className={styles.obCtrlLabel}>Pattern</label>
-                    <select className={styles.obCtrlSelect}
-                      value={mowOps.greensPattern}
-                      onChange={e => setMow('greensPattern', e.target.value)}
-                    >
-                      {PATTERN_OPTIONS.map(p => <option key={p}>{p}</option>)}
-                    </select>
-                  </div>
-                  <div className={styles.obCtrlRow}>
-                    <label className={styles.obCtrlLabel}>Direction</label>
-                    <select className={styles.obCtrlSelect}
-                      value={mowOps.greensDirection}
-                      onChange={e => setMow('greensDirection', e.target.value)}
-                    >
-                      {DIR_OPTIONS.map(d => <option key={d}>{d}</option>)}
-                    </select>
-                  </div>
-                  <div className={styles.obToggleRow}>
-                    <button className={styles.obToggle} data-on={mowOps.doubleCut}
-                      onClick={() => setMow('doubleCut', !mowOps.doubleCut)}>Double Cut</button>
-                    <button className={styles.obToggle} data-on={mowOps.rollGreens}
-                      onClick={() => setMow('rollGreens', !mowOps.rollGreens)}>Roll Greens</button>
-                  </div>
-                </div>
+                <div className={styles.obTurfInfo}>
 
-                <div className={styles.obPanelGroup}>
-                  <div className={styles.obGroupLabel}>Fairways</div>
-                  <div className={styles.obCtrlRow}>
-                    <label className={styles.obCtrlLabel}>Pattern</label>
-                    <select className={styles.obCtrlSelect}
-                      value={mowOps.fairwayPattern}
-                      onChange={e => setMow('fairwayPattern', e.target.value)}
-                    >
-                      {FW_PATTERNS.map(p => <option key={p}>{p}</option>)}
-                    </select>
+                  <div className={styles.obTurfSection}>
+                    <div className={styles.obTurfSectionTitle}>Greens</div>
+                    <div className={styles.obTurfRow}>
+                      <span className={styles.obTurfKey}>Mowing Direction</span>
+                      <span className={styles.obTurfVal}>N/S</span>
+                    </div>
+                    <div className={styles.obTurfRow}>
+                      <span className={styles.obTurfKey}>Cleanup Cut</span>
+                      <span className={styles.obTurfVal}>Yes</span>
+                    </div>
+                    <div className={styles.obTurfRow}>
+                      <span className={styles.obTurfKey}>Double Cut</span>
+                      <span className={styles.obTurfVal}>No</span>
+                    </div>
+                    <div className={styles.obTurfRow}>
+                      <span className={styles.obTurfKey}>Rolling</span>
+                      <span className={styles.obTurfVal}>Light</span>
+                    </div>
                   </div>
-                </div>
 
-                <div className={styles.obPanelGroup}>
-                  <div className={styles.obGroupLabel}>Tees &amp; Bunkers</div>
-                  <div className={styles.obCtrlRow}>
-                    <label className={styles.obCtrlLabel}>Tee Pattern</label>
-                    <select className={styles.obCtrlSelect}
-                      value={mowOps.teePattern}
-                      onChange={e => setMow('teePattern', e.target.value)}
-                    >
-                      {TEE_PATTERNS.map(p => <option key={p}>{p}</option>)}
-                    </select>
+                  <div className={styles.obTurfSection}>
+                    <div className={styles.obTurfSectionTitle}>Fairways</div>
+                    <div className={styles.obTurfRow}>
+                      <span className={styles.obTurfKey}>Pattern</span>
+                      <span className={styles.obTurfVal}>Striped</span>
+                    </div>
+                    <div className={styles.obTurfRow}>
+                      <span className={styles.obTurfKey}>Cleanup Pass</span>
+                      <span className={styles.obTurfVal}>Perimeter only</span>
+                    </div>
                   </div>
-                  <div className={styles.obCtrlRow}>
-                    <label className={styles.obCtrlLabel}>Bunkers</label>
-                    <select className={styles.obCtrlSelect}
-                      value={mowOps.bunkersStatus}
-                      onChange={e => setMow('bunkersStatus', e.target.value)}
-                    >
-                      {BUNKER_OPTIONS.map(b => <option key={b}>{b}</option>)}
-                    </select>
-                  </div>
-                </div>
 
-                <div className={styles.obMowNote}>
-                  <div className={styles.obMowNoteLabel}>Auto-note</div>
-                  <div className={styles.obMowNoteText}>{mowNote}</div>
+                  <div className={styles.obTurfSection}>
+                    <div className={styles.obTurfSectionTitle}>Tees &amp; Bunkers</div>
+                    <div className={styles.obTurfRow}>
+                      <span className={styles.obTurfKey}>Tee Direction</span>
+                      <span className={styles.obTurfVal}>Diagonal</span>
+                    </div>
+                    <div className={styles.obTurfRow}>
+                      <span className={styles.obTurfKey}>Bunkers</span>
+                      <span className={styles.obTurfVal}>Raked</span>
+                    </div>
+                  </div>
+
                 </div>
               </div>
 
+              {/* Notes */}
               <div className={styles.obPanelSec}>
                 <div className={styles.obPanelSecHeader}>Notes</div>
                 <div className={styles.obNotesTabs}>
@@ -930,22 +979,15 @@ export default function OperationsBoard() {
           </div>
 
           {/* Panel overlay (tablet/mobile) */}
-          {panelOpen && (
-            <div className={styles.obOverlay} onClick={() => setPanelOpen(false)} />
-          )}
+          {panelOpen && <div className={styles.obOverlay} onClick={() => setPanelOpen(false)} />}
 
           {/* Overflow menu backdrop */}
-          {openMenuId && (
-            <div className={styles.obMenuBackdrop} onClick={() => setOpenMenuId(null)} />
-          )}
+          {openMenuId && <div className={styles.obMenuBackdrop} onClick={() => setOpenMenuId(null)} />}
 
           {/* ── Delete confirmation modal ─────────────────────────────── */}
           {deleteConfirm && (
             <>
-              <div
-                className={styles.obModalBackdrop}
-                onClick={() => setDeleteConfirm(null)}
-              />
+              <div className={styles.obModalBackdrop} onClick={() => setDeleteConfirm(null)} />
               <div className={styles.obModal} role="dialog" aria-modal="true">
                 <div className={styles.obModalTitle}>Delete Task</div>
                 <p className={styles.obModalMsg}>
@@ -953,18 +995,35 @@ export default function OperationsBoard() {
                   This action cannot be undone.
                 </p>
                 <div className={styles.obModalActions}>
-                  <button
-                    className={styles.obModalCancel}
-                    onClick={() => setDeleteConfirm(null)}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className={styles.obModalDelete}
-                    onClick={handleDelete}
-                  >
-                    Delete
-                  </button>
+                  <button className={styles.obModalCancel} onClick={() => setDeleteConfirm(null)}>Cancel</button>
+                  <button className={styles.obModalDelete} onClick={handleDelete}>Delete</button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* ── Settings modal ───────────────────────────────────────── */}
+          {settingsOpen && (
+            <>
+              <div className={styles.obModalBackdrop} onClick={() => setSettingsOpen(false)} />
+              <div className={styles.obSettingsModal} role="dialog" aria-modal="true">
+                <div className={styles.obSettingsHeader}>
+                  <span className={styles.obSettingsTitle}>Operations Settings</span>
+                  <button className={styles.obSettingsClose} onClick={() => setSettingsOpen(false)} aria-label="Close">✕</button>
+                </div>
+                <div className={styles.obSettingsBody}>
+                  {[
+                    { title: 'Density Defaults', desc: 'Set default card density for the board view.' },
+                    { title: 'Timeline Options',  desc: 'Configure timeline range and display preferences.' },
+                    { title: 'Crew Display',      desc: 'Control how crew roster and assignments are shown.' },
+                    { title: 'Turf Operations Defaults', desc: 'Set daily turf operation parameters and defaults.' },
+                  ].map(sec => (
+                    <div key={sec.title} className={styles.obSettingsSection}>
+                      <div className={styles.obSettingsSectionTitle}>{sec.title}</div>
+                      <div className={styles.obSettingsSectionDesc}>{sec.desc}</div>
+                      <span className={styles.obSettingsComingSoon}>Coming soon</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </>

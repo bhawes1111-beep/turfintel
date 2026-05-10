@@ -1527,3 +1527,396 @@
     display: block !important;
   }
 }
+
+/* ── Add Task section ─────────────────────────────────────────────────────── */
+
+.obAddTask {
+  background: rgba(10, 28, 14, 0.7);
+  border: 1px solid rgba(74, 158, 74, 0.18);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+}
+
+.obAddTaskHeader {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.obAddTaskTitle {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(74, 222, 128, 0.75);
+}
+
+.obAddTaskHint {
+  font-size: 11px;
+  color: rgba(212, 237, 212, 0.35);
+}
+
+.obAddTaskForm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.obAddTaskRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.obAddTaskSelect {
+  padding: 7px 10px;
+  background: rgba(4, 12, 6, 0.85);
+  border: 1px solid rgba(74, 158, 74, 0.2);
+  border-radius: 6px;
+  color: rgba(212, 237, 212, 0.82);
+  font-size: 12px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s;
+  appearance: none;
+}
+
+.obAddTaskSelect:focus {
+  border-color: rgba(74, 222, 128, 0.4);
+}
+
+.obAddTaskSelectTitle {
+  flex: 1;
+  min-width: 160px;
+}
+
+.obAddTaskHrsWrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(4, 12, 6, 0.85);
+  border: 1px solid rgba(74, 158, 74, 0.2);
+  border-radius: 6px;
+  padding: 0 10px 0 8px;
+  flex-shrink: 0;
+}
+
+.obAddTaskHrs {
+  width: 44px;
+  padding: 7px 0;
+  background: none;
+  border: none;
+  color: rgba(212, 237, 212, 0.82);
+  font-size: 12px;
+  outline: none;
+  text-align: right;
+}
+
+.obAddTaskHrsLabel {
+  font-size: 11px;
+  color: rgba(212, 237, 212, 0.4);
+}
+
+.obAddTaskBtns {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.obAddTaskSubmit {
+  padding: 7px 14px;
+  background: rgba(34, 197, 94, 0.15);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  border-radius: 6px;
+  color: #4ade80;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.13s, box-shadow 0.13s;
+  white-space: nowrap;
+}
+
+.obAddTaskSubmit:hover {
+  background: rgba(34, 197, 94, 0.24);
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.18);
+}
+
+.obAddTaskClear {
+  padding: 7px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  color: rgba(212, 237, 212, 0.38);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.13s, color 0.13s;
+  white-space: nowrap;
+}
+
+.obAddTaskClear:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(212, 237, 212, 0.7);
+}
+
+.obAddTaskEqRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.obAddTaskEqLabel {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(212, 237, 212, 0.35);
+  flex-shrink: 0;
+}
+
+.obAddTaskEqChips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.obAddTaskEqChip {
+  padding: 4px 10px;
+  background: rgba(4, 12, 6, 0.7);
+  border: 1px solid rgba(74, 158, 74, 0.18);
+  border-radius: 20px;
+  color: rgba(212, 237, 212, 0.5);
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.13s, color 0.13s, border-color 0.13s;
+}
+
+.obAddTaskEqChip:hover {
+  background: rgba(74, 158, 74, 0.1);
+  color: rgba(212, 237, 212, 0.8);
+  border-color: rgba(74, 158, 74, 0.3);
+}
+
+.obAddTaskEqChip[data-active='true'] {
+  background: rgba(34, 197, 94, 0.18);
+  border-color: rgba(34, 197, 94, 0.45);
+  color: #4ade80;
+}
+
+.obAddTaskNotes {
+  width: 100%;
+  padding: 8px 10px;
+  background: rgba(4, 12, 6, 0.85);
+  border: 1px solid rgba(74, 158, 74, 0.16);
+  border-radius: 6px;
+  color: rgba(212, 237, 212, 0.75);
+  font-size: 12px;
+  font-family: inherit;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+
+.obAddTaskNotes:focus {
+  border-color: rgba(74, 222, 128, 0.35);
+}
+
+.obAddTaskNotes::placeholder {
+  color: rgba(212, 237, 212, 0.25);
+}
+
+/* ── Settings button ──────────────────────────────────────────────────────── */
+
+.obSettingsBtn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(74, 158, 74, 0.16);
+  border-radius: 7px;
+  color: rgba(212, 237, 212, 0.45);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.obSettingsBtn:hover {
+  background: rgba(74, 158, 74, 0.08);
+  color: rgba(212, 237, 212, 0.82);
+  border-color: rgba(74, 158, 74, 0.28);
+}
+
+/* ── Settings modal ───────────────────────────────────────────────────────── */
+
+.obSettingsModal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 200;
+  width: 420px;
+  max-width: calc(100vw - 32px);
+  background: rgba(8, 22, 10, 0.97);
+  border: 1px solid rgba(74, 158, 74, 0.22);
+  border-radius: 12px;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.7);
+}
+
+.obSettingsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px 14px;
+  border-bottom: 1px solid rgba(74, 158, 74, 0.12);
+}
+
+.obSettingsTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(212, 237, 212, 0.9);
+  letter-spacing: 0.02em;
+}
+
+.obSettingsClose {
+  background: none;
+  border: none;
+  color: rgba(212, 237, 212, 0.35);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  line-height: 1;
+  transition: color 0.13s, background 0.13s;
+}
+
+.obSettingsClose:hover {
+  color: rgba(212, 237, 212, 0.75);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.obSettingsBody {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 8px 0 12px;
+}
+
+.obSettingsSection {
+  padding: 12px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.obSettingsSection:last-child {
+  border-bottom: none;
+}
+
+.obSettingsSectionTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(212, 237, 212, 0.72);
+  margin-bottom: 3px;
+}
+
+.obSettingsSectionDesc {
+  font-size: 11px;
+  color: rgba(212, 237, 212, 0.35);
+  margin-bottom: 6px;
+}
+
+.obSettingsComingSoon {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(74, 222, 128, 0.45);
+  background: rgba(74, 222, 128, 0.06);
+  border: 1px solid rgba(74, 222, 128, 0.14);
+  border-radius: 20px;
+  padding: 2px 8px;
+}
+
+/* ── Turf Ops static info panel ───────────────────────────────────────────── */
+
+.obTurfInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 4px 0;
+}
+
+.obTurfSection {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.obTurfSectionTitle {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(74, 222, 128, 0.6);
+  margin-bottom: 4px;
+}
+
+.obTurfRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  padding: 3px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.obTurfRow:last-child {
+  border-bottom: none;
+}
+
+.obTurfKey {
+  font-size: 11px;
+  color: rgba(212, 237, 212, 0.42);
+}
+
+.obTurfVal {
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(212, 237, 212, 0.78);
+  text-align: right;
+}
+
+/* ── Mobile: add task + settings adjustments ─────────────────────────────── */
+
+@media (max-width: 768px) {
+  .obAddTaskRow {
+    gap: 6px;
+  }
+
+  .obAddTaskSelectTitle {
+    min-width: 100%;
+    flex: unset;
+    width: 100%;
+  }
+
+  .obSettingsBtn {
+    padding: 5px 9px;
+    font-size: 11px;
+  }
+
+  .obSettingsModal {
+    width: calc(100vw - 24px);
+  }
+
+  .obAddTaskEqChips {
+    gap: 5px;
+  }
+}
