@@ -4,17 +4,46 @@ import { useAppPrefs } from '../../utils/prefs/useAppPrefs'
 import styles from './PageShell.module.css'
 
 /**
- * PageShell — shared page wrapper for all tabbed module pages.
+ * PageShell — shared workspace wrapper.
  *
- * Section switcher is driven by the App Preferences > Page Navigation Style
- * preference (turfintel-app-prefs.pageNavStyle):
- *   - 'dropdown' (default) — current dropdown menu
- *   - 'buttons'            — pill-row across the top
+ * Header structure (Phase 2.0):
+ *   ┌──────────────────────────────────────────────────────────┐
+ *   │ [title]                          [actions] [courseBadge] │
+ *   │ [description]                                            │
+ *   ├──────────────────────────────────────────────────────────┤
+ *   │ [tab nav — dropdown OR button row per pageNavStyle]      │
+ *   ├──────────────────────────────────────────────────────────┤
+ *   │ children (content area)                                  │
+ *   ├──────────────────────────────────────────────────────────┤
+ *   │ secondary (optional footer slot)                         │
+ *   └──────────────────────────────────────────────────────────┘
  *
- * Every page that already passes `tabs` / `activeTab` / `onTabChange` picks
- * up the new switcher with zero per-page changes.
+ * Props (all optional except title):
+ *   title          — page title (required)
+ *   description    — short subtitle below the title
+ *   actions        — JSX rendered in the header right (next to course badge)
+ *   tabs           — array of section labels
+ *   activeTab      — current section label
+ *   onTabChange    — (tab) => void
+ *   secondary      — optional JSX footer block below the main content area
+ *
+ * Tab nav switcher is driven by useAppPrefs().pageNavStyle:
+ *   'dropdown' (default) — current dropdown menu
+ *   'buttons'            — pill-row across the top
+ *
+ * Backward-compatible: all new props are optional. Existing call sites
+ * that pass only title/tabs/activeTab/onTabChange render identically.
  */
-export default function PageShell({ title, tabs, activeTab, onTabChange, children }) {
+export default function PageShell({
+  title,
+  description,
+  actions,
+  tabs,
+  activeTab,
+  onTabChange,
+  secondary,
+  children,
+}) {
   const { activeCourse } = useCourse()
   const { prefs } = useAppPrefs()
   const [dropOpen, setDropOpen] = useState(false)
@@ -37,8 +66,18 @@ export default function PageShell({ title, tabs, activeTab, onTabChange, childre
   return (
     <div className={styles.page}>
       <div className={styles.header}>
-        <h1 className={styles.title}>{title}</h1>
-        <span className={styles.courseBadge}>{activeCourse.name}</span>
+        <div className={styles.headerLeft}>
+          <h1 className={styles.title}>{title}</h1>
+          {description && (
+            <p className={styles.description}>{description}</p>
+          )}
+        </div>
+        <div className={styles.headerRight}>
+          {actions && (
+            <div className={styles.actions}>{actions}</div>
+          )}
+          <span className={styles.courseBadge}>{activeCourse.name}</span>
+        </div>
       </div>
 
       {/* ── Button-row navigation ───────────────────────────────────────── */}
@@ -103,6 +142,12 @@ export default function PageShell({ title, tabs, activeTab, onTabChange, childre
       <div className={styles.content}>
         {children}
       </div>
+
+      {secondary && (
+        <div className={styles.secondary}>
+          {secondary}
+        </div>
+      )}
     </div>
   )
 }
