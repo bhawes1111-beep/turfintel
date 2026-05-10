@@ -14,6 +14,7 @@ import exStyles from '../../../components/expandable/expandable.module.css'
 import UploadCenter from '../../../components/uploads/UploadCenter'
 import ReportPreviewModal from '../../../components/reports/ReportPreviewModal'
 import { EmptyState } from '../../../components/shared/EmptyState'
+import WorkspaceSection from '../../../components/shared/WorkspaceSection'
 import styles from '../Equipment.module.css'
 
 const THIS_MONTH = '2026-05'
@@ -281,6 +282,10 @@ export default function MaintenanceLogs() {
 
   return (
     <div className={styles.eqRoot}>
+      <WorkspaceSection
+        title="Maintenance Logs"
+        subtitle="Service history, repairs, and inspections — newest urgency first."
+      >
 
       {/* ── Stat row ── */}
       <div className={styles.eqStats}>
@@ -351,7 +356,11 @@ export default function MaintenanceLogs() {
             description="Service log entries, repairs, and inspections will appear here once recorded."
           />
         ) : (
-          <p className={styles.eqEmpty}>No maintenance records match your search.</p>
+          <EmptyState
+            compact
+            title="No matches."
+            description="No maintenance records match the current filters."
+          />
         )
       ) : (
         <div className={styles.eqList}>
@@ -543,6 +552,8 @@ export default function MaintenanceLogs() {
           })}
         </div>
       )}
+
+      </WorkspaceSection>
 
       {/* ── Detail Modal ── */}
       {selected && (() => {

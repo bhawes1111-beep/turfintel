@@ -6,6 +6,7 @@ import { getMediaByModule, getThumbnailBlob } from '../../../utils/media/mediaSt
 import UploadCenter from '../../../components/uploads/UploadCenter'
 import ReportPreviewModal from '../../../components/reports/ReportPreviewModal'
 import { EmptyState } from '../../../components/shared/EmptyState'
+import WorkspaceSection from '../../../components/shared/WorkspaceSection'
 import styles from '../Equipment.module.css'
 
 const CATEGORIES   = ['All', 'Greens Mower', 'Fairway Mower', 'Rough Mower', 'Spray', 'Utility', 'Specialty']
@@ -152,6 +153,10 @@ export default function EquipmentList() {
 
   return (
     <div className={styles.eqRoot}>
+      <WorkspaceSection
+        title="Fleet"
+        subtitle="Mowers, sprayers, utility carts, and other course equipment — sorted by service urgency."
+      >
 
       {/* ── Stat row ── */}
       <div className={styles.eqStats}>
@@ -220,7 +225,11 @@ export default function EquipmentList() {
             description="Mowers, utility carts, sprayers, and other equipment will appear here once added."
           />
         ) : (
-          <p className={styles.eqEmpty}>No equipment matches your search.</p>
+          <EmptyState
+            compact
+            title="No matches."
+            description="No equipment matches the current filters."
+          />
         )
       ) : (
         <div className={styles.eqList}>
@@ -280,6 +289,8 @@ export default function EquipmentList() {
           })}
         </div>
       )}
+
+      </WorkspaceSection>
 
       {/* ── Detail Modal ── */}
       {selected && (() => {
