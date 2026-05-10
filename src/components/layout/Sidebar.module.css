@@ -347,6 +347,221 @@
     brightness(1.3);
 }
 
+/* ── Nav item (recursive container) ──────────────────────────────────────── */
+
+.navItem {
+  list-style: none;
+  position: relative;
+}
+
+/* ── Group header (acts like a link, includes chevron) ──────────────────── */
+
+.groupHeader {
+  /* Inherit visual styling from .link by reusing the same metrics */
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  margin: 1px 8px;
+  border-radius: 9px;
+  background: none;
+  border: none;
+  color: rgba(210, 230, 210, 0.72);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  min-height: 46px;
+  width: calc(100% - 16px);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s, padding 0.25s;
+}
+
+.groupHeader:hover {
+  background: rgba(30, 80, 30, 0.25);
+  color: rgba(230, 250, 230, 0.92);
+}
+
+.groupHeader:hover .iconWrap {
+  color: rgba(185, 240, 185, 0.92);
+  background: linear-gradient(
+    145deg,
+    rgba(30, 58, 30, 0.97),
+    rgba(8, 20, 8, 0.99)
+  );
+  border-color: rgba(74, 158, 74, 0.4);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.55),
+    0 8px 18px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 10px rgba(74, 158, 74, 0.12);
+  transform: translateY(-1px);
+}
+
+/* Group highlights when a descendant route is active */
+.groupActive {
+  color: rgba(230, 250, 230, 0.85);
+}
+
+.groupActive .iconWrap {
+  color: rgba(150, 230, 150, 0.85);
+  border-color: rgba(74, 158, 74, 0.36);
+}
+
+/* ── Chevron (▶ rotates 90° to ▼ when open) ─────────────────────────────── */
+
+.chevron {
+  margin-left: auto;
+  font-size: 9px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.28);
+  flex-shrink: 0;
+  display: inline-block;
+  transition: transform 0.22s ease, color 0.15s, opacity 0.2s ease;
+}
+
+.groupHeader:hover .chevron {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.chevronOpen {
+  transform: rotate(90deg);
+  color: rgba(120, 220, 120, 0.55);
+}
+
+/* ── Submenu list (collapsible) ─────────────────────────────────────────── */
+
+.subList {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 2px;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.28s ease-out;
+}
+
+.subListOpen {
+  max-height: 800px;  /* generous; accommodates ~15 items */
+}
+
+/* ── Nested link styling (depth > 0) ────────────────────────────────────── */
+
+.linkChild {
+  margin-left: calc(8px + var(--nav-depth, 0) * 6px);
+  padding-left: calc(10px + var(--nav-depth, 0) * 8px);
+  min-height: 38px;
+  font-size: 12.5px;
+}
+
+.linkChild .iconWrap {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+}
+
+.linkChild .navIcon {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+}
+
+/* ── Tooltip (custom, only when collapsed) ──────────────────────────────── */
+
+.tooltip {
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%) translateX(-4px);
+  padding: 6px 11px;
+  background: rgba(8, 22, 10, 0.96);
+  border: 1px solid rgba(74, 158, 74, 0.28);
+  border-radius: 6px;
+  color: #d4edd4;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 200;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.55);
+  transition: opacity 0.15s ease, transform 0.18s ease;
+  display: none;
+}
+
+.collapsed .tooltip {
+  display: block;
+}
+
+.collapsed .link:hover .tooltip,
+.collapsed .groupHeader:hover .tooltip {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+
+/* ── Mobile backdrop ────────────────────────────────────────────────────── */
+
+@keyframes sbBackdropIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.mobileBackdrop {
+  display: none;
+}
+
+/* ── Collapsed-mode adjustments for new elements ────────────────────────── */
+
+.collapsed .groupHeader {
+  justify-content: center;
+  padding: 7px 0;
+  margin: 1px 5px;
+  gap: 0;
+  width: calc(100% - 10px);
+  min-height: 46px;
+}
+
+.collapsed .chevron {
+  opacity: 0;
+  width: 0;
+  margin: 0;
+}
+
+/* When collapsed, sublists stay closed visually no matter the expanded state */
+.collapsed .subList {
+  max-height: 0 !important;
+}
+
+/* Larger icon bubble for group headers in collapsed mode */
+.collapsed .groupHeader .iconWrap {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+}
+
+.collapsed .groupHeader .navIcon {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+}
+
+/* Hide nested padding offsets when collapsed */
+.collapsed .linkChild {
+  margin-left: 5px;
+  padding-left: 0;
+}
+
+/* Group-active glow when collapsed (icon-only mode) */
+.collapsed .groupActive .iconWrap {
+  border-color: rgba(74, 158, 74, 0.5);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.55),
+    0 6px 16px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 12px rgba(78, 203, 78, 0.16);
+}
+
 /* ── Mobile ────────────────────────────────────────────────────────────── */
 
 @media (max-width: 768px) {
@@ -417,5 +632,61 @@
   /* Hide collapse toggle — not needed on mobile */
   .collapseBtn {
     display: none;
+  }
+
+  /* Mobile backdrop overlay */
+  .mobileBackdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 99;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    animation: sbBackdropIn 0.22s ease-out;
+  }
+
+  /* Mobile: tooltips never show — labels are always visible */
+  .tooltip {
+    display: none !important;
+  }
+
+  /* Mobile: groupHeader matches normal link layout */
+  .collapsed .groupHeader {
+    justify-content: flex-start;
+    padding: 7px 10px;
+    gap: 10px;
+    min-height: 46px;
+    width: calc(100% - 16px);
+  }
+
+  .collapsed .groupHeader .iconWrap {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+  }
+
+  .collapsed .groupHeader .navIcon {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+  }
+
+  /* Mobile: chevron visible regardless of collapsed state */
+  .collapsed .chevron {
+    opacity: 1;
+    width: auto;
+    margin-left: auto;
+  }
+
+  /* Mobile: sublists open normally */
+  .collapsed .subList.subListOpen {
+    max-height: 800px !important;
+  }
+
+  /* Mobile: nested link indentation preserved */
+  .collapsed .linkChild {
+    margin-left: calc(8px + var(--nav-depth, 0) * 6px);
+    padding-left: calc(10px + var(--nav-depth, 0) * 8px);
   }
 }

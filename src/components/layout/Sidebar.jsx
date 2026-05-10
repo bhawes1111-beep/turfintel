@@ -1,6 +1,25 @@
-import { useState } from 'react'
-import { NavLink } from 'react-router-dom'
+/**
+ * TurfIntel sidebar — modern expandable navigation.
+ *
+ * Architecture:
+ *   - NAV_TREE drives the entire sidebar. Each node is either:
+ *       { id, label, icon, to }                  ← link (leaf)
+ *       { id, label, icon, children: [...] }    ← group (recursive)
+ *   - Recursive renderer (NavGroup / NavLeaf) supports any depth.
+ *   - State (sidebar collapsed + per-group expanded) persists to localStorage
+ *     via the existing persistence layer.
+ *   - Active route propagation: a group is highlighted when ANY descendant
+ *     link's `to` prefix matches the current pathname.
+ *   - Custom CSS tooltips appear on hover when sidebar is collapsed.
+ *   - Mobile drawer + dark backdrop overlay.
+ *
+ * No new dependencies. CSS Modules + inline SVG only.
+ */
+
+import { useEffect, useState } from 'react'
+import { NavLink, useLocation } from 'react-router-dom'
 import { Icon } from '../shared/icons'
+import { loadSync, save } from '../../utils/persistence/persistence'
 import styles from './Sidebar.module.css'
 
 /* ── Inline SVG icons (24×24 viewBox, stroke-based) ──────────────────────── */
@@ -27,12 +46,31 @@ const ICONS = {
       <rect x="13" y="13" width="8" height="8" rx="1.5"/>
     </SVG>
   ),
+  operations: (
+    <SVG>
+      <rect x="3" y="4" width="18" height="16" rx="2"/>
+      <line x1="3" y1="9" x2="21" y2="9"/>
+      <circle cx="7" cy="14" r="0.7" fill="currentColor"/>
+      <line x1="11" y1="14" x2="17" y2="14"/>
+      <circle cx="7" cy="17" r="0.7" fill="currentColor"/>
+      <line x1="11" y1="17" x2="17" y2="17"/>
+    </SVG>
+  ),
   crew: (
     <SVG>
       <circle cx="9" cy="7" r="3"/>
       <path d="M3 21v-1a6 6 0 0 1 12 0v1"/>
       <circle cx="18.5" cy="6.5" r="2.5"/>
       <path d="M16 20.5a4.5 4.5 0 0 1 5.5 0"/>
+    </SVG>
+  ),
+  agronomy: (
+    <SVG>
+      <path d="M12 22V13"/>
+      <path d="M12 13c-3.5 0-6-2.5-6-6 3.5 0 6 2.5 6 6Z"/>
+      <path d="M12 13c3.5 0 6-2.5 6-6-3.5 0-6 2.5-6 6Z"/>
+      <path d="M12 13c0-3 2-5 5-5"/>
+      <path d="M12 13c0-3-2-5-5-5"/>
     </SVG>
   ),
   chemical: (
@@ -105,10 +143,33 @@ const ICONS = {
       <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
     </SVG>
   ),
+  map: (
+    <SVG>
+      <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/>
+      <line x1="9" y1="3" x2="9" y2="18"/>
+      <line x1="15" y1="6" x2="15" y2="21"/>
+    </SVG>
+  ),
   activity: (
     <SVG>
       <circle cx="12" cy="12" r="9"/>
       <polyline points="12 7 12 12 15 15"/>
+    </SVG>
+  ),
+  reports: (
+    <SVG>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="8" y1="13" x2="16" y2="13"/>
+      <line x1="8" y1="17" x2="13" y2="17"/>
+    </SVG>
+  ),
+  administration: (
+    <SVG>
+      <circle cx="9" cy="8" r="3.5"/>
+      <path d="M3 21v-0.5a6 6 0 0 1 12 0V21"/>
+      <circle cx="18" cy="6" r="2"/>
+      <path d="M14.5 21a4 4 0 0 1 7 0"/>
     </SVG>
   ),
   settings: (
@@ -119,139 +180,309 @@ const ICONS = {
   ),
 }
 
-const NAV_GROUPS = [
+/* ── Navigation tree ──────────────────────────────────────────────────────
+   Only routes that exist today appear here. Sections without any
+   existing routes (Weather) are intentionally omitted until pages are built.
+   The recursive renderer supports arbitrary depth — adding sub-routes later
+   is a one-line change in this tree.                                       */
+
+const NAV_TREE = [
+  { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', to: '/dashboard' },
+
   {
-    label: 'Dashboard',
-    items: [
-      { to: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
+    id: 'operations',
+    label: 'Operations',
+    icon: 'operations',
+    children: [
+      { id: 'opsBoard', label: 'Operations Board', icon: 'crew',     to: '/crew'     },
+      { id: 'activity', label: 'Activity Feed',    icon: 'activity', to: '/activity' },
     ],
   },
+
   {
-    label: 'Plant Health',
-    items: [
-      { to: '/disease',             label: 'Disease Monitoring', icon: 'disease'             },
-      { to: '/plant-nutrition',     label: 'Plant Nutrition',    icon: 'plant-nutrition'     },
-      { to: '/cultural-practices',  label: 'Cultural Practices', icon: 'cultural-practices'  },
+    id: 'agronomy',
+    label: 'Agronomy',
+    icon: 'agronomy',
+    children: [
+      { id: 'disease',    label: 'Disease Monitoring', icon: 'disease',             to: '/disease'             },
+      { id: 'nutrition',  label: 'Plant Nutrition',    icon: 'plant-nutrition',     to: '/plant-nutrition'     },
+      { id: 'cultural',   label: 'Cultural Practices', icon: 'cultural-practices',  to: '/cultural-practices'  },
     ],
   },
+
   {
+    id: 'sprays',
     label: 'Sprays',
-    items: [
-      { to: '/spray',    label: 'Spray / Applications',  icon: 'spray'    },
-      { to: '/chemical', label: 'Chemical Labels / SDS', icon: 'chemical' },
+    icon: 'spray',
+    children: [
+      { id: 'sprayApps', label: 'Spray Applications',  icon: 'spray',    to: '/spray'    },
+      { id: 'chemical',  label: 'Chemical Labels',     icon: 'chemical', to: '/chemical' },
     ],
   },
+
   {
-    label: 'Daily Operations',
-    items: [
-      { to: '/crew',       label: 'Operations Board', icon: 'crew'       },
-      { to: '/irrigation', label: 'Irrigation',       icon: 'irrigation' },
-      { to: '/activity',   label: 'Activity Feed',    icon: 'activity'   },
+    id: 'irrigation',
+    label: 'Irrigation',
+    icon: 'irrigation',
+    children: [
+      { id: 'irrigationHome', label: 'Irrigation', icon: 'irrigation', to: '/irrigation' },
+      { id: 'courseMap',      label: 'Course Map', icon: 'map',        to: '/course-map' },
     ],
   },
+
+  { id: 'inventory', label: 'Inventory', icon: 'inventory', to: '/inventory' },
+  { id: 'equipment', label: 'Equipment', icon: 'equipment', to: '/equipment' },
+
+  // Weather: intentionally omitted — no routes exist yet. Re-introduce when
+  // weather sub-pages are built.
+
   {
-    label: 'Inventory',
-    items: [
-      { to: '/inventory', label: 'Inventory', icon: 'inventory' },
-      { to: '/budget',    label: 'Budget',    icon: 'budget'    },
+    id: 'reports',
+    label: 'Reports',
+    icon: 'reports',
+    children: [
+      { id: 'budget', label: 'Budget', icon: 'budget', to: '/budget' },
     ],
   },
+
   {
-    label: 'Equipment',
-    items: [
-      { to: '/equipment', label: 'Equipment', icon: 'equipment' },
+    id: 'administration',
+    label: 'Administration',
+    icon: 'administration',
+    children: [
+      { id: 'settings', label: 'Settings', icon: 'settings', to: '/settings' },
     ],
   },
 ]
 
-export default function Sidebar({ isOpen, onClose }) {
-  const [collapsed, setCollapsed] = useState(false)
+/* ── Persistence ──────────────────────────────────────────────────────── */
+
+const PREFS_KEY = 'turfintel-sidebar-prefs'
+
+function defaultExpanded() {
+  const acc = {}
+  for (const node of NAV_TREE) {
+    if (node.children) acc[node.id] = true
+  }
+  return acc
+}
+
+function loadInitialPrefs() {
+  const saved = loadSync(PREFS_KEY)
+  if (!saved) return { collapsed: false, expanded: defaultExpanded() }
+  return {
+    collapsed: !!saved.collapsed,
+    // Merge so newly-added groups default to expanded if not in saved data
+    expanded: { ...defaultExpanded(), ...(saved.expanded || {}) },
+  }
+}
+
+/* ── Active route propagation ─────────────────────────────────────────── */
+
+function nodeContainsActive(node, pathname) {
+  if (node.to && (pathname === node.to || pathname.startsWith(node.to + '/'))) return true
+  if (node.children) return node.children.some(c => nodeContainsActive(c, pathname))
+  return false
+}
+
+/* ── Recursive renderers ──────────────────────────────────────────────── */
+
+function NavLeaf({ node, depth, collapsed, onClose }) {
+  return (
+    <li className={styles.navItem} style={{ '--nav-depth': depth }}>
+      <NavLink
+        to={node.to}
+        onClick={onClose}
+        end={node.to === '/dashboard'}
+        className={({ isActive }) =>
+          [
+            styles.link,
+            isActive ? styles.active : '',
+            depth > 0 ? styles.linkChild : '',
+          ].filter(Boolean).join(' ')
+        }
+      >
+        <span className={styles.iconWrap}>
+          <span className={styles.navIcon}>
+            {ICONS[node.icon] || ICONS.dashboard}
+          </span>
+        </span>
+        <span className={styles.label}>{node.label}</span>
+        {collapsed && depth === 0 && <span className={styles.tooltip}>{node.label}</span>}
+      </NavLink>
+    </li>
+  )
+}
+
+function NavGroup({
+  node,
+  depth,
+  collapsed,
+  expanded,
+  onGroupClick,
+  pathname,
+  onClose,
+}) {
+  const isOpen     = !!expanded[node.id]
+  const hasActive  = nodeContainsActive(node, pathname)
 
   return (
-    <nav
-      className={[
-        styles.sidebar,
-        collapsed  ? styles.collapsed  : '',
-        isOpen     ? styles.mobileOpen : '',
-      ].join(' ')}
-    >
-      {/* Brand / logo header */}
-      <div className={styles.brand}>
+    <li className={styles.navItem} style={{ '--nav-depth': depth }}>
+      <button
+        type="button"
+        className={[
+          styles.groupHeader,
+          hasActive ? styles.groupActive : '',
+          depth > 0 ? styles.linkChild : '',
+        ].filter(Boolean).join(' ')}
+        onClick={() => onGroupClick(node.id)}
+        aria-expanded={isOpen}
+      >
+        <span className={styles.iconWrap}>
+          <span className={styles.navIcon}>
+            {ICONS[node.icon] || ICONS.dashboard}
+          </span>
+        </span>
+        <span className={styles.label}>{node.label}</span>
+        <span className={`${styles.chevron} ${isOpen ? styles.chevronOpen : ''}`} aria-hidden="true">
+          ▶
+        </span>
+        {collapsed && depth === 0 && <span className={styles.tooltip}>{node.label}</span>}
+      </button>
 
-        {/* Collapse toggle */}
-        <button
-          className={styles.collapseBtn}
-          onClick={() => setCollapsed(c => !c)}
-          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          <Icon name={collapsed ? 'chevronRight' : 'chevronLeft'} size={13} />
-        </button>
-
-        {/* Full logo — expanded sidebar */}
-        <img
-          src="/logo-full.png"
-          alt="TurfIntel Pro"
-          className={styles.imgLogo}
-          draggable="false"
-        />
-
-        {/* Compact mark — collapsed sidebar */}
-        <img
-          src="/logo-mark.png"
-          alt="TP"
-          className={styles.imgMark}
-          draggable="false"
-        />
-
-      </div>
-
-      {/* Main navigation — scrollable, grouped */}
-      <ul className={styles.nav}>
-        {NAV_GROUPS.map(group => (
-          <li key={group.label} className={styles.navGroup}>
-            <span className={styles.navGroupLabel}>{group.label}</span>
-            {group.items.map(item => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                onClick={onClose}
-                title={item.label}
-                className={({ isActive }) =>
-                  `${styles.link} ${isActive ? styles.active : ''}`
-                }
-              >
-                <span className={styles.iconWrap}>
-                  <span className={styles.navIcon}>
-                    {ICONS[item.icon]}
-                  </span>
-                </span>
-                <span className={styles.label}>{item.label}</span>
-              </NavLink>
-            ))}
-          </li>
-        ))}
+      <ul className={`${styles.subList} ${isOpen ? styles.subListOpen : ''}`}>
+        {node.children.map(child =>
+          child.children
+            ? (
+              <NavGroup
+                key={child.id}
+                node={child}
+                depth={depth + 1}
+                collapsed={collapsed}
+                expanded={expanded}
+                onGroupClick={onGroupClick}
+                pathname={pathname}
+                onClose={onClose}
+              />
+            )
+            : (
+              <NavLeaf
+                key={child.id}
+                node={child}
+                depth={depth + 1}
+                collapsed={collapsed}
+                onClose={onClose}
+              />
+            )
+        )}
       </ul>
+    </li>
+  )
+}
 
-      {/* Settings pinned to bottom */}
-      <ul className={styles.navBottom}>
-        <li>
-          <NavLink
-            to="/settings"
-            onClick={onClose}
-            title="Settings"
-            className={({ isActive }) =>
-              `${styles.link} ${isActive ? styles.active : ''}`
-            }
+/* ── Sidebar shell ────────────────────────────────────────────────────── */
+
+export default function Sidebar({ isOpen, onClose }) {
+  const location = useLocation()
+  const [prefs, setPrefs] = useState(loadInitialPrefs)
+
+  useEffect(() => {
+    save(PREFS_KEY, prefs)
+  }, [prefs])
+
+  function toggleCollapsed() {
+    setPrefs(p => ({ ...p, collapsed: !p.collapsed }))
+  }
+
+  // Click on group header:
+  //   - If collapsed: expand the sidebar AND open this group
+  //   - Otherwise: toggle this group
+  function handleGroupClick(id) {
+    setPrefs(p => {
+      if (p.collapsed) {
+        return {
+          collapsed: false,
+          expanded:  { ...p.expanded, [id]: true },
+        }
+      }
+      return {
+        ...p,
+        expanded: { ...p.expanded, [id]: !p.expanded[id] },
+      }
+    })
+  }
+
+  const sidebarClasses = [
+    styles.sidebar,
+    prefs.collapsed ? styles.collapsed  : '',
+    isOpen          ? styles.mobileOpen : '',
+  ].filter(Boolean).join(' ')
+
+  return (
+    <>
+      {isOpen && (
+        <div
+          className={styles.mobileBackdrop}
+          onClick={onClose}
+          aria-hidden="true"
+        />
+      )}
+
+      <nav className={sidebarClasses} aria-label="Primary navigation">
+
+        {/* Brand / logo header */}
+        <div className={styles.brand}>
+          <button
+            className={styles.collapseBtn}
+            onClick={toggleCollapsed}
+            aria-label={prefs.collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
-            <span className={styles.iconWrap}>
-              <span className={styles.navIcon}>
-                {ICONS['settings']}
-              </span>
-            </span>
-            <span className={styles.label}>Settings</span>
-          </NavLink>
-        </li>
-      </ul>
-    </nav>
+            <Icon name={prefs.collapsed ? 'chevronRight' : 'chevronLeft'} size={13} />
+          </button>
+
+          <img
+            src="/logo-full.png"
+            alt="TurfIntel Pro"
+            className={styles.imgLogo}
+            draggable="false"
+          />
+
+          <img
+            src="/logo-mark.png"
+            alt="TP"
+            className={styles.imgMark}
+            draggable="false"
+          />
+        </div>
+
+        {/* Recursive navigation */}
+        <ul className={styles.nav}>
+          {NAV_TREE.map(node =>
+            node.children
+              ? (
+                <NavGroup
+                  key={node.id}
+                  node={node}
+                  depth={0}
+                  collapsed={prefs.collapsed}
+                  expanded={prefs.expanded}
+                  onGroupClick={handleGroupClick}
+                  pathname={location.pathname}
+                  onClose={onClose}
+                />
+              )
+              : (
+                <NavLeaf
+                  key={node.id}
+                  node={node}
+                  depth={0}
+                  collapsed={prefs.collapsed}
+                  onClose={onClose}
+                />
+              )
+          )}
+        </ul>
+      </nav>
+    </>
   )
 }
