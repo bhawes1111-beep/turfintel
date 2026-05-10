@@ -72,6 +72,13 @@ function parseHour(timeStr) {
   return hour + m / 60
 }
 
+function formatDate(isoStr) {
+  const d       = new Date(isoStr + 'T00:00:00')
+  const weekday = d.toLocaleDateString('en-US', { weekday: 'long' })
+  const rest    = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+  return `${weekday} · ${rest}`
+}
+
 export default function OperationsBoard() {
   const { activeCourse } = useCourse()
   const toast = useToast()
@@ -88,6 +95,13 @@ export default function OperationsBoard() {
   const [expandedNoteIds, setExpandedNoteIds] = useState(new Set())
   const [openMenuId,      setOpenMenuId]      = useState(null)
 
+  // ── Date selector ─────────────────────────────────────────────────────────
+  const [selectedDate, setSelectedDate] = useState('2026-05-09')
+
+  // ── Delete state ──────────────────────────────────────────────────────────
+  const [deletedTaskIds, setDeletedTaskIds] = useState(new Set())
+  const [deleteConfirm,  setDeleteConfirm]  = useState(null) // { id, title } | null
+
   // ── DnD state ─────────────────────────────────────────────────────────────
   const [taskAssignments, setTaskAssignments] = useState({})
   const [draggingEmpId,   setDraggingEmpId]   = useState(null)
@@ -100,6 +114,14 @@ export default function OperationsBoard() {
     const t = setInterval(() => setNow(new Date()), 1000)
     return () => clearInterval(t)
   }, [])
+
+  // ── Escape closes delete modal ────────────────────────────────────────────
+  useEffect(() => {
+    if (!deleteConfirm) return
+    const handler = e => { if (e.key === 'Escape') setDeleteConfirm(null) }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [deleteConfirm])
 
   // ── Right panel ───────────────────────────────────────────────────────────
   const [notesTab, setNotesTab] = useState('Daily')
@@ -135,12 +157,14 @@ export default function OperationsBoard() {
   }, [])
 
   const effectiveTasks = useMemo(() =>
-    TASKS.map(t => ({
-      ...t,
-      status:     taskOverrides[t.id]?.status ?? t.status,
-      assignedTo: taskAssignments[t.id]       ?? t.assignedTo,
-    })),
-  [taskOverrides, taskAssignments])
+    TASKS
+      .filter(t => !deletedTaskIds.has(t.id))
+      .map(t => ({
+        ...t,
+        status:     taskOverrides[t.id]?.status ?? t.status,
+        assignedTo: taskAssignments[t.id]       ?? t.assignedTo,
+      })),
+  [taskOverrides, taskAssignments, deletedTaskIds])
 
   const groupedTasks = useMemo(() =>
     TASK_GROUPS.map(g => ({
@@ -205,6 +229,12 @@ export default function OperationsBoard() {
     setMowOps(prev => ({ ...prev, [key]: val }))
   }
 
+  function shiftDate(delta) {
+    const d = new Date(selectedDate + 'T00:00:00')
+    d.setDate(d.getDate() + delta)
+    setSelectedDate(d.toISOString().slice(0, 10))
+  }
+
   function toggleGroup(key) {
     setCollapsedGroups(prev => {
       const next = new Set(prev)
@@ -233,6 +263,18 @@ export default function OperationsBoard() {
     } else if (action === 'reassign') {
       toast.info('Drag an employee from the roster to assign')
     }
+  }
+
+  function confirmDelete(task) {
+    setDeleteConfirm({ id: task.id, title: task.title })
+  }
+
+  function handleDelete() {
+    if (!deleteConfirm) return
+    const { id, title } = deleteConfirm
+    setDeletedTaskIds(prev => new Set([...prev, id]))
+    toast.info(`"${title}" deleted`)
+    setDeleteConfirm(null)
   }
 
   function rosterDot(log) {
@@ -330,8 +372,9 @@ export default function OperationsBoard() {
 
           {/* Header */}
           <div className={styles.obHeader}>
+
+            {/* Left: routing */}
             <div className={styles.obHeaderLeft}>
-              <span className={styles.obDate}>Friday · May 9, 2026</span>
               <div className={styles.obRoutingRow}>
                 <span className={styles.obRoutingLabel}>Routing</span>
                 <select
@@ -344,15 +387,37 @@ export default function OperationsBoard() {
               </div>
             </div>
 
+            {/* Center: date selector */}
             <div className={styles.obHeaderCenter}>
-              <span className={styles.obWeather}>
-                {WEATHER.temp}°F &nbsp;·&nbsp; {WEATHER.wind} &nbsp;·&nbsp; {WEATHER.humidity}% RH
-              </span>
-              <span className={styles.obFrostBadge} data-frost={WEATHER.frost ? 'warn' : 'clear'}>
-                {WEATHER.frost ? '⚠ FROST RISK' : '✓ No Frost Risk'}
-              </span>
+              <div className={styles.obDatePicker}>
+                <button
+                  className={styles.obDateChevron}
+                  onClick={() => shiftDate(-1)}
+                  aria-label="Previous day"
+                >‹</button>
+
+                <label className={styles.obDateDisplay}>
+                  <span className={styles.obDateIcon}>📅</span>
+                  <span className={styles.obDateText}>{formatDate(selectedDate)}</span>
+                  <span className={styles.obDateDownChevron}>▾</span>
+                  <input
+                    type="date"
+                    className={styles.obDateInput}
+                    value={selectedDate}
+                    onChange={e => setSelectedDate(e.target.value)}
+                    aria-label="Select date"
+                  />
+                </label>
+
+                <button
+                  className={styles.obDateChevron}
+                  onClick={() => shiftDate(1)}
+                  aria-label="Next day"
+                >›</button>
+              </div>
             </div>
 
+            {/* Right: stats + buttons */}
             <div className={styles.obHeaderRight}>
               <div className={styles.obStats}>
                 <div className={styles.obStat}>
@@ -727,6 +792,12 @@ export default function OperationsBoard() {
                                         >
                                           ↗ Reassign
                                         </button>
+                                        <button
+                                          className={`${styles.obOverflowItem} ${styles.obOverflowItemDanger}`}
+                                          onClick={() => { confirmDelete(task); setOpenMenuId(null) }}
+                                        >
+                                          🗑 Delete Task
+                                        </button>
                                         {task.notes && (
                                           <button
                                             className={styles.obOverflowItem}
@@ -738,6 +809,16 @@ export default function OperationsBoard() {
                                       </div>
                                     )}
                                   </div>
+                                </div>
+
+                                {/* Delete row — always visible, bottom of card */}
+                                <div className={styles.obDeleteRow}>
+                                  <button
+                                    className={styles.obDeleteBtn}
+                                    onClick={() => confirmDelete(task)}
+                                  >
+                                    🗑 Delete Task
+                                  </button>
                                 </div>
 
                               </div>
@@ -856,6 +937,37 @@ export default function OperationsBoard() {
           {/* Overflow menu backdrop */}
           {openMenuId && (
             <div className={styles.obMenuBackdrop} onClick={() => setOpenMenuId(null)} />
+          )}
+
+          {/* ── Delete confirmation modal ─────────────────────────────── */}
+          {deleteConfirm && (
+            <>
+              <div
+                className={styles.obModalBackdrop}
+                onClick={() => setDeleteConfirm(null)}
+              />
+              <div className={styles.obModal} role="dialog" aria-modal="true">
+                <div className={styles.obModalTitle}>Delete Task</div>
+                <p className={styles.obModalMsg}>
+                  Are you sure you want to delete <strong>"{deleteConfirm.title}"</strong>?
+                  This action cannot be undone.
+                </p>
+                <div className={styles.obModalActions}>
+                  <button
+                    className={styles.obModalCancel}
+                    onClick={() => setDeleteConfirm(null)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className={styles.obModalDelete}
+                    onClick={handleDelete}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </>
           )}
 
         </div>
