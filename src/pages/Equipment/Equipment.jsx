@@ -7,15 +7,15 @@ import { EmptyState } from '../../components/shared/EmptyState'
 import EquipmentOverview  from './tabs/EquipmentOverview'
 import EquipmentList      from './tabs/EquipmentList'
 import MaintenanceLogs    from './tabs/MaintenanceLogs'
+import ServiceSchedule    from './tabs/ServiceSchedule'
 import workspace from '../../styles/workspace.module.css'
 
 const TABS = ['Overview', 'Equipment List', 'Maintenance Logs', 'Repairs', 'Fuel Usage', 'Service Schedule', 'Parts Needed']
 
 const PLACEHOLDER_COPY = {
-  'Repairs':          { subtitle: 'Active repair tickets and shop work.',                  description: 'Repair tickets and shop work will appear here once recorded.' },
-  'Fuel Usage':       { subtitle: 'Fuel consumption and refill history by unit.',          description: 'Fuel logs and consumption history will appear here once tracked.' },
-  'Service Schedule': { subtitle: 'Upcoming preventive maintenance across the fleet.',     description: 'Planned services and PM intervals will appear here once scheduled.' },
-  'Parts Needed':     { subtitle: 'Parts pending order or required for upcoming services.',description: 'Parts requests tied to maintenance work will appear here once added.' },
+  'Repairs':      { subtitle: 'Active repair tickets and shop work.',                   description: 'Repair tickets and shop work will appear here once recorded.' },
+  'Fuel Usage':   { subtitle: 'Fuel consumption and refill history by unit.',           description: 'Fuel logs and consumption history will appear here once tracked.' },
+  'Parts Needed': { subtitle: 'Parts pending order or required for upcoming services.', description: 'Parts requests tied to maintenance work will appear here once added.' },
 }
 
 /**
@@ -33,13 +33,27 @@ export default function Equipment() {
   const seedEquipmentId = location.state?.equipmentId ?? null
 
   const [activeTab, setActiveTab] = useState(seedTab)
-  // In-workspace click-through (Phase 3.4): EquipmentList → MaintenanceLogs
-  // seeds a search filter with the unit name; this state lifts the seed so
-  // MaintenanceLogs can read it as an initial value when the tab mounts.
-  const [maintInitialSearch, setMaintInitialSearch] = useState(null)
+  // In-workspace click-through seeds (Phase 3.4 + 4.0):
+  //   - EquipmentList → MaintenanceLogs seeds a search filter
+  //   - ServiceSchedule → EquipmentList seeds a selected unit
+  // Lifting both here keeps the receiving tabs as pure consumers of an
+  // optional initial prop, and lets us clear stale seeds when the user
+  // manually navigates away from the seeded tab.
+  const [maintInitialSearch,      setMaintInitialSearch]      = useState(null)
+  const [equipInitialSelectedId,  setEquipInitialSelectedId]  = useState(seedEquipmentId)
+
+  const handleTabChange = (newTab) => {
+    if (newTab !== 'Equipment List')   setEquipInitialSelectedId(null)
+    if (newTab !== 'Maintenance Logs') setMaintInitialSearch(null)
+    setActiveTab(newTab)
+  }
   const jumpToMaintenance = (unitName) => {
     setMaintInitialSearch(unitName)
     setActiveTab('Maintenance Logs')
+  }
+  const jumpToUnit = (unitId) => {
+    setEquipInitialSelectedId(unitId)
+    setActiveTab('Equipment List')
   }
 
   return (
@@ -48,7 +62,7 @@ export default function Equipment() {
       description="Fleet management, maintenance schedules, repairs, and operational equipment tracking."
       tabs={TABS}
       activeTab={activeTab}
-      onTabChange={setActiveTab}
+      onTabChange={handleTabChange}
       actions={
         <WorkspaceActions>
           <button
@@ -69,8 +83,9 @@ export default function Equipment() {
       }
     >
       {activeTab === 'Overview'          && <EquipmentOverview />}
-      {activeTab === 'Equipment List'    && <EquipmentList initialSelectedId={seedEquipmentId} onJumpToMaintenance={jumpToMaintenance} />}
+      {activeTab === 'Equipment List'    && <EquipmentList initialSelectedId={equipInitialSelectedId} onJumpToMaintenance={jumpToMaintenance} />}
       {activeTab === 'Maintenance Logs'  && <MaintenanceLogs initialSearch={maintInitialSearch} />}
+      {activeTab === 'Service Schedule'  && <ServiceSchedule onJumpToUnit={jumpToUnit} onJumpToMaintenance={jumpToMaintenance} />}
       {PLACEHOLDER_COPY[activeTab] && (
         <WorkspaceSection
           title={activeTab}
