@@ -143,6 +143,14 @@ const ICONS = {
       <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
     </SVG>
   ),
+  weather: (
+    <SVG>
+      <path d="M17.5 17a4.5 4.5 0 1 0 0-9h-1A7 7 0 1 0 4 14"/>
+      <line x1="8"  y1="20" x2="8"  y2="22"/>
+      <line x1="12" y1="20" x2="12" y2="22"/>
+      <line x1="16" y1="20" x2="16" y2="22"/>
+    </SVG>
+  ),
   map: (
     <SVG>
       <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/>
@@ -233,8 +241,9 @@ const NAV_TREE = [
   { id: 'inventory', label: 'Inventory', icon: 'inventory', to: '/inventory' },
   { id: 'equipment', label: 'Equipment', icon: 'equipment', to: '/equipment' },
 
-  // Weather: intentionally omitted — no routes exist yet. Re-introduce when
-  // weather sub-pages are built.
+  // Weather currently routes to /dashboard (where the weather widgets live).
+  // Replace `to` with a dedicated route once a standalone Weather page exists.
+  { id: 'weather',   label: 'Weather',   icon: 'weather',   to: '/dashboard' },
 
   {
     id: 'reports',
@@ -259,22 +268,25 @@ const NAV_TREE = [
 
 const PREFS_KEY = 'turfintel-sidebar-prefs'
 
+// First-load default for grouped sections: closed.
+// Newly-added groups also fall back to closed when a returning user has
+// saved state but no entry for the new group.
 function defaultExpanded() {
   const acc = {}
   for (const node of NAV_TREE) {
-    if (node.children) acc[node.id] = true
+    if (node.children) acc[node.id] = false
   }
   return acc
 }
 
 function loadInitialPrefs() {
   const saved = loadSync(PREFS_KEY)
-  // First-time users get a collapsed icon-only sidebar by default.
-  // Returning users keep their saved state.
+  // First-time users get a collapsed icon-only sidebar with all groups closed.
+  // Returning users keep their saved state — saved expanded entries override
+  // defaults; brand-new groups they haven't interacted with default to closed.
   if (!saved) return { collapsed: true, expanded: defaultExpanded() }
   return {
     collapsed: !!saved.collapsed,
-    // Merge so newly-added groups default to expanded if not in saved data
     expanded: { ...defaultExpanded(), ...(saved.expanded || {}) },
   }
 }
