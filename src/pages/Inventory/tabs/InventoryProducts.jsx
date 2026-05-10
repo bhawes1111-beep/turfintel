@@ -1,7 +1,8 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { useOperations } from '../../../utils/operations/OperationsContext'
 import { EmptyState } from '../../../components/shared/EmptyState'
 import WorkspaceSection from '../../../components/shared/WorkspaceSection'
+import SideDrawer from '../../../components/primitives/SideDrawer'
 import styles from '../Inventory.module.css'
 
 const STOCK_FILTERS = ['All', 'Good', 'Low', 'Critical', 'Out of Stock']
@@ -38,13 +39,6 @@ export default function InventoryProducts() {
     () => inventoryProducts.find(p => p.id === selectedId) ?? null,
     [selectedId, inventoryProducts]
   )
-
-  useEffect(() => {
-    if (!selected) return
-    const onKey = e => { if (e.key === 'Escape') setSelectedId(null) }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [selected])
 
   // Categories derived from live data so chemical types appear automatically
   const categories = useMemo(
@@ -213,8 +207,9 @@ export default function InventoryProducts() {
 
       </WorkspaceSection>
 
-      {/* ── Detail Modal ── */}
-      {selected && (() => {
+      {/* ── Detail drawer ── */}
+      {(() => {
+        if (!selected) return null
         const status = stockStatus(selected.quantity, selected.reorderLevel)
         const meta   = STATUS_META[status]
         const accentColors = {
@@ -224,40 +219,22 @@ export default function InventoryProducts() {
           out:      '#c03030',
         }
         return (
-          <div
-            className={styles.ipModalOverlay}
-            onClick={() => setSelectedId(null)}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Product details"
+          <SideDrawer
+            open={!!selected}
+            onClose={() => setSelectedId(null)}
+            accentColor={accentColors[status]}
+            ariaLabel="Product details"
           >
-            <div
-              className={styles.ipModalPanel}
-              onClick={e => e.stopPropagation()}
-            >
-              <div
-                className={styles.ipModalAccent}
-                style={{ background: accentColors[status] }}
-              />
+            <SideDrawer.Header
+              title={selected.name}
+              subtitle={`${selected.category} · ${selected.location}`}
+              status={
+                <span className={`${styles.stockBadge} ${meta.cls}`}>{meta.label}</span>
+              }
+              onClose={() => setSelectedId(null)}
+            />
 
-              <div className={styles.ipModalHeader}>
-                <div>
-                  <h2 className={styles.ipModalTitle}>{selected.name}</h2>
-                  <p className={styles.ipModalSubtitle}>{selected.category} · {selected.location}</p>
-                </div>
-                <div className={styles.ipModalHeaderRight}>
-                  <span className={`${styles.stockBadge} ${meta.cls}`}>{meta.label}</span>
-                  <button
-                    className={styles.ipModalClose}
-                    onClick={() => setSelectedId(null)}
-                    aria-label="Close"
-                  >
-                    ✕
-                  </button>
-                </div>
-              </div>
-
-              <div className={styles.ipModalBody}>
+            <SideDrawer.Body>
 
                 {/* Product Overview */}
                 <section className={styles.ipModalSection}>
@@ -393,9 +370,8 @@ export default function InventoryProducts() {
                   </section>
                 )}
 
-              </div>
-            </div>
-          </div>
+            </SideDrawer.Body>
+          </SideDrawer>
         )
       })()}
 
