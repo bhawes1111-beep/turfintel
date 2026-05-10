@@ -640,6 +640,136 @@
   align-self: flex-start;
 }
 
+/* ──────────────────────────────────────────────────────────────────────────
+   Tonight's Watering (Phase 4.1)
+   ─ Timeline block color extensions (geometry lives in Timeline primitive)
+   ─ Morning overlap subsection
+   ─ Cycle detail drawer sections
+   ────────────────────────────────────────────────────────────────────────── */
+
+.irCycleBlock[data-status='running']   { background: rgba(78, 203, 78, 0.55);   border: 1px solid rgba(78, 203, 78, 0.78); }
+.irCycleBlock[data-status='scheduled'] { background: rgba(80, 140, 220, 0.32);  border: 1px solid rgba(80, 140, 220, 0.55); }
+.irCycleBlock[data-status='completed'] { background: rgba(78, 203, 78, 0.20);   border: 1px solid rgba(78, 203, 78, 0.40); }
+.irCycleBlock[data-status='delayed']   { background: rgba(212, 136, 58, 0.55);  border: 1px solid rgba(212, 136, 58, 0.78); }
+.irCycleBlock[data-status='fault']     { background: rgba(224, 80, 80, 0.55);   border: 1px solid rgba(224, 80, 80, 0.78); }
+.irCycleBlock[data-status='skipped']   { background: rgba(120, 120, 120, 0.28); border: 1px dashed rgba(160, 160, 160, 0.45); }
+
+/* ── Morning overlap section ─────────────────────────────────────────── */
+.irOverlapSection {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: rgba(212, 136, 58, 0.06);
+  border: 1px solid rgba(212, 136, 58, 0.22);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.irOverlapTitle {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #d4a43a;
+  margin: 0;
+}
+.irOverlapHint {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+.irOverlapList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+.irOverlapChip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(212, 136, 58, 0.12);
+  border: 1px solid rgba(212, 136, 58, 0.32);
+  color: #e6c378;
+  font-family: inherit;
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: filter 0.12s;
+}
+.irOverlapChip:hover         { filter: brightness(1.15); }
+.irOverlapChip:focus-visible { outline: 1px solid currentColor; outline-offset: 1px; }
+.irOverlapChip[data-status='fault'] {
+  background: rgba(224, 80, 80, 0.12);
+  border-color: rgba(224, 80, 80, 0.36);
+  color: #e07070;
+}
+.irOverlapZone { font-weight: 600; }
+.irOverlapWhen { color: var(--color-text-muted); font-size: 0.66rem; }
+
+/* ── Cycle detail drawer body ────────────────────────────────────────── */
+.irModalSection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.irModalSectionTitle {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-accent);
+  margin: 0;
+}
+.irModalGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px 16px;
+}
+.irModalField {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.irModalFieldLabel {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+.irModalFieldValue {
+  font-size: 0.85rem;
+  color: var(--color-text);
+  font-weight: 500;
+}
+.irModalNote {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  line-height: 1.55;
+  margin: 0;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-left: 3px solid rgba(74, 158, 74, 0.35);
+  border-radius: 0 5px 5px 0;
+}
+
+.irCycleStatusBadge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.irCycleStatusBadge[data-status='running']   { background: rgba(78, 203, 78, 0.20);  color: #4ecb4e; border: 1px solid rgba(78, 203, 78, 0.40); }
+.irCycleStatusBadge[data-status='scheduled'] { background: rgba(80, 140, 220, 0.18); color: #88b6ee; border: 1px solid rgba(80, 140, 220, 0.40); }
+.irCycleStatusBadge[data-status='completed'] { background: rgba(255, 255, 255, 0.05); color: var(--color-text-muted); border: 1px solid var(--color-border); }
+.irCycleStatusBadge[data-status='delayed']   { background: rgba(212, 136, 58, 0.20); color: #d4a43a; border: 1px solid rgba(212, 136, 58, 0.40); }
+.irCycleStatusBadge[data-status='fault']     { background: rgba(224, 80, 80, 0.20);  color: #e07070; border: 1px solid rgba(224, 80, 80, 0.40); }
+.irCycleStatusBadge[data-status='skipped']   { background: rgba(120, 120, 120, 0.18); color: var(--color-text-muted); border: 1px dashed rgba(160, 160, 160, 0.40); }
+
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 
 @media (max-width: 1100px) {
