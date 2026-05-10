@@ -2,10 +2,9 @@ import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useOperations } from '../../utils/operations/OperationsContext'
 import { useEquipmentData } from '../../utils/equipment/equipmentStore'
-import { REPAIRS } from '../../data/irrigation'
+import { useRepairsData } from '../../utils/repairs/repairsStore'
 import { SPRAY_RECORDS } from '../../data/spray'
 import { SEVERITY_TOKENS, SEVERITY_ORDER } from '../../utils/intelligence/severity'
-import { mergeRepairs }      from '../../utils/operations/repairUtils'
 import { EmptyState } from '../../components/shared/EmptyState'
 import styles from './ActionQueue.module.css'
 
@@ -97,7 +96,7 @@ function fromAlerts(alerts) {
     }))
 }
 
-function fromRepairs(repairs = REPAIRS) {
+function fromRepairs(repairs = []) {
   return repairs
     .filter(r => r.status !== 'completed')
     .map(r => ({
@@ -141,10 +140,9 @@ function fromSpray() {
 
 // ── Aggregate + dedupe + sort ─────────────────────────────────────────────────
 
-// Phase 5.1a: serviceLog is now a parameter (server-of-truth from
-// equipmentStore). Repairs still use the override-overlay pattern.
-function buildQueue(alerts, { serviceLog = [], repairOverrides = {} } = {}) {
-  const repairs = mergeRepairs(REPAIRS, repairOverrides)
+// Phase 5.1c: every domain is server-of-truth — both serviceLog and
+// repairs are now parameters from their respective stores.
+function buildQueue(alerts, { serviceLog = [], repairs = [] } = {}) {
   const seen = new Set()
   return [
     ...fromAlerts(alerts),
@@ -167,14 +165,12 @@ function buildQueue(alerts, { serviceLog = [], repairOverrides = {} } = {}) {
 export default function ActionQueue() {
   const { state }      = useOperations()
   const { serviceLog } = useEquipmentData()
+  const { repairs }    = useRepairsData()
   const navigate       = useNavigate()
 
   const items = useMemo(
-    () => buildQueue(state.alerts, {
-      serviceLog,
-      repairOverrides: state.repairOverrides,
-    }),
-    [state.alerts, serviceLog, state.repairOverrides],
+    () => buildQueue(state.alerts, { serviceLog, repairs }),
+    [state.alerts, serviceLog, repairs],
   )
 
   if (items.length === 0) {

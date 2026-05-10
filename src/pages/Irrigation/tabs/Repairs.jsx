@@ -1,9 +1,8 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { REPAIRS } from '../../../data/irrigation'
 import { useOperations } from '../../../utils/operations/OperationsContext'
+import { useRepairsData, patchRepair } from '../../../utils/repairs/repairsStore'
 import { useToast } from '../../../utils/feedback/toastContext'
-import { createCalendarEvent, createAlert, updateRepairOverride } from '../../../utils/operations/actions'
-import { mergeRepairs } from '../../../utils/operations/repairUtils'
+import { createCalendarEvent, createAlert } from '../../../utils/operations/actions'
 import ContextActions from '../../../components/contextActions/ContextActions'
 import ExpandableSection from '../../../components/expandable/ExpandableSection'
 import exStyles from '../../../components/expandable/expandable.module.css'
@@ -73,7 +72,8 @@ function matchesArea(repair, area) {
 }
 
 export default function Repairs() {
-  const { state, dispatch }                  = useOperations()
+  const { dispatch }                         = useOperations()
+  const { repairs }                          = useRepairsData()
   const toast                                = useToast()
   const [search,         setSearch]         = useState('')
   const [statusFilter,   setStatusFilter]   = useState('All')
@@ -109,24 +109,25 @@ export default function Repairs() {
     e.stopPropagation()
     const isCompleted = repair.status === 'completed'
     if (isCompleted) {
-      const base = REPAIRS.find(r => r.repairId === repair.repairId)
-      const baseStatus = (base?.status === 'completed') ? 'open' : (base?.status || 'open')
-      dispatch(updateRepairOverride(repair.repairId, { status: baseStatus, dateCompleted: null }))
-      toast.info('Repair reopened')
+      patchRepair(repair.repairId, { status: 'open', dateCompleted: null })
+        .then(() => toast.info('Repair reopened'))
+        .catch(err => toast.error?.(`Save failed: ${err.message}`))
     } else {
-      dispatch(updateRepairOverride(repair.repairId, {
+      patchRepair(repair.repairId, {
         status:        'completed',
         dateCompleted: new Date().toISOString().slice(0, 10),
-      }))
-      toast.success('Repair marked complete ✓')
+      })
+        .then(() => toast.success('Repair marked complete ✓'))
+        .catch(err => toast.error?.(`Save failed: ${err.message}`))
     }
   }
 
   function handleCyclePriority(repair, e) {
     e.stopPropagation()
     const next = PRIORITY_CYCLE[repair.priority] || 'medium'
-    dispatch(updateRepairOverride(repair.repairId, { priority: next }))
-    toast.info(`Priority set to ${next}`)
+    patchRepair(repair.repairId, { priority: next })
+      .then(() => toast.info(`Priority set to ${next}`))
+      .catch(err => toast.error?.(`Save failed: ${err.message}`))
   }
 
   function handleInlineSchedule(repair, e) {
@@ -189,7 +190,7 @@ export default function Repairs() {
   }
 
   function generateSummaryReport() {
-    setActiveReport(buildIrrigationRepairSummaryReport(REPAIRS))
+    setActiveReport(buildIrrigationRepairSummaryReport(repairs))
   }
 
   function handleScheduleRepair(repair) {
@@ -236,21 +237,16 @@ export default function Repairs() {
     return () => window.removeEventListener('keydown', onKey)
   }, [selected])
 
-  const mergedRepairs = useMemo(
-    () => mergeRepairs(REPAIRS, state.repairOverrides),
-    [state.repairOverrides],
-  )
-
   const stats = useMemo(() => ({
-    open:              mergedRepairs.filter(r => r.status !== 'completed').length,
-    highPriority:      mergedRepairs.filter(r => r.priority === 'high' && r.status !== 'completed').length,
-    completedThisWeek: mergedRepairs.filter(r => r.status === 'completed' && r.dateCompleted >= WEEK_START).length,
-    partsNeeded:       mergedRepairs.filter(r => r.status === 'parts-needed').length,
-  }), [mergedRepairs])
+    open:              repairs.filter(r => r.status !== 'completed').length,
+    highPriority:      repairs.filter(r => r.priority === 'high' && r.status !== 'completed').length,
+    completedThisWeek: repairs.filter(r => r.status === 'completed' && r.dateCompleted >= WEEK_START).length,
+    partsNeeded:       repairs.filter(r => r.status === 'parts-needed').length,
+  }), [repairs])
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
-    return mergedRepairs
+    return repairs
       .filter(r => {
         if (q &&
           !r.description.toLowerCase().includes(q) &&
@@ -267,7 +263,7 @@ export default function Repairs() {
         if (ss !== 0) return ss
         return (SORT_PRIORITY[a.priority] ?? 9) - (SORT_PRIORITY[b.priority] ?? 9)
       })
-  }, [search, statusFilter, priorityFilter, areaFilter, mergedRepairs])
+  }, [search, statusFilter, priorityFilter, areaFilter, repairs])
 
   return (
     <div className={styles.irWrap}>
@@ -512,7 +508,7 @@ export default function Repairs() {
           )
         })}
         {filtered.length === 0 && (
-          REPAIRS.length === 0 ? (
+          repairs.length === 0 ? (
             <EmptyState
               title="No irrigation repairs logged."
               description="Repair tickets, stuck heads, and pipe issues will appear here once recorded."

@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useOperations } from '../../utils/operations/OperationsContext'
 import { useEquipmentData } from '../../utils/equipment/equipmentStore'
+import { useRepairsData } from '../../utils/repairs/repairsStore'
 import { buildAwarenessGroups } from '../../utils/intelligence/schedulingAwareness'
 import { SEVERITY_TOKENS } from '../../utils/intelligence/severity'
 import styles from './SchedulingAwareness.module.css'
@@ -9,15 +10,12 @@ import styles from './SchedulingAwareness.module.css'
 export default function SchedulingAwareness() {
   const { state }                  = useOperations()
   const { equipment, serviceLog }  = useEquipmentData()
+  const { repairs }                = useRepairsData()
   const navigate                   = useNavigate()
 
   const groups = useMemo(
-    () => buildAwarenessGroups(state, {
-      equipment,
-      serviceLog,
-      repairOverrides: state.repairOverrides,
-    }),
-    [state, state.calendarEvents, equipment, serviceLog, state.repairOverrides],
+    () => buildAwarenessGroups(state, { equipment, serviceLog, repairs }),
+    [state, state.calendarEvents, equipment, serviceLog, repairs],
   )
 
   if (groups.length === 0) {

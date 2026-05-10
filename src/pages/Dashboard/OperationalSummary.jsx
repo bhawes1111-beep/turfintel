@@ -2,11 +2,10 @@ import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useOperations } from '../../utils/operations/OperationsContext'
 import { useEquipmentData } from '../../utils/equipment/equipmentStore'
-import { REPAIRS } from '../../data/irrigation'
+import { useRepairsData } from '../../utils/repairs/repairsStore'
 import { SPRAY_RECORDS } from '../../data/spray'
 import { aggregateAll } from '../../utils/activity/activityBuilder'
 import { SEVERITY_TOKENS } from '../../utils/intelligence/severity'
-import { mergeRepairs }      from '../../utils/operations/repairUtils'
 import { EmptyState } from '../../components/shared/EmptyState'
 import styles from './OperationalSummary.module.css'
 
@@ -14,7 +13,7 @@ import styles from './OperationalSummary.module.css'
 // Returns an array of { icon, text, severity } briefing items derived from
 // real operational data. Items are ordered by operational relevance.
 
-function buildSummaryItems(alerts, { serviceLog = [], repairOverrides = {}, allActivities = [] } = {}) {
+function buildSummaryItems(alerts, { serviceLog = [], repairs = [], allActivities = [] } = {}) {
   const items = []
 
   // 1. Alert status — derived from OperationsContext (respects dismissals)
@@ -66,7 +65,7 @@ function buildSummaryItems(alerts, { serviceLog = [], repairOverrides = {}, allA
   }
 
   // 4. Irrigation repairs — open / in-progress / parts-needed
-  const repairs       = mergeRepairs(REPAIRS, repairOverrides)
+  // Phase 5.1c: repairs is now the live D1-backed truth from repairsStore.
   const openRepairs   = repairs.filter(r => r.status !== 'completed')
   const highRepairs   = openRepairs.filter(r => r.priority === 'high')
   if (openRepairs.length > 0) {
@@ -139,23 +138,20 @@ function buildSummaryItems(alerts, { serviceLog = [], repairOverrides = {}, allA
 export default function OperationalSummary() {
   const { state }      = useOperations()
   const { serviceLog } = useEquipmentData()
+  const { repairs }    = useRepairsData()
   const navigate       = useNavigate()
 
   const allActivities = useMemo(
-    () => aggregateAll({ serviceLog, repairOverrides: state.repairOverrides }),
-    [serviceLog, state.repairOverrides],
+    () => aggregateAll({ serviceLog, repairs }),
+    [serviceLog, repairs],
   )
 
   const items = useMemo(
     () => buildSummaryItems(
       state.alerts.filter(a => a.status !== 'resolved'),
-      {
-        serviceLog,
-        repairOverrides: state.repairOverrides,
-        allActivities,
-      },
+      { serviceLog, repairs, allActivities },
     ),
-    [state.alerts, serviceLog, state.repairOverrides, allActivities],
+    [state.alerts, serviceLog, repairs, allActivities],
   )
 
   const dateLabel = new Date().toLocaleDateString('en-US', {

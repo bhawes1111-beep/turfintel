@@ -11,8 +11,6 @@ import {
   DISMISS_ALERT,
   ACKNOWLEDGE_ALERT,
   DEDUCT_INVENTORY,
-  UPDATE_REPAIR_OVERRIDE,
-  UPDATE_EQUIPMENT_OVERRIDE,
 } from './actions'
 
 const STORAGE_KEY = 'turfintel-operations'
@@ -50,8 +48,8 @@ const seedState = {
     ...CHEMICALS.map(c => toInventoryProduct(c, 'c-')),
   ],
   inventoryUsage:        [],
-  repairOverrides:       {},
-  equipmentOverrides:    {},
+  // repairOverrides / equipmentOverrides removed in Phase 5.1c — those
+  // domains now persist via repairsStore / equipmentStore.
 }
 
 // ── Persistence adapter ────────────────────────────────────────────────────────
@@ -167,27 +165,9 @@ function operationsReducer(state, { type, payload }) {
       }
     }
 
-    case UPDATE_REPAIR_OVERRIDE: {
-      const { repairId, patch } = action.payload
-      return {
-        ...state,
-        repairOverrides: {
-          ...state.repairOverrides,
-          [repairId]: { ...(state.repairOverrides[repairId] || {}), ...patch },
-        },
-      }
-    }
-
-    case UPDATE_EQUIPMENT_OVERRIDE: {
-      const { logId, patch } = action.payload
-      return {
-        ...state,
-        equipmentOverrides: {
-          ...state.equipmentOverrides,
-          [logId]: { ...(state.equipmentOverrides[logId] || {}), ...patch },
-        },
-      }
-    }
+    // UPDATE_REPAIR_OVERRIDE / UPDATE_EQUIPMENT_OVERRIDE cases removed in
+    // Phase 5.1c — those domains are now persisted via repairsStore /
+    // equipmentStore. The overlay-era reducer is officially retired.
 
     default:
       return state

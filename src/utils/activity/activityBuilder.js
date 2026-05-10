@@ -1,10 +1,10 @@
 import { SPRAY_RECORDS }    from '../../data/spray'
-import { REPAIRS }           from '../../data/irrigation'
+// Phase 5.1c — repairs now sourced from repairsStore via the React caller.
 // Phase 5.1a — serviceLog is supplied by the React caller from
 // useEquipmentData(). No static import.
 import { DASHBOARD_ALERTS }  from '../../data/dashboardAlerts'
 import { ACTIVITY_TYPE, ACTIVITY_MODULE, createActivity } from './activitySchemas'
-import { mergeRepairs }      from '../operations/repairUtils'
+// mergeRepairs is no longer needed — server is the truth (Phase 5.1c).
 // mergeServiceLogs no longer used here — server is the truth for maintenance logs (Phase 5.1a).
 
 // ── Severity helpers ──────────────────────────────────────────────────────────
@@ -79,7 +79,7 @@ export function buildFromSprayRecords(records = SPRAY_RECORDS) {
   }))
 }
 
-export function buildFromIrrigationRepairs(repairs = REPAIRS) {
+export function buildFromIrrigationRepairs(repairs = []) {
   return repairs.map(r => createActivity({
     id:          `act-ir-${r.repairId}`,
     type:        ACTIVITY_TYPE.IRRIGATION_REPAIR,
@@ -142,11 +142,10 @@ export function buildFromAlerts(alerts = DASHBOARD_ALERTS) {
 
 // ── Aggregate ─────────────────────────────────────────────────────────────────
 
-// Phase 5.1a: serviceLog is now a parameter (server-of-truth from
-// equipmentStore). Repairs still use the override-overlay pattern
-// until that vertical migrates.
-export function aggregateAll({ serviceLog = [], repairOverrides = {} } = {}) {
-  const repairs = mergeRepairs(REPAIRS, repairOverrides)
+// Phase 5.1c: both serviceLog and repairs are now parameters
+// (server-of-truth from their respective stores). The override-overlay
+// pattern is fully retired.
+export function aggregateAll({ serviceLog = [], repairs = [] } = {}) {
   const seen = new Set()
   return [
     ...buildFromSprayRecords(),

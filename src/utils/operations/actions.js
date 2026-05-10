@@ -7,8 +7,8 @@ export const RESERVE_EQUIPMENT     = 'RESERVE_EQUIPMENT'
 export const DISMISS_ALERT         = 'DISMISS_ALERT'
 export const ACKNOWLEDGE_ALERT     = 'ACKNOWLEDGE_ALERT'
 export const DEDUCT_INVENTORY      = 'DEDUCT_INVENTORY'
-export const UPDATE_REPAIR_OVERRIDE    = 'UPDATE_REPAIR_OVERRIDE'
-export const UPDATE_EQUIPMENT_OVERRIDE = 'UPDATE_EQUIPMENT_OVERRIDE'
+// UPDATE_REPAIR_OVERRIDE / UPDATE_EQUIPMENT_OVERRIDE removed in Phase 5.1c —
+// those domains are persisted via repairsStore / equipmentStore.
 
 // ── Pure action creators ──────────────────────────────────────────────────────
 //
@@ -56,10 +56,6 @@ export function deductInventory(fields) {
   return { type: DEDUCT_INVENTORY, payload: makeInventoryUsage(fields) }
 }
 
-export function updateRepairOverride(repairId, patch) {
-  return { type: UPDATE_REPAIR_OVERRIDE, payload: { repairId, patch } }
-}
-
-export function updateEquipmentOverride(logId, patch) {
-  return { type: UPDATE_EQUIPMENT_OVERRIDE, payload: { logId, patch } }
-}
+// updateRepairOverride / updateEquipmentOverride removed in Phase 5.1c.
+// Use patchRepair() from repairsStore or patchMaintenance() from
+// equipmentStore instead — those persist to D1 via the Worker API.

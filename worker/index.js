@@ -19,6 +19,13 @@ import {
   createMaintenance,
   updateMaintenance,
 } from './api/maintenance.js'
+import {
+  listRepairs,
+  getRepair,
+  createRepair,
+  updateRepair,
+  deleteRepair,
+} from './api/repairs.js'
 
 export default {
   async fetch(request, env, ctx) {
@@ -95,6 +102,21 @@ async function handleApi(request, env, url) {
     const id = decodeURIComponent(mlMatch[1])
     if (method === 'GET')   return getMaintenance(env, id)
     if (method === 'PATCH') return updateMaintenance(env, id, request)
+  }
+
+  // ── /api/repairs ──────────────────────────────────────────────────────
+  if (pathname === '/api/repairs') {
+    if (method === 'GET')  return listRepairs(env)
+    if (method === 'POST') return createRepair(env, request)
+  }
+
+  // ── /api/repairs/:id ──────────────────────────────────────────────────
+  const repMatch = pathname.match(/^\/api\/repairs\/([^/]+)$/)
+  if (repMatch) {
+    const id = decodeURIComponent(repMatch[1])
+    if (method === 'GET')    return getRepair(env, id)
+    if (method === 'PATCH')  return updateRepair(env, id, request)
+    if (method === 'DELETE') return deleteRepair(env, id)
   }
 
   return notFound()

@@ -1,8 +1,8 @@
 import { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { aggregateAll } from '../../utils/activity/activityBuilder'
-import { useOperations } from '../../utils/operations/OperationsContext'
 import { useEquipmentData } from '../../utils/equipment/equipmentStore'
+import { useRepairsData } from '../../utils/repairs/repairsStore'
 import {
   getModuleIcon,
   getSeverityMeta,
@@ -25,12 +25,12 @@ function getRoute(module) {
 
 export default function RecentActivity() {
   const navigate            = useNavigate()
-  const { state }           = useOperations()
   const { serviceLog }      = useEquipmentData()
+  const { repairs }         = useRepairsData()
 
   const RECENT = useMemo(
-    () => aggregateAll({ serviceLog, repairOverrides: state.repairOverrides }).slice(0, 10),
-    [serviceLog, state.repairOverrides],
+    () => aggregateAll({ serviceLog, repairs }).slice(0, 10),
+    [serviceLog, repairs],
   )
 
   return (

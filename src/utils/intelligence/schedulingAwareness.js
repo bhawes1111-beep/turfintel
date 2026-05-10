@@ -1,7 +1,6 @@
-import { REPAIRS }               from '../../data/irrigation'
-import { mergeRepairs }          from '../operations/repairUtils'
 import { SEVERITY_ORDER }        from './severity'
-// Phase 5.1a — equipment + serviceLog are passed in by the React caller.
+// Phase 5.1a/5.1c — equipment, serviceLog, and repairs are passed in by
+// the React caller. No overlay merging — server-of-truth throughout.
 
 // Reference date anchored to the demo data era (2026-05-09).
 // In production with live data, replace with: new Date()
@@ -230,16 +229,13 @@ function schedulingItems(calendarEvents) {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-// Phase 5.1a — accept equipment + serviceLog as parameters (server-of-truth
-// from equipmentStore). repairOverrides remains until the Repairs vertical
-// migrates.
-export function buildAwarenessGroups(state, { equipment = [], serviceLog = [], repairOverrides = {} } = {}) {
-  const mergedRepairs = mergeRepairs(REPAIRS, repairOverrides)
-  const calEvents     = state.calendarEvents || []
-
+// Phase 5.1c — every domain is now server-of-truth. equipment, serviceLog,
+// and repairs are all parameters from their respective stores.
+export function buildAwarenessGroups(state, { equipment = [], serviceLog = [], repairs = [] } = {}) {
+  const calEvents = state.calendarEvents || []
   return [
     { id: 'equipment',  label: 'Equipment',            icon: '⚙️', items: equipmentItems(serviceLog, equipment) },
-    { id: 'irrigation', label: 'Irrigation',            icon: '💧', items: irrigationItems(mergedRepairs)        },
+    { id: 'irrigation', label: 'Irrigation',            icon: '💧', items: irrigationItems(repairs)              },
     { id: 'spray',      label: 'Spray & Applications',  icon: '🌿', items: sprayItems(calEvents)                 },
     { id: 'scheduling', label: 'Scheduling',             icon: '📅', items: schedulingItems(calEvents)            },
   ].filter(g => g.items.length > 0)
