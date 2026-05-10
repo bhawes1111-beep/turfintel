@@ -8,6 +8,7 @@ import ReportPreviewModal from '../../../components/reports/ReportPreviewModal'
 import { EmptyState } from '../../../components/shared/EmptyState'
 import WorkspaceSection from '../../../components/shared/WorkspaceSection'
 import SideDrawer from '../../../components/primitives/SideDrawer'
+import StatusBoard from '../../../components/primitives/StatusBoard'
 import styles from '../Equipment.module.css'
 
 const CATEGORIES   = ['All', 'Greens Mower', 'Fairway Mower', 'Rough Mower', 'Spray', 'Utility', 'Specialty']
@@ -153,24 +154,12 @@ export default function EquipmentList() {
       >
 
       {/* ── Stat row ── */}
-      <div className={styles.eqStats}>
-        <div className={`${styles.eqStat} ${styles.eqStatOperational}`}>
-          <span className={styles.eqStatValue}>{counts['operational']}</span>
-          <span className={styles.eqStatLabel}>Active</span>
-        </div>
-        <div className={`${styles.eqStat} ${styles.eqStatInService}`}>
-          <span className={styles.eqStatValue}>{counts['in-service']}</span>
-          <span className={styles.eqStatLabel}>In Service</span>
-        </div>
-        <div className={`${styles.eqStat} ${styles.eqStatMaint}`}>
-          <span className={styles.eqStatValue}>{counts['needs-maintenance']}</span>
-          <span className={styles.eqStatLabel}>Needs Maintenance</span>
-        </div>
-        <div className={`${styles.eqStat} ${styles.eqStatOut}`}>
-          <span className={styles.eqStatValue}>{counts['out-of-service']}</span>
-          <span className={styles.eqStatLabel}>Out of Service</span>
-        </div>
-      </div>
+      <StatusBoard columns={4}>
+        <StatusBoard.Tile value={counts['operational']}       label="Active"            tone="ok" />
+        <StatusBoard.Tile value={counts['in-service']}        label="In Service"        tone="info" />
+        <StatusBoard.Tile value={counts['needs-maintenance']} label="Needs Maintenance" tone="warn" />
+        <StatusBoard.Tile value={counts['out-of-service']}    label="Out of Service"    tone="critical" />
+      </StatusBoard>
 
       {/* ── Toolbar ── */}
       <div className={styles.eqToolbar}>

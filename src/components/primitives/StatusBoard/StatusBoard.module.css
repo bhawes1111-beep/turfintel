@@ -1,0 +1,104 @@
+/* ── StatusBoard primitive ────────────────────────────────────────────────
+   Shared operational stat-row used at the top of workspace tabs.
+   Phase 3.1 — first introduction. Visual contract derived from the
+   existing eqStats / mlStats / ipStats stat rows so migrations land with
+   byte-for-byte visual parity.
+─────────────────────────────────────────────────────────────────────── */
+
+.board {
+  display: grid;
+  gap: 12px;
+}
+
+/* Column counts — explicit, no responsive surprises */
+.boardAuto { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+.board3    { grid-template-columns: repeat(3, 1fr); }
+.board4    { grid-template-columns: repeat(4, 1fr); }
+.board5    { grid-template-columns: repeat(5, 1fr); }
+.board6    { grid-template-columns: repeat(6, 1fr); }
+
+/* ── Tile shell ────────────────────────────────────────────────────────── */
+
+.tile {
+  background: var(--color-card);
+  border: var(--card-border);
+  border-radius: var(--card-radius);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-left: 3px solid transparent;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  width: 100%;
+}
+
+/* Clickable variant: tile renders as <button> */
+button.tile {
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s, border-color 0.15s;
+}
+button.tile:hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.active {
+  box-shadow: inset 0 0 0 1px rgba(74, 222, 128, 0.34);
+  border-color: rgba(74, 222, 128, 0.32);
+}
+
+/* ── Tile content ──────────────────────────────────────────────────────── */
+
+.value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+.sub {
+  font-size: 0.68rem;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+/* ── Tones ─────────────────────────────────────────────────────────────── */
+/* Lightweight operational palette — five tones, no more. */
+
+.toneOk       { border-left-color: #4ecb4e; }
+.toneOk       .value { color: #4ecb4e; }
+
+.toneInfo     { border-left-color: #5ba8a0; }
+.toneInfo     .value { color: #5ba8a0; }
+
+.toneWarn     { border-left-color: #d4883a; }
+.toneWarn     .value { color: #d4883a; }
+
+.toneCritical { border-left-color: #e05050; background: rgba(220, 60, 60, 0.05); }
+.toneCritical .value { color: #e05050; }
+
+.toneNeutral  { /* default — no accent */ }
+
+button.tile.toneCritical:hover { background: rgba(220, 60, 60, 0.09); }
+
+/* ── Mobile ────────────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .boardAuto { grid-template-columns: repeat(2, 1fr); }
+  .board3    { grid-template-columns: repeat(2, 1fr); }
+  .board4    { grid-template-columns: repeat(2, 1fr); }
+  .board5    { grid-template-columns: repeat(2, 1fr); }
+  .board6    { grid-template-columns: repeat(2, 1fr); }
+
+  .value { font-size: 1.55rem; }
+}
