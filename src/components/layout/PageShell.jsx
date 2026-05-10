@@ -1,9 +1,22 @@
 import { useState, useEffect } from 'react'
 import { useCourse } from '../../context/CourseContext'
+import { useAppPrefs } from '../../utils/prefs/useAppPrefs'
 import styles from './PageShell.module.css'
 
+/**
+ * PageShell — shared page wrapper for all tabbed module pages.
+ *
+ * Section switcher is driven by the App Preferences > Page Navigation Style
+ * preference (turfintel-app-prefs.pageNavStyle):
+ *   - 'dropdown' (default) — current dropdown menu
+ *   - 'buttons'            — pill-row across the top
+ *
+ * Every page that already passes `tabs` / `activeTab` / `onTabChange` picks
+ * up the new switcher with zero per-page changes.
+ */
 export default function PageShell({ title, tabs, activeTab, onTabChange, children }) {
   const { activeCourse } = useCourse()
+  const { prefs } = useAppPrefs()
   const [dropOpen, setDropOpen] = useState(false)
 
   useEffect(() => {
@@ -18,6 +31,9 @@ export default function PageShell({ title, tabs, activeTab, onTabChange, childre
     setDropOpen(false)
   }
 
+  const hasTabs       = Array.isArray(tabs) && tabs.length > 0
+  const useButtonMode = prefs.pageNavStyle === 'buttons'
+
   return (
     <div className={styles.page}>
       <div className={styles.header}>
@@ -25,7 +41,26 @@ export default function PageShell({ title, tabs, activeTab, onTabChange, childre
         <span className={styles.courseBadge}>{activeCourse.name}</span>
       </div>
 
-      {tabs && tabs.length > 0 && (
+      {/* ── Button-row navigation ───────────────────────────────────────── */}
+      {hasTabs && useButtonMode && (
+        <div className={styles.navBarButtons} role="tablist" aria-label={`${title} sections`}>
+          {tabs.map(tab => (
+            <button
+              key={tab}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab}
+              className={`${styles.navButton} ${activeTab === tab ? styles.navButtonActive : ''}`}
+              onClick={() => onTabChange(tab)}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* ── Dropdown navigation (default) ───────────────────────────────── */}
+      {hasTabs && !useButtonMode && (
         <div className={styles.navBar}>
           <button
             className={styles.navBarTrigger}

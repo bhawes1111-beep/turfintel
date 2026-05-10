@@ -1,27 +1,26 @@
 /**
  * Settings — TurfIntel control center.
  *
- * Section-at-a-time layout. Switcher style is controlled by the
- * App Preferences > Page Navigation Style preference (Phase 1):
- *   - 'dropdown'  → wraps in PageShell (existing dropdown UX)
- *   - 'buttons'   → custom shell with a pill-row across the top
+ * Section-at-a-time layout. Always wraps PageShell, which renders the
+ * appropriate switcher (dropdown OR button row) based on the
+ * App Preferences > Page Navigation Style preference. The same preference
+ * now affects every tabbed page in the app (Phase 2).
  *
  * Settings search:
  *   - Local query state filters SECTIONS by section title + keywords
  *     (which mirror each section's labels, descriptions, integration
  *     names, status copy).
- *   - In both nav modes the filtered list drives the switcher.
- *   - When the active section drops out of the filtered list, the
- *     active section auto-switches to the first match.
+ *   - The filtered list passes through PageShell.tabs, so the switcher
+ *     in either mode shows only matching sections.
+ *   - When the active section drops out of the filtered list, it
+ *     auto-switches to the first match.
  *   - When zero sections match, an EmptyState replaces the section
- *     content area; the nav switcher hides.
+ *     content area.
  *
  * Sections live in ./sections/ — one small file per section.
  */
 
 import { useEffect, useMemo, useState } from 'react'
-import { useCourse } from '../../context/CourseContext'
-import { useAppPrefs } from '../../utils/prefs/useAppPrefs'
 import { EmptyState } from '../../components/shared/EmptyState'
 import PageShell from '../../components/layout/PageShell'
 
@@ -202,9 +201,6 @@ function SearchBar({ query, onChange, matchCount, totalCount }) {
 /* ── Component ────────────────────────────────────────────────────────── */
 
 export default function Settings() {
-  const { activeCourse } = useCourse()
-  const { prefs } = useAppPrefs()
-
   const [query, setQuery]             = useState('')
   const [activeLabel, setActiveLabel] = useState(SECTIONS[0].label)
 
@@ -227,61 +223,12 @@ export default function Settings() {
   const active  = SECTIONS.find(s => s.label === activeLabel) ?? SECTIONS[0]
   const Section = active.component
 
-  const noResults = visibleSections.length === 0
+  const noResults     = visibleSections.length === 0
   const visibleLabels = visibleSections.map(s => s.label)
 
-  // ── Button navigation mode ─────────────────────────────────────────────
-  if (prefs.pageNavStyle === 'buttons') {
-    return (
-      <div className={styles.page}>
-        <div className={styles.header}>
-          <h1 className={styles.title}>Settings</h1>
-          {activeCourse && (
-            <span className={styles.courseBadge}>{activeCourse.name}</span>
-          )}
-        </div>
-
-        <div className={styles.searchBar}>
-          <SearchBar
-            query={query}
-            onChange={setQuery}
-            matchCount={visibleSections.length}
-            totalCount={SECTIONS.length}
-          />
-        </div>
-
-        {!noResults && (
-          <div className={styles.buttonNav} role="tablist" aria-label="Settings sections">
-            {visibleSections.map(sec => (
-              <button
-                key={sec.key}
-                type="button"
-                role="tab"
-                aria-selected={active.key === sec.key}
-                className={`${styles.navBtn} ${active.key === sec.key ? styles.navBtnActive : ''}`}
-                onClick={() => setActiveLabel(sec.label)}
-              >
-                {sec.label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        <div className={styles.content}>
-          {noResults ? (
-            <EmptyState
-              title="No settings found."
-              description="Try a different search term."
-            />
-          ) : (
-            <Section />
-          )}
-        </div>
-      </div>
-    )
-  }
-
-  // ── Dropdown navigation mode (default — uses existing PageShell) ───────
+  // PageShell now renders both nav modes (dropdown / button-row) based on
+  // the App Preferences > Page Navigation Style preference. Settings just
+  // passes the filtered tabs through and renders search + section content.
   return (
     <PageShell
       title="Settings"

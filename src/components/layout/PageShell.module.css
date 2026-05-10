@@ -148,6 +148,51 @@
   flex-shrink: 0;
 }
 
+/* ── Section nav bar (button row) — when pageNavStyle = 'buttons' ──────── */
+
+.navBarButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--color-border);
+  background: rgba(4, 12, 4, 0.92);
+  flex-shrink: 0;
+}
+
+.navButton {
+  padding: 7px 14px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(74, 158, 74, 0.16);
+  border-radius: 7px;
+  color: rgba(212, 237, 212, 0.6);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 0.13s, color 0.13s, border-color 0.13s, box-shadow 0.13s;
+  white-space: nowrap;
+}
+
+.navButton:hover {
+  background: rgba(74, 158, 74, 0.08);
+  color: rgba(212, 237, 212, 0.88);
+  border-color: rgba(74, 158, 74, 0.32);
+}
+
+.navButtonActive {
+  background: rgba(34, 197, 94, 0.16);
+  border-color: rgba(34, 197, 94, 0.42);
+  color: #4ade80;
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.18);
+}
+
+.navButtonActive:hover {
+  background: rgba(34, 197, 94, 0.22);
+  color: #4ade80;
+  border-color: rgba(34, 197, 94, 0.55);
+}
+
 .content {
   flex: 1;
   padding: 24px;
@@ -163,4 +208,14 @@
   .content {
     padding: 16px;
   }
+
+  /* Mobile: button row scrolls horizontally instead of wrapping */
+  .navBarButtons {
+    padding: 10px 16px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .navBarButtons::-webkit-scrollbar { display: none; }
 }
