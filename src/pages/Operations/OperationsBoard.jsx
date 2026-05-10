@@ -7,6 +7,7 @@ import CrewSchedule  from '../Crew/tabs/CrewSchedule'
 import CrewEmployees from '../Crew/tabs/CrewEmployees'
 import CrewHours     from '../Crew/tabs/CrewHours'
 import CrewNotes     from '../Crew/tabs/CrewNotes'
+import { EmptyState } from '../../components/shared/EmptyState'
 import styles from './OperationsBoard.module.css'
 
 const TODAY = '2026-05-08'
@@ -493,6 +494,13 @@ export default function OperationsBoard() {
             <div className={styles.obColLeft}>
               <div className={styles.obColHeader}>Crew Today</div>
               <div className={styles.obRosterList}>
+                {EMPLOYEES.length === 0 && (
+                  <EmptyState
+                    compact
+                    title="No crew added"
+                    description="Crew members will appear here once added."
+                  />
+                )}
                 {EMPLOYEES.map(emp => {
                   const log      = todayLog[emp.employeeId]
                   const dot      = rosterDot(log)
@@ -694,6 +702,14 @@ export default function OperationsBoard() {
 
                 {/* Task groups */}
                 <div className={styles.obTaskList}>
+                  {effectiveTasks.length === 0 && (
+                    <EmptyState
+                      title="No active tasks scheduled."
+                      description="Use the Add Task form above or click + Task in the header to create your first operation."
+                      actionLabel="+ Add Task"
+                      onAction={() => addTaskRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })}
+                    />
+                  )}
                   {groupedTasks.map(group => group.tasks.length === 0 ? null : (
                     <div key={group.key} className={styles.obGroup}>
 

@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, Fragment } from 'react'
 import { SCHEDULE, EMPLOYEES } from '../../../data/crew'
 import { useToast } from '../../../utils/feedback/toastContext'
+import { EmptyState } from '../../../components/shared/EmptyState'
 import styles from '../Crew.module.css'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -51,52 +52,8 @@ const AVAIL_LABEL = { all:'All', 'time-off':'Time Off', 'call-out':'Call Outs', 
 const AVAIL_TYPE_LABEL   = { 'time-off':'Time Off', 'call-out':'Call Out', medical:'Medical', vacation:'Vacation', unavailable:'Unavailable' }
 const AVAIL_STATUS_LABEL = { approved:'Approved', pending:'Pending', noted:'Noted', denied:'Denied' }
 
-// ── Inline availability data ──────────────────────────────────────────────────
-
-const AVAILABILITY = [
-  {
-    id:'av-001', employeeId:'EMP-005', employeeName:'James Thompson',
-    department:'Grounds', type:'medical', status:'approved',
-    startDate:'2026-05-08', endDate:'2026-05-15',
-    reason:'Medical leave — ankle surgery recovery. Expected return May 15.',
-    requestDate:'2026-05-01',
-  },
-  {
-    id:'av-002', employeeId:'EMP-002', employeeName:'Juan Reyes',
-    department:'Grounds', type:'vacation', status:'pending',
-    startDate:'2026-05-20', endDate:'2026-05-22',
-    reason:'Family vacation — requested 2 weeks in advance.',
-    requestDate:'2026-05-06',
-  },
-  {
-    id:'av-003', employeeId:'EMP-007', employeeName:'Brandon Willis',
-    department:'Equipment', type:'call-out', status:'noted',
-    startDate:'2026-05-08', endDate:'2026-05-08',
-    reason:'Arrived 45 min late — personal emergency. Completed full shift.',
-    requestDate:'2026-05-08',
-  },
-  {
-    id:'av-004', employeeId:'EMP-001', employeeName:'Carlos Martinez',
-    department:'Grounds', type:'time-off', status:'approved',
-    startDate:'2026-05-16', endDate:'2026-05-16',
-    reason:'Personal day — requested 2 weeks in advance.',
-    requestDate:'2026-05-03',
-  },
-  {
-    id:'av-005', employeeId:'EMP-008', employeeName:'Tommy Chen',
-    department:'Grounds', type:'time-off', status:'pending',
-    startDate:'2026-05-23', endDate:'2026-05-23',
-    reason:'Doctor appointment — awaiting superintendent approval.',
-    requestDate:'2026-05-07',
-  },
-  {
-    id:'av-006', employeeId:'EMP-003', employeeName:'Miguel Santos',
-    department:'Spray', type:'unavailable', status:'approved',
-    startDate:'2026-05-30', endDate:'2026-05-30',
-    reason:'Pesticide re-certification exam — full day off-site.',
-    requestDate:'2026-05-02',
-  },
-]
+// Crew availability — empty in production until live availability records arrive.
+const AVAILABILITY = []
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -337,7 +294,13 @@ export default function CrewSchedule() {
         <div className={styles.csbGridArea}>
 
           {/* Week view */}
-          {view === 'week' && (
+          {view === 'week' && EMPLOYEES.length === 0 && (
+            <EmptyState
+              title="No crew schedule created."
+              description="Add crew members to start building a weekly schedule."
+            />
+          )}
+          {view === 'week' && EMPLOYEES.length > 0 && (
             <div className={styles.csbWeekOuter}>
               <div className={styles.csbWeekGrid}>
 

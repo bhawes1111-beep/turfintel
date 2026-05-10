@@ -8,6 +8,7 @@ import { aggregateAll } from '../../utils/activity/activityBuilder'
 import { SEVERITY_TOKENS } from '../../utils/intelligence/severity'
 import { mergeRepairs }      from '../../utils/operations/repairUtils'
 import { mergeServiceLogs } from '../../utils/operations/equipmentUtils'
+import { EmptyState } from '../../components/shared/EmptyState'
 import styles from './OperationalSummary.module.css'
 
 // Build once — static data, no async needed
@@ -160,6 +161,13 @@ export default function OperationalSummary() {
     <div className={styles.osWrap}>
       <p className={styles.osDate}>{dateLabel}</p>
       <div className={styles.osList}>
+        {items.length === 0 && (
+          <EmptyState
+            compact
+            title="No briefing items today."
+            description="Today's operational summary will populate as alerts, repairs, and applications come in."
+          />
+        )}
         {items.map((item, i) => {
           const meta = SEVERITY_TOKENS[item.severity] ?? SEVERITY_TOKENS.info
           const Tag  = item.route ? 'button' : 'div'

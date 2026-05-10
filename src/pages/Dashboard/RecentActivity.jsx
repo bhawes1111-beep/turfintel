@@ -6,6 +6,7 @@ import {
   formatRelativeTime,
   formatActivityDate,
 } from '../../utils/activity/activityFormatters'
+import { EmptyState } from '../../components/shared/EmptyState'
 import styles from './RecentActivity.module.css'
 
 const RECENT = aggregateAll().slice(0, 10)
@@ -26,6 +27,13 @@ export default function RecentActivity() {
   return (
     <div className={styles.raWrap}>
       <div className={styles.raList}>
+        {RECENT.length === 0 && (
+          <EmptyState
+            compact
+            title="No recent activity."
+            description="Activity from sprays, irrigation, equipment, and alerts will appear here."
+          />
+        )}
         {RECENT.map(a => {
           const severityMeta = getSeverityMeta(a.severity)
           const icon         = getModuleIcon(a.module)

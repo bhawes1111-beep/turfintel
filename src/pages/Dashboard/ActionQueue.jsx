@@ -7,6 +7,7 @@ import { SPRAY_RECORDS } from '../../data/spray'
 import { SEVERITY_TOKENS, SEVERITY_ORDER } from '../../utils/intelligence/severity'
 import { mergeRepairs }      from '../../utils/operations/repairUtils'
 import { mergeServiceLogs } from '../../utils/operations/equipmentUtils'
+import { EmptyState } from '../../components/shared/EmptyState'
 import styles from './ActionQueue.module.css'
 
 // ── Route mapping ─────────────────────────────────────────────────────────────
@@ -174,7 +175,11 @@ export default function ActionQueue() {
 
   if (items.length === 0) {
     return (
-      <p className={styles.aqEmpty}>No action required — all systems clear ✓</p>
+      <EmptyState
+        compact
+        title="No action required."
+        description="Items needing attention will appear here as they arise."
+      />
     )
   }
 
