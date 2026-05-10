@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { FERTILIZERS } from '../../../data/inventory'
+import { EmptyState } from '../../../components/shared/EmptyState'
 import styles from '../Inventory.module.css'
 
 function stockStatus(quantity, reorderLevel) {
@@ -36,7 +37,14 @@ export default function InventoryFertilizer() {
       </div>
 
       {visible.length === 0 ? (
-        <p className={styles.emptyState}>No fertilizers match your search.</p>
+        FERTILIZERS.length === 0 ? (
+          <EmptyState
+            title="No fertilizer inventory yet."
+            description="Granular and liquid fertilizers will appear here once stocked."
+          />
+        ) : (
+          <p className={styles.emptyState}>No fertilizers match your search.</p>
+        )
       ) : (
         <div className={styles.cardGrid}>
           {visible.map(f => {

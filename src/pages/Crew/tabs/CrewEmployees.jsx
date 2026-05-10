@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { EMPLOYEES } from '../../../data/crew'
+import { EmptyState } from '../../../components/shared/EmptyState'
 import styles from '../Crew.module.css'
 
 const DEPT_FILTERS = ['All', 'Grounds', 'Spray', 'Irrigation', 'Equipment', 'Supervisory']
@@ -199,7 +200,14 @@ export default function CrewEmployees() {
           )
         })}
         {filtered.length === 0 && (
-          <p className={styles.ceEmpty}>No employees match the current filters.</p>
+          EMPLOYEES.length === 0 ? (
+            <EmptyState
+              title="No employees added yet."
+              description="Crew members will appear here once they are added."
+            />
+          ) : (
+            <p className={styles.ceEmpty}>No employees match the current filters.</p>
+          )
         )}
       </div>
 

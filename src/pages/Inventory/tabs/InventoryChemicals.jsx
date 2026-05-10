@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { CHEMICALS } from '../../../data/inventory'
+import { EmptyState } from '../../../components/shared/EmptyState'
 import styles from '../Inventory.module.css'
 
 const TYPES = ['All', 'Fungicide', 'Herbicide', 'Insecticide', 'PGR']
@@ -51,7 +52,14 @@ export default function InventoryChemicals() {
       </div>
 
       {visible.length === 0 ? (
-        <p className={styles.emptyState}>No chemicals match your search.</p>
+        CHEMICALS.length === 0 ? (
+          <EmptyState
+            title="No chemical inventory yet."
+            description="Fungicides, herbicides, insecticides, and PGRs will appear here once stocked."
+          />
+        ) : (
+          <p className={styles.emptyState}>No chemicals match your search.</p>
+        )
       ) : (
         <div className={styles.cardGrid}>
           {visible.map(c => {

@@ -1,4 +1,5 @@
 import { FUEL } from '../../../data/inventory'
+import { EmptyState } from '../../../components/shared/EmptyState'
 import styles from '../Inventory.module.css'
 
 function fuelPct(current, capacity) {
@@ -23,6 +24,12 @@ const STATUS_CLASS  = { ok: styles.stockOk, low: styles.stockLow, critical: styl
 export default function InventoryFuel() {
   return (
     <div className={styles.tabContent}>
+      {FUEL.length === 0 && (
+        <EmptyState
+          title="No fuel tanks tracked yet."
+          description="Diesel, gasoline, and other fuel storage will appear here once configured."
+        />
+      )}
       <div className={styles.fuelGrid}>
         {FUEL.map(f => {
           const pct    = fuelPct(f.currentLevel, f.tankCapacity)

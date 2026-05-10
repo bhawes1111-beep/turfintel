@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { CHEMICALS } from '../../../data/chemicals'
 import ChemicalCard from '../../../components/shared/ChemicalCard'
 import ChemicalModal from '../../../components/shared/ChemicalModal'
+import { EmptyState } from '../../../components/shared/EmptyState'
 import styles from '../Chemical.module.css'
 
 const FILTERS = ['All', 'Fungicide', 'Herbicide', 'Insecticide', 'PGR', 'Fertilizer']
@@ -48,7 +49,14 @@ export default function ChemicalLabels() {
 
       {/* Card grid */}
       {visible.length === 0 ? (
-        <p className={styles.emptyState}>No chemicals match your search.</p>
+        CHEMICALS.length === 0 ? (
+          <EmptyState
+            title="No chemical labels added yet."
+            description="Product labels and SDS data will appear here once added."
+          />
+        ) : (
+          <p className={styles.emptyState}>No chemicals match your search.</p>
+        )
       ) : (
         <div className={styles.chemGrid}>
           {visible.map(c => (

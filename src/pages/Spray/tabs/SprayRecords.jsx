@@ -5,6 +5,7 @@ import { createAttachmentRef } from '../../../utils/reports/reportSchemas'
 import { getMediaByModule, getThumbnailBlob } from '../../../utils/media/mediaStore'
 import UploadCenter from '../../../components/uploads/UploadCenter'
 import ReportPreviewModal from '../../../components/reports/ReportPreviewModal'
+import { EmptyState } from '../../../components/shared/EmptyState'
 import styles from '../Spray.module.css'
 
 const TYPE_FILTERS = ['All', 'Fungicide', 'Herbicide', 'Insecticide', 'PGR', 'Fertilizer']
@@ -168,7 +169,14 @@ export default function SprayRecords() {
 
       {/* ── List ── */}
       {visible.length === 0 ? (
-        <p className={styles.emptyState}>No records match your search.</p>
+        SPRAY_RECORDS.length === 0 ? (
+          <EmptyState
+            title="No spray records available."
+            description="Completed and planned spray applications will appear here."
+          />
+        ) : (
+          <p className={styles.emptyState}>No records match your search.</p>
+        )
       ) : (
         <div className={styles.recordList}>
           {visible.map(r => {

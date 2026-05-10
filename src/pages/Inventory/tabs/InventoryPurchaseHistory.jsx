@@ -1,4 +1,5 @@
 import { PURCHASE_HISTORY } from '../../../data/inventory'
+import { EmptyState } from '../../../components/shared/EmptyState'
 import styles from '../Inventory.module.css'
 
 const STATUS_CLASS = {
@@ -8,6 +9,17 @@ const STATUS_CLASS = {
 }
 
 export default function InventoryPurchaseHistory() {
+  if (PURCHASE_HISTORY.length === 0) {
+    return (
+      <div className={styles.tabContent}>
+        <EmptyState
+          title="No purchase history yet."
+          description="Past and pending orders will appear here once recorded."
+        />
+      </div>
+    )
+  }
+
   return (
     <div className={styles.tabContent}>
       <div className={styles.tableWrap}>

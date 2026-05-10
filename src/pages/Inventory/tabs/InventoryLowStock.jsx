@@ -1,4 +1,5 @@
 import { PRODUCTS, CHEMICALS, FERTILIZERS, PARTS } from '../../../data/inventory'
+import { EmptyState } from '../../../components/shared/EmptyState'
 import styles from '../Inventory.module.css'
 
 function stockStatus(quantity, reorderLevel) {
@@ -39,13 +40,24 @@ export default function InventoryLowStock() {
     ...buildAlertList(PARTS,       'Parts'),
   ].filter(a => a.status === 'low')
 
-  const allClear = critical.length === 0 && low.length === 0
+  const allClear  = critical.length === 0 && low.length === 0
+  const hasAnyInv = PRODUCTS.length + CHEMICALS.length + FERTILIZERS.length + PARTS.length > 0
 
   return (
     <div className={styles.tabContent}>
 
       {allClear && (
-        <p className={styles.emptyState}>All inventory levels are adequate.</p>
+        hasAnyInv ? (
+          <EmptyState
+            title="All inventory levels are adequate."
+            description="Items running below their reorder threshold will appear here."
+          />
+        ) : (
+          <EmptyState
+            title="No inventory tracked yet."
+            description="Once products, chemicals, fertilizers, or parts are added, low-stock alerts will appear here."
+          />
+        )
       )}
 
       {critical.length > 0 && (

@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import styles from '../Disease.module.css'
 import { ACTIVE_ISSUES } from '../../../data/disease'
+import { EmptyState } from '../../../components/shared/EmptyState'
 
 const SEV_ORDER    = { high: 0, medium: 1, low: 2 }
 const STATUS_ORDER = { active: 0, monitoring: 1, resolved: 2 }
@@ -130,7 +131,14 @@ export default function ActiveIssues() {
 
       {/* ── Issue list ── */}
       {visible.length === 0 ? (
-        <p className={styles.aiEmpty}>No issues match your filters.</p>
+        ACTIVE_ISSUES.length === 0 ? (
+          <EmptyState
+            title="No active disease issues."
+            description="Disease pressure, outbreaks, and monitoring entries will appear here."
+          />
+        ) : (
+          <p className={styles.aiEmpty}>No issues match your filters.</p>
+        )
       ) : (
         <div className={styles.aiList}>
           {visible.map(issue => {

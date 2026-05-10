@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { TASKS, EMPLOYEES } from '../../../data/crew'
+import { EmptyState } from '../../../components/shared/EmptyState'
 import styles from '../Crew.module.css'
 
 const TODAY = '2026-05-08'
@@ -247,7 +248,14 @@ export default function CrewTasks() {
           )
         })}
         {filtered.length === 0 && (
-          <p className={styles.ctEmpty}>No tasks match the current filters.</p>
+          TASKS.length === 0 ? (
+            <EmptyState
+              title="No active tasks scheduled."
+              description="Tasks will appear here once they are created."
+            />
+          ) : (
+            <p className={styles.ctEmpty}>No tasks match the current filters.</p>
+          )
         )}
       </div>
 

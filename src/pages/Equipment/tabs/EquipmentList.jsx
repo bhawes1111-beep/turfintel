@@ -5,6 +5,7 @@ import { createAttachmentRef } from '../../../utils/reports/reportSchemas'
 import { getMediaByModule, getThumbnailBlob } from '../../../utils/media/mediaStore'
 import UploadCenter from '../../../components/uploads/UploadCenter'
 import ReportPreviewModal from '../../../components/reports/ReportPreviewModal'
+import { EmptyState } from '../../../components/shared/EmptyState'
 import styles from '../Equipment.module.css'
 
 const CATEGORIES   = ['All', 'Greens Mower', 'Fairway Mower', 'Rough Mower', 'Spray', 'Utility', 'Specialty']
@@ -213,7 +214,14 @@ export default function EquipmentList() {
 
       {/* ── Equipment list ── */}
       {visible.length === 0 ? (
-        <p className={styles.eqEmpty}>No equipment matches your search.</p>
+        EQUIPMENT_LIST.length === 0 ? (
+          <EmptyState
+            title="No equipment tracked yet."
+            description="Mowers, utility carts, sprayers, and other equipment will appear here once added."
+          />
+        ) : (
+          <p className={styles.eqEmpty}>No equipment matches your search.</p>
+        )
       ) : (
         <div className={styles.eqList}>
           {visible.map(eq => {

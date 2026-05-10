@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { PARTS } from '../../../data/inventory'
+import { EmptyState } from '../../../components/shared/EmptyState'
 import styles from '../Inventory.module.css'
 
 function stockStatus(quantity, reorderLevel) {
@@ -36,7 +37,14 @@ export default function InventoryParts() {
       </div>
 
       {visible.length === 0 ? (
-        <p className={styles.emptyState}>No parts match your search.</p>
+        PARTS.length === 0 ? (
+          <EmptyState
+            title="No inventory items added yet."
+            description="Equipment and irrigation parts will appear here once added."
+          />
+        ) : (
+          <p className={styles.emptyState}>No parts match your search.</p>
+        )
       ) : (
         <div className={styles.tableWrap}>
           <table className={styles.table}>

@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { HOURS_LOG } from '../../../data/crew'
+import { EmptyState } from '../../../components/shared/EmptyState'
 import styles from '../Crew.module.css'
 
 const TODAY = '2026-05-08'
@@ -187,7 +188,14 @@ export default function CrewHours() {
           )
         })}
         {filtered.length === 0 && (
-          <p className={styles.chEmpty}>No records match the current filters.</p>
+          HOURS_LOG.length === 0 ? (
+            <EmptyState
+              title="No hours logged."
+              description="Crew time entries will appear here once they are logged."
+            />
+          ) : (
+            <p className={styles.chEmpty}>No records match the current filters.</p>
+          )
         )}
       </div>
 
