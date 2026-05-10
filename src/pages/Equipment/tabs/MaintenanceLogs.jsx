@@ -15,6 +15,7 @@ import UploadCenter from '../../../components/uploads/UploadCenter'
 import ReportPreviewModal from '../../../components/reports/ReportPreviewModal'
 import { EmptyState } from '../../../components/shared/EmptyState'
 import WorkspaceSection from '../../../components/shared/WorkspaceSection'
+import SideDrawer from '../../../components/primitives/SideDrawer'
 import styles from '../Equipment.module.css'
 
 const THIS_MONTH = '2026-05'
@@ -158,13 +159,6 @@ export default function MaintenanceLogs() {
 
     toast.success('Service event added to Operations Calendar')
   }
-
-  useEffect(() => {
-    if (!selected) return
-    const onKey = e => { if (e.key === 'Escape') closeModal() }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [selected])
 
   function handleCloseReport() {
     reportThumbs.forEach(url => URL.revokeObjectURL(url))
@@ -555,8 +549,9 @@ export default function MaintenanceLogs() {
 
       </WorkspaceSection>
 
-      {/* ── Detail Modal ── */}
-      {selected && (() => {
+      {/* ── Detail drawer ── */}
+      {(() => {
+        if (!selected) return null
         const statusMeta   = STATUS_META[selected.status]   || {}
         const priorityMeta = PRIORITY_META[selected.priority] || {}
         const typeColors   = SERVICE_TYPE_COLORS[selected.serviceType] || SERVICE_TYPE_COLORS.Inspection
@@ -568,47 +563,27 @@ export default function MaintenanceLogs() {
         const partsCost  = totalPartsOnLog(selected)
         const laborCost  = Math.max(0, selected.cost - partsCost)
         return (
-          <div
-            className={styles.eqModalOverlay}
-            onClick={closeModal}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Maintenance log details"
+          <SideDrawer
+            open={!!selected}
+            onClose={closeModal}
+            accentColor={accentColors[selected.priority] || '#4a9e4a'}
+            ariaLabel="Maintenance log details"
           >
-            <div
-              className={styles.eqModalPanel}
-              onClick={e => e.stopPropagation()}
-            >
-              <div
-                className={styles.eqModalAccent}
-                style={{ background: accentColors[selected.priority] || '#4a9e4a' }}
-              />
+            <SideDrawer.Header
+              title={`${selected.equipmentName} — ${selected.serviceType}`}
+              subtitle={
+                `${selected.category} · ${selected.date}` +
+                (selected.technician ? ` · ${selected.technician}` : '')
+              }
+              status={
+                <span className={`${styles.eqStatusBadge} ${statusMeta.cls || ''}`}>
+                  {statusMeta.label}
+                </span>
+              }
+              onClose={closeModal}
+            />
 
-              <div className={styles.eqModalHeader}>
-                <div>
-                  <h2 className={styles.eqModalTitle}>
-                    {selected.equipmentName} — {selected.serviceType}
-                  </h2>
-                  <p className={styles.eqModalSubtitle}>
-                    {selected.category} · {selected.date}
-                    {selected.technician ? ` · ${selected.technician}` : ''}
-                  </p>
-                </div>
-                <div className={styles.eqModalHeaderRight}>
-                  <span className={`${styles.eqStatusBadge} ${statusMeta.cls || ''}`}>
-                    {statusMeta.label}
-                  </span>
-                  <button
-                    className={styles.eqModalClose}
-                    onClick={closeModal}
-                    aria-label="Close"
-                  >
-                    ✕
-                  </button>
-                </div>
-              </div>
-
-              <div className={styles.eqModalBody}>
+            <SideDrawer.Body>
 
                 {/* Service Overview */}
                 <section className={styles.eqModalSection}>
@@ -779,44 +754,34 @@ export default function MaintenanceLogs() {
                   />
                 </section>
 
-                {/* Report actions */}
-                <section className={styles.eqModalSection}>
-                  <div className="opActionRow">
-                    <button
-                      className="opActionBtn"
-                      onClick={() => generateMaintenanceReport(selected)}
-                      disabled={reportLoading}
-                    >
-                      {reportLoading ? 'Loading…' : 'Generate Report'}
-                    </button>
-                    <button
-                      className="opActionBtn"
-                      onClick={() => generateEquipmentHistory(selected)}
-                      disabled={reportLoading}
-                    >
-                      Equipment History
-                    </button>
-                  </div>
-                </section>
+            </SideDrawer.Body>
 
-                {/* Operations actions */}
-                <section className={styles.eqModalSection}>
-                  <div className="opActionRow">
-                    <button
-                      className="opActionBtn"
-                      onClick={() => { handleScheduleService(selected); closeModal() }}
-                    >
-                      + Add to Operations Calendar
-                    </button>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
-                      Reserves {selected.equipmentName} · adds maintenance event
-                    </span>
-                  </div>
-                </section>
-
-              </div>
-            </div>
-          </div>
+            <SideDrawer.Footer>
+              <button
+                className="opActionBtn"
+                onClick={() => generateMaintenanceReport(selected)}
+                disabled={reportLoading}
+              >
+                {reportLoading ? 'Loading…' : 'Generate Report'}
+              </button>
+              <button
+                className="opActionBtn"
+                onClick={() => generateEquipmentHistory(selected)}
+                disabled={reportLoading}
+              >
+                Equipment History
+              </button>
+              <button
+                className="opActionBtn"
+                onClick={() => { handleScheduleService(selected); closeModal() }}
+              >
+                + Add to Operations Calendar
+              </button>
+              <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                Reserves {selected.equipmentName} · adds maintenance event
+              </span>
+            </SideDrawer.Footer>
+          </SideDrawer>
         )
       })()}
 
