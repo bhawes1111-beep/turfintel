@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { useCourse } from '../../context/CourseContext'
 import { useToast } from '../../utils/feedback/toastContext'
 import { EMPLOYEES, TASKS, HOURS_LOG } from '../../data/crew'
 import { EQUIPMENT_LIST } from '../../data/equipment'
@@ -8,6 +7,9 @@ import CrewEmployees from '../Crew/tabs/CrewEmployees'
 import CrewHours     from '../Crew/tabs/CrewHours'
 import CrewNotes     from '../Crew/tabs/CrewNotes'
 import { EmptyState } from '../../components/shared/EmptyState'
+import PageShell from '../../components/layout/PageShell'
+import WorkspaceActions from '../../components/shared/WorkspaceActions'
+import workspace from '../../styles/workspace.module.css'
 import styles from './OperationsBoard.module.css'
 
 const TODAY = '2026-05-08'
@@ -72,6 +74,9 @@ const TABS = [
   { id: 'hours',     label: 'Hours' },
   { id: 'notes',     label: 'Notes' },
 ]
+const TAB_LABELS  = TABS.map(t => t.label)
+const LABEL_TO_ID = Object.fromEntries(TABS.map(t => [t.label, t.id]))
+const ID_TO_LABEL = Object.fromEntries(TABS.map(t => [t.id, t.label]))
 
 function parseHour(timeStr) {
   if (!timeStr) return null
@@ -91,7 +96,6 @@ function formatDate(isoStr) {
 }
 
 export default function OperationsBoard() {
-  const { activeCourse } = useCourse()
   const toast = useToast()
   const addTaskRef = useRef(null)
 
@@ -376,25 +380,37 @@ export default function OperationsBoard() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className={styles.obPage}>
-
-      {/* ── Tab bar ─────────────────────────────────────────────────────── */}
-      <div className={styles.obTabBar}>
-        {TABS.map(t => (
+    <PageShell
+      title="Operations"
+      description="Daily crew management, routing, scheduling, assignments, and operational coordination."
+      tabs={TAB_LABELS}
+      activeTab={ID_TO_LABEL[activeTab]}
+      onTabChange={label => setActiveTab(LABEL_TO_ID[label])}
+      actions={
+        <WorkspaceActions>
+          <span className={styles.obClockChip} aria-label="Current time">{timeStr}</span>
           <button
-            key={t.id}
-            className={`${styles.obTab} ${activeTab === t.id ? styles.obTabActive : ''}`}
-            onClick={() => setActiveTab(t.id)}
+            type="button"
+            className={workspace.workspaceActionBtn}
+            onClick={() => {
+              setActiveTab('board')
+              setTimeout(() => addTaskRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 60)
+            }}
           >
-            {t.label}
+            + Task
           </button>
-        ))}
-        <div className={styles.obTabSpacer} />
-        <span className={styles.obClock}>{timeStr}</span>
-        <span className={styles.obCourseLabel}>{activeCourse?.name}</span>
-      </div>
+          <button
+            type="button"
+            className={`${workspace.workspaceActionBtn} ${workspace.workspaceActionBtnSecondary}`}
+            onClick={() => setActiveTab('schedule')}
+          >
+            Schedule
+          </button>
+        </WorkspaceActions>
+      }
+    >
 
-      {/* ── Secondary tabs ───────────────────────────────────────────────── */}
+      {/* ── Crew sub-tabs ────────────────────────────────────────────────── */}
       {activeTab !== 'board' && (
         <div className={styles.obSecondary}>
           {activeTab === 'schedule'  && <CrewSchedule />}
@@ -465,12 +481,6 @@ export default function OperationsBoard() {
                   <span className={styles.obStatLbl}>Absent</span>
                 </div>
               </div>
-              <button
-                className={styles.obQuickBtn}
-                onClick={() => addTaskRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })}
-              >
-                + Task
-              </button>
               <button
                 className={styles.obSettingsBtn}
                 onClick={() => setSettingsOpen(true)}
@@ -1047,6 +1057,6 @@ export default function OperationsBoard() {
 
         </div>
       )}
-    </div>
+    </PageShell>
   )
 }

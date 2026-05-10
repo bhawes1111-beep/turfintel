@@ -44,13 +44,26 @@
 
 .obTabSpacer { flex: 1; }
 
-/* Live clock — subtle, tabular, right of tabs */
+/* Live clock — subtle, tabular, right of tabs (legacy) */
 .obClock {
   font-size: 11px;
   font-variant-numeric: tabular-nums;
   color: rgba(212, 237, 212, 0.28);
   letter-spacing: 0.04em;
   padding: 0 10px 0 0;
+  white-space: nowrap;
+}
+
+/* Live clock chip — used inside the canonical PageShell.actions row */
+.obClockChip {
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: rgba(212, 237, 212, 0.62);
+  letter-spacing: 0.04em;
+  padding: 4px 9px;
+  border: 1px solid rgba(74, 158, 74, 0.18);
+  border-radius: 6px;
+  background: rgba(4, 12, 6, 0.45);
   white-space: nowrap;
 }
 
