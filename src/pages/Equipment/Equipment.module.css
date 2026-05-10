@@ -162,6 +162,20 @@
   font-weight: 500;
 }
 
+/* ── Cross-module signal: Maintenance → Equipment (Phase 3.3) ─────────────── */
+.eqMaintBadge {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 7px;
+  border-radius: 4px;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+.eqMaintBadge[data-tone='warn']     { background: rgba(212,136,58,0.14); color: #d4a43a; border-color: rgba(212,136,58,0.32); }
+.eqMaintBadge[data-tone='critical'] { background: rgba(224,80,80,0.16);  color: #e07070; border-color: rgba(224,80,80,0.36); }
+
 /* ── Operator badge ───────────────────────────────────────────────────────── */
 
 .eqOperatorBadge {

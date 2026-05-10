@@ -260,6 +260,27 @@ export default function BuildSpraySheet() {
   // Derived sheet values
   const productTable    = useMemo(() => buildProductTable(selectedRecords), [selectedRecords])
   const ppeList         = useMemo(() => buildPPE(selectedRecords), [selectedRecords])
+
+  // ── Cross-module signal: Inventory → Sprays ─────────────────────────────
+  // For each product on the sheet, look up its live inventory stock status.
+  // Surfaced as a contextual chip in the product table — read-only, no blocking.
+  const productStockSignals = useMemo(() => {
+    const map = {}
+    productTable.forEach(p => {
+      const invItem =
+        state.inventoryProducts.find(i => i.name === p.name) ??
+        state.inventoryProducts.find(i => i.name.toLowerCase() === p.name.toLowerCase())
+      if (!invItem) return
+      const status = invStockStatus(invItem.quantity, invItem.reorderLevel)
+      if (status === 'good') return
+      map[p.name] = {
+        status,
+        quantity: invItem.quantity,
+        unit:     invItem.unit,
+      }
+    })
+    return map
+  }, [productTable, state.inventoryProducts])
   const weatherSnap     = selectedRecords.find(r => r.conditions?.temp)?.conditions ?? null
   const sheetAreas      = [...new Set(selectedRecords.map(r => r.area))].join(', ')
   const sheetHoles      = selectedRecords.some(r => r.holes?.length === 18)
@@ -663,16 +684,34 @@ export default function BuildSpraySheet() {
                       </tr>
                     </thead>
                     <tbody>
-                      {productTable.map((p, i) => (
-                        <tr key={i}>
-                          <td className={styles.ssTableProductName}>{p.name}</td>
-                          <td>{p.type}</td>
-                          <td>{p.rate}</td>
-                          <td>{p.frac}</td>
-                          <td>{p.rei > 0 ? `${p.rei}h` : 'None'}</td>
-                          <td>{p.phi > 0 ? `${p.phi}d` : 'None'}</td>
-                        </tr>
-                      ))}
+                      {productTable.map((p, i) => {
+                        const sig = productStockSignals[p.name]
+                        const sigLabel =
+                          sig?.status === 'out'      ? 'Out of stock'    :
+                          sig?.status === 'critical' ? 'Critical stock'  :
+                          sig?.status === 'low'      ? 'Low stock'       : null
+                        return (
+                          <tr key={i}>
+                            <td className={styles.ssTableProductName}>
+                              {p.name}
+                              {sigLabel && (
+                                <span
+                                  className={styles.ssStockSignal}
+                                  data-tone={sig.status === 'low' ? 'warn' : 'critical'}
+                                  title={`${sig.quantity} ${sig.unit ?? ''} on hand`}
+                                >
+                                  {sigLabel}
+                                </span>
+                              )}
+                            </td>
+                            <td>{p.type}</td>
+                            <td>{p.rate}</td>
+                            <td>{p.frac}</td>
+                            <td>{p.rei > 0 ? `${p.rei}h` : 'None'}</td>
+                            <td>{p.phi > 0 ? `${p.phi}d` : 'None'}</td>
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>

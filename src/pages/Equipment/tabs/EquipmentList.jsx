@@ -1,5 +1,7 @@
 import { useState, useMemo } from 'react'
 import { EQUIPMENT_LIST, SERVICE_LOG } from '../../../data/equipment'
+// SERVICE_LOG already imported above for report generation; reused below
+// as a cross-module signal source for the per-unit maintenance badge.
 import { buildMaintenanceLogReport } from '../../../utils/reports/reportBuilder'
 import { createAttachmentRef } from '../../../utils/reports/reportSchemas'
 import { getMediaByModule, getThumbnailBlob } from '../../../utils/media/mediaStore'
@@ -126,6 +128,19 @@ export default function EquipmentList() {
     return c
   }, [])
 
+  // ── Cross-module signal: Maintenance → Equipment ───────────────────────
+  // Per-unit open / overdue service counts derived from SERVICE_LOG.
+  // Surfaced as a single contextual badge on each equipment card.
+  const serviceCountsByUnit = useMemo(() => {
+    const map = {}
+    SERVICE_LOG.forEach(log => {
+      const bucket = map[log.equipmentId] || (map[log.equipmentId] = { open: 0, overdue: 0 })
+      if (log.status === 'overdue')                                 bucket.overdue++
+      else if (log.status === 'open' || log.status === 'in-progress') bucket.open++
+    })
+    return map
+  }, [])
+
   const visible = useMemo(() => {
     const q = search.toLowerCase()
     return EQUIPMENT_LIST
@@ -220,6 +235,11 @@ export default function EquipmentList() {
             const statusMeta = STATUS_META[eq.status] || {}
             const svcWarn    = serviceWarning(eq.hours, eq.nextServiceHours)
             const fuelStyle  = FUEL_COLORS[eq.fuelType] || FUEL_COLORS.Gas
+            const svcCounts  = serviceCountsByUnit[eq.id]
+            const maintBadge =
+              svcCounts?.overdue > 0 ? { label: `${svcCounts.overdue} overdue`, tone: 'critical' } :
+              svcCounts?.open    > 0 ? { label: `${svcCounts.open} open`,       tone: 'warn' }     :
+              null
             return (
               <button
                 key={eq.id}
@@ -250,6 +270,15 @@ export default function EquipmentList() {
                     {svcWarn && (
                       <span className={`${styles.eqServiceBadge} ${svcWarn.cls}`}>
                         {svcWarn.label}
+                      </span>
+                    )}
+                    {maintBadge && (
+                      <span
+                        className={styles.eqMaintBadge}
+                        data-tone={maintBadge.tone}
+                        title="Open service log entries for this unit"
+                      >
+                        {maintBadge.label}
                       </span>
                     )}
                     {eq.assignedOperator && (

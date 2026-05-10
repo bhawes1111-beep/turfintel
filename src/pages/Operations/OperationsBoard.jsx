@@ -10,6 +10,8 @@ import { EmptyState } from '../../components/shared/EmptyState'
 import PageShell from '../../components/layout/PageShell'
 import WorkspaceActions from '../../components/shared/WorkspaceActions'
 import Timeline from '../../components/primitives/Timeline'
+import { useWeather } from '../../utils/weather/useWeather'
+import { SERVICE_LOG } from '../../data/equipment'
 import workspace from '../../styles/workspace.module.css'
 import styles from './OperationsBoard.module.css'
 
@@ -99,6 +101,7 @@ function formatDate(isoStr) {
 export default function OperationsBoard() {
   const toast = useToast()
   const addTaskRef = useRef(null)
+  const { current: weatherCurrent } = useWeather()
 
   // ── Tab / layout ─────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState('board')
@@ -163,6 +166,30 @@ export default function OperationsBoard() {
     EQUIPMENT_LIST.forEach(eq => { if (!map[eq.category]) map[eq.category] = eq })
     return map
   }, [])
+
+  // ── Cross-module signal: Maintenance → Operations ──────────────────────
+  // Categories with at least one overdue service log entry — surfaced as a
+  // contextual indicator on equipment chips within task cards.
+  const overdueMaintCategories = useMemo(() => {
+    const set = new Set()
+    SERVICE_LOG.forEach(log => {
+      if (log.status === 'overdue') set.add(log.category)
+    })
+    return set
+  }, [])
+
+  // ── Cross-module signal: Weather → Operations ──────────────────────────
+  // Derive lightweight operational weather warnings from the live weather
+  // feed. Heuristics — read-only, never blocking.
+  const weatherWarnings = useMemo(() => {
+    const out = []
+    if (!weatherCurrent) return out
+    const { wind, currentTemp, rainfall24h } = weatherCurrent
+    if (typeof wind === 'number'        && wind > 15)         out.push({ id: 'wind',  label: 'High wind',  tone: 'warn' })
+    if (typeof currentTemp === 'number' && currentTemp <= 36) out.push({ id: 'frost', label: 'Frost risk', tone: 'info' })
+    if (typeof rainfall24h === 'number' && rainfall24h >= 0.25) out.push({ id: 'rain',  label: 'Rain delay', tone: 'info' })
+    return out
+  }, [weatherCurrent])
 
   const empById = useMemo(() => {
     const map = {}
@@ -432,7 +459,7 @@ export default function OperationsBoard() {
           {/* Header */}
           <div className={styles.obHeader}>
 
-            {/* Left: routing */}
+            {/* Left: routing + weather signal */}
             <div className={styles.obHeaderLeft}>
               <div className={styles.obRoutingRow}>
                 <span className={styles.obRoutingLabel}>Routing</span>
@@ -444,6 +471,23 @@ export default function OperationsBoard() {
                   {ROUTING_OPTIONS.map(r => <option key={r}>{r}</option>)}
                 </select>
               </div>
+              {weatherWarnings.length > 0 && (
+                <div
+                  className={styles.obWeatherSignal}
+                  aria-label="Operational weather warnings"
+                >
+                  {weatherWarnings.map(w => (
+                    <span
+                      key={w.id}
+                      className={styles.obWeatherChip}
+                      data-tone={w.tone}
+                      title={`Weather: ${w.label}`}
+                    >
+                      {w.label}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Center: date selector */}
@@ -806,15 +850,23 @@ export default function OperationsBoard() {
                                   <div className={styles.obEqRow}>
                                     {task.equipment.map(name => {
                                       const eq = eqByCategory[name]
+                                      const hasOverdueMaint = overdueMaintCategories.has(name)
+                                      const isUnavailable = eq?.status === 'out-of-service'
+                                      const titleParts = [
+                                        eq ? `${eq.name} — ${eq.status}` : name,
+                                        hasOverdueMaint && !isUnavailable ? 'overdue maintenance' : null,
+                                      ].filter(Boolean)
                                       return (
                                         <span
                                           key={name}
                                           className={styles.obEqChip}
                                           data-eqstatus={eq?.status ?? 'unknown'}
-                                          title={eq ? `${eq.name} — ${eq.status}` : name}
+                                          data-overdue-maint={hasOverdueMaint && !isUnavailable ? 'true' : undefined}
+                                          title={titleParts.join(' · ')}
                                         >
                                           {eq?.status === 'out-of-service'    && '🔒 '}
                                           {eq?.status === 'needs-maintenance' && '⚠ '}
+                                          {hasOverdueMaint && eq?.status !== 'out-of-service' && eq?.status !== 'needs-maintenance' && '⏰ '}
                                           {name}
                                         </span>
                                       )
