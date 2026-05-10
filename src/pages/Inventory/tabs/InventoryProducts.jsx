@@ -26,14 +26,14 @@ const FILTER_KEY = { 'Good': 'good', 'Low': 'low', 'Critical': 'critical', 'Out 
 
 const SORT_STATUS = { out: 0, critical: 1, low: 2, good: 3 }
 
-export default function InventoryProducts() {
+export default function InventoryProducts({ initialSelectedId = null }) {
   const { state }       = useOperations()
   const inventoryProducts = state.inventoryProducts
 
   const [search,    setSearch]    = useState('')
   const [catFilter, setCatFilter] = useState('All')
   const [stkFilter, setStkFilter] = useState('All')
-  const [selectedId, setSelectedId] = useState(null)
+  const [selectedId, setSelectedId] = useState(initialSelectedId)
 
   // Derive selected product from live state so modal reflects current quantities
   const selected = useMemo(

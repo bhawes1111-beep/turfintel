@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import PageShell from '../../components/layout/PageShell'
 import WorkspaceActions from '../../components/shared/WorkspaceActions'
 import InventoryOverview        from './tabs/InventoryOverview'
@@ -19,7 +20,12 @@ const TABS = ['Overview', 'Products', 'Chemicals', 'Fertilizer', 'Parts', 'Fuel'
  * its content in WorkspaceSection for consistent rhythm.
  */
 export default function Inventory() {
-  const [activeTab, setActiveTab] = useState('Overview')
+  // Cross-module click-through (Phase 3.4): when navigated to with state,
+  // seed the active tab and (for Products) the initially selected product.
+  const location = useLocation()
+  const seedTab     = TABS.includes(location.state?.activeTab) ? location.state.activeTab : 'Overview'
+  const seedProduct = location.state?.productId ?? null
+  const [activeTab, setActiveTab] = useState(seedTab)
 
   return (
     <PageShell
@@ -48,7 +54,7 @@ export default function Inventory() {
       }
     >
       {activeTab === 'Overview'         && <InventoryOverview />}
-      {activeTab === 'Products'         && <InventoryProducts />}
+      {activeTab === 'Products'         && <InventoryProducts initialSelectedId={seedProduct} />}
       {activeTab === 'Chemicals'        && <InventoryChemicals />}
       {activeTab === 'Fertilizer'       && <InventoryFertilizer />}
       {activeTab === 'Parts'            && <InventoryParts />}

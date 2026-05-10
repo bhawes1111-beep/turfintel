@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { SPRAY_RECORDS, TYPE_COLORS } from '../../../data/spray'
 import { useOperations } from '../../../utils/operations/OperationsContext'
 import { useToast } from '../../../utils/feedback/toastContext'
@@ -113,6 +114,7 @@ function buildPPE(records) {
 export default function BuildSpraySheet() {
   const { state, dispatch }              = useOperations()
   const toast                            = useToast()
+  const navigate                         = useNavigate()
   const [search,       setSearch]       = useState('')
   const [dateFilter,   setDateFilter]   = useState('')
   const [areaFilter,   setAreaFilter]   = useState('All')
@@ -277,6 +279,7 @@ export default function BuildSpraySheet() {
         status,
         quantity: invItem.quantity,
         unit:     invItem.unit,
+        invId:    invItem.id,
       }
     })
     return map
@@ -695,13 +698,17 @@ export default function BuildSpraySheet() {
                             <td className={styles.ssTableProductName}>
                               {p.name}
                               {sigLabel && (
-                                <span
+                                <button
+                                  type="button"
                                   className={styles.ssStockSignal}
                                   data-tone={sig.status === 'low' ? 'warn' : 'critical'}
-                                  title={`${sig.quantity} ${sig.unit ?? ''} on hand`}
+                                  title={`${sig.quantity} ${sig.unit ?? ''} on hand — open in Inventory`}
+                                  onClick={() => navigate('/inventory', {
+                                    state: { activeTab: 'Products', productId: sig.invId },
+                                  })}
                                 >
                                   {sigLabel}
-                                </span>
+                                </button>
                               )}
                             </td>
                             <td>{p.type}</td>

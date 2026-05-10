@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import PageShell from '../../components/layout/PageShell'
 import WorkspaceActions from '../../components/shared/WorkspaceActions'
 import WorkspaceSection from '../../components/shared/WorkspaceSection'
@@ -25,7 +26,21 @@ const PLACEHOLDER_COPY = {
  * direction but is not expanded here.
  */
 export default function Equipment() {
-  const [activeTab, setActiveTab] = useState('Overview')
+  // Cross-module click-through seed (Phase 3.4): when navigated to with state
+  // (e.g. from Operations equipment chip), open the requested tab and unit.
+  const location = useLocation()
+  const seedTab         = TABS.includes(location.state?.activeTab) ? location.state.activeTab : 'Overview'
+  const seedEquipmentId = location.state?.equipmentId ?? null
+
+  const [activeTab, setActiveTab] = useState(seedTab)
+  // In-workspace click-through (Phase 3.4): EquipmentList → MaintenanceLogs
+  // seeds a search filter with the unit name; this state lifts the seed so
+  // MaintenanceLogs can read it as an initial value when the tab mounts.
+  const [maintInitialSearch, setMaintInitialSearch] = useState(null)
+  const jumpToMaintenance = (unitName) => {
+    setMaintInitialSearch(unitName)
+    setActiveTab('Maintenance Logs')
+  }
 
   return (
     <PageShell
@@ -54,8 +69,8 @@ export default function Equipment() {
       }
     >
       {activeTab === 'Overview'          && <EquipmentOverview />}
-      {activeTab === 'Equipment List'    && <EquipmentList />}
-      {activeTab === 'Maintenance Logs'  && <MaintenanceLogs />}
+      {activeTab === 'Equipment List'    && <EquipmentList initialSelectedId={seedEquipmentId} onJumpToMaintenance={jumpToMaintenance} />}
+      {activeTab === 'Maintenance Logs'  && <MaintenanceLogs initialSearch={maintInitialSearch} />}
       {PLACEHOLDER_COPY[activeTab] && (
         <WorkspaceSection
           title={activeTab}

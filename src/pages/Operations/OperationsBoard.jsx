@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useToast } from '../../utils/feedback/toastContext'
 import { EMPLOYEES, TASKS, HOURS_LOG } from '../../data/crew'
 import { EQUIPMENT_LIST } from '../../data/equipment'
@@ -100,6 +101,7 @@ function formatDate(isoStr) {
 
 export default function OperationsBoard() {
   const toast = useToast()
+  const navigate = useNavigate()
   const addTaskRef = useRef(null)
   const { current: weatherCurrent } = useWeather()
 
@@ -477,14 +479,19 @@ export default function OperationsBoard() {
                   aria-label="Operational weather warnings"
                 >
                   {weatherWarnings.map(w => (
-                    <span
+                    <button
                       key={w.id}
+                      type="button"
                       className={styles.obWeatherChip}
                       data-tone={w.tone}
-                      title={`Weather: ${w.label}`}
+                      title={`Weather: ${w.label} — open weather notes`}
+                      onClick={() => {
+                        setNotesTab('Weather')
+                        setPanelOpen(true)
+                      }}
                     >
                       {w.label}
-                    </span>
+                    </button>
                   ))}
                 </div>
               )}
@@ -855,20 +862,31 @@ export default function OperationsBoard() {
                                       const titleParts = [
                                         eq ? `${eq.name} — ${eq.status}` : name,
                                         hasOverdueMaint && !isUnavailable ? 'overdue maintenance' : null,
+                                        eq ? 'click to open in Equipment' : null,
                                       ].filter(Boolean)
+                                      const handleClick = (e) => {
+                                        e.stopPropagation()
+                                        if (!eq) return
+                                        navigate('/equipment', {
+                                          state: { activeTab: 'Equipment List', equipmentId: eq.id },
+                                        })
+                                      }
                                       return (
-                                        <span
+                                        <button
                                           key={name}
+                                          type="button"
                                           className={styles.obEqChip}
                                           data-eqstatus={eq?.status ?? 'unknown'}
                                           data-overdue-maint={hasOverdueMaint && !isUnavailable ? 'true' : undefined}
                                           title={titleParts.join(' · ')}
+                                          onClick={handleClick}
+                                          disabled={!eq}
                                         >
                                           {eq?.status === 'out-of-service'    && '🔒 '}
                                           {eq?.status === 'needs-maintenance' && '⚠ '}
                                           {hasOverdueMaint && eq?.status !== 'out-of-service' && eq?.status !== 'needs-maintenance' && '⏰ '}
                                           {name}
-                                        </span>
+                                        </button>
                                       )
                                     })}
                                   </div>

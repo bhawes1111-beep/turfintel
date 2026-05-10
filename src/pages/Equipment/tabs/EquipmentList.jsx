@@ -56,11 +56,15 @@ function hoursUntilService(hours, nextServiceHours) {
   return `${remaining} hrs remaining`
 }
 
-export default function EquipmentList() {
+export default function EquipmentList({ initialSelectedId = null, onJumpToMaintenance } = {}) {
   const [search,     setSearch]    = useState('')
   const [catFilter,  setCatFilter] = useState('All')
   const [staFilter,  setStaFilter] = useState('All')
-  const [selected,      setSelected]     = useState(null)
+  // Seed `selected` when navigated to from another workspace (Phase 3.4).
+  const initialSelected = initialSelectedId
+    ? EQUIPMENT_LIST.find(eq => eq.id === initialSelectedId) ?? null
+    : null
+  const [selected,      setSelected]     = useState(initialSelected)
   const [activeReport,  setActiveReport]  = useState(null)
   const [reportLoading, setReportLoading] = useState(false)
   const [reportThumbs,  setReportThumbs]  = useState([])
@@ -276,7 +280,20 @@ export default function EquipmentList() {
                       <span
                         className={styles.eqMaintBadge}
                         data-tone={maintBadge.tone}
-                        title="Open service log entries for this unit"
+                        data-clickable={onJumpToMaintenance ? 'true' : undefined}
+                        role={onJumpToMaintenance ? 'button' : undefined}
+                        tabIndex={onJumpToMaintenance ? 0 : undefined}
+                        title={onJumpToMaintenance
+                          ? 'Open service log entries for this unit'
+                          : 'Open service log entries for this unit'}
+                        onClick={onJumpToMaintenance ? (e) => { e.stopPropagation(); onJumpToMaintenance(eq.name) } : undefined}
+                        onKeyDown={onJumpToMaintenance ? (e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            onJumpToMaintenance(eq.name)
+                          }
+                        } : undefined}
                       >
                         {maintBadge.label}
                       </span>

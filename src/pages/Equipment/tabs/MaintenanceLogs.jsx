@@ -57,10 +57,11 @@ const FILTER_STATUS_KEY = {
   'Completed':   'completed',
 }
 
-export default function MaintenanceLogs() {
+export default function MaintenanceLogs({ initialSearch = null } = {}) {
   const { state, dispatch }         = useOperations()
   const toast                        = useToast()
-  const [search,      setSearch]    = useState('')
+  // Seed search filter when arriving via Phase 3.4 click-through.
+  const [search,      setSearch]    = useState(initialSearch ?? '')
   const [staFilter,   setStaFilter] = useState('All')
   const [priFilter,   setPriFilter] = useState('All')
   const [selected,       setSelected]      = useState(null)
