@@ -49,6 +49,13 @@ import {
   updateCalendarEvent,
   deleteCalendarEvent,
 } from './api/calendar.js'
+import {
+  listAlerts,
+  getAlert,
+  createAlert,
+  updateAlert,
+  deleteAlert,
+} from './api/alerts.js'
 
 export default {
   async fetch(request, env, ctx) {
@@ -193,6 +200,21 @@ async function handleApi(request, env, url) {
     if (method === 'GET')    return getCalendarEvent(env, id)
     if (method === 'PATCH')  return updateCalendarEvent(env, id, request)
     if (method === 'DELETE') return deleteCalendarEvent(env, id)
+  }
+
+  // ── /api/alerts ───────────────────────────────────────────────────────
+  if (pathname === '/api/alerts') {
+    if (method === 'GET')  return listAlerts(env)
+    if (method === 'POST') return createAlert(env, request)
+  }
+
+  // ── /api/alerts/:id ───────────────────────────────────────────────────
+  const alertMatch = pathname.match(/^\/api\/alerts\/([^/]+)$/)
+  if (alertMatch) {
+    const id = decodeURIComponent(alertMatch[1])
+    if (method === 'GET')    return getAlert(env, id)
+    if (method === 'PATCH')  return updateAlert(env, id, request)
+    if (method === 'DELETE') return deleteAlert(env, id)
   }
 
   return notFound()

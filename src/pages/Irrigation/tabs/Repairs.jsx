@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import { useOperations } from '../../../utils/operations/OperationsContext'
 import { useRepairsData, patchRepair } from '../../../utils/repairs/repairsStore'
 import { useToast } from '../../../utils/feedback/toastContext'
-import { createAlert } from '../../../utils/operations/actions'
+import { createAlert } from '../../../utils/alerts/alertsStore'
 import { createCalendarEvent } from '../../../utils/calendar/calendarStore'
 import ContextActions from '../../../components/contextActions/ContextActions'
 import ExpandableSection from '../../../components/expandable/ExpandableSection'
@@ -218,7 +218,8 @@ export default function Repairs() {
     }).catch(() => {})
 
     if (repair.priority === 'high') {
-      dispatch(createAlert({
+      // Phase 5.4b — alerts persist to D1 via alertsStore; fire-and-forget.
+      createAlert({
         title:       `Irrigation Repair Scheduled — ${ISSUE_TYPE_LABELS[repair.issueType]}`,
         message:     `${locationStr}. Assigned to ${repair.assignedTo || 'unassigned'}. Status: ${repair.status.replace('-', ' ')}.`,
         module:      'irrigation',
@@ -226,7 +227,7 @@ export default function Repairs() {
         course:      repair.area,
         actionLabel: 'View Irrigation',
         sourceId:    repair.repairId,
-      }))
+      }).catch(() => {})
     }
 
     toast.success('Repair added to Operations Calendar')

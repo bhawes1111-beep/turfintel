@@ -8,8 +8,7 @@ import WeatherIntelligence from './WeatherIntelligence'
 import IrrigationIntelligence from './IrrigationIntelligence'
 import GDDCard from './GDDCard'
 import AppEffectivenessCard from './AppEffectivenessCard'
-import { useOperations } from '../../utils/operations/OperationsContext'
-import { acknowledgeAlert, dismissAlert } from '../../utils/operations/actions'
+import { useAlertsData, acknowledgeAlert, dismissAlert } from '../../utils/alerts/alertsStore'
 import RecentActivity from './RecentActivity'
 import QuickActions from './QuickActions'
 import OperationalSummary from './OperationalSummary'
@@ -18,8 +17,7 @@ import SchedulingAwareness from './SchedulingAwareness'
 import styles from './Dashboard.module.css'
 
 export default function Dashboard() {
-  const { state, dispatch }               = useOperations()
-  const alerts                            = state.alerts
+  const { alerts }                        = useAlertsData()
   const [weatherAlerts, setWeatherAlerts] = useState(PLACEHOLDER_WEATHER_ALERTS)
 
   function handleDismissWeatherAlert(id) {
@@ -27,11 +25,11 @@ export default function Dashboard() {
   }
 
   function handleAcknowledge(id) {
-    dispatch(acknowledgeAlert(id))
+    acknowledgeAlert(id).catch(() => {})
   }
 
   function handleDismiss(id) {
-    dispatch(dismissAlert(id))
+    dismissAlert(id).catch(() => {})
   }
 
   const activeAlerts = alerts.filter(a => a.status !== 'resolved')

@@ -2,11 +2,10 @@ import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { TYPE_COLORS } from '../../../data/spray'
 import { useSpraysData } from '../../../utils/sprays/spraysStore'
-import { useOperations } from '../../../utils/operations/OperationsContext'
 import { useInventoryData, recordInventoryUsage } from '../../../utils/inventory/inventoryStore'
 import { createCalendarEvent } from '../../../utils/calendar/calendarStore'
 import { useToast } from '../../../utils/feedback/toastContext'
-import { createAlert } from '../../../utils/operations/actions'
+import { createAlert } from '../../../utils/alerts/alertsStore'
 import ContextActions from '../../../components/contextActions/ContextActions'
 import ExpandableSection from '../../../components/expandable/ExpandableSection'
 import { EmptyState } from '../../../components/shared/EmptyState'
@@ -116,7 +115,6 @@ function buildPPE(records) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function BuildSpraySheet() {
-  const { dispatch }                     = useOperations()
   const { items: inventoryProducts, usage: inventoryUsage } = useInventoryData()
   const { records: SPRAY_RECORDS_LIVE }  = useSpraysData()
   const toast                            = useToast()
@@ -158,7 +156,7 @@ export default function BuildSpraySheet() {
     })
 
     if (maxREI > 0) {
-      dispatch(createAlert({
+      createAlert({
         title:       `REI Active — ${sheetAreas}`,
         message:     `${maxREI}-hour re-entry interval in effect after spray application on ${sheetDate}. Restrict turf access until interval expires.`,
         module:      'spray',
@@ -166,7 +164,7 @@ export default function BuildSpraySheet() {
         course:      sheetAreas,
         actionLabel: 'View Spray',
         sourceId:    selectedRecords[0]?.id,
-      }))
+      }).catch(() => {})
     }
 
     // ── Inventory deductions (Phase 5.2 — persisted via inventoryStore) ─────
@@ -186,13 +184,13 @@ export default function BuildSpraySheet() {
         if (!invItem) return  // Not tracked in inventory — skip silently
 
         if (invItem.quantity < qty) {
-          dispatch(createAlert({
+          createAlert({
             title:    `Insufficient Stock — ${p.name}`,
             message:  `Spray requires ${qty} ${invItem.unit} but only ${invItem.quantity} ${invItem.unit} on hand. Deduction skipped.`,
             module:   'inventory',
             priority: 'high',
             sourceId: r.id,
-          }))
+          }).catch(() => {})
           return
         }
 
@@ -204,13 +202,13 @@ export default function BuildSpraySheet() {
           const alertTitle = nextStatus === 'out'
             ? `Out of Stock — ${p.name}`
             : `${nextStatus === 'critical' ? 'Critical' : 'Low'} Stock — ${p.name}`
-          dispatch(createAlert({
+          createAlert({
             title:    alertTitle,
             message:  `${p.name} at ${newQty} ${invItem.unit} after spray application — min. threshold ${invItem.reorderLevel} ${invItem.unit}.`,
             module:   'inventory',
             priority: nextStatus === 'out' || nextStatus === 'critical' ? 'high' : 'medium',
             sourceId: r.id,
-          }))
+          }).catch(() => {})
         }
 
         // Atomic on the server: decrements inventory_items.quantity and

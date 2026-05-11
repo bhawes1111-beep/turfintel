@@ -1,12 +1,8 @@
 import { createContext, useContext, useEffect, useReducer } from 'react'
 import { loadSync, save, migrate } from '../persistence/persistence'
-import { DASHBOARD_ALERTS } from '../../data/dashboardAlerts'
 import {
-  CREATE_ALERT,
   ASSIGN_CREW,
   RESERVE_EQUIPMENT,
-  DISMISS_ALERT,
-  ACKNOWLEDGE_ALERT,
 } from './actions'
 
 const STORAGE_KEY = 'turfintel-operations'
@@ -15,9 +11,9 @@ const STORAGE_KEY = 'turfintel-operations'
 // Used on first load or when persisted state is absent / corrupt.
 
 const seedState = {
-  alerts:                [...DASHBOARD_ALERTS],
   crewAssignments:       [],
   equipmentReservations: [],
+  // alerts removed in Phase 5.4b (→ alertsStore).
   // calendarEvents removed in Phase 5.4a (→ calendarStore).
   // inventoryProducts / inventoryUsage removed in Phase 5.2 (→ inventoryStore).
   // repairOverrides / equipmentOverrides removed in Phase 5.1c.
@@ -53,13 +49,12 @@ function mergeWithSeed(loaded) {
 function operationsReducer(state, { type, payload }) {
   switch (type) {
 
+    // CREATE_ALERT / DISMISS_ALERT / ACKNOWLEDGE_ALERT cases removed in Phase
+    // 5.4b — alerts now persist via createAlert() / patchAlert() in alertsStore.
     // CREATE_CALENDAR_EVENT case removed in Phase 5.4a — calendar events
     // now persist via createCalendarEvent() in calendarStore. Worker-side
     // dedupe (sourceId + event_type + start_date) handles the guard that
     // used to live here.
-
-    case CREATE_ALERT:
-      return { ...state, alerts: [payload, ...state.alerts] }
 
     // ASSIGN_CREW / RESERVE_EQUIPMENT no longer mutate calendarEvents
     // (those moved to calendarStore in Phase 5.4a). The originating
@@ -71,17 +66,6 @@ function operationsReducer(state, { type, payload }) {
 
     case RESERVE_EQUIPMENT:
       return { ...state, equipmentReservations: [...state.equipmentReservations, payload] }
-
-    case DISMISS_ALERT:
-      return { ...state, alerts: state.alerts.filter(a => a.id !== payload.id) }
-
-    case ACKNOWLEDGE_ALERT:
-      return {
-        ...state,
-        alerts: state.alerts.map(a =>
-          a.id === payload.id ? { ...a, status: 'acknowledged' } : a
-        ),
-      }
 
     // DEDUCT_INVENTORY case removed in Phase 5.2 — inventory deductions now
     // persist via recordInventoryUsage() in inventoryStore (atomic D1 op).

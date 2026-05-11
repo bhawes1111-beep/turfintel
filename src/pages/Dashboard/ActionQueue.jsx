@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useOperations } from '../../utils/operations/OperationsContext'
+import { useAlertsData } from '../../utils/alerts/alertsStore'
 import { useEquipmentData } from '../../utils/equipment/equipmentStore'
 import { useRepairsData } from '../../utils/repairs/repairsStore'
 import { useSpraysData } from '../../utils/sprays/spraysStore'
@@ -163,15 +163,15 @@ function buildQueue(alerts, { serviceLog = [], repairs = [], sprayRecords = [] }
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function ActionQueue() {
-  const { state }                 = useOperations()
+  const { alerts }                = useAlertsData()
   const { serviceLog }            = useEquipmentData()
   const { repairs }               = useRepairsData()
   const { records: sprayRecords } = useSpraysData()
   const navigate                  = useNavigate()
 
   const items = useMemo(
-    () => buildQueue(state.alerts, { serviceLog, repairs, sprayRecords }),
-    [state.alerts, serviceLog, repairs, sprayRecords],
+    () => buildQueue(alerts, { serviceLog, repairs, sprayRecords }),
+    [alerts, serviceLog, repairs, sprayRecords],
   )
 
   if (items.length === 0) {

@@ -2,11 +2,10 @@
 
 // CREATE_CALENDAR_EVENT removed in Phase 5.4a — calendar events are
 // persisted via createCalendarEvent() in calendarStore.
-export const CREATE_ALERT          = 'CREATE_ALERT'
+// CREATE_ALERT / DISMISS_ALERT / ACKNOWLEDGE_ALERT removed in Phase 5.4b —
+// alerts are persisted via alertsStore (createAlert / patchAlert).
 export const ASSIGN_CREW           = 'ASSIGN_CREW'
 export const RESERVE_EQUIPMENT     = 'RESERVE_EQUIPMENT'
-export const DISMISS_ALERT         = 'DISMISS_ALERT'
-export const ACKNOWLEDGE_ALERT     = 'ACKNOWLEDGE_ALERT'
 // DEDUCT_INVENTORY removed in Phase 5.2 — inventory is persisted via
 // inventoryStore (recordInventoryUsage). UPDATE_REPAIR_OVERRIDE /
 // UPDATE_EQUIPMENT_OVERRIDE removed in Phase 5.1c — those domains
@@ -23,20 +22,17 @@ export const ACKNOWLEDGE_ALERT     = 'ACKNOWLEDGE_ALERT'
 //   4. On failure: dispatch a REVERT action
 
 import {
-  makeAlert,
   makeCrewAssignment,
   makeEquipmentReservation,
 } from './schemas'
 // makeInventoryUsage removed in Phase 5.2; makeCalendarEvent removed in
-// Phase 5.4a. Both schema helpers remain exported from schemas.js for
-// reportBuilder back-compat.
+// Phase 5.4a. makeAlert remains exported from schemas.js for back-compat
+// but is no longer used here (Phase 5.4b — alertsStore is server-of-truth).
 
 // createCalendarEvent action creator removed in Phase 5.4a — use
 // createCalendarEvent() from src/utils/calendar/calendarStore instead.
-
-export function createAlert(fields) {
-  return { type: CREATE_ALERT, payload: makeAlert(fields) }
-}
+// createAlert / dismissAlert / acknowledgeAlert action creators removed in
+// Phase 5.4b — use the equivalents from src/utils/alerts/alertsStore.
 
 export function assignCrew(fields) {
   return { type: ASSIGN_CREW, payload: makeCrewAssignment(fields) }
@@ -44,14 +40,6 @@ export function assignCrew(fields) {
 
 export function reserveEquipment(fields) {
   return { type: RESERVE_EQUIPMENT, payload: makeEquipmentReservation(fields) }
-}
-
-export function dismissAlert(id) {
-  return { type: DISMISS_ALERT, payload: { id } }
-}
-
-export function acknowledgeAlert(id) {
-  return { type: ACKNOWLEDGE_ALERT, payload: { id } }
 }
 
 // deductInventory removed in Phase 5.2. Use recordInventoryUsage() from

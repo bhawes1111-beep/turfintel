@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useOperations } from '../../utils/operations/OperationsContext'
+import { useAlertsData } from '../../utils/alerts/alertsStore'
 import { useEquipmentData } from '../../utils/equipment/equipmentStore'
 import { useRepairsData } from '../../utils/repairs/repairsStore'
 import { useSpraysData } from '../../utils/sprays/spraysStore'
@@ -136,7 +136,7 @@ function buildSummaryItems(alerts, { serviceLog = [], repairs = [], sprayRecords
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function OperationalSummary() {
-  const { state }                 = useOperations()
+  const { alerts }                = useAlertsData()
   const { serviceLog }            = useEquipmentData()
   const { repairs }               = useRepairsData()
   const { records: sprayRecords } = useSpraysData()
@@ -149,10 +149,10 @@ export default function OperationalSummary() {
 
   const items = useMemo(
     () => buildSummaryItems(
-      state.alerts.filter(a => a.status !== 'resolved'),
+      alerts.filter(a => a.status !== 'resolved'),
       { serviceLog, repairs, sprayRecords, allActivities },
     ),
-    [state.alerts, serviceLog, repairs, sprayRecords, allActivities],
+    [alerts, serviceLog, repairs, sprayRecords, allActivities],
   )
 
   const dateLabel = new Date().toLocaleDateString('en-US', {
