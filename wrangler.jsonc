@@ -6,37 +6,18 @@
     "directory": "./dist",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application"
-  }
+  },
 
-  // ──────────────────────────────────────────────────────────────────────
-  //  Phase 5.0 — D1 Activation (one-time bootstrap)
-  //
-  //    1. Create the database:
-  //         npx wrangler d1 create turfintel-db
-  //         # Copy the database_id printed by wrangler.
-  //    2. Uncomment the d1_databases block below and paste the id.
-  //    3. Apply all migrations (Phase 5.1d migration runner):
-  //         npm run db:migrate:remote
-  //    4. Redeploy:
-  //         npm run build && npx wrangler deploy
-  //
-  //  For local development:
-  //         npm run db:migrate:local
-  //         npx wrangler dev
-  //
-  //  Verifying migration state:
-  //         npm run db:status:local
-  //         npm run db:status:remote
-  //
-  //  Until D1 is activated, /api/* gracefully returns empty data (no crash).
-  //
-  // "d1_databases": [
-  //   {
-  //     "binding": "DB",
-  //     "database_name": "turfintel-db",
-  //     "database_id": "PASTE_DATABASE_ID_HERE"
-  //   }
-  // ]
+  // D1 binding activated 2026-05-11 via `npx wrangler d1 create turfintel-db`.
+  // After any schema change: `npm run db:migrate:remote`.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "turfintel-db",
+      "database_id": "43aafc7e-478a-40a7-9b1b-ac8d2e589b9e"
+    }
+  ]
+
   //
   // ──────────────────────────────────────────────────────────────────────
   //  Phase 5.1b — Mutation auth (one-time bootstrap)
