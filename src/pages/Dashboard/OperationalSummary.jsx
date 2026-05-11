@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useOperations } from '../../utils/operations/OperationsContext'
 import { useEquipmentData } from '../../utils/equipment/equipmentStore'
 import { useRepairsData } from '../../utils/repairs/repairsStore'
-import { SPRAY_RECORDS } from '../../data/spray'
+import { useSpraysData } from '../../utils/sprays/spraysStore'
 import { aggregateAll } from '../../utils/activity/activityBuilder'
 import { SEVERITY_TOKENS } from '../../utils/intelligence/severity'
 import { EmptyState } from '../../components/shared/EmptyState'
@@ -13,7 +13,7 @@ import styles from './OperationalSummary.module.css'
 // Returns an array of { icon, text, severity } briefing items derived from
 // real operational data. Items are ordered by operational relevance.
 
-function buildSummaryItems(alerts, { serviceLog = [], repairs = [], allActivities = [] } = {}) {
+function buildSummaryItems(alerts, { serviceLog = [], repairs = [], sprayRecords = [], allActivities = [] } = {}) {
   const items = []
 
   // 1. Alert status — derived from OperationsContext (respects dismissals)
@@ -107,7 +107,7 @@ function buildSummaryItems(alerts, { serviceLog = [], repairs = [], allActivitie
   }
 
   // 6. Planned spray applications
-  const plannedApps = SPRAY_RECORDS.filter(r => r.status === 'planned')
+  const plannedApps = sprayRecords.filter(r => r.status === 'planned')
   if (plannedApps.length > 0) {
     items.push({
       icon:     '🌿',
@@ -136,22 +136,23 @@ function buildSummaryItems(alerts, { serviceLog = [], repairs = [], allActivitie
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function OperationalSummary() {
-  const { state }      = useOperations()
-  const { serviceLog } = useEquipmentData()
-  const { repairs }    = useRepairsData()
-  const navigate       = useNavigate()
+  const { state }                 = useOperations()
+  const { serviceLog }            = useEquipmentData()
+  const { repairs }               = useRepairsData()
+  const { records: sprayRecords } = useSpraysData()
+  const navigate                  = useNavigate()
 
   const allActivities = useMemo(
-    () => aggregateAll({ serviceLog, repairs }),
-    [serviceLog, repairs],
+    () => aggregateAll({ serviceLog, repairs, sprayRecords }),
+    [serviceLog, repairs, sprayRecords],
   )
 
   const items = useMemo(
     () => buildSummaryItems(
       state.alerts.filter(a => a.status !== 'resolved'),
-      { serviceLog, repairs, allActivities },
+      { serviceLog, repairs, sprayRecords, allActivities },
     ),
-    [state.alerts, serviceLog, repairs, allActivities],
+    [state.alerts, serviceLog, repairs, sprayRecords, allActivities],
   )
 
   const dateLabel = new Date().toLocaleDateString('en-US', {

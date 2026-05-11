@@ -1,4 +1,4 @@
-import { SPRAY_RECORDS }    from '../../data/spray'
+// Phase 5.3 — sprayRecords supplied by the React caller from useSpraysData().
 // Phase 5.1c — repairs now sourced from repairsStore via the React caller.
 // Phase 5.1a — serviceLog is supplied by the React caller from
 // useEquipmentData(). No static import.
@@ -59,7 +59,7 @@ function slugToTitle(slug) {
 
 // ── Builders ──────────────────────────────────────────────────────────────────
 
-export function buildFromSprayRecords(records = SPRAY_RECORDS) {
+export function buildFromSprayRecords(records = []) {
   return records.map(r => createActivity({
     id:          `act-spray-${r.id}`,
     type:        ACTIVITY_TYPE.SPRAY_APPLICATION,
@@ -142,13 +142,12 @@ export function buildFromAlerts(alerts = DASHBOARD_ALERTS) {
 
 // ── Aggregate ─────────────────────────────────────────────────────────────────
 
-// Phase 5.1c: both serviceLog and repairs are now parameters
-// (server-of-truth from their respective stores). The override-overlay
-// pattern is fully retired.
-export function aggregateAll({ serviceLog = [], repairs = [] } = {}) {
+// Phase 5.3: sprayRecords is now a parameter as well. All operational
+// domains are server-of-truth via their respective stores.
+export function aggregateAll({ serviceLog = [], repairs = [], sprayRecords = [] } = {}) {
   const seen = new Set()
   return [
-    ...buildFromSprayRecords(),
+    ...buildFromSprayRecords(sprayRecords),
     ...buildFromIrrigationRepairs(repairs),
     ...buildFromMaintenanceLogs(serviceLog),
     ...buildFromAlerts(),

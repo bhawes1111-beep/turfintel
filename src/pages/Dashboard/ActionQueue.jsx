@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useOperations } from '../../utils/operations/OperationsContext'
 import { useEquipmentData } from '../../utils/equipment/equipmentStore'
 import { useRepairsData } from '../../utils/repairs/repairsStore'
-import { SPRAY_RECORDS } from '../../data/spray'
+import { useSpraysData } from '../../utils/sprays/spraysStore'
 import { SEVERITY_TOKENS, SEVERITY_ORDER } from '../../utils/intelligence/severity'
 import { EmptyState } from '../../components/shared/EmptyState'
 import styles from './ActionQueue.module.css'
@@ -124,8 +124,8 @@ function fromServiceLog(logs = []) {
     }))
 }
 
-function fromSpray() {
-  return SPRAY_RECORDS
+function fromSpray(sprayRecords = []) {
+  return sprayRecords
     .filter(r => r.status === 'pending-review')
     .map(r => ({
       id:        `aq-spray-${r.id}`,
@@ -140,15 +140,15 @@ function fromSpray() {
 
 // ── Aggregate + dedupe + sort ─────────────────────────────────────────────────
 
-// Phase 5.1c: every domain is server-of-truth — both serviceLog and
-// repairs are now parameters from their respective stores.
-function buildQueue(alerts, { serviceLog = [], repairs = [] } = {}) {
+// Phase 5.3: every operational domain is server-of-truth — serviceLog,
+// repairs, and sprayRecords all come from their respective stores.
+function buildQueue(alerts, { serviceLog = [], repairs = [], sprayRecords = [] } = {}) {
   const seen = new Set()
   return [
     ...fromAlerts(alerts),
     ...fromRepairs(repairs),
     ...fromServiceLog(serviceLog),
-    ...fromSpray(),
+    ...fromSpray(sprayRecords),
   ]
     .filter(item => {
       if (seen.has(item.id)) return false
@@ -163,14 +163,15 @@ function buildQueue(alerts, { serviceLog = [], repairs = [] } = {}) {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function ActionQueue() {
-  const { state }      = useOperations()
-  const { serviceLog } = useEquipmentData()
-  const { repairs }    = useRepairsData()
-  const navigate       = useNavigate()
+  const { state }                 = useOperations()
+  const { serviceLog }            = useEquipmentData()
+  const { repairs }               = useRepairsData()
+  const { records: sprayRecords } = useSpraysData()
+  const navigate                  = useNavigate()
 
   const items = useMemo(
-    () => buildQueue(state.alerts, { serviceLog, repairs }),
-    [state.alerts, serviceLog, repairs],
+    () => buildQueue(state.alerts, { serviceLog, repairs, sprayRecords }),
+    [state.alerts, serviceLog, repairs, sprayRecords],
   )
 
   if (items.length === 0) {

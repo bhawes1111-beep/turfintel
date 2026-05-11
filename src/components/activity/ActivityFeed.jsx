@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { aggregateAll } from '../../utils/activity/activityBuilder'
 import { useEquipmentData } from '../../utils/equipment/equipmentStore'
 import { useRepairsData } from '../../utils/repairs/repairsStore'
+import { useSpraysData } from '../../utils/sprays/spraysStore'
 import ActivityFilters from './ActivityFilters'
 import ActivityCard from './ActivityCard'
 import styles from './activity.module.css'
@@ -29,13 +30,14 @@ function inDateRange(timestamp, range) {
 }
 
 export default function ActivityFeed() {
-  const { serviceLog }    = useEquipmentData()
-  const { repairs }       = useRepairsData()
+  const { serviceLog }                = useEquipmentData()
+  const { repairs }                   = useRepairsData()
+  const { records: sprayRecords }     = useSpraysData()
   const [filters, setFilters] = useState(DEFAULT_FILTERS)
 
   const ALL_ACTIVITIES = useMemo(
-    () => aggregateAll({ serviceLog, repairs }),
-    [serviceLog, repairs],
+    () => aggregateAll({ serviceLog, repairs, sprayRecords }),
+    [serviceLog, repairs, sprayRecords],
   )
 
   const visible = useMemo(() => {

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { aggregateAll } from '../../utils/activity/activityBuilder'
 import { useEquipmentData } from '../../utils/equipment/equipmentStore'
 import { useRepairsData } from '../../utils/repairs/repairsStore'
+import { useSpraysData } from '../../utils/sprays/spraysStore'
 import {
   getModuleIcon,
   getSeverityMeta,
@@ -25,12 +26,13 @@ function getRoute(module) {
 
 export default function RecentActivity() {
   const navigate            = useNavigate()
-  const { serviceLog }      = useEquipmentData()
-  const { repairs }         = useRepairsData()
+  const { serviceLog }            = useEquipmentData()
+  const { repairs }               = useRepairsData()
+  const { records: sprayRecords } = useSpraysData()
 
   const RECENT = useMemo(
-    () => aggregateAll({ serviceLog, repairs }).slice(0, 10),
-    [serviceLog, repairs],
+    () => aggregateAll({ serviceLog, repairs, sprayRecords }).slice(0, 10),
+    [serviceLog, repairs, sprayRecords],
   )
 
   return (

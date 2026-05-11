@@ -1,9 +1,23 @@
-// Spray data — empty in production until live records are imported.
+// Spray data — moved to D1 persistence in Phase 5.3.
+// Consumers now use spraysStore (src/utils/sprays/spraysStore.js).
 //
-// Schemas:
-// SPRAY_EVENTS     — [{ id, date, product, type, area, status, applicator }]
-// SPRAY_RECORDS    — [{ id, date, product, type, rate, area, weather, ... }]
-// PLANNED_PROGRAMS — [{ id, name, target, products[], cadence, ... }]
+// Schemas (for reference; SQL truth lives in
+// worker/migrations/0006_sprays.sql):
+//
+// spray_records  — { id, applicationName, targetPest, applicator, course,
+//                    date, startTime, endTime, status,
+//                    conditions: { temp, wind, humidity, soilTemp },
+//                    rei, phi, carrierVolume, totalVolume, holes,
+//                    area (first), areas[], products[], notes,
+//                    createdAt, updatedAt }
+//
+// spray_products — { id, name, type, rate, unit, quantityUsed,
+//                    inventoryItemId }  (nested inside record.products)
+//
+// spray_areas    — { id, name, acreage }  (nested inside record.areas)
+//
+// PLANNED_PROGRAMS remains static (spray templates are out of scope for
+// the Phase 5.3 vertical migration).
 //
 // TYPE_COLORS is display config (NOT data) — preserved for category badges.
 

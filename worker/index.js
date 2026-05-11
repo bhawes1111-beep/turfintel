@@ -35,6 +35,13 @@ import {
   listInventoryUsage,
   recordInventoryUsage,
 } from './api/inventory.js'
+import {
+  listSprays,
+  getSpray,
+  createSpray,
+  updateSpray,
+  deleteSpray,
+} from './api/sprays.js'
 
 export default {
   async fetch(request, env, ctx) {
@@ -149,6 +156,21 @@ async function handleApi(request, env, url) {
     if (method === 'GET')    return getInventory(env, id)
     if (method === 'PATCH')  return updateInventory(env, id, request)
     if (method === 'DELETE') return deleteInventory(env, id)
+  }
+
+  // ── /api/sprays ───────────────────────────────────────────────────────
+  if (pathname === '/api/sprays') {
+    if (method === 'GET')  return listSprays(env)
+    if (method === 'POST') return createSpray(env, request)
+  }
+
+  // ── /api/sprays/:id ───────────────────────────────────────────────────
+  const sprayMatch = pathname.match(/^\/api\/sprays\/([^/]+)$/)
+  if (sprayMatch) {
+    const id = decodeURIComponent(sprayMatch[1])
+    if (method === 'GET')    return getSpray(env, id)
+    if (method === 'PATCH')  return updateSpray(env, id, request)
+    if (method === 'DELETE') return deleteSpray(env, id)
   }
 
   return notFound()

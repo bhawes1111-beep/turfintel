@@ -1,26 +1,30 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { SPRAY_RECORDS } from '../../data/spray'
+import { useSpraysData } from '../../utils/sprays/spraysStore'
 import { buildSpraySummaryReport } from '../../utils/reports/reportBuilder'
 import ReportPreviewModal from '../../components/reports/ReportPreviewModal'
 import styles from './QuickActions.module.css'
 
-// Normalize multi-product spray records for the report builder
-const ALL_SPRAY = SPRAY_RECORDS.map(r => ({
-  ...r,
-  product: r.products.map(p => p.name).join(' + '),
-  rate:    r.products.map(p => p.rate).join(' / '),
-}))
-
 export default function QuickActions() {
   const navigate = useNavigate()
+  const { records: sprayRecords } = useSpraysData()
   const [activeReport, setActiveReport] = useState(null)
+
+  // Normalize multi-product spray records for the report builder.
+  const allSpray = useMemo(
+    () => sprayRecords.map(r => ({
+      ...r,
+      product: r.products.map(p => p.name).join(' + '),
+      rate:    r.products.map(p => p.rate).join(' / '),
+    })),
+    [sprayRecords],
+  )
 
   function generateDailyReport() {
     const dateLabel = new Date().toLocaleDateString('en-US', {
       month: 'long', day: 'numeric', year: 'numeric',
     })
-    setActiveReport(buildSpraySummaryReport(ALL_SPRAY, {
+    setActiveReport(buildSpraySummaryReport(allSpray, {
       title:     'Daily Operations Summary',
       dateRange: dateLabel,
     }))

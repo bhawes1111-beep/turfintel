@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { SPRAY_RECORDS, TYPE_COLORS } from '../../../data/spray'
+import { TYPE_COLORS } from '../../../data/spray'
+import { useSpraysData } from '../../../utils/sprays/spraysStore'
 import { useOperations } from '../../../utils/operations/OperationsContext'
 import { useInventoryData, recordInventoryUsage } from '../../../utils/inventory/inventoryStore'
 import { useToast } from '../../../utils/feedback/toastContext'
@@ -116,6 +117,7 @@ function buildPPE(records) {
 export default function BuildSpraySheet() {
   const { dispatch }                     = useOperations()
   const { items: inventoryProducts, usage: inventoryUsage } = useInventoryData()
+  const { records: SPRAY_RECORDS_LIVE }  = useSpraysData()
   const toast                            = useToast()
   const navigate                         = useNavigate()
   const [search,       setSearch]       = useState('')
@@ -229,24 +231,24 @@ export default function BuildSpraySheet() {
   }
 
   const visible = useMemo(() => {
-    return SPRAY_RECORDS.filter(r => {
+    return SPRAY_RECORDS_LIVE.filter(r => {
       if (areaFilter   !== 'All' && r.area   !== areaFilter)   return false
       if (statusFilter !== 'All' && r.status !== statusFilter)  return false
       if (dateFilter && r.date !== dateFilter)                  return false
       if (search) {
         const q = search.toLowerCase()
-        return r.area.toLowerCase().includes(q)
-          || r.applicator.toLowerCase().includes(q)
+        return (r.area ?? '').toLowerCase().includes(q)
+          || (r.applicator ?? '').toLowerCase().includes(q)
           || (r.targetPest && r.targetPest.toLowerCase().includes(q))
           || r.products.some(p => p.name.toLowerCase().includes(q))
       }
       return true
     })
-  }, [search, dateFilter, areaFilter, statusFilter])
+  }, [SPRAY_RECORDS_LIVE, search, dateFilter, areaFilter, statusFilter])
 
   const selectedRecords = useMemo(
-    () => SPRAY_RECORDS.filter(r => selected.has(r.id)),
-    [selected]
+    () => SPRAY_RECORDS_LIVE.filter(r => selected.has(r.id)),
+    [SPRAY_RECORDS_LIVE, selected]
   )
 
   // Stat row (based on visible list)
@@ -428,7 +430,7 @@ export default function BuildSpraySheet() {
           </div>
 
           {visible.length === 0 ? (
-            SPRAY_RECORDS.length === 0 ? (
+            SPRAY_RECORDS_LIVE.length === 0 ? (
               <EmptyState
                 title="No spray records to build from."
                 description="Create spray applications to assemble crew sheets here."

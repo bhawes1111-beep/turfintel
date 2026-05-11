@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
-import { SPRAY_RECORDS, TYPE_COLORS } from '../../../data/spray'
+import { TYPE_COLORS } from '../../../data/spray'
+import { useSpraysData } from '../../../utils/sprays/spraysStore'
 import { buildSpraySummaryReport } from '../../../utils/reports/reportBuilder'
 import { createAttachmentRef } from '../../../utils/reports/reportSchemas'
 import { getMediaByModule, getThumbnailBlob } from '../../../utils/media/mediaStore'
@@ -36,6 +37,7 @@ function conditionsSummary(c) {
 }
 
 export default function SprayRecords() {
+  const { records: SPRAY_RECORDS }      = useSpraysData()
   const [search, setSearch]             = useState('')
   const [typeFilter, setTypeFilter]     = useState('All')
   const [statusFilter, setStatusFilter] = useState('All')
@@ -112,8 +114,8 @@ export default function SprayRecords() {
       const matchStatus = statusFilter === 'All' || r.status === statusFilter
       const q = search.toLowerCase()
       const matchSearch = !q ||
-        r.area.toLowerCase().includes(q) ||
-        r.applicator.toLowerCase().includes(q) ||
+        (r.area ?? '').toLowerCase().includes(q) ||
+        (r.applicator ?? '').toLowerCase().includes(q) ||
         (r.targetPest && r.targetPest.toLowerCase().includes(q)) ||
         r.products.some(p => p.name.toLowerCase().includes(q))
       return matchType && matchStatus && matchSearch

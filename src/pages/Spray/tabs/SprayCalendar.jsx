@@ -1,24 +1,33 @@
-import { useState } from 'react'
-import { SPRAY_EVENTS, TYPE_COLORS } from '../../../data/spray'
+import { useState, useMemo } from 'react'
+import { TYPE_COLORS } from '../../../data/spray'
+import { useSpraysData } from '../../../utils/sprays/spraysStore'
 import { CalendarGrid, MonthNavigation } from '../../../components/shared/calendar'
 import WorkspaceSection from '../../../components/shared/WorkspaceSection'
 import styles from '../Spray.module.css'
 
-// Map spray events → shared calendar event structure.
-// Color is pulled from TYPE_COLORS so spray-specific palette is preserved.
-// category + course appear in agenda card meta rows.
-const CALENDAR_EVENTS = SPRAY_EVENTS.map(e => ({
-  id:       e.id,
-  title:    e.product,
-  type:     'spray',
-  category: e.type,
-  date:     e.date,
-  status:   e.status,
-  course:   e.area,
-  color:    TYPE_COLORS[e.type]?.text,
-}))
+// One calendar event per spray record. Title is the joined product names;
+// category/color is keyed on the first product's type so the spray-type
+// palette renders correctly when a record has a single dominant type.
+function recordToCalendarEvent(r) {
+  const firstType = r.products[0]?.type
+  return {
+    id:       r.id,
+    title:    r.products.map(p => p.name).join(' + ') || r.applicationName || '(unnamed)',
+    type:     'spray',
+    category: firstType,
+    date:     r.date,
+    status:   r.status,
+    course:   r.area,
+    color:    TYPE_COLORS[firstType]?.text,
+  }
+}
 
 export default function SprayCalendar() {
+  const { records } = useSpraysData()
+  const CALENDAR_EVENTS = useMemo(
+    () => records.filter(r => r.date).map(recordToCalendarEvent),
+    [records],
+  )
   const [year, setYear]   = useState(2026)
   const [month, setMonth] = useState(4) // May = 4
 
