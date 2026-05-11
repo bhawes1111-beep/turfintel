@@ -63,17 +63,18 @@ const SQFT_PER_ACRE_K = 43.56
 // ── Draft seed (used when localStorage is empty) ────────────────────────
 function makeEmptyDraft() {
   return {
-    date:         TODAY,
-    startTime:    '',
-    operator:     '',
-    area:         '',
-    acres:        0,
-    target:       '',
-    waterVolume: '',
-    sprayRig:     'Spray Rig #1',
+    date:           TODAY,
+    startTime:      '',
+    operator:       '',
+    area:           '',
+    acres:          0,
+    target:         '',
+    waterVolume:    '',
+    carrierAmount:  '',
+    sprayRig:       'Spray Rig #1',
     conditions: { temp: '', wind: '', humidity: '' },
-    observations: '',
-    rows:         [],
+    observations:   '',
+    rows:           [],
   }
 }
 
@@ -302,7 +303,7 @@ export default function BuildSpraySheet() {
           humidity: draft.conditions.humidity ? parseFloat(draft.conditions.humidity) : null,
         },
         rei:           summary.maxRei,
-        carrierVolume: draft.waterVolume,
+        carrierVolume: draft.carrierAmount || null,
         totalVolume:   summary.water,
         notes:         draft.observations,
         area:          draft.area,
@@ -629,6 +630,15 @@ export default function BuildSpraySheet() {
                   value={draft.waterVolume}
                   onChange={e => patchDraft({ waterVolume: e.target.value })}
                   placeholder="120"
+                />
+              </Field>
+              <Field label="Carrier amount (gal/A)">
+                <input
+                  type="text"
+                  className={styles.naInput}
+                  value={draft.carrierAmount}
+                  onChange={e => patchDraft({ carrierAmount: e.target.value })}
+                  placeholder="2 gal/A"
                 />
               </Field>
               <Field label="Temperature (°F)">

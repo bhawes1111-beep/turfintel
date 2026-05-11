@@ -1804,6 +1804,31 @@
   border-radius: 2px;
 }
 
+/* Native <select> needs explicit affordance — without it the operator
+   can't tell it's interactive against the field cell's faint surface.
+   We restore the OS chevron via appearance:auto and tint the option
+   list so the dropdown reads against dark mode. */
+
+select.naInput {
+  appearance: auto;
+  -webkit-appearance: menulist;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+  padding: 4px 6px;
+  cursor: pointer;
+}
+
+select.naInput:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+select.naInput option {
+  background: #1a1f24;
+  color: var(--color-text, #e4e8ec);
+}
+
 /* ── Section headers ────────────────────────────────────────────────────── */
 
 .naSectionHeader {
@@ -1997,7 +2022,7 @@
 
 .naConditionsGrid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
 }
 
