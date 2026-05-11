@@ -2,10 +2,11 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from '../../utils/feedback/toastContext'
 import { EMPLOYEES, TASKS, HOURS_LOG } from '../../data/crew'
-import CrewSchedule  from '../Crew/tabs/CrewSchedule'
-import CrewEmployees from '../Crew/tabs/CrewEmployees'
-import CrewHours     from '../Crew/tabs/CrewHours'
-import CrewNotes     from '../Crew/tabs/CrewNotes'
+import CrewSchedule     from '../Crew/tabs/CrewSchedule'
+import CrewAssignments  from '../Crew/tabs/CrewAssignments'
+import CrewEmployees    from '../Crew/tabs/CrewEmployees'
+import CrewHours        from '../Crew/tabs/CrewHours'
+import CrewNotes        from '../Crew/tabs/CrewNotes'
 import { EmptyState } from '../../components/shared/EmptyState'
 import PageShell from '../../components/layout/PageShell'
 import WorkspaceActions from '../../components/shared/WorkspaceActions'
@@ -71,11 +72,12 @@ const TASK_GROUPS = [
 const DENSITY_OPTIONS = ['Compact', 'Comfortable', 'Expanded']
 
 const TABS = [
-  { id: 'board',     label: 'Operations Board' },
-  { id: 'schedule',  label: 'Schedule' },
-  { id: 'employees', label: 'Employees' },
-  { id: 'hours',     label: 'Hours' },
-  { id: 'notes',     label: 'Notes' },
+  { id: 'board',       label: 'Operations Board' },
+  { id: 'schedule',    label: 'Schedule' },
+  { id: 'assignments', label: 'Assignments' },
+  { id: 'employees',   label: 'Employees' },
+  { id: 'hours',       label: 'Hours' },
+  { id: 'notes',       label: 'Notes' },
 ]
 const TAB_LABELS  = TABS.map(t => t.label)
 const LABEL_TO_ID = Object.fromEntries(TABS.map(t => [t.label, t.id]))
@@ -448,10 +450,11 @@ export default function OperationsBoard() {
       {/* ── Crew sub-tabs ────────────────────────────────────────────────── */}
       {activeTab !== 'board' && (
         <div className={styles.obSecondary}>
-          {activeTab === 'schedule'  && <CrewSchedule />}
-          {activeTab === 'employees' && <CrewEmployees />}
-          {activeTab === 'hours'     && <CrewHours />}
-          {activeTab === 'notes'     && <CrewNotes />}
+          {activeTab === 'schedule'    && <CrewSchedule />}
+          {activeTab === 'assignments' && <CrewAssignments />}
+          {activeTab === 'employees'   && <CrewEmployees />}
+          {activeTab === 'hours'       && <CrewHours />}
+          {activeTab === 'notes'       && <CrewNotes />}
         </div>
       )}
 
