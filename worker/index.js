@@ -56,6 +56,18 @@ import {
   updateAlert,
   deleteAlert,
 } from './api/alerts.js'
+import {
+  listCrewAssignments,
+  getCrewAssignment,
+  createCrewAssignment,
+  updateCrewAssignment,
+  deleteCrewAssignment,
+  listEquipmentReservations,
+  getEquipmentReservation,
+  createEquipmentReservation,
+  updateEquipmentReservation,
+  deleteEquipmentReservation,
+} from './api/assignments.js'
 
 export default {
   async fetch(request, env, ctx) {
@@ -215,6 +227,36 @@ async function handleApi(request, env, url) {
     if (method === 'GET')    return getAlert(env, id)
     if (method === 'PATCH')  return updateAlert(env, id, request)
     if (method === 'DELETE') return deleteAlert(env, id)
+  }
+
+  // ── /api/crew-assignments ─────────────────────────────────────────────
+  if (pathname === '/api/crew-assignments') {
+    if (method === 'GET')  return listCrewAssignments(env)
+    if (method === 'POST') return createCrewAssignment(env, request)
+  }
+
+  // ── /api/crew-assignments/:id ─────────────────────────────────────────
+  const crewMatch = pathname.match(/^\/api\/crew-assignments\/([^/]+)$/)
+  if (crewMatch) {
+    const id = decodeURIComponent(crewMatch[1])
+    if (method === 'GET')    return getCrewAssignment(env, id)
+    if (method === 'PATCH')  return updateCrewAssignment(env, id, request)
+    if (method === 'DELETE') return deleteCrewAssignment(env, id)
+  }
+
+  // ── /api/equipment-reservations ───────────────────────────────────────
+  if (pathname === '/api/equipment-reservations') {
+    if (method === 'GET')  return listEquipmentReservations(env)
+    if (method === 'POST') return createEquipmentReservation(env, request)
+  }
+
+  // ── /api/equipment-reservations/:id ───────────────────────────────────
+  const resMatch = pathname.match(/^\/api\/equipment-reservations\/([^/]+)$/)
+  if (resMatch) {
+    const id = decodeURIComponent(resMatch[1])
+    if (method === 'GET')    return getEquipmentReservation(env, id)
+    if (method === 'PATCH')  return updateEquipmentReservation(env, id, request)
+    if (method === 'DELETE') return deleteEquipmentReservation(env, id)
   }
 
   return notFound()

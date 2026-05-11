@@ -1,6 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { CourseProvider } from './context/CourseContext'
-import { OperationsProvider } from './utils/operations/OperationsContext'
 import ToastProvider from './components/feedback/ToastProvider'
 import Layout from './components/layout/Layout'
 import Login from './pages/Login/Login'
@@ -23,7 +22,6 @@ import Reports from './pages/Reports/Reports'
 
 export default function App() {
   return (
-    <OperationsProvider>
     <CourseProvider>
     <ToastProvider>
     <BrowserRouter>
@@ -55,6 +53,5 @@ export default function App() {
     </BrowserRouter>
     </ToastProvider>
     </CourseProvider>
-    </OperationsProvider>
   )
 }

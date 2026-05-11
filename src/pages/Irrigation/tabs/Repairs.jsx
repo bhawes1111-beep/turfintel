@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { useOperations } from '../../../utils/operations/OperationsContext'
 import { useRepairsData, patchRepair } from '../../../utils/repairs/repairsStore'
 import { useToast } from '../../../utils/feedback/toastContext'
 import { createAlert } from '../../../utils/alerts/alertsStore'
@@ -73,7 +72,6 @@ function matchesArea(repair, area) {
 }
 
 export default function Repairs() {
-  const { dispatch }                         = useOperations()
   const { repairs }                          = useRepairsData()
   const toast                                = useToast()
   const [search,         setSearch]         = useState('')

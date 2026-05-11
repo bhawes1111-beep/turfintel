@@ -1,8 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useEquipmentData, patchMaintenance } from '../../../utils/equipment/equipmentStore'
-import { useOperations } from '../../../utils/operations/OperationsContext'
 import { useToast } from '../../../utils/feedback/toastContext'
-import { reserveEquipment } from '../../../utils/operations/actions'
+import { createEquipmentReservation } from '../../../utils/assignments/assignmentsStore'
 import { createCalendarEvent } from '../../../utils/calendar/calendarStore'
 import { buildMaintenanceLogReport } from '../../../utils/reports/reportBuilder'
 import { createAttachmentRef } from '../../../utils/reports/reportSchemas'
@@ -57,7 +56,6 @@ const FILTER_STATUS_KEY = {
 }
 
 export default function MaintenanceLogs({ initialSearch = null } = {}) {
-  const { dispatch }                 = useOperations()
   const { equipment, serviceLog }    = useEquipmentData()
   const toast                        = useToast()
   // Seed search filter when arriving via Phase 3.4 click-through.
@@ -136,11 +134,10 @@ export default function MaintenanceLogs({ initialSearch = null } = {}) {
                       : log.status === 'in-progress' ? 'in-progress'
                       : 'scheduled'
 
-    // Phase 5.4a — create the calendar event via calendarStore (persists
-    // to D1). The reserveEquipment dispatch still records the reservation
-    // in OperationsContext.equipmentReservations; that slot migrates in
-    // a later 5.4 sub-phase. We pass the server-returned event id to the
-    // reservation so the linkage survives reload.
+    // Phase 5.4c — both the calendar event and its equipment reservation
+    // persist to D1. Worker-side dedupe keeps both writes idempotent:
+    // calendar_events on (source_id + event_type + start_date), and
+    // equipment_reservations on (calendar_event_id + equipment_name).
     createCalendarEvent({
       title:         `${log.serviceType} — ${log.equipmentName}`,
       date:          log.date,
@@ -155,12 +152,12 @@ export default function MaintenanceLogs({ initialSearch = null } = {}) {
       sourceModule:  'equipment',
       sourceId:      log.id,
     }).then(savedEvent => {
-      dispatch(reserveEquipment({
-        eventId:        savedEvent.id,
-        equipmentNames: [log.equipmentName],
-        date:           log.date,
-        notes:          `${log.serviceType} service — ${log.hoursAtService.toLocaleString()} hrs`,
-      }))
+      createEquipmentReservation({
+        calendarEventId: savedEvent.id,
+        equipmentId:     log.equipmentId ?? null,
+        equipmentName:   log.equipmentName,
+        notes:           `${log.serviceType} service — ${log.hoursAtService.toLocaleString()} hrs`,
+      }).catch(() => {})
     }).catch(() => {})
 
     toast.success('Service event added to Operations Calendar')
