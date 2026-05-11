@@ -534,16 +534,23 @@ export default function OperationsBoard() {
 
     // Phase 5.5b — remove the persistent assignment. Lookup via cached
     // calendar event (sourceId === task.id) and crewAssignments
-    // (calendarEventId + employeeName). Best-effort: a cache miss means
-    // nothing to remove server-side either.
+    // (calendarEventId + employeeId, falling back to employeeName for
+    // legacy rows written before Phase 5.6b). Best-effort: a cache miss
+    // means nothing to remove server-side either.
     if (!emp || !task) return
     const event = calendarEvents.find(e =>
       (e.metadata?.sourceId ?? e.sourceId) === task.id,
     )
     if (!event) return
-    const row = crewAssignments.find(a =>
-      a.calendarEventId === event.id && a.employeeName === emp.fullName,
-    )
+    const empCanonicalId   = emp.employeeId ?? emp.id
+    const empCanonicalName = emp.fullName  ?? emp.name
+    const row =
+      (empCanonicalId && crewAssignments.find(a =>
+        a.calendarEventId === event.id && a.employeeId === empCanonicalId,
+      )) ||
+      crewAssignments.find(a =>
+        a.calendarEventId === event.id && a.employeeName === empCanonicalName,
+      )
     if (row) deleteCrewAssignment(row.id).catch(() => {})
   }
 

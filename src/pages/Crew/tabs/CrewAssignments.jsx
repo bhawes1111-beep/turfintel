@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAssignmentsData } from '../../../utils/assignments/assignmentsStore'
 import { useCalendarData } from '../../../utils/calendar/calendarStore'
 import { useEquipmentData } from '../../../utils/equipment/equipmentStore'
+import { useCrewData } from '../../../utils/crew/crewStore'
 import StatusBoard from '../../../components/primitives/StatusBoard'
 import { EmptyState } from '../../../components/shared/EmptyState'
 import styles from './CrewAssignments.module.css'
@@ -61,6 +62,7 @@ export default function CrewAssignments() {
   const { crewAssignments, equipmentReservations, loading } = useAssignmentsData()
   const { events: calendarEvents }                    = useCalendarData()
   const { equipment }                                 = useEquipmentData()
+  const { employees }                                 = useCrewData()
 
   const horizonEnd = useMemo(() => addDays(TODAY, HORIZON), [])
 
@@ -76,6 +78,29 @@ export default function CrewAssignments() {
     equipment.forEach(e => map.set(e.name, e))
     return map
   }, [equipment])
+
+  // ── Employee join (Phase 5.6c) ─────────────────────────────────────────
+  // Prefer assignment.employeeId; fall back to assignment.employeeName.
+  // Legacy rows written before Phase 5.6b carry employeeId=null and are
+  // resolved by name only. The Worker mapper returns both id+employeeId
+  // and name+fullName aliases, so the maps key on either side.
+  const employeesById = useMemo(() => {
+    const map = new Map()
+    employees.forEach(e => map.set(e.id, e))
+    return map
+  }, [employees])
+
+  const employeesByName = useMemo(() => {
+    const map = new Map()
+    employees.forEach(e => map.set(e.name, e))
+    return map
+  }, [employees])
+
+  function resolveEmployee(assignment) {
+    return (assignment.employeeId && employeesById.get(assignment.employeeId))
+        || employeesByName.get(assignment.employeeName)
+        || null
+  }
 
   // ── Bucket events by date relative to TODAY. ────────────────────────────
   const { todaysEvents, upcomingEvents } = useMemo(() => {
@@ -300,14 +325,22 @@ export default function CrewAssignments() {
                     </span>
                   </header>
                   <ul className={styles.assignmentList}>
-                    {assignments.map(a => (
-                      <li key={a.id} className={styles.assignmentRow} data-status={a.status}>
-                        <span className={styles.assignmentName}>{a.employeeName}</span>
-                        {a.role && <span className={styles.assignmentRole}>{a.role}</span>}
-                        <span className={styles.assignmentStatus}>{a.status}</span>
-                        {a.notes && <span className={styles.assignmentNotes}>{a.notes}</span>}
-                      </li>
-                    ))}
+                    {assignments.map(a => {
+                      const emp  = resolveEmployee(a)
+                      const role = emp?.role ?? a.role
+                      const meta = [emp?.department, emp?.assignedArea].filter(Boolean).join(' · ')
+                      return (
+                        <li key={a.id} className={styles.assignmentRow} data-status={a.status}>
+                          <span className={styles.assignmentName}>
+                            {emp?.fullName ?? a.employeeName}
+                            {meta && <small className={styles.assignmentMeta}> · {meta}</small>}
+                          </span>
+                          {role && <span className={styles.assignmentRole}>{role}</span>}
+                          <span className={styles.assignmentStatus}>{a.status}</span>
+                          {a.notes && <span className={styles.assignmentNotes}>{a.notes}</span>}
+                        </li>
+                      )
+                    })}
                   </ul>
                 </article>
               )
