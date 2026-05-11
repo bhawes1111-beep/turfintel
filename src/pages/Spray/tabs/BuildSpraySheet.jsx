@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { TYPE_COLORS } from '../../../data/spray'
 import { useSpraysData } from '../../../utils/sprays/spraysStore'
 import { useInventoryData, recordInventoryUsage } from '../../../utils/inventory/inventoryStore'
+import { useCrewData } from '../../../utils/crew/crewStore'
 import { createCalendarEvent } from '../../../utils/calendar/calendarStore'
 import { useToast } from '../../../utils/feedback/toastContext'
 import { createAlert } from '../../../utils/alerts/alertsStore'
@@ -101,6 +102,19 @@ function buildProductTable(records) {
   return [...map.values()]
 }
 
+// Phase 5.8 — safe active-ingredient string for the record-sheet column.
+// No regulatory data is invented: we walk a fallback chain over fields
+// that genuinely exist on the persisted inventory row (notes →
+// manufacturer → category → FRAC/HRAC code).
+function activeIngredientFor(invItem, fracCode) {
+  if (invItem?.notes) return invItem.notes
+  const bits = []
+  if (invItem?.manufacturer) bits.push(invItem.manufacturer)
+  if (invItem?.category)     bits.push(invItem.category)
+  if (fracCode && fracCode !== '—') bits.push(`FRAC ${fracCode}`)
+  return bits.length > 0 ? bits.join(' · ') : '—'
+}
+
 function buildPPE(records) {
   const set = new Set()
   for (const r of records) {
@@ -117,6 +131,7 @@ function buildPPE(records) {
 export default function BuildSpraySheet() {
   const { items: inventoryProducts, usage: inventoryUsage } = useInventoryData()
   const { records: SPRAY_RECORDS_LIVE }  = useSpraysData()
+  const { employees: crewEmployees }     = useCrewData()
   const toast                            = useToast()
   const navigate                         = useNavigate()
   const [search,       setSearch]       = useState('')
@@ -127,6 +142,12 @@ export default function BuildSpraySheet() {
   const [modalRecord,  setModalRecord]  = useState(null)
   const [hoveredId,    setHoveredId]    = useState(null)
   const [expandedId,   setExpandedId]   = useState(null)
+
+  // Phase 5.8 — record-sheet form state. These overlay the selected
+  // records' data for the printed copy without mutating any persistent
+  // row. They reset to derived defaults whenever the selection changes.
+  const [operatorOverride, setOperatorOverride] = useState('')
+  const [observations,     setObservations]     = useState('')
 
   function handleAddToCalendar() {
     // ── Calendar events ──────────────────────────────────────────────────────
@@ -300,6 +321,17 @@ export default function BuildSpraySheet() {
   const hasTankMix      = selectedRecords.some(r => r.products.length > 1)
   const maxREI          = Math.max(...selectedRecords.map(r => r.rei || 0), 0)
   const allNotes        = selectedRecords.filter(r => r.notes).map(r => r.notes)
+
+  // Phase 5.8 — record-sheet derived values.
+  const sheetTargets    = [...new Set(selectedRecords.map(r => r.targetPest).filter(Boolean))].join(', ')
+  const sheetTime       = selectedRecords.find(r => r.startTime)?.startTime ?? ''
+  const operatorOptions = useMemo(() => {
+    if (!crewEmployees || crewEmployees.length === 0) return []
+    return crewEmployees
+      .filter(e => e.status !== 'inactive')
+      .map(e => ({ id: e.id ?? e.employeeId, name: e.fullName ?? e.name }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+  }, [crewEmployees])
 
   function toggleSelect(id) {
     setSelected(prev => {
@@ -591,215 +623,204 @@ export default function BuildSpraySheet() {
               </p>
             </div>
           ) : (
-            <div className={styles.ssSheet}>
+            <div className={styles.srsSheet}>
 
-              {/* 1. Header */}
-              <div className={styles.ssSheetHeader}>
-                <div className={styles.ssSheetBrand}>
-                  <span className={styles.ssSheetBrandName}>TurfIntel Pro</span>
-                  <span className={styles.ssSheetBrandSub}>Spray Application Worksheet</span>
+              {/* Header — no logos, no record reference, no sheet id */}
+              <header className={styles.srsHeader}>
+                <h2 className={styles.srsTitle}>Spray Record Sheet</h2>
+                <span className={styles.srsCourse}>{COURSE}</span>
+              </header>
+
+              {/* Row 1: Date of application · Sprayer operator */}
+              <div className={styles.srsRow}>
+                <div className={styles.srsCell}>
+                  <span className={styles.srsLabel}>Date of application</span>
+                  <span className={styles.srsValue}>{sheetDate}</span>
                 </div>
-                <div className={styles.ssSheetHeaderFields}>
-                  <div className={styles.ssSheetHeaderField}>
-                    <span className={styles.ssSheetFieldLabel}>Course</span>
-                    <span className={styles.ssSheetFieldValue}>{COURSE}</span>
-                  </div>
-                  <div className={styles.ssSheetHeaderField}>
-                    <span className={styles.ssSheetFieldLabel}>Date</span>
-                    <span className={styles.ssSheetFieldValue}>{sheetDate}</span>
-                  </div>
-                  <div className={styles.ssSheetHeaderField}>
-                    <span className={styles.ssSheetFieldLabel}>Applicator</span>
-                    <span className={styles.ssSheetFieldValue}>{sheetApplicator}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Weather snapshot */}
-              <div className={styles.ssSheetWeather}>
-                <span className={styles.ssSheetWeatherLabel}>Weather at Application</span>
-                {weatherSnap ? (
-                  <div className={styles.ssSheetWeatherGrid}>
-                    <span>{weatherSnap.temp}°F</span>
-                    <span>{weatherSnap.wind}</span>
-                    <span>{weatherSnap.humidity}% RH</span>
-                    {weatherSnap.soilTemp && <span>Soil {weatherSnap.soilTemp}°F</span>}
-                  </div>
-                ) : (
-                  <span className={styles.ssSheetWeatherPending}>
-                    Record conditions at time of application
-                  </span>
-                )}
-              </div>
-
-              <div className={styles.ssSheetDivider} />
-
-              {/* 2. Application Summary */}
-              <div className={styles.ssSheetSection}>
-                <div className={styles.ssSheetSectionTitle}>Application Summary</div>
-                <div className={styles.ssSheetSummaryGrid}>
-                  <div className={styles.ssSheetSummaryItem}>
-                    <span className={styles.ssSheetSummaryLabel}>Target Areas</span>
-                    <span className={styles.ssSheetSummaryValue}>{sheetAreas || '—'}</span>
-                  </div>
-                  <div className={styles.ssSheetSummaryItem}>
-                    <span className={styles.ssSheetSummaryLabel}>Holes</span>
-                    <span className={styles.ssSheetSummaryValue}>{sheetHoles || '—'}</span>
-                  </div>
-                  <div className={styles.ssSheetSummaryItem}>
-                    <span className={styles.ssSheetSummaryLabel}>Total Acreage</span>
-                    <span className={styles.ssSheetSummaryValue}>{sheetAcres} ac</span>
-                  </div>
-                  <div className={styles.ssSheetSummaryItem}>
-                    <span className={styles.ssSheetSummaryLabel}>Total Gallons</span>
-                    <span className={styles.ssSheetSummaryValue}>{sheetGallons} gal</span>
-                  </div>
-                  {hasTankMix && (
-                    <div className={styles.ssSheetSummaryItem}>
-                      <span className={styles.ssSheetSummaryLabel}>Tank Mix</span>
-                      <span className={styles.ssSheetSummaryValue} style={{ color: '#e0b840' }}>
-                        Yes — verify compatibility
-                      </span>
-                    </div>
-                  )}
-                  {maxREI > 0 && (
-                    <div className={styles.ssSheetSummaryItem}>
-                      <span className={styles.ssSheetSummaryLabel}>Max REI</span>
-                      <span className={styles.ssSheetSummaryValue} style={{ color: '#e07070' }}>
-                        {maxREI} hrs
-                      </span>
-                    </div>
+                <div className={styles.srsCell}>
+                  <span className={styles.srsLabel}>Sprayer operator</span>
+                  {operatorOptions.length > 0 ? (
+                    <select
+                      className={styles.srsInput}
+                      value={operatorOverride || sheetApplicator}
+                      onChange={e => setOperatorOverride(e.target.value)}
+                      aria-label="Sprayer operator"
+                    >
+                      {sheetApplicator && !operatorOptions.some(o => o.name === sheetApplicator) && (
+                        <option value={sheetApplicator}>{sheetApplicator}</option>
+                      )}
+                      {operatorOptions.map(emp => (
+                        <option key={emp.id} value={emp.name}>{emp.name}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      className={styles.srsInput}
+                      value={operatorOverride || sheetApplicator || ''}
+                      onChange={e => setOperatorOverride(e.target.value)}
+                      placeholder="Operator name"
+                      aria-label="Sprayer operator"
+                    />
                   )}
                 </div>
               </div>
 
-              <div className={styles.ssSheetDivider} />
+              {/* Row 2: Area treated (full width) */}
+              <div className={styles.srsRowFull}>
+                <span className={styles.srsLabel}>Area treated</span>
+                <span className={styles.srsValue}>
+                  {sheetAreas || '—'}
+                  {sheetHoles && sheetHoles !== '—' ? ` · ${sheetHoles}` : ''}
+                  {sheetAcres ? ` · ${sheetAcres} ac` : ''}
+                </span>
+              </div>
 
-              {/* 3. Product Table */}
-              <div className={styles.ssSheetSection}>
-                <div className={styles.ssSheetSectionTitle}>Products</div>
-                <div className={styles.ssSheetTableWrap}>
-                  <table className={styles.ssSheetTable}>
-                    <thead>
+              {/* Main product table */}
+              <div className={styles.srsTableWrap}>
+                <table className={styles.srsTable}>
+                  <thead>
+                    <tr>
+                      <th>Products used</th>
+                      <th>Active ingredients</th>
+                      <th>Application rate</th>
+                      <th>Total used</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {productTable.map((p, i) => {
+                      const invItem = inventoryProducts.find(it => it.name === p.name)
+                        ?? inventoryProducts.find(it => it.name.toLowerCase() === p.name.toLowerCase())
+                      const ai      = activeIngredientFor(invItem, p.frac)
+                      const rateQty = parseRateQty(p.rate)
+                      const totalAc = selectedRecords
+                        .filter(r => r.products.some(pp => pp.name === p.name))
+                        .reduce((s, r) => s + acres(r.area), 0)
+                      // Rate is "X / 1,000 sq ft" — convert to total over acres.
+                      // 1 acre = 43.56 thousand sq ft.
+                      const totalUsed = rateQty > 0 && totalAc > 0
+                        ? +(rateQty * totalAc * 43.56).toFixed(2)
+                        : null
+                      const totalUnit = (p.rate || '').match(/^(\d+\.?\d*)\s*([a-zA-Z]+)/)?.[2] ?? ''
+                      const sig     = productStockSignals[p.name]
+                      const sigLabel =
+                        sig?.status === 'out'      ? 'Out of stock'    :
+                        sig?.status === 'critical' ? 'Critical stock'  :
+                        sig?.status === 'low'      ? 'Low stock'       : null
+                      return (
+                        <tr key={i}>
+                          <td>
+                            <span className={styles.srsProductName}>{p.name}</span>
+                            {sigLabel && (
+                              <button
+                                type="button"
+                                className={styles.ssStockSignal}
+                                data-tone={sig.status === 'low' ? 'warn' : 'critical'}
+                                title={`${sig.quantity} ${sig.unit ?? ''} on hand — open in Inventory`}
+                                onClick={() => navigate('/inventory', {
+                                  state: { activeTab: 'Products', productId: sig.invId },
+                                })}
+                              >
+                                {sigLabel}
+                              </button>
+                            )}
+                          </td>
+                          <td className={styles.srsAi}>{ai}</td>
+                          <td>{p.rate || '—'}</td>
+                          <td>{totalUsed != null ? `${totalUsed} ${totalUnit}` : '—'}</td>
+                        </tr>
+                      )
+                    })}
+                    {productTable.length === 0 && (
                       <tr>
-                        <th>Product</th>
-                        <th>Type</th>
-                        <th>Rate</th>
-                        <th>FRAC / HRAC</th>
-                        <th>REI</th>
-                        <th>PHI</th>
+                        <td colSpan={4} className={styles.srsEmptyRow}>
+                          Select one or more applications to populate products.
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {productTable.map((p, i) => {
-                        const sig = productStockSignals[p.name]
-                        const sigLabel =
-                          sig?.status === 'out'      ? 'Out of stock'    :
-                          sig?.status === 'critical' ? 'Critical stock'  :
-                          sig?.status === 'low'      ? 'Low stock'       : null
-                        return (
-                          <tr key={i}>
-                            <td className={styles.ssTableProductName}>
-                              {p.name}
-                              {sigLabel && (
-                                <button
-                                  type="button"
-                                  className={styles.ssStockSignal}
-                                  data-tone={sig.status === 'low' ? 'warn' : 'critical'}
-                                  title={`${sig.quantity} ${sig.unit ?? ''} on hand — open in Inventory`}
-                                  onClick={() => navigate('/inventory', {
-                                    state: { activeTab: 'Products', productId: sig.invId },
-                                  })}
-                                >
-                                  {sigLabel}
-                                </button>
-                              )}
-                            </td>
-                            <td>{p.type}</td>
-                            <td>{p.rate}</td>
-                            <td>{p.frac}</td>
-                            <td>{p.rei > 0 ? `${p.rei}h` : 'None'}</td>
-                            <td>{p.phi > 0 ? `${p.phi}d` : 'None'}</td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                    )}
+                  </tbody>
+                </table>
               </div>
 
-              <div className={styles.ssSheetDivider} />
-
-              {/* 4. Notes / Safety */}
-              <div className={styles.ssSheetSection}>
-                <div className={styles.ssSheetSectionTitle}>Notes &amp; Safety</div>
-                {ppeList.length > 0 && (
-                  <div className={styles.ssSheetSafetyBlock}>
-                    <span className={styles.ssSheetSafetyLabel}>PPE Required</span>
-                    <ul className={styles.ssSheetSafetyList}>
-                      {ppeList.map((ppe, i) => <li key={i}>{ppe}</li>)}
-                    </ul>
-                  </div>
-                )}
-                {allNotes.length > 0 && (
-                  <div className={styles.ssSheetSafetyBlock}>
-                    <span className={styles.ssSheetSafetyLabel}>Field Notes</span>
-                    <ul className={styles.ssSheetSafetyList}>
-                      {allNotes.map((n, i) => <li key={i}>{n}</li>)}
-                    </ul>
-                  </div>
-                )}
-                <div className={styles.ssSheetSafetyBlock}>
-                  <span className={styles.ssSheetSafetyLabel}>Weather Concerns</span>
-                  <span className={styles.ssSheetSafetyText}>
-                    Do not apply if wind exceeds 10 mph or rain is forecast within the REI window.
-                  </span>
+              {/* Operational fields — grouped row 1: target / sprayer / water */}
+              <div className={styles.srsRow3}>
+                <div className={styles.srsCell}>
+                  <span className={styles.srsLabel}>Disease / pest / weed target</span>
+                  <span className={styles.srsValue}>{sheetTargets || '—'}</span>
                 </div>
-                <div className={styles.ssSheetSafetyBlock}>
-                  <span className={styles.ssSheetSafetyLabel}>Irrigation Note</span>
-                  <span className={styles.ssSheetSafetyText}>
-                    {maxREI > 0
-                      ? `Hold irrigation for minimum ${maxREI} hrs post-application.`
-                      : 'No irrigation hold required for selected products.'}
+                <div className={styles.srsCell}>
+                  <span className={styles.srsLabel}>Sprayer used</span>
+                  <span className={styles.srsValue}>Spray Rig #1</span>
+                </div>
+                <div className={styles.srsCell}>
+                  <span className={styles.srsLabel}>Water volume</span>
+                  <span className={styles.srsValue}>
+                    {sheetGallons ? `${sheetGallons} gal` : '—'}
                   </span>
                 </div>
               </div>
 
-              <div className={styles.ssSheetDivider} />
-
-              {/* 5. Signature Section */}
-              <div className={styles.ssSheetSection}>
-                <div className={styles.ssSheetSectionTitle}>Verification &amp; Sign-Off</div>
-                <div className={styles.ssSheetSigGrid}>
-                  <div className={styles.ssSheetSigBlock}>
-                    <div className={styles.ssSheetSigLine} />
-                    <span className={styles.ssSheetSigLabel}>Applicator Signature</span>
-                    <span className={styles.ssSheetSigName}>{sheetApplicator}</span>
-                  </div>
-                  <div className={styles.ssSheetSigBlock}>
-                    <div className={styles.ssSheetSigLine} />
-                    <span className={styles.ssSheetSigLabel}>Supervisor Signature</span>
-                    <span className={styles.ssSheetSigName}>&nbsp;</span>
-                  </div>
-                  <div className={styles.ssSheetSigBlock}>
-                    <div className={styles.ssSheetSigLine} />
-                    <span className={styles.ssSheetSigLabel}>Date / Time</span>
-                    <span className={styles.ssSheetSigName}>{sheetDate}</span>
-                  </div>
+              {/* Operational fields — grouped row 2: time / temp / wind */}
+              <div className={styles.srsRow3}>
+                <div className={styles.srsCell}>
+                  <span className={styles.srsLabel}>Time of application</span>
+                  <span className={styles.srsValue}>{sheetTime || '—'}</span>
+                </div>
+                <div className={styles.srsCell}>
+                  <span className={styles.srsLabel}>Temperature</span>
+                  <span className={styles.srsValue}>
+                    {weatherSnap?.temp != null ? `${weatherSnap.temp}°F` : '—'}
+                  </span>
+                </div>
+                <div className={styles.srsCell}>
+                  <span className={styles.srsLabel}>Wind speed</span>
+                  <span className={styles.srsValue}>{weatherSnap?.wind || '—'}</span>
                 </div>
               </div>
 
-              {/* Operations actions */}
-              <div className={styles.ssSheetSection}>
-                <div className="opActionRow">
-                  <button className="opActionBtn" onClick={handleAddToCalendar}>
-                    + Add to Operations Calendar
-                  </button>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
-                    {selectedRecords.length} application{selectedRecords.length !== 1 ? 's' : ''} selected
-                    {maxREI > 0 ? ` · REI alert will be created` : ''}
+              {/* Observations — free-form for the printed copy */}
+              <div className={styles.srsRowFull}>
+                <span className={styles.srsLabel}>Observations</span>
+                <textarea
+                  className={styles.srsObservations}
+                  value={observations}
+                  onChange={e => setObservations(e.target.value)}
+                  placeholder={allNotes.length > 0
+                    ? allNotes.join(' · ')
+                    : 'Free-text observations, post-application notes, conditions changes…'}
+                  rows={5}
+                  aria-label="Observations"
+                />
+              </div>
+
+              {/* Signature row — printable blank lines */}
+              <div className={styles.srsSigRow}>
+                <div className={styles.srsSigBlock}>
+                  <div className={styles.srsSigLine} aria-hidden="true" />
+                  <span className={styles.srsSigLabel}>Manager signature</span>
+                </div>
+                <div className={styles.srsSigBlock}>
+                  <div className={styles.srsSigLine} aria-hidden="true" />
+                  <span className={styles.srsSigLabel}>
+                    Operator signature
+                    {(operatorOverride || sheetApplicator) && (
+                      <span className={styles.srsSigName}>
+                        {' '}— {operatorOverride || sheetApplicator}
+                      </span>
+                    )}
                   </span>
                 </div>
+              </div>
+
+              {/* Operations actions — preserves existing handoff */}
+              <div className={styles.srsActionRow}>
+                <button className="opActionBtn" onClick={handleAddToCalendar}>
+                  + Add to Operations Calendar
+                </button>
+                <span className={styles.srsActionHint}>
+                  {selectedRecords.length} application{selectedRecords.length !== 1 ? 's' : ''} selected
+                  {maxREI > 0 ? ` · REI alert will be created` : ''}
+                </span>
               </div>
 
             </div>

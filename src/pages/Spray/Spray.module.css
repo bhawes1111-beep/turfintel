@@ -1427,3 +1427,262 @@
   .ssAppCardMeta   { grid-template-columns: 1fr 1fr; }
   .ssStats         { grid-template-columns: 1fr 1fr; }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Phase 5.8 — Spray Record Sheet (right column).
+   Landscape form-style layout: clean cells, professional typography,
+   print-friendly.
+   ───────────────────────────────────────────────────────────────────── */
+
+.srsSheet {
+  background: #fdfdfb;
+  color: #1a2030;
+  font-family: 'Inter', system-ui, sans-serif;
+  padding: 28px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border: 1px solid #d8d5cc;
+  border-radius: 4px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+/* Header */
+
+.srsHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #1a2030;
+}
+
+.srsTitle {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.srsCourse {
+  font-size: 12px;
+  font-weight: 600;
+  color: #4a5568;
+  letter-spacing: 0.4px;
+}
+
+/* Two-column row */
+
+.srsRow {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 10px;
+}
+
+/* Three-column operational row */
+
+.srsRow3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+/* Single full-width row */
+
+.srsRowFull {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid #c9c5b9;
+  border-radius: 3px;
+  background: #ffffff;
+}
+
+.srsCell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid #c9c5b9;
+  border-radius: 3px;
+  background: #ffffff;
+  min-width: 0;
+}
+
+.srsLabel {
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #6b7280;
+}
+
+.srsValue {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #1a2030;
+  word-break: break-word;
+}
+
+.srsInput,
+.srsObservations {
+  appearance: none;
+  border: none;
+  outline: none;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #1a2030;
+  background: transparent;
+  padding: 0;
+  width: 100%;
+}
+
+.srsInput:focus,
+.srsObservations:focus {
+  outline: 2px solid #4a9e4a;
+  outline-offset: 1px;
+  border-radius: 2px;
+}
+
+.srsObservations {
+  min-height: 90px;
+  resize: vertical;
+  line-height: 1.4;
+  padding-top: 4px;
+}
+
+.srsObservations::placeholder {
+  color: #9aa0a6;
+  font-style: italic;
+}
+
+/* Product table */
+
+.srsTableWrap {
+  border: 1px solid #c9c5b9;
+  border-radius: 3px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.srsTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.srsTable thead th {
+  background: #f2efe6;
+  color: #1a2030;
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 10.5px;
+  letter-spacing: 0.8px;
+  border-bottom: 1px solid #c9c5b9;
+}
+
+.srsTable tbody td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #e8e4d8;
+  vertical-align: top;
+}
+
+.srsTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.srsProductName {
+  font-weight: 600;
+  color: #1a2030;
+}
+
+.srsAi {
+  color: #4a5568;
+  font-size: 12px;
+}
+
+.srsEmptyRow {
+  text-align: center;
+  padding: 24px !important;
+  color: #9aa0a6;
+  font-style: italic;
+}
+
+/* Signature row */
+
+.srsSigRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  margin-top: 18px;
+  padding-top: 12px;
+}
+
+.srsSigBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.srsSigLine {
+  height: 24px;
+  border-bottom: 1px solid #1a2030;
+}
+
+.srsSigLabel {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #6b7280;
+}
+
+.srsSigName {
+  font-weight: 500;
+  color: #1a2030;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Action row */
+
+.srsActionRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 8px;
+  border-top: 1px dashed #c9c5b9;
+}
+
+.srsActionHint {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+/* ── Print rules ────────────────────────────────────────────────────────── */
+
+@media print {
+  .srsSheet {
+    border: none;
+    box-shadow: none;
+    padding: 0;
+  }
+  .srsActionRow { display: none; }
+  .srsObservations { border: 1px solid #1a2030; padding: 8px; min-height: 120px; }
+  .srsInput { border-bottom: 1px solid #1a2030; padding-bottom: 2px; }
+}
+
+/* ── Responsive: stack the 2/3-column rows on narrow viewports ──────────── */
+
+@media (max-width: 900px) {
+  .srsRow,
+  .srsRow3,
+  .srsSigRow {
+    grid-template-columns: 1fr;
+  }
+}
