@@ -23,6 +23,7 @@ function rowToCrewAssignment(row) {
   return {
     id:              row.id,
     calendarEventId: row.calendar_event_id,
+    employeeId:      row.employee_id,
     employeeName:    row.employee_name,
     role:            row.role,
     status:          row.status,
@@ -50,6 +51,7 @@ function rowToEquipmentReservation(row) {
 
 const CREW_CORE_COLUMNS = {
   calendarEventId: 'calendar_event_id',
+  employeeId:      'employee_id',
   employeeName:    'employee_name',
   role:            'role',
   status:          'status',
@@ -104,11 +106,12 @@ export async function createCrewAssignment(env, request) {
 
   await env.DB.prepare(`
     INSERT INTO crew_assignments (
-      id, calendar_event_id, employee_name, role, status, notes
-    ) VALUES (?, ?, ?, ?, ?, ?)
+      id, calendar_event_id, employee_id, employee_name, role, status, notes
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id,
     calendarEventId,
+    body.employeeId   ?? null,
     body.employeeName,
     body.role   ?? null,
     body.status ?? 'assigned',

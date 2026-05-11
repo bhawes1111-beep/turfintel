@@ -515,7 +515,8 @@ export default function OperationsBoard() {
     ensureEventForTask(task)
       .then(evt => createCrewAssignment({
         calendarEventId: evt.id,
-        employeeName:    emp.fullName,
+        employeeId:      emp.employeeId ?? emp.id ?? null,
+        employeeName:    emp.fullName ?? emp.name,
         role:            emp.role ?? null,
         status:          'assigned',
         notes:           null,
