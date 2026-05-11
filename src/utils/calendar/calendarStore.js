@@ -11,6 +11,7 @@
 // start_date) keeps repeat dispatches idempotent.
 
 import { useSyncExternalStore } from 'react'
+import { withCourseScope, subscribeCourseChange, getSelectedCourseId } from '../courses/courseStore'
 
 const API = '/api/calendar-events'
 
@@ -51,12 +52,14 @@ async function fetchJSON(url, init) {
 export async function refreshCalendarData() {
   setState({ loading: true, error: null })
   try {
-    const events = await fetchJSON(API)
+    const events = await fetchJSON(withCourseScope(API))
     setState({ events, loading: false, error: null, lastFetch: Date.now() })
   } catch (err) {
     setState({ loading: false, error: err.message })
   }
 }
+
+subscribeCourseChange(() => { if (hasBooted) refreshCalendarData() })
 
 // ── Optimistic mutations ───────────────────────────────────────────────────
 
@@ -71,7 +74,7 @@ export async function createCalendarEvent(payload) {
     const saved = await fetchJSON(API, {
       method:  'POST',
       headers: mutationHeaders(),
-      body:    JSON.stringify(payload),
+      body:    JSON.stringify({ courseId: getSelectedCourseId(), ...payload }),
     })
     setState(prev => prev)  // no-op to mark current state
     const existsLocally = state.events.some(e => e.id === saved.id)

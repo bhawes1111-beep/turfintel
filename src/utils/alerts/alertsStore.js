@@ -15,6 +15,7 @@
 // hide resolved alerts from active surfaces.
 
 import { useSyncExternalStore } from 'react'
+import { withCourseScope, subscribeCourseChange, getSelectedCourseId } from '../courses/courseStore'
 
 const API = '/api/alerts'
 
@@ -55,12 +56,14 @@ async function fetchJSON(url, init) {
 export async function refreshAlertsData() {
   setState({ loading: true, error: null })
   try {
-    const alerts = await fetchJSON(API)
+    const alerts = await fetchJSON(withCourseScope(API))
     setState({ alerts, loading: false, error: null, lastFetch: Date.now() })
   } catch (err) {
     setState({ loading: false, error: err.message })
   }
 }
+
+subscribeCourseChange(() => { if (hasBooted) refreshAlertsData() })
 
 // ── Optimistic mutations ───────────────────────────────────────────────────
 
@@ -69,7 +72,7 @@ export async function createAlert(payload) {
     const saved = await fetchJSON(API, {
       method:  'POST',
       headers: mutationHeaders(),
-      body:    JSON.stringify(payload),
+      body:    JSON.stringify({ courseId: getSelectedCourseId(), ...payload }),
     })
     setState({ alerts: [saved, ...state.alerts] })
     return saved

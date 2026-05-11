@@ -2,6 +2,7 @@
 
 import { json, badRequest, notFound, readJson } from '../lib/json.js'
 import { generateId } from '../lib/id.js'
+import { resolveCourseId } from '../lib/scope.js'
 
 function rowToLog(row) {
   if (!row) return null
@@ -26,6 +27,7 @@ function rowToLog(row) {
     technician:       row.technician,
     notes:            row.notes,
     partsUsed,
+    courseId:         row.course_id,
     createdAt:        row.created_at,
   }
 }
@@ -53,10 +55,12 @@ const SELECT_WITH_JOIN = `
   LEFT JOIN equipment e ON e.id = ml.equipment_id
 `
 
-export async function listMaintenance(env) {
+export async function listMaintenance(env, courseId = null) {
+  const where = courseId ? 'WHERE ml.course_id = ?' : ''
+  const binds = courseId ? [courseId] : []
   const { results } = await env.DB.prepare(
-    `${SELECT_WITH_JOIN} ORDER BY datetime(ml.date) DESC, ml.created_at DESC`,
-  ).all()
+    `${SELECT_WITH_JOIN} ${where} ORDER BY datetime(ml.date) DESC, ml.created_at DESC`,
+  ).bind(...binds).all()
   return json(results.map(rowToLog))
 }
 
@@ -79,8 +83,8 @@ export async function createMaintenance(env, request) {
     INSERT INTO maintenance_logs (
       id, equipment_id, service_type, status, priority, date,
       completed_date, hours_at_service, next_due_hours, cost,
-      technician, notes, parts_used
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      technician, notes, parts_used, course_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id,
     body.equipmentId,
@@ -95,6 +99,7 @@ export async function createMaintenance(env, request) {
     body.technician     ?? null,
     body.notes          ?? null,
     body.partsUsed != null ? JSON.stringify(body.partsUsed) : null,
+    resolveCourseId(body),
   ).run()
 
   return getMaintenance(env, id)

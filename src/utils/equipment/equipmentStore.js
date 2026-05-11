@@ -13,6 +13,7 @@
 // previously-cached value (initially empty arrays) and display the error.
 
 import { useSyncExternalStore } from 'react'
+import { withCourseScope, subscribeCourseChange, getSelectedCourseId } from '../courses/courseStore'
 
 const API = {
   equipment:   '/api/equipment',
@@ -68,14 +69,17 @@ export async function refreshEquipmentData() {
   setState({ loading: true, error: null })
   try {
     const [equipment, serviceLog] = await Promise.all([
-      fetchJSON(API.equipment),
-      fetchJSON(API.maintenance),
+      fetchJSON(withCourseScope(API.equipment)),
+      fetchJSON(withCourseScope(API.maintenance)),
     ])
     setState({ equipment, serviceLog, loading: false, error: null, lastFetch: Date.now() })
   } catch (err) {
     setState({ loading: false, error: err.message })
   }
 }
+
+// Phase 5.7 — switch operational course → refetch.
+subscribeCourseChange(() => { if (hasBooted) refreshEquipmentData() })
 
 // ── Optimistic mutations ──────────────────────────────────────────────────
 // We apply the patch to local state immediately so the UI feels fast, then
@@ -105,7 +109,7 @@ export async function createEquipment(payload) {
     const saved = await fetchJSON(API.equipment, {
       method:  'POST',
       headers: mutationHeaders(),
-      body:    JSON.stringify(payload),
+      body:    JSON.stringify({ courseId: getSelectedCourseId(), ...payload }),
     })
     setState({ equipment: [...state.equipment, saved] })
     return saved
@@ -154,7 +158,7 @@ export async function createMaintenance(payload) {
     const saved = await fetchJSON(API.maintenance, {
       method:  'POST',
       headers: mutationHeaders(),
-      body:    JSON.stringify(payload),
+      body:    JSON.stringify({ courseId: getSelectedCourseId(), ...payload }),
     })
     setState({ serviceLog: [saved, ...state.serviceLog] })
     return saved

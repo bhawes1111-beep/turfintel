@@ -2,6 +2,7 @@
 
 import { json, badRequest, notFound, readJson } from '../lib/json.js'
 import { generateId } from '../lib/id.js'
+import { buildCourseFilter, resolveCourseId } from '../lib/scope.js'
 
 // ── Mappers (snake_case DB ↔ camelCase API) ──────────────────────────────
 
@@ -24,6 +25,7 @@ function rowToEquipment(row) {
     lastServiceHours:   row.last_service_hours,
     serviceInterval:    row.service_interval,
     notes:              row.notes,
+    courseId:           row.course_id,
     createdAt:          row.created_at,
     updatedAt:          row.updated_at,
   }
@@ -50,10 +52,11 @@ const MUTABLE_COLUMNS = {
 
 // ── Handlers ──────────────────────────────────────────────────────────────
 
-export async function listEquipment(env) {
+export async function listEquipment(env, courseId = null) {
+  const { where, binds } = buildCourseFilter(courseId)
   const { results } = await env.DB.prepare(
-    'SELECT * FROM equipment ORDER BY name ASC',
-  ).all()
+    `SELECT * FROM equipment ${where} ORDER BY name ASC`,
+  ).bind(...binds).all()
   return json(results.map(rowToEquipment))
 }
 
@@ -76,8 +79,9 @@ export async function createEquipment(env, request) {
     INSERT INTO equipment (
       id, name, category, status, hours, next_service_hours,
       manufacturer, model, year, serial_number, fuel_type,
-      assigned_operator, last_service, last_service_hours, service_interval, notes
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      assigned_operator, last_service, last_service_hours, service_interval, notes,
+      course_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id,
     body.name,
@@ -95,6 +99,7 @@ export async function createEquipment(env, request) {
     body.lastServiceHours  ?? null,
     body.serviceInterval   ?? null,
     body.notes             ?? null,
+    resolveCourseId(body),
   ).run()
 
   return getEquipment(env, id)

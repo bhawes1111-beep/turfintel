@@ -5,6 +5,7 @@
 // mutations, x-admin-key header on every write, refresh-on-error.
 
 import { useSyncExternalStore } from 'react'
+import { withCourseScope, subscribeCourseChange, getSelectedCourseId } from '../courses/courseStore'
 
 const API = {
   items: '/api/inventory',
@@ -50,14 +51,16 @@ export async function refreshInventoryData() {
   setState({ loading: true, error: null })
   try {
     const [items, usage] = await Promise.all([
-      fetchJSON(API.items),
-      fetchJSON(API.usage),
+      fetchJSON(withCourseScope(API.items)),
+      fetchJSON(withCourseScope(API.usage)),
     ])
     setState({ items, usage, loading: false, error: null, lastFetch: Date.now() })
   } catch (err) {
     setState({ loading: false, error: err.message })
   }
 }
+
+subscribeCourseChange(() => { if (hasBooted) refreshInventoryData() })
 
 // ── Optimistic mutations ──────────────────────────────────────────────────
 
@@ -85,7 +88,7 @@ export async function createInventory(payload) {
     const saved = await fetchJSON(API.items, {
       method:  'POST',
       headers: mutationHeaders(),
-      body:    JSON.stringify(payload),
+      body:    JSON.stringify({ courseId: getSelectedCourseId(), ...payload }),
     })
     setState({ items: [...state.items, saved] })
     return saved
@@ -120,7 +123,7 @@ export async function recordInventoryUsage(payload) {
     const { item, usage } = await fetchJSON(API.usage, {
       method:  'POST',
       headers: mutationHeaders(),
-      body:    JSON.stringify(payload),
+      body:    JSON.stringify({ courseId: getSelectedCourseId(), ...payload }),
     })
     setState({
       items: item

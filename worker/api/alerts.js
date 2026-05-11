@@ -3,6 +3,7 @@
 
 import { json, badRequest, notFound, readJson } from '../lib/json.js'
 import { generateId } from '../lib/id.js'
+import { buildCourseFilter, resolveCourseId } from '../lib/scope.js'
 
 // ── Mapper ────────────────────────────────────────────────────────────────
 // Reassembles the pre-5.4b alert shape for the UI:
@@ -29,6 +30,7 @@ function rowToAlert(row) {
       sourceModule: row.source_type ?? row.module,
       createdAt:    row.created_at,
     },
+    courseId:       row.course_id,
     createdAt:      row.created_at,
     updatedAt:      row.updated_at,
     acknowledgedAt: row.acknowledged_at,
@@ -62,10 +64,11 @@ const CORE_COLUMNS = {
 
 // ── List + Get ────────────────────────────────────────────────────────────
 
-export async function listAlerts(env) {
+export async function listAlerts(env, courseId = null) {
+  const { where, binds } = buildCourseFilter(courseId)
   const { results } = await env.DB.prepare(
-    'SELECT * FROM alerts ORDER BY datetime(created_at) DESC',
-  ).all()
+    `SELECT * FROM alerts ${where} ORDER BY datetime(created_at) DESC`,
+  ).bind(...binds).all()
   return json(results.map(rowToAlert))
 }
 
@@ -91,8 +94,8 @@ export async function createAlert(env, request) {
   await env.DB.prepare(`
     INSERT INTO alerts (
       id, source_type, source_id, module, priority, status,
-      title, message, course, action_label, action_target
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      title, message, course, action_label, action_target, course_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id,
     sourceType,
@@ -105,6 +108,7 @@ export async function createAlert(env, request) {
     body.course        ?? null,
     body.actionLabel   ?? null,
     body.actionTarget  ?? null,
+    resolveCourseId(body),
   ).run()
 
   return getAlert(env, id)

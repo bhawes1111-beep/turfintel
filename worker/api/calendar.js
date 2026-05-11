@@ -10,6 +10,7 @@
 
 import { json, badRequest, notFound, readJson } from '../lib/json.js'
 import { generateId } from '../lib/id.js'
+import { buildCourseFilter, resolveCourseId } from '../lib/scope.js'
 
 // ── Mapper ────────────────────────────────────────────────────────────────
 //
@@ -53,6 +54,7 @@ function rowToEvent(row) {
       sourceModule: row.source_type,
       sourceId:     row.source_id,
     },
+    courseId:      row.course_id,
     createdAt:     row.created_at,
     updatedAt:     row.updated_at,
   }
@@ -88,10 +90,11 @@ function buildPayloadJson(body, existing = null) {
 
 // ── List + Get ────────────────────────────────────────────────────────────
 
-export async function listCalendarEvents(env) {
+export async function listCalendarEvents(env, courseId = null) {
+  const { where, binds } = buildCourseFilter(courseId)
   const { results } = await env.DB.prepare(
-    'SELECT * FROM calendar_events ORDER BY start_date DESC, created_at DESC',
-  ).all()
+    `SELECT * FROM calendar_events ${where} ORDER BY start_date DESC, created_at DESC`,
+  ).bind(...binds).all()
   return json(results.map(rowToEvent))
 }
 
@@ -135,8 +138,8 @@ export async function createCalendarEvent(env, request) {
     INSERT INTO calendar_events (
       id, source_type, source_id, title, event_type, status,
       start_date, start_time, end_date, end_time,
-      location, description, payload_json
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      location, description, payload_json, course_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id,
     sourceType,
@@ -151,6 +154,7 @@ export async function createCalendarEvent(env, request) {
     body.location   ?? null,
     description,
     payloadJson,
+    resolveCourseId(body),
   ).run()
 
   return getCalendarEvent(env, id)

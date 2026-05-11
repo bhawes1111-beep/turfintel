@@ -75,6 +75,13 @@ import {
   updateCrewEmployee,
   deleteCrewEmployee,
 } from './api/crew.js'
+import {
+  listCourses,
+  getCourse,
+  createCourse,
+  updateCourse,
+  deleteCourse,
+} from './api/courses.js'
 
 export default {
   async fetch(request, env, ctx) {
@@ -96,6 +103,11 @@ export default {
 async function handleApi(request, env, url) {
   const { pathname } = url
   const method       = request.method
+  // Phase 5.7 — operational scope filter. If the caller passes
+  // ?courseId=... on a list endpoint, the handler filters by course_id.
+  // Absent → unscoped (legacy behavior, preserved for direct API
+  // consumers that haven't been updated).
+  const courseId = url.searchParams.get('courseId')
 
   // ── /api/health ───────────────────────────────────────────────────────
   if (pathname === '/api/health') {
@@ -126,7 +138,7 @@ async function handleApi(request, env, url) {
 
   // ── /api/equipment ────────────────────────────────────────────────────
   if (pathname === '/api/equipment') {
-    if (method === 'GET')  return listEquipment(env)
+    if (method === 'GET')  return listEquipment(env, courseId)
     if (method === 'POST') return createEquipment(env, request)
   }
 
@@ -141,7 +153,7 @@ async function handleApi(request, env, url) {
 
   // ── /api/maintenance ──────────────────────────────────────────────────
   if (pathname === '/api/maintenance') {
-    if (method === 'GET')  return listMaintenance(env)
+    if (method === 'GET')  return listMaintenance(env, courseId)
     if (method === 'POST') return createMaintenance(env, request)
   }
 
@@ -155,7 +167,7 @@ async function handleApi(request, env, url) {
 
   // ── /api/repairs ──────────────────────────────────────────────────────
   if (pathname === '/api/repairs') {
-    if (method === 'GET')  return listRepairs(env)
+    if (method === 'GET')  return listRepairs(env, courseId)
     if (method === 'POST') return createRepair(env, request)
   }
 
@@ -170,7 +182,7 @@ async function handleApi(request, env, url) {
 
   // ── /api/inventory ────────────────────────────────────────────────────
   if (pathname === '/api/inventory') {
-    if (method === 'GET')  return listInventory(env)
+    if (method === 'GET')  return listInventory(env, courseId)
     if (method === 'POST') return createInventory(env, request)
   }
 
@@ -178,7 +190,7 @@ async function handleApi(request, env, url) {
   // NOTE: This route must be matched BEFORE /api/inventory/:id below,
   // because 'usage' would otherwise be consumed as an id.
   if (pathname === '/api/inventory/usage') {
-    if (method === 'GET')  return listInventoryUsage(env)
+    if (method === 'GET')  return listInventoryUsage(env, courseId)
     if (method === 'POST') return recordInventoryUsage(env, request)
   }
 
@@ -193,7 +205,7 @@ async function handleApi(request, env, url) {
 
   // ── /api/sprays ───────────────────────────────────────────────────────
   if (pathname === '/api/sprays') {
-    if (method === 'GET')  return listSprays(env)
+    if (method === 'GET')  return listSprays(env, courseId)
     if (method === 'POST') return createSpray(env, request)
   }
 
@@ -208,7 +220,7 @@ async function handleApi(request, env, url) {
 
   // ── /api/calendar-events ──────────────────────────────────────────────
   if (pathname === '/api/calendar-events') {
-    if (method === 'GET')  return listCalendarEvents(env)
+    if (method === 'GET')  return listCalendarEvents(env, courseId)
     if (method === 'POST') return createCalendarEvent(env, request)
   }
 
@@ -223,7 +235,7 @@ async function handleApi(request, env, url) {
 
   // ── /api/alerts ───────────────────────────────────────────────────────
   if (pathname === '/api/alerts') {
-    if (method === 'GET')  return listAlerts(env)
+    if (method === 'GET')  return listAlerts(env, courseId)
     if (method === 'POST') return createAlert(env, request)
   }
 
@@ -238,7 +250,7 @@ async function handleApi(request, env, url) {
 
   // ── /api/crew-assignments ─────────────────────────────────────────────
   if (pathname === '/api/crew-assignments') {
-    if (method === 'GET')  return listCrewAssignments(env)
+    if (method === 'GET')  return listCrewAssignments(env, courseId)
     if (method === 'POST') return createCrewAssignment(env, request)
   }
 
@@ -253,7 +265,7 @@ async function handleApi(request, env, url) {
 
   // ── /api/equipment-reservations ───────────────────────────────────────
   if (pathname === '/api/equipment-reservations') {
-    if (method === 'GET')  return listEquipmentReservations(env)
+    if (method === 'GET')  return listEquipmentReservations(env, courseId)
     if (method === 'POST') return createEquipmentReservation(env, request)
   }
 
@@ -268,7 +280,7 @@ async function handleApi(request, env, url) {
 
   // ── /api/crew-employees ───────────────────────────────────────────────
   if (pathname === '/api/crew-employees') {
-    if (method === 'GET')  return listCrewEmployees(env)
+    if (method === 'GET')  return listCrewEmployees(env, courseId)
     if (method === 'POST') return createCrewEmployee(env, request)
   }
 
@@ -279,6 +291,21 @@ async function handleApi(request, env, url) {
     if (method === 'GET')    return getCrewEmployee(env, id)
     if (method === 'PATCH')  return updateCrewEmployee(env, id, request)
     if (method === 'DELETE') return deleteCrewEmployee(env, id)
+  }
+
+  // ── /api/courses ──────────────────────────────────────────────────────
+  if (pathname === '/api/courses') {
+    if (method === 'GET')  return listCourses(env)
+    if (method === 'POST') return createCourse(env, request)
+  }
+
+  // ── /api/courses/:id ──────────────────────────────────────────────────
+  const courseMatch = pathname.match(/^\/api\/courses\/([^/]+)$/)
+  if (courseMatch) {
+    const id = decodeURIComponent(courseMatch[1])
+    if (method === 'GET')    return getCourse(env, id)
+    if (method === 'PATCH')  return updateCourse(env, id, request)
+    if (method === 'DELETE') return deleteCourse(env, id)
   }
 
   return notFound()

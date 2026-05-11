@@ -3,6 +3,7 @@
 
 import { json, badRequest, notFound, readJson } from '../lib/json.js'
 import { generateId } from '../lib/id.js'
+import { buildCourseFilter, resolveCourseId } from '../lib/scope.js'
 
 function rowToRepair(row) {
   if (!row) return null
@@ -29,6 +30,7 @@ function rowToRepair(row) {
     dateReported: row.date_reported,
     dateCompleted: row.completed_at,
     notes:        row.notes,
+    courseId:     row.course_id,
     createdAt:    row.created_at,
     updatedAt:    row.updated_at,
   }
@@ -50,11 +52,12 @@ const MUTABLE_COLUMNS = {
   notes:         'notes',
 }
 
-export async function listRepairs(env) {
+export async function listRepairs(env, courseId = null) {
+  const { where, binds } = buildCourseFilter(courseId)
   const { results } = await env.DB.prepare(
-    `SELECT * FROM repairs
+    `SELECT * FROM repairs ${where}
      ORDER BY datetime(date_reported) DESC, created_at DESC`,
-  ).all()
+  ).bind(...binds).all()
   return json(results.map(rowToRepair))
 }
 
@@ -77,8 +80,8 @@ export async function createRepair(env, request) {
     INSERT INTO repairs (
       id, issue_type, area, hole, head_number, description,
       priority, status, assigned_to, labor_hours, parts_used,
-      date_reported, completed_at, notes
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      date_reported, completed_at, notes, course_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id,
     body.issueType,
@@ -94,6 +97,7 @@ export async function createRepair(env, request) {
     body.dateReported ?? null,
     body.dateCompleted ?? null,
     body.notes ?? null,
+    resolveCourseId(body),
   ).run()
 
   return getRepair(env, id)

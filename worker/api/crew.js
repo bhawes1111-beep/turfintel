@@ -10,6 +10,7 @@
 
 import { json, badRequest, notFound, readJson } from '../lib/json.js'
 import { generateId } from '../lib/id.js'
+import { buildCourseFilter, resolveCourseId } from '../lib/scope.js'
 
 // ── Mapper ────────────────────────────────────────────────────────────────
 
@@ -39,6 +40,7 @@ function rowToEmployee(row) {
     skills:         parseJsonArray(row.skills_json),
     certifications: parseJsonArray(row.certifications_json),
     notes:          row.notes,
+    courseId:       row.course_id,
     createdAt:      row.created_at,
     updatedAt:      row.updated_at,
   }
@@ -61,10 +63,11 @@ const CORE_COLUMNS = {
 
 // ── List + Get ────────────────────────────────────────────────────────────
 
-export async function listCrewEmployees(env) {
+export async function listCrewEmployees(env, courseId = null) {
+  const { where, binds } = buildCourseFilter(courseId)
   const { results } = await env.DB.prepare(
-    'SELECT * FROM crew_employees ORDER BY name COLLATE NOCASE ASC',
-  ).all()
+    `SELECT * FROM crew_employees ${where} ORDER BY name COLLATE NOCASE ASC`,
+  ).bind(...binds).all()
   return json(results.map(rowToEmployee))
 }
 
@@ -88,8 +91,8 @@ export async function createCrewEmployee(env, request) {
   await env.DB.prepare(`
     INSERT INTO crew_employees (
       id, name, role, department, status, phone, email,
-      assigned_area, skills_json, certifications_json, notes
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      assigned_area, skills_json, certifications_json, notes, course_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id,
     name,
@@ -102,6 +105,7 @@ export async function createCrewEmployee(env, request) {
     body.skills         ? JSON.stringify(body.skills)         : null,
     body.certifications ? JSON.stringify(body.certifications) : null,
     body.notes        ?? null,
+    resolveCourseId(body),
   ).run()
 
   return getCrewEmployee(env, id)

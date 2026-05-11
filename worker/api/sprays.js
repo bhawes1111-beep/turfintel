@@ -9,6 +9,7 @@
 
 import { json, badRequest, notFound, readJson } from '../lib/json.js'
 import { generateId } from '../lib/id.js'
+import { buildCourseFilter, resolveCourseId } from '../lib/scope.js'
 
 // ── Mappers ────────────────────────────────────────────────────────────────
 
@@ -58,6 +59,7 @@ function rowToRecord(row, products = [], areas = []) {
                      inventoryItemId:  p.inventory_item_id,
                    })),
     notes:        row.notes,
+    courseId:     row.course_id,
     createdAt:    row.created_at,
     updatedAt:    row.updated_at,
   }
@@ -109,11 +111,12 @@ async function fetchAreasForRecords(env, recordIds) {
   return byRecord
 }
 
-export async function listSprays(env) {
+export async function listSprays(env, courseId = null) {
+  const { where, binds } = buildCourseFilter(courseId)
   const { results: rows } = await env.DB.prepare(
-    `SELECT * FROM spray_records
+    `SELECT * FROM spray_records ${where}
      ORDER BY datetime(spray_date) DESC, created_at DESC`,
-  ).all()
+  ).bind(...binds).all()
   const ids = rows.map(r => r.id)
   const productsBy = await fetchProductsForRecords(env, ids)
   const areasBy    = await fetchAreasForRecords(env, ids)
@@ -144,8 +147,8 @@ export async function createSpray(env, request) {
       spray_date, start_time, end_time, status,
       temperature, wind, humidity, soil_temp,
       rei, phi, carrier_volume, total_volume,
-      holes, notes
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      holes, notes, course_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id,
     body.applicationName ?? null,
@@ -166,6 +169,7 @@ export async function createSpray(env, request) {
     body.totalVolume     ?? null,
     body.holes != null ? JSON.stringify(body.holes) : null,
     body.notes           ?? null,
+    resolveCourseId(body),
   ).run()
 
   // Products

@@ -10,6 +10,7 @@
 // swap data source without a field-rename pass.
 
 import { useSyncExternalStore } from 'react'
+import { withCourseScope, subscribeCourseChange, getSelectedCourseId } from '../courses/courseStore'
 
 const API = '/api/crew-employees'
 
@@ -50,12 +51,14 @@ async function fetchJSON(url, init) {
 export async function refreshCrewData() {
   setState({ loading: true, error: null })
   try {
-    const employees = await fetchJSON(API)
+    const employees = await fetchJSON(withCourseScope(API))
     setState({ employees, loading: false, error: null, lastFetch: Date.now() })
   } catch (err) {
     setState({ loading: false, error: err.message })
   }
 }
+
+subscribeCourseChange(() => { if (hasBooted) refreshCrewData() })
 
 // ── Optimistic mutations ───────────────────────────────────────────────────
 
@@ -64,7 +67,7 @@ export async function createCrewEmployee(payload) {
     const saved = await fetchJSON(API, {
       method:  'POST',
       headers: mutationHeaders(),
-      body:    JSON.stringify(payload),
+      body:    JSON.stringify({ courseId: getSelectedCourseId(), ...payload }),
     })
     setState({ employees: [saved, ...state.employees] })
     return saved

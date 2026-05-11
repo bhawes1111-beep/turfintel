@@ -5,6 +5,7 @@
 // Optimistic mutations, x-admin-key on writes, refresh-on-error.
 
 import { useSyncExternalStore } from 'react'
+import { withCourseScope, subscribeCourseChange, getSelectedCourseId } from '../courses/courseStore'
 
 const API = '/api/sprays'
 
@@ -45,12 +46,14 @@ async function fetchJSON(url, init) {
 export async function refreshSpraysData() {
   setState({ loading: true, error: null })
   try {
-    const records = await fetchJSON(API)
+    const records = await fetchJSON(withCourseScope(API))
     setState({ records, loading: false, error: null, lastFetch: Date.now() })
   } catch (err) {
     setState({ loading: false, error: err.message })
   }
 }
+
+subscribeCourseChange(() => { if (hasBooted) refreshSpraysData() })
 
 // ── Optimistic mutations ───────────────────────────────────────────────────
 
@@ -78,7 +81,7 @@ export async function createSpray(payload) {
     const saved = await fetchJSON(API, {
       method:  'POST',
       headers: mutationHeaders(),
-      body:    JSON.stringify(payload),
+      body:    JSON.stringify({ courseId: getSelectedCourseId(), ...payload }),
     })
     setState({ records: [saved, ...state.records] })
     return saved

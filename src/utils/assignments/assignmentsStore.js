@@ -13,6 +13,7 @@
 // (calendar_event_id, equipment_name) keeps repeat dispatches idempotent.
 
 import { useSyncExternalStore } from 'react'
+import { withCourseScope, subscribeCourseChange, getSelectedCourseId } from '../courses/courseStore'
 
 const CREW_API = '/api/crew-assignments'
 const RES_API  = '/api/equipment-reservations'
@@ -56,8 +57,8 @@ export async function refreshAssignmentsData() {
   setState({ loading: true, error: null })
   try {
     const [crewAssignments, equipmentReservations] = await Promise.all([
-      fetchJSON(CREW_API),
-      fetchJSON(RES_API),
+      fetchJSON(withCourseScope(CREW_API)),
+      fetchJSON(withCourseScope(RES_API)),
     ])
     setState({
       crewAssignments,
@@ -70,6 +71,8 @@ export async function refreshAssignmentsData() {
     setState({ loading: false, error: err.message })
   }
 }
+
+subscribeCourseChange(() => { if (hasBooted) refreshAssignmentsData() })
 
 // ── Crew assignments — optimistic mutations ────────────────────────────────
 
@@ -84,7 +87,7 @@ export async function createCrewAssignment(payload) {
     const saved = await fetchJSON(CREW_API, {
       method:  'POST',
       headers: mutationHeaders(),
-      body:    JSON.stringify(payload),
+      body:    JSON.stringify({ courseId: getSelectedCourseId(), ...payload }),
     })
     const existsLocally = state.crewAssignments.some(a => a.id === saved.id)
     setState({
@@ -147,7 +150,7 @@ export async function createEquipmentReservation(payload) {
     const saved = await fetchJSON(RES_API, {
       method:  'POST',
       headers: mutationHeaders(),
-      body:    JSON.stringify(payload),
+      body:    JSON.stringify({ courseId: getSelectedCourseId(), ...payload }),
     })
     const existsLocally = state.equipmentReservations.some(r => r.id === saved.id)
     setState({

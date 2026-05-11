@@ -3,6 +3,7 @@
 
 import { json, badRequest, notFound, readJson } from '../lib/json.js'
 import { generateId } from '../lib/id.js'
+import { buildCourseFilter, resolveCourseId } from '../lib/scope.js'
 
 // ── Mappers ────────────────────────────────────────────────────────────────
 
@@ -35,6 +36,7 @@ function rowToItem(row) {
     currentLevel:  row.current_level,
     lastFill:      row.last_fill,
     relatedUsage,
+    courseId:     row.course_id,
     createdAt:    row.created_at,
     updatedAt:    row.updated_at,
   }
@@ -51,6 +53,7 @@ function rowToUsage(row) {
     date:          row.date,
     area:          row.area,
     applicator:    row.applicator,
+    courseId:      row.course_id,
     createdAt:     row.created_at,
   }
 }
@@ -80,10 +83,11 @@ const MUTABLE_COLUMNS = {
 
 // ── Items: CRUD ────────────────────────────────────────────────────────────
 
-export async function listInventory(env) {
+export async function listInventory(env, courseId = null) {
+  const { where, binds } = buildCourseFilter(courseId)
   const { results } = await env.DB.prepare(
-    'SELECT * FROM inventory_items ORDER BY kind ASC, name ASC',
-  ).all()
+    `SELECT * FROM inventory_items ${where} ORDER BY kind ASC, name ASC`,
+  ).bind(...binds).all()
   return json(results.map(rowToItem))
 }
 
@@ -110,8 +114,8 @@ export async function createInventory(env, request) {
       part_number, equipment,
       analysis,
       tank_capacity, current_level, last_fill,
-      related_usage
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      related_usage, course_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id,
     body.kind,
@@ -134,6 +138,7 @@ export async function createInventory(env, request) {
     body.currentLevel ?? null,
     body.lastFill     ?? null,
     body.relatedUsage != null ? JSON.stringify(body.relatedUsage) : null,
+    resolveCourseId(body),
   ).run()
 
   return getInventory(env, id)
@@ -174,10 +179,11 @@ export async function deleteInventory(env, id) {
 
 // ── Usage: list + atomic record ────────────────────────────────────────────
 
-export async function listInventoryUsage(env) {
+export async function listInventoryUsage(env, courseId = null) {
+  const { where, binds } = buildCourseFilter(courseId)
   const { results } = await env.DB.prepare(
-    'SELECT * FROM inventory_usage ORDER BY datetime(created_at) DESC',
-  ).all()
+    `SELECT * FROM inventory_usage ${where} ORDER BY datetime(created_at) DESC`,
+  ).bind(...binds).all()
   return json(results.map(rowToUsage))
 }
 
@@ -224,8 +230,8 @@ export async function recordInventoryUsage(env, request) {
   // 3. Record usage.
   await env.DB.prepare(`
     INSERT INTO inventory_usage (
-      id, product_name, quantity_used, unit, source_id, date, area, applicator
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      id, product_name, quantity_used, unit, source_id, date, area, applicator, course_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     usageId,
     body.productName,
@@ -235,6 +241,7 @@ export async function recordInventoryUsage(env, request) {
     body.date       ?? null,
     body.area       ?? null,
     body.applicator ?? null,
+    resolveCourseId(body),
   ).run()
 
   const usageRow = await env.DB.prepare(

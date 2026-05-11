@@ -8,6 +8,7 @@
 // Carries the Phase 5.1b x-admin-key header on every mutation.
 
 import { useSyncExternalStore } from 'react'
+import { withCourseScope, subscribeCourseChange, getSelectedCourseId } from '../courses/courseStore'
 
 const API = '/api/repairs'
 
@@ -48,12 +49,14 @@ async function fetchJSON(url, init) {
 export async function refreshRepairsData() {
   setState({ loading: true, error: null })
   try {
-    const repairs = await fetchJSON(API)
+    const repairs = await fetchJSON(withCourseScope(API))
     setState({ repairs, loading: false, error: null, lastFetch: Date.now() })
   } catch (err) {
     setState({ loading: false, error: err.message })
   }
 }
+
+subscribeCourseChange(() => { if (hasBooted) refreshRepairsData() })
 
 export async function patchRepair(id, updates) {
   const prev = state.repairs
@@ -79,7 +82,7 @@ export async function createRepair(payload) {
     const saved = await fetchJSON(API, {
       method:  'POST',
       headers: mutationHeaders(),
-      body:    JSON.stringify(payload),
+      body:    JSON.stringify({ courseId: getSelectedCourseId(), ...payload }),
     })
     setState({ repairs: [saved, ...state.repairs] })
     return saved

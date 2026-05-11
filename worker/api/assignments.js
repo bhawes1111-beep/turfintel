@@ -15,6 +15,7 @@
 
 import { json, badRequest, notFound, readJson } from '../lib/json.js'
 import { generateId } from '../lib/id.js'
+import { buildCourseFilter, resolveCourseId } from '../lib/scope.js'
 
 // ── Mappers ───────────────────────────────────────────────────────────────
 
@@ -29,6 +30,7 @@ function rowToCrewAssignment(row) {
     status:          row.status,
     notes:           row.notes,
     assignedAt:      row.assigned_at,
+    courseId:        row.course_id,
     createdAt:       row.created_at,
     updatedAt:       row.updated_at,
   }
@@ -44,6 +46,7 @@ function rowToEquipmentReservation(row) {
     status:          row.status,
     notes:           row.notes,
     reservedAt:      row.reserved_at,
+    courseId:        row.course_id,
     createdAt:       row.created_at,
     updatedAt:       row.updated_at,
   }
@@ -70,10 +73,11 @@ const RES_CORE_COLUMNS = {
 
 // ── Crew Assignments ──────────────────────────────────────────────────────
 
-export async function listCrewAssignments(env) {
+export async function listCrewAssignments(env, courseId = null) {
+  const { where, binds } = buildCourseFilter(courseId)
   const { results } = await env.DB.prepare(
-    'SELECT * FROM crew_assignments ORDER BY datetime(assigned_at) DESC',
-  ).all()
+    `SELECT * FROM crew_assignments ${where} ORDER BY datetime(assigned_at) DESC`,
+  ).bind(...binds).all()
   return json(results.map(rowToCrewAssignment))
 }
 
@@ -106,8 +110,8 @@ export async function createCrewAssignment(env, request) {
 
   await env.DB.prepare(`
     INSERT INTO crew_assignments (
-      id, calendar_event_id, employee_id, employee_name, role, status, notes
-    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+      id, calendar_event_id, employee_id, employee_name, role, status, notes, course_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id,
     calendarEventId,
@@ -116,6 +120,7 @@ export async function createCrewAssignment(env, request) {
     body.role   ?? null,
     body.status ?? 'assigned',
     body.notes  ?? null,
+    resolveCourseId(body),
   ).run()
 
   return getCrewAssignment(env, id)
@@ -154,10 +159,11 @@ export async function deleteCrewAssignment(env, id) {
 
 // ── Equipment Reservations ────────────────────────────────────────────────
 
-export async function listEquipmentReservations(env) {
+export async function listEquipmentReservations(env, courseId = null) {
+  const { where, binds } = buildCourseFilter(courseId)
   const { results } = await env.DB.prepare(
-    'SELECT * FROM equipment_reservations ORDER BY datetime(reserved_at) DESC',
-  ).all()
+    `SELECT * FROM equipment_reservations ${where} ORDER BY datetime(reserved_at) DESC`,
+  ).bind(...binds).all()
   return json(results.map(rowToEquipmentReservation))
 }
 
@@ -189,8 +195,8 @@ export async function createEquipmentReservation(env, request) {
 
   await env.DB.prepare(`
     INSERT INTO equipment_reservations (
-      id, calendar_event_id, equipment_id, equipment_name, status, notes
-    ) VALUES (?, ?, ?, ?, ?, ?)
+      id, calendar_event_id, equipment_id, equipment_name, status, notes, course_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id,
     calendarEventId,
@@ -198,6 +204,7 @@ export async function createEquipmentReservation(env, request) {
     body.equipmentName,
     body.status      ?? 'reserved',
     body.notes       ?? null,
+    resolveCourseId(body),
   ).run()
 
   return getEquipmentReservation(env, id)

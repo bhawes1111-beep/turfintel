@@ -33,6 +33,7 @@ import PageShell from '../../components/layout/PageShell'
 
 import ProfileSection         from './sections/ProfileSection'
 import CourseSection          from './sections/CourseSection'
+import CourseScopeSection     from './sections/CourseScopeSection'
 import AppPreferencesSection  from './sections/AppPreferencesSection'
 import WeatherDataSection     from './sections/WeatherDataSection'
 import TeamSection            from './sections/TeamSection'
@@ -73,6 +74,16 @@ const SECTIONS = [
       'weather station', 'coordinates', 'anchor',
       'bounds', 'bounding box',
       'aerial', 'image', 'map zoom', 'default zoom',
+    ],
+  },
+  {
+    key: 'course-scope',
+    label: 'Course Scope',
+    component: CourseScopeSection,
+    keywords: [
+      'course scope', 'scope', 'active course', 'operational course',
+      'multi-course', 'multi course', 'tenant', 'tenancy',
+      'crossroads', 'switch course', 'data scope',
     ],
   },
   {
