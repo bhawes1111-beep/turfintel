@@ -4,8 +4,9 @@ import { TYPE_COLORS } from '../../../data/spray'
 import { useSpraysData } from '../../../utils/sprays/spraysStore'
 import { useOperations } from '../../../utils/operations/OperationsContext'
 import { useInventoryData, recordInventoryUsage } from '../../../utils/inventory/inventoryStore'
+import { createCalendarEvent } from '../../../utils/calendar/calendarStore'
 import { useToast } from '../../../utils/feedback/toastContext'
-import { createCalendarEvent, createAlert } from '../../../utils/operations/actions'
+import { createAlert } from '../../../utils/operations/actions'
 import ContextActions from '../../../components/contextActions/ContextActions'
 import ExpandableSection from '../../../components/expandable/ExpandableSection'
 import { EmptyState } from '../../../components/shared/EmptyState'
@@ -137,7 +138,10 @@ export default function BuildSpraySheet() {
       const evtStatus    = r.status === 'completed' ? 'completed'
                          : r.status === 'in-progress' ? 'in-progress'
                          : 'scheduled'
-      dispatch(createCalendarEvent({
+      // Phase 5.4a — calendar event now persists to D1 via calendarStore.
+      // Worker dedupe on (source_id, event_type, start_date) keeps repeat
+      // dispatches idempotent. Fire-and-forget; errors surface in store.error.
+      createCalendarEvent({
         title:         `Spray — ${r.area}: ${r.products.map(p => p.name).join(' + ')}`,
         date:          r.date,
         category:      'spray',
@@ -150,7 +154,7 @@ export default function BuildSpraySheet() {
         notes:         r.notes || '',
         sourceModule:  'spray',
         sourceId:      r.id,
-      }))
+      }).catch(() => {})
     })
 
     if (maxREI > 0) {

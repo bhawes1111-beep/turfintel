@@ -1,9 +1,7 @@
 import { createContext, useContext, useEffect, useReducer } from 'react'
 import { loadSync, save, migrate } from '../persistence/persistence'
-import { CALENDAR_EVENTS } from '../../data/dashboardCalendarEvents'
 import { DASHBOARD_ALERTS } from '../../data/dashboardAlerts'
 import {
-  CREATE_CALENDAR_EVENT,
   CREATE_ALERT,
   ASSIGN_CREW,
   RESERVE_EQUIPMENT,
@@ -15,14 +13,12 @@ const STORAGE_KEY = 'turfintel-operations'
 
 // ── Static seeds ───────────────────────────────────────────────────────────────
 // Used on first load or when persisted state is absent / corrupt.
-// Inventory slots removed in Phase 5.2 — domain now persists via
-// inventoryStore (Worker API + D1).
 
 const seedState = {
-  calendarEvents:        [...CALENDAR_EVENTS],
   alerts:                [...DASHBOARD_ALERTS],
   crewAssignments:       [],
   equipmentReservations: [],
+  // calendarEvents removed in Phase 5.4a (→ calendarStore).
   // inventoryProducts / inventoryUsage removed in Phase 5.2 (→ inventoryStore).
   // repairOverrides / equipmentOverrides removed in Phase 5.1c.
 }
@@ -57,49 +53,24 @@ function mergeWithSeed(loaded) {
 function operationsReducer(state, { type, payload }) {
   switch (type) {
 
-    case CREATE_CALENDAR_EVENT: {
-      // Deduplication guard: sourceId + category + date must be unique.
-      // Events without a sourceId (no originating record) are always allowed.
-      if (payload.metadata?.sourceId) {
-        const exists = state.calendarEvents.some(
-          e =>
-            e.metadata?.sourceId === payload.metadata.sourceId &&
-            e.category           === payload.category          &&
-            e.date               === payload.date
-        )
-        if (exists) return state
-      }
-      return { ...state, calendarEvents: [payload, ...state.calendarEvents] }
-    }
+    // CREATE_CALENDAR_EVENT case removed in Phase 5.4a — calendar events
+    // now persist via createCalendarEvent() in calendarStore. Worker-side
+    // dedupe (sourceId + event_type + start_date) handles the guard that
+    // used to live here.
 
     case CREATE_ALERT:
       return { ...state, alerts: [payload, ...state.alerts] }
 
-    case ASSIGN_CREW: {
-      const calendarEvents = state.calendarEvents.map(evt =>
-        evt.id === payload.eventId
-          ? { ...evt, assignedStaff: [...new Set([...evt.assignedStaff, ...payload.staffNames])] }
-          : evt
-      )
-      return {
-        ...state,
-        calendarEvents,
-        crewAssignments: [...state.crewAssignments, payload],
-      }
-    }
+    // ASSIGN_CREW / RESERVE_EQUIPMENT no longer mutate calendarEvents
+    // (those moved to calendarStore in Phase 5.4a). The originating
+    // calendar event is already created with assignedStaff / equipment
+    // populated, so the mutation was redundant; these cases now only
+    // append to their respective slots.
+    case ASSIGN_CREW:
+      return { ...state, crewAssignments: [...state.crewAssignments, payload] }
 
-    case RESERVE_EQUIPMENT: {
-      const calendarEvents = state.calendarEvents.map(evt =>
-        evt.id === payload.eventId
-          ? { ...evt, equipment: [...new Set([...evt.equipment, ...payload.equipmentNames])] }
-          : evt
-      )
-      return {
-        ...state,
-        calendarEvents,
-        equipmentReservations: [...state.equipmentReservations, payload],
-      }
-    }
+    case RESERVE_EQUIPMENT:
+      return { ...state, equipmentReservations: [...state.equipmentReservations, payload] }
 
     case DISMISS_ALERT:
       return { ...state, alerts: state.alerts.filter(a => a.id !== payload.id) }

@@ -2,8 +2,8 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import { useEquipmentData, patchMaintenance } from '../../../utils/equipment/equipmentStore'
 import { useOperations } from '../../../utils/operations/OperationsContext'
 import { useToast } from '../../../utils/feedback/toastContext'
-import { makeCalendarEvent } from '../../../utils/operations/schemas'
-import { CREATE_CALENDAR_EVENT, reserveEquipment } from '../../../utils/operations/actions'
+import { reserveEquipment } from '../../../utils/operations/actions'
+import { createCalendarEvent } from '../../../utils/calendar/calendarStore'
 import { buildMaintenanceLogReport } from '../../../utils/reports/reportBuilder'
 import { createAttachmentRef } from '../../../utils/reports/reportSchemas'
 import { getMediaByModule, getThumbnailBlob } from '../../../utils/media/mediaStore'
@@ -136,7 +136,12 @@ export default function MaintenanceLogs({ initialSearch = null } = {}) {
                       : log.status === 'in-progress' ? 'in-progress'
                       : 'scheduled'
 
-    const calEvent = makeCalendarEvent({
+    // Phase 5.4a — create the calendar event via calendarStore (persists
+    // to D1). The reserveEquipment dispatch still records the reservation
+    // in OperationsContext.equipmentReservations; that slot migrates in
+    // a later 5.4 sub-phase. We pass the server-returned event id to the
+    // reservation so the linkage survives reload.
+    createCalendarEvent({
       title:         `${log.serviceType} — ${log.equipmentName}`,
       date:          log.date,
       category:      'maintenance',
@@ -149,16 +154,14 @@ export default function MaintenanceLogs({ initialSearch = null } = {}) {
       notes:         log.notes || '',
       sourceModule:  'equipment',
       sourceId:      log.id,
-    })
-
-    dispatch({ type: CREATE_CALENDAR_EVENT, payload: calEvent })
-
-    dispatch(reserveEquipment({
-      eventId:        calEvent.id,
-      equipmentNames: [log.equipmentName],
-      date:           log.date,
-      notes:          `${log.serviceType} service — ${log.hoursAtService.toLocaleString()} hrs`,
-    }))
+    }).then(savedEvent => {
+      dispatch(reserveEquipment({
+        eventId:        savedEvent.id,
+        equipmentNames: [log.equipmentName],
+        date:           log.date,
+        notes:          `${log.serviceType} service — ${log.hoursAtService.toLocaleString()} hrs`,
+      }))
+    }).catch(() => {})
 
     toast.success('Service event added to Operations Calendar')
   }

@@ -229,14 +229,15 @@ function schedulingItems(calendarEvents) {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-// Phase 5.1c — every domain is now server-of-truth. equipment, serviceLog,
-// and repairs are all parameters from their respective stores.
-export function buildAwarenessGroups(state, { equipment = [], serviceLog = [], repairs = [] } = {}) {
-  const calEvents = state.calendarEvents || []
+// Phase 5.4a — calendarEvents is now a parameter as well (from calendarStore).
+// All four operational signal sources are server-of-truth via their stores.
+// The legacy `state` first-arg shape is gone; callers pass everything as a
+// single options object.
+export function buildAwarenessGroups({ equipment = [], serviceLog = [], repairs = [], calendarEvents = [] } = {}) {
   return [
     { id: 'equipment',  label: 'Equipment',            icon: '⚙️', items: equipmentItems(serviceLog, equipment) },
     { id: 'irrigation', label: 'Irrigation',            icon: '💧', items: irrigationItems(repairs)              },
-    { id: 'spray',      label: 'Spray & Applications',  icon: '🌿', items: sprayItems(calEvents)                 },
-    { id: 'scheduling', label: 'Scheduling',             icon: '📅', items: schedulingItems(calEvents)            },
+    { id: 'spray',      label: 'Spray & Applications',  icon: '🌿', items: sprayItems(calendarEvents)            },
+    { id: 'scheduling', label: 'Scheduling',             icon: '📅', items: schedulingItems(calendarEvents)       },
   ].filter(g => g.items.length > 0)
 }

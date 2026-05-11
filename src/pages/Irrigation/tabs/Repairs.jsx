@@ -2,7 +2,8 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import { useOperations } from '../../../utils/operations/OperationsContext'
 import { useRepairsData, patchRepair } from '../../../utils/repairs/repairsStore'
 import { useToast } from '../../../utils/feedback/toastContext'
-import { createCalendarEvent, createAlert } from '../../../utils/operations/actions'
+import { createAlert } from '../../../utils/operations/actions'
+import { createCalendarEvent } from '../../../utils/calendar/calendarStore'
 import ContextActions from '../../../components/contextActions/ContextActions'
 import ExpandableSection from '../../../components/expandable/ExpandableSection'
 import exStyles from '../../../components/expandable/expandable.module.css'
@@ -200,7 +201,8 @@ export default function Repairs() {
       repair.headNumber ? `Head #${repair.headNumber}` : null,
     ].filter(Boolean).join(' · ')
 
-    dispatch(createCalendarEvent({
+    // Phase 5.4a — calendar event persists to D1; fire-and-forget.
+    createCalendarEvent({
       title:         `Irrigation Repair — ${ISSUE_TYPE_LABELS[repair.issueType] || repair.issueType}`,
       date:          repair.dateReported,
       category:      'irrigation',
@@ -213,7 +215,7 @@ export default function Repairs() {
       notes:         repair.notes || '',
       sourceModule:  'irrigation',
       sourceId:      repair.repairId,
-    }))
+    }).catch(() => {})
 
     if (repair.priority === 'high') {
       dispatch(createAlert({

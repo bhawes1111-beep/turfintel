@@ -1,6 +1,7 @@
 // ── Action type constants ─────────────────────────────────────────────────────
 
-export const CREATE_CALENDAR_EVENT = 'CREATE_CALENDAR_EVENT'
+// CREATE_CALENDAR_EVENT removed in Phase 5.4a — calendar events are
+// persisted via createCalendarEvent() in calendarStore.
 export const CREATE_ALERT          = 'CREATE_ALERT'
 export const ASSIGN_CREW           = 'ASSIGN_CREW'
 export const RESERVE_EQUIPMENT     = 'RESERVE_EQUIPMENT'
@@ -22,18 +23,16 @@ export const ACKNOWLEDGE_ALERT     = 'ACKNOWLEDGE_ALERT'
 //   4. On failure: dispatch a REVERT action
 
 import {
-  makeCalendarEvent,
   makeAlert,
   makeCrewAssignment,
   makeEquipmentReservation,
 } from './schemas'
-// makeInventoryUsage removed in Phase 5.2 — inventoryStore handles the
-// usage payload shape directly. The schema helper remains exported from
-// schemas.js for reportBuilder backward compatibility.
+// makeInventoryUsage removed in Phase 5.2; makeCalendarEvent removed in
+// Phase 5.4a. Both schema helpers remain exported from schemas.js for
+// reportBuilder back-compat.
 
-export function createCalendarEvent(fields) {
-  return { type: CREATE_CALENDAR_EVENT, payload: makeCalendarEvent(fields) }
-}
+// createCalendarEvent action creator removed in Phase 5.4a — use
+// createCalendarEvent() from src/utils/calendar/calendarStore instead.
 
 export function createAlert(fields) {
   return { type: CREATE_ALERT, payload: makeAlert(fields) }

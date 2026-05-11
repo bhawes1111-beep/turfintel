@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import { useOperations } from '../../utils/operations/OperationsContext'
+import { useCalendarData } from '../../utils/calendar/calendarStore'
 import { PLACEHOLDER_CURRENT, SPRAY_WINDOW_TOKENS, resolveSprayWindow } from '../../components/shared/weather/weatherTokens'
 import styles from './OperationsCalendar.module.css'
 
@@ -97,8 +97,7 @@ function sortEvents(events) {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function OperationsCalendar() {
-  const { state } = useOperations()
-  const calendarEvents = state.calendarEvents
+  const { events: calendarEvents } = useCalendarData()
 
   const [view, setView] = useState(() =>
     typeof window !== 'undefined' && window.innerWidth < 768 ? 'list' : 'month'

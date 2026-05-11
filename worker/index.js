@@ -42,6 +42,13 @@ import {
   updateSpray,
   deleteSpray,
 } from './api/sprays.js'
+import {
+  listCalendarEvents,
+  getCalendarEvent,
+  createCalendarEvent,
+  updateCalendarEvent,
+  deleteCalendarEvent,
+} from './api/calendar.js'
 
 export default {
   async fetch(request, env, ctx) {
@@ -171,6 +178,21 @@ async function handleApi(request, env, url) {
     if (method === 'GET')    return getSpray(env, id)
     if (method === 'PATCH')  return updateSpray(env, id, request)
     if (method === 'DELETE') return deleteSpray(env, id)
+  }
+
+  // ── /api/calendar-events ──────────────────────────────────────────────
+  if (pathname === '/api/calendar-events') {
+    if (method === 'GET')  return listCalendarEvents(env)
+    if (method === 'POST') return createCalendarEvent(env, request)
+  }
+
+  // ── /api/calendar-events/:id ──────────────────────────────────────────
+  const calMatch = pathname.match(/^\/api\/calendar-events\/([^/]+)$/)
+  if (calMatch) {
+    const id = decodeURIComponent(calMatch[1])
+    if (method === 'GET')    return getCalendarEvent(env, id)
+    if (method === 'PATCH')  return updateCalendarEvent(env, id, request)
+    if (method === 'DELETE') return deleteCalendarEvent(env, id)
   }
 
   return notFound()
