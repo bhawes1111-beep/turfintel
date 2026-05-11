@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { CHEMICALS } from '../../../data/inventory'
+import { useInventoryData } from '../../../utils/inventory/inventoryStore'
 import { EmptyState } from '../../../components/shared/EmptyState'
 import WorkspaceSection from '../../../components/shared/WorkspaceSection'
 import styles from '../Inventory.module.css'
@@ -16,17 +16,19 @@ const STATUS_LABEL = { ok: 'In Stock', low: 'Low Stock', critical: 'Out of Stock
 const STATUS_CLASS = { ok: styles.stockOk, low: styles.stockLow, critical: styles.stockCritical }
 
 export default function InventoryChemicals() {
+  const { items } = useInventoryData()
+  const chemicals = useMemo(() => items.filter(i => i.kind === 'chemical'), [items])
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('All')
 
   const visible = useMemo(() => {
-    return CHEMICALS.filter(c => {
-      const matchFilter = filter === 'All' || c.type === filter
+    return chemicals.filter(c => {
+      const matchFilter = filter === 'All' || c.category === filter
       const matchSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
-                          c.location.toLowerCase().includes(search.toLowerCase())
+                          (c.location ?? '').toLowerCase().includes(search.toLowerCase())
       return matchFilter && matchSearch
     })
-  }, [search, filter])
+  }, [search, filter, chemicals])
 
   return (
     <div className={styles.tabContent}>
@@ -57,7 +59,7 @@ export default function InventoryChemicals() {
       </div>
 
       {visible.length === 0 ? (
-        CHEMICALS.length === 0 ? (
+        chemicals.length === 0 ? (
           <EmptyState
             title="No chemical inventory yet."
             description="Fungicides, herbicides, insecticides, and PGRs will appear here once stocked."
@@ -84,7 +86,7 @@ export default function InventoryChemicals() {
                 <div className={styles.cardMeta}>
                   <div className={styles.cardMetaRow}>
                     <span className={styles.cardMetaLabel}>Type</span>
-                    <span>{c.type}</span>
+                    <span>{c.category}</span>
                   </div>
                   <div className={styles.cardMetaRow}>
                     <span className={styles.cardMetaLabel}>Location</span>

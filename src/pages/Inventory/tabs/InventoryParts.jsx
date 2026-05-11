@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { PARTS } from '../../../data/inventory'
+import { useInventoryData } from '../../../utils/inventory/inventoryStore'
 import { EmptyState } from '../../../components/shared/EmptyState'
 import WorkspaceSection from '../../../components/shared/WorkspaceSection'
 import styles from '../Inventory.module.css'
@@ -14,15 +14,17 @@ const STATUS_LABEL = { ok: 'In Stock', low: 'Low Stock', critical: 'Out of Stock
 const STATUS_CLASS = { ok: styles.stockOk, low: styles.stockLow, critical: styles.stockCritical }
 
 export default function InventoryParts() {
+  const { items } = useInventoryData()
+  const parts = useMemo(() => items.filter(i => i.kind === 'part'), [items])
   const [search, setSearch] = useState('')
 
   const visible = useMemo(() => {
-    return PARTS.filter(p =>
+    return parts.filter(p =>
       p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.equipment.toLowerCase().includes(search.toLowerCase()) ||
-      p.partNumber.toLowerCase().includes(search.toLowerCase())
+      (p.equipment ?? '').toLowerCase().includes(search.toLowerCase()) ||
+      (p.partNumber ?? '').toLowerCase().includes(search.toLowerCase())
     )
-  }, [search])
+  }, [search, parts])
 
   return (
     <div className={styles.tabContent}>
@@ -42,7 +44,7 @@ export default function InventoryParts() {
       </div>
 
       {visible.length === 0 ? (
-        PARTS.length === 0 ? (
+        parts.length === 0 ? (
           <EmptyState
             title="No inventory items added yet."
             description="Equipment and irrigation parts will appear here once added."

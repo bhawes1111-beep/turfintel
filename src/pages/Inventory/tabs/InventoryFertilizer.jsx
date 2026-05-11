@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { FERTILIZERS } from '../../../data/inventory'
+import { useInventoryData } from '../../../utils/inventory/inventoryStore'
 import { EmptyState } from '../../../components/shared/EmptyState'
 import WorkspaceSection from '../../../components/shared/WorkspaceSection'
 import styles from '../Inventory.module.css'
@@ -14,15 +14,17 @@ const STATUS_LABEL = { ok: 'In Stock', low: 'Low Stock', critical: 'Out of Stock
 const STATUS_CLASS = { ok: styles.stockOk, low: styles.stockLow, critical: styles.stockCritical }
 
 export default function InventoryFertilizer() {
+  const { items } = useInventoryData()
+  const fertilizers = useMemo(() => items.filter(i => i.kind === 'fertilizer'), [items])
   const [search, setSearch] = useState('')
 
   const visible = useMemo(() => {
-    return FERTILIZERS.filter(f =>
+    return fertilizers.filter(f =>
       f.name.toLowerCase().includes(search.toLowerCase()) ||
-      f.analysis.toLowerCase().includes(search.toLowerCase()) ||
-      f.location.toLowerCase().includes(search.toLowerCase())
+      (f.analysis ?? '').toLowerCase().includes(search.toLowerCase()) ||
+      (f.location ?? '').toLowerCase().includes(search.toLowerCase())
     )
-  }, [search])
+  }, [search, fertilizers])
 
   return (
     <div className={styles.tabContent}>
@@ -42,7 +44,7 @@ export default function InventoryFertilizer() {
       </div>
 
       {visible.length === 0 ? (
-        FERTILIZERS.length === 0 ? (
+        fertilizers.length === 0 ? (
           <EmptyState
             title="No fertilizer inventory yet."
             description="Granular and liquid fertilizers will appear here once stocked."

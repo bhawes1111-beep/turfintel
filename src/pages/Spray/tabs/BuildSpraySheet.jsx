@@ -2,8 +2,9 @@ import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { SPRAY_RECORDS, TYPE_COLORS } from '../../../data/spray'
 import { useOperations } from '../../../utils/operations/OperationsContext'
+import { useInventoryData, recordInventoryUsage } from '../../../utils/inventory/inventoryStore'
 import { useToast } from '../../../utils/feedback/toastContext'
-import { createCalendarEvent, createAlert, deductInventory } from '../../../utils/operations/actions'
+import { createCalendarEvent, createAlert } from '../../../utils/operations/actions'
 import ContextActions from '../../../components/contextActions/ContextActions'
 import ExpandableSection from '../../../components/expandable/ExpandableSection'
 import { EmptyState } from '../../../components/shared/EmptyState'
@@ -113,7 +114,8 @@ function buildPPE(records) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function BuildSpraySheet() {
-  const { state, dispatch }              = useOperations()
+  const { dispatch }                     = useOperations()
+  const { items: inventoryProducts, usage: inventoryUsage } = useInventoryData()
   const toast                            = useToast()
   const navigate                         = useNavigate()
   const [search,       setSearch]       = useState('')
@@ -161,9 +163,9 @@ export default function BuildSpraySheet() {
       }))
     }
 
-    // ── Inventory deductions ─────────────────────────────────────────────────
+    // ── Inventory deductions (Phase 5.2 — persisted via inventoryStore) ─────
     // Skip records whose products have already been deducted (duplicate protection).
-    const alreadyProcessed = new Set(state.inventoryUsage.map(u => u.sourceId))
+    const alreadyProcessed = new Set(inventoryUsage.map(u => u.sourceId))
 
     selectedRecords.forEach(r => {
       if (alreadyProcessed.has(r.id)) return
@@ -173,8 +175,8 @@ export default function BuildSpraySheet() {
         if (qty <= 0) return
 
         // Match by exact name, then case-insensitive fallback
-        const invItem = state.inventoryProducts.find(i => i.name === p.name)
-          ?? state.inventoryProducts.find(i => i.name.toLowerCase() === p.name.toLowerCase())
+        const invItem = inventoryProducts.find(i => i.name === p.name)
+          ?? inventoryProducts.find(i => i.name.toLowerCase() === p.name.toLowerCase())
         if (!invItem) return  // Not tracked in inventory — skip silently
 
         if (invItem.quantity < qty) {
@@ -205,7 +207,11 @@ export default function BuildSpraySheet() {
           }))
         }
 
-        dispatch(deductInventory({
+        // Atomic on the server: decrements inventory_items.quantity and
+        // inserts an inventory_usage row in one transaction. Fire-and-
+        // forget — failures are caught by the store and surface in
+        // state.error; the UI's optimistic update has already happened.
+        recordInventoryUsage({
           productName:  p.name,
           quantityUsed: qty,
           unit:         invItem.unit,
@@ -213,7 +219,7 @@ export default function BuildSpraySheet() {
           date:         r.date,
           area:         r.area,
           applicator:   r.applicator,
-        }))
+        }).catch(() => {})
       })
     })
 
@@ -264,8 +270,8 @@ export default function BuildSpraySheet() {
     const map = {}
     productTable.forEach(p => {
       const invItem =
-        state.inventoryProducts.find(i => i.name === p.name) ??
-        state.inventoryProducts.find(i => i.name.toLowerCase() === p.name.toLowerCase())
+        inventoryProducts.find(i => i.name === p.name) ??
+        inventoryProducts.find(i => i.name.toLowerCase() === p.name.toLowerCase())
       if (!invItem) return
       const status = invStockStatus(invItem.quantity, invItem.reorderLevel)
       if (status === 'good') return
@@ -277,7 +283,7 @@ export default function BuildSpraySheet() {
       }
     })
     return map
-  }, [productTable, state.inventoryProducts])
+  }, [productTable, inventoryProducts])
   const weatherSnap     = selectedRecords.find(r => r.conditions?.temp)?.conditions ?? null
   const sheetAreas      = [...new Set(selectedRecords.map(r => r.area))].join(', ')
   const sheetHoles      = selectedRecords.some(r => r.holes?.length === 18)

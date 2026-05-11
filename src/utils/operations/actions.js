@@ -6,9 +6,10 @@ export const ASSIGN_CREW           = 'ASSIGN_CREW'
 export const RESERVE_EQUIPMENT     = 'RESERVE_EQUIPMENT'
 export const DISMISS_ALERT         = 'DISMISS_ALERT'
 export const ACKNOWLEDGE_ALERT     = 'ACKNOWLEDGE_ALERT'
-export const DEDUCT_INVENTORY      = 'DEDUCT_INVENTORY'
-// UPDATE_REPAIR_OVERRIDE / UPDATE_EQUIPMENT_OVERRIDE removed in Phase 5.1c —
-// those domains are persisted via repairsStore / equipmentStore.
+// DEDUCT_INVENTORY removed in Phase 5.2 — inventory is persisted via
+// inventoryStore (recordInventoryUsage). UPDATE_REPAIR_OVERRIDE /
+// UPDATE_EQUIPMENT_OVERRIDE removed in Phase 5.1c — those domains
+// persist via repairsStore / equipmentStore.
 
 // ── Pure action creators ──────────────────────────────────────────────────────
 //
@@ -25,8 +26,10 @@ import {
   makeAlert,
   makeCrewAssignment,
   makeEquipmentReservation,
-  makeInventoryUsage,
 } from './schemas'
+// makeInventoryUsage removed in Phase 5.2 — inventoryStore handles the
+// usage payload shape directly. The schema helper remains exported from
+// schemas.js for reportBuilder backward compatibility.
 
 export function createCalendarEvent(fields) {
   return { type: CREATE_CALENDAR_EVENT, payload: makeCalendarEvent(fields) }
@@ -52,10 +55,6 @@ export function acknowledgeAlert(id) {
   return { type: ACKNOWLEDGE_ALERT, payload: { id } }
 }
 
-export function deductInventory(fields) {
-  return { type: DEDUCT_INVENTORY, payload: makeInventoryUsage(fields) }
-}
-
+// deductInventory removed in Phase 5.2. Use recordInventoryUsage() from
+// inventoryStore — atomic D1 op that decrements quantity + inserts usage.
 // updateRepairOverride / updateEquipmentOverride removed in Phase 5.1c.
-// Use patchRepair() from repairsStore or patchMaintenance() from
-// equipmentStore instead — those persist to D1 via the Worker API.

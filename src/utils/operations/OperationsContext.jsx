@@ -2,7 +2,6 @@ import { createContext, useContext, useEffect, useReducer } from 'react'
 import { loadSync, save, migrate } from '../persistence/persistence'
 import { CALENDAR_EVENTS } from '../../data/dashboardCalendarEvents'
 import { DASHBOARD_ALERTS } from '../../data/dashboardAlerts'
-import { PRODUCTS, CHEMICALS } from '../../data/inventory'
 import {
   CREATE_CALENDAR_EVENT,
   CREATE_ALERT,
@@ -10,46 +9,22 @@ import {
   RESERVE_EQUIPMENT,
   DISMISS_ALERT,
   ACKNOWLEDGE_ALERT,
-  DEDUCT_INVENTORY,
 } from './actions'
 
 const STORAGE_KEY = 'turfintel-operations'
 
-// ── Inventory normalization ────────────────────────────────────────────────────
-// Unifies PRODUCTS (category field) and CHEMICALS (type field) into one pool.
-// IDs are prefixed ('p-' / 'c-') to prevent collision between datasets.
-
-function toInventoryProduct(p, prefix) {
-  return {
-    id:           `${prefix}${p.id}`,
-    name:         p.name,
-    category:     p.category || p.type || 'Other',
-    unit:         p.unit,
-    quantity:     p.quantity,
-    reorderLevel: p.reorderLevel,
-    location:     p.location  || '',
-    vendor:       p.vendor    || '',
-    notes:        p.notes     || (p.expiryDate ? `Expires: ${p.expiryDate}` : ''),
-    costPerUnit:  p.costPerUnit != null ? p.costPerUnit : null,
-    relatedUsage: p.relatedUsage || [],
-  }
-}
-
 // ── Static seeds ───────────────────────────────────────────────────────────────
 // Used on first load or when persisted state is absent / corrupt.
+// Inventory slots removed in Phase 5.2 — domain now persists via
+// inventoryStore (Worker API + D1).
 
 const seedState = {
   calendarEvents:        [...CALENDAR_EVENTS],
   alerts:                [...DASHBOARD_ALERTS],
   crewAssignments:       [],
   equipmentReservations: [],
-  inventoryProducts:     [
-    ...PRODUCTS.map(p  => toInventoryProduct(p, 'p-')),
-    ...CHEMICALS.map(c => toInventoryProduct(c, 'c-')),
-  ],
-  inventoryUsage:        [],
-  // repairOverrides / equipmentOverrides removed in Phase 5.1c — those
-  // domains now persist via repairsStore / equipmentStore.
+  // inventoryProducts / inventoryUsage removed in Phase 5.2 (→ inventoryStore).
+  // repairOverrides / equipmentOverrides removed in Phase 5.1c.
 }
 
 // ── Persistence adapter ────────────────────────────────────────────────────────
@@ -137,37 +112,10 @@ function operationsReducer(state, { type, payload }) {
         ),
       }
 
-    case DEDUCT_INVENTORY: {
-      // payload is a makeInventoryUsage() record — contains productName + quantityUsed.
-      // Pure arithmetic only — alert dispatch happens before this action is fired.
-      const { productName, quantityUsed } = payload
-      const lc = productName.toLowerCase()
-
-      let matchIdx = state.inventoryProducts.findIndex(p => p.name === productName)
-      if (matchIdx === -1) {
-        matchIdx = state.inventoryProducts.findIndex(p => p.name.toLowerCase() === lc)
-      }
-
-      if (matchIdx === -1) {
-        // Product not tracked — record the usage attempt without deducting.
-        return { ...state, inventoryUsage: [...state.inventoryUsage, payload] }
-      }
-
-      const product = state.inventoryProducts[matchIdx]
-      const newQty  = Math.max(0, product.quantity - quantityUsed)
-
-      return {
-        ...state,
-        inventoryProducts: state.inventoryProducts.map((p, i) =>
-          i === matchIdx ? { ...p, quantity: newQty } : p
-        ),
-        inventoryUsage: [...state.inventoryUsage, payload],
-      }
-    }
-
+    // DEDUCT_INVENTORY case removed in Phase 5.2 — inventory deductions now
+    // persist via recordInventoryUsage() in inventoryStore (atomic D1 op).
     // UPDATE_REPAIR_OVERRIDE / UPDATE_EQUIPMENT_OVERRIDE cases removed in
-    // Phase 5.1c — those domains are now persisted via repairsStore /
-    // equipmentStore. The overlay-era reducer is officially retired.
+    // Phase 5.1c.
 
     default:
       return state

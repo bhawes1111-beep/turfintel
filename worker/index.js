@@ -26,6 +26,15 @@ import {
   updateRepair,
   deleteRepair,
 } from './api/repairs.js'
+import {
+  listInventory,
+  getInventory,
+  createInventory,
+  updateInventory,
+  deleteInventory,
+  listInventoryUsage,
+  recordInventoryUsage,
+} from './api/inventory.js'
 
 export default {
   async fetch(request, env, ctx) {
@@ -117,6 +126,29 @@ async function handleApi(request, env, url) {
     if (method === 'GET')    return getRepair(env, id)
     if (method === 'PATCH')  return updateRepair(env, id, request)
     if (method === 'DELETE') return deleteRepair(env, id)
+  }
+
+  // ── /api/inventory ────────────────────────────────────────────────────
+  if (pathname === '/api/inventory') {
+    if (method === 'GET')  return listInventory(env)
+    if (method === 'POST') return createInventory(env, request)
+  }
+
+  // ── /api/inventory/usage ──────────────────────────────────────────────
+  // NOTE: This route must be matched BEFORE /api/inventory/:id below,
+  // because 'usage' would otherwise be consumed as an id.
+  if (pathname === '/api/inventory/usage') {
+    if (method === 'GET')  return listInventoryUsage(env)
+    if (method === 'POST') return recordInventoryUsage(env, request)
+  }
+
+  // ── /api/inventory/:id ────────────────────────────────────────────────
+  const invMatch = pathname.match(/^\/api\/inventory\/([^/]+)$/)
+  if (invMatch) {
+    const id = decodeURIComponent(invMatch[1])
+    if (method === 'GET')    return getInventory(env, id)
+    if (method === 'PATCH')  return updateInventory(env, id, request)
+    if (method === 'DELETE') return deleteInventory(env, id)
   }
 
   return notFound()

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useOperations } from '../../../utils/operations/OperationsContext'
+import { useInventoryData } from '../../../utils/inventory/inventoryStore'
 import { EmptyState } from '../../../components/shared/EmptyState'
 import WorkspaceSection from '../../../components/shared/WorkspaceSection'
 import SideDrawer from '../../../components/primitives/SideDrawer'
@@ -27,8 +27,13 @@ const FILTER_KEY = { 'Good': 'good', 'Low': 'low', 'Critical': 'critical', 'Out 
 const SORT_STATUS = { out: 0, critical: 1, low: 2, good: 3 }
 
 export default function InventoryProducts({ initialSelectedId = null }) {
-  const { state }       = useOperations()
-  const inventoryProducts = state.inventoryProducts
+  const { items } = useInventoryData()
+  // Products tab shows the merged products + chemicals view (matches the
+  // pre-5.2 OperationsContext.state.inventoryProducts behavior).
+  const inventoryProducts = useMemo(
+    () => items.filter(i => i.kind === 'product' || i.kind === 'chemical'),
+    [items],
+  )
 
   const [search,    setSearch]    = useState('')
   const [catFilter, setCatFilter] = useState('All')

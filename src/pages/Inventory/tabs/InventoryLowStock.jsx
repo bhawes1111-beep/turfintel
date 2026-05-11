@@ -1,4 +1,5 @@
-import { PRODUCTS, CHEMICALS, FERTILIZERS, PARTS } from '../../../data/inventory'
+import { useMemo } from 'react'
+import { useInventoryData } from '../../../utils/inventory/inventoryStore'
 import { EmptyState } from '../../../components/shared/EmptyState'
 import WorkspaceSection from '../../../components/shared/WorkspaceSection'
 import styles from '../Inventory.module.css'
@@ -12,37 +13,40 @@ function stockStatus(quantity, reorderLevel) {
 const STATUS_LABEL = { low: 'Low Stock', critical: 'Out of Stock' }
 const STATUS_CLASS  = { low: styles.stockLow, critical: styles.stockCritical }
 
-function buildAlertList(items, categoryLabel, nameKey = 'name') {
+const KIND_LABEL = {
+  product:    'Products',
+  chemical:   'Chemicals',
+  fertilizer: 'Fertilizer',
+  part:       'Parts',
+}
+
+function buildAlerts(items) {
   return items
-    .filter(item => stockStatus(item.quantity, item.reorderLevel) !== 'ok')
+    .filter(item => item.reorderLevel != null && KIND_LABEL[item.kind])
     .map(item => ({
-      id:       `${categoryLabel}-${item.id}`,
-      name:     item[nameKey],
-      category: categoryLabel,
-      quantity: item.quantity,
-      unit:     item.unit,
+      id:           `${item.kind}-${item.id}`,
+      name:         item.name,
+      category:     KIND_LABEL[item.kind],
+      quantity:     item.quantity,
+      unit:         item.unit,
       reorderLevel: item.reorderLevel,
-      status:   stockStatus(item.quantity, item.reorderLevel),
+      status:       stockStatus(item.quantity, item.reorderLevel),
     }))
+    .filter(a => a.status !== 'ok')
 }
 
 export default function InventoryLowStock() {
-  const critical = [
-    ...buildAlertList(PRODUCTS,    'Products'),
-    ...buildAlertList(CHEMICALS,   'Chemicals'),
-    ...buildAlertList(FERTILIZERS, 'Fertilizer'),
-    ...buildAlertList(PARTS,       'Parts'),
-  ].filter(a => a.status === 'critical')
-
-  const low = [
-    ...buildAlertList(PRODUCTS,    'Products'),
-    ...buildAlertList(CHEMICALS,   'Chemicals'),
-    ...buildAlertList(FERTILIZERS, 'Fertilizer'),
-    ...buildAlertList(PARTS,       'Parts'),
-  ].filter(a => a.status === 'low')
+  const { items } = useInventoryData()
+  const trackedItems = useMemo(
+    () => items.filter(i => KIND_LABEL[i.kind]),
+    [items],
+  )
+  const alerts   = useMemo(() => buildAlerts(items), [items])
+  const critical = alerts.filter(a => a.status === 'critical')
+  const low      = alerts.filter(a => a.status === 'low')
 
   const allClear  = critical.length === 0 && low.length === 0
-  const hasAnyInv = PRODUCTS.length + CHEMICALS.length + FERTILIZERS.length + PARTS.length > 0
+  const hasAnyInv = trackedItems.length > 0
 
   return (
     <div className={styles.tabContent}>

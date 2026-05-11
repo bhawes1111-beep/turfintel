@@ -1,4 +1,5 @@
-import { FUEL } from '../../../data/inventory'
+import { useMemo } from 'react'
+import { useInventoryData } from '../../../utils/inventory/inventoryStore'
 import { EmptyState } from '../../../components/shared/EmptyState'
 import WorkspaceSection from '../../../components/shared/WorkspaceSection'
 import styles from '../Inventory.module.css'
@@ -23,26 +24,28 @@ const STATUS_LABEL = { ok: 'Adequate', low: 'Low', critical: 'Critical' }
 const STATUS_CLASS  = { ok: styles.stockOk, low: styles.stockLow, critical: styles.stockCritical }
 
 export default function InventoryFuel() {
+  const { items } = useInventoryData()
+  const fuel = useMemo(() => items.filter(i => i.kind === 'fuel'), [items])
   return (
     <div className={styles.tabContent}>
       <WorkspaceSection
         title="Fuel"
         subtitle="Diesel, gasoline, and other fuel storage levels."
       >
-      {FUEL.length === 0 ? (
+      {fuel.length === 0 ? (
         <EmptyState
           title="No fuel tanks tracked yet."
           description="Diesel, gasoline, and other fuel storage will appear here once configured."
         />
       ) : (
         <div className={styles.fuelGrid}>
-          {FUEL.map(f => {
+          {fuel.map(f => {
             const pct    = fuelPct(f.currentLevel, f.tankCapacity)
             const status = stockStatus(pct)
             return (
               <div key={f.id} className={styles.fuelCard}>
                 <div className={styles.cardTop}>
-                  <span className={styles.fuelType}>{f.type}</span>
+                  <span className={styles.fuelType}>{f.category}</span>
                   <span className={`${styles.stockBadge} ${STATUS_CLASS[status]}`}>
                     {STATUS_LABEL[status]}
                   </span>
