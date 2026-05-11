@@ -60,6 +60,10 @@ function rowToRecord(row, products = [], areas = []) {
                    })),
     notes:        row.notes,
     courseId:     row.course_id,
+    // Phase 5.9 — soft-delete audit fields.
+    deletedAt:         row.deleted_at,
+    deletedBy:         row.deleted_by,
+    inventoryReverted: row.inventory_reverted === 1,
     createdAt:    row.created_at,
     updatedAt:    row.updated_at,
   }
@@ -112,11 +116,18 @@ async function fetchAreasForRecords(env, recordIds) {
 }
 
 export async function listSprays(env, courseId = null) {
-  const { where, binds } = buildCourseFilter(courseId)
+  // Phase 5.9 — soft-delete filter. By default, callers see only live
+  // applications (deleted_at IS NULL). Audit views can pass an
+  // includeDeleted hint via the URL (not currently wired in
+  // worker/index.js — surface here for future use).
+  const courseFilter = buildCourseFilter(courseId)
+  const where = courseFilter.where
+    ? `${courseFilter.where} AND deleted_at IS NULL`
+    : 'WHERE deleted_at IS NULL'
   const { results: rows } = await env.DB.prepare(
     `SELECT * FROM spray_records ${where}
      ORDER BY datetime(spray_date) DESC, created_at DESC`,
-  ).bind(...binds).all()
+  ).bind(...courseFilter.binds).all()
   const ids = rows.map(r => r.id)
   const productsBy = await fetchProductsForRecords(env, ids)
   const areasBy    = await fetchAreasForRecords(env, ids)
@@ -251,11 +262,83 @@ export async function updateSpray(env, id, request) {
   return getSpray(env, id)
 }
 
-export async function deleteSpray(env, id) {
-  // Products + areas cascade automatically via ON DELETE CASCADE.
+/**
+ * Soft-delete a spray application and restore the inventory it consumed.
+ *
+ * Phase 5.9 — DELETE never removes rows. The sequence is:
+ *   1. Fetch the spray record. Refuse if already deleted.
+ *   2. Walk inventory_usage WHERE source_id = id AND reverted_at IS NULL.
+ *   3. For each row, look up the inventory_items match (by name) and
+ *      increment its quantity by quantity_used; mark the usage row
+ *      reverted_at = now so the audit shows the reversal.
+ *   4. UPDATE spray_records SET status='deleted', deleted_at=now,
+ *      deleted_by=<header or 'system'>, inventory_reverted=1.
+ *
+ * Returns { ok, id, restored: { count, items: [{name, qty}], misses: [...] } }
+ * so callers can show "X of Y products restored" feedback.
+ *
+ * The spray_products / spray_areas cascade is NOT triggered (we keep the
+ * record itself for audit). Hard delete is intentionally not supported.
+ */
+export async function deleteSpray(env, id, request) {
+  // 1. Load + guard.
+  const row = await env.DB.prepare(
+    'SELECT * FROM spray_records WHERE id = ?',
+  ).bind(id).first()
+  if (!row) return notFound('Spray record not found')
+  if (row.deleted_at) return json({ error: 'Spray already deleted' }, 409)
+
+  // 2. Gather live usage rows for this spray.
+  const { results: usageRows } = await env.DB.prepare(
+    `SELECT * FROM inventory_usage
+      WHERE source_id = ? AND reverted_at IS NULL`,
+  ).bind(id).all()
+
+  // 3. Restore inventory + mark each usage row reverted.
+  const restored = { count: 0, items: [], misses: [] }
+  const nowIso = new Date().toISOString().slice(0, 19).replace('T', ' ')
+  for (const u of usageRows) {
+    // Match by exact name first, fall back to case-insensitive.
+    let item = await env.DB.prepare(
+      'SELECT id, quantity FROM inventory_items WHERE name = ? LIMIT 1',
+    ).bind(u.product_name).first()
+    if (!item) {
+      item = await env.DB.prepare(
+        'SELECT id, quantity FROM inventory_items WHERE LOWER(name) = LOWER(?) LIMIT 1',
+      ).bind(u.product_name).first()
+    }
+    if (item) {
+      const restoredQty = (item.quantity ?? 0) + (u.quantity_used ?? 0)
+      await env.DB.prepare(
+        `UPDATE inventory_items SET quantity = ?, updated_at = datetime('now') WHERE id = ?`,
+      ).bind(restoredQty, item.id).run()
+      await env.DB.prepare(
+        `UPDATE inventory_usage SET reverted_at = ? WHERE id = ?`,
+      ).bind(nowIso, u.id).run()
+      restored.count += 1
+      restored.items.push({ name: u.product_name, quantity: u.quantity_used })
+    } else {
+      restored.misses.push(u.product_name)
+    }
+  }
+
+  // 4. Mark the spray itself deleted. inventory_reverted=1 only if every
+  // tracked usage row found a matching item — otherwise leave it 0 so an
+  // operator can investigate the misses.
+  const fullyReverted = restored.misses.length === 0 ? 1 : 0
+  const deletedBy = request?.headers?.get?.('x-deleted-by') ?? 'system'
   const result = await env.DB.prepare(
-    'DELETE FROM spray_records WHERE id = ?',
-  ).bind(id).run()
-  if (!result.success || result.meta.changes === 0) return notFound('Spray record not found')
-  return json({ ok: true, id })
+    `UPDATE spray_records
+        SET status = 'deleted',
+            deleted_at = datetime('now'),
+            deleted_by = ?,
+            inventory_reverted = ?,
+            updated_at = datetime('now')
+      WHERE id = ?`,
+  ).bind(deletedBy, fullyReverted, id).run()
+  if (!result.success || result.meta.changes === 0) {
+    return notFound('Spray record not found')
+  }
+
+  return json({ ok: true, id, restored })
 }

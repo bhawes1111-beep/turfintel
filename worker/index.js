@@ -215,7 +215,7 @@ async function handleApi(request, env, url) {
     const id = decodeURIComponent(sprayMatch[1])
     if (method === 'GET')    return getSpray(env, id)
     if (method === 'PATCH')  return updateSpray(env, id, request)
-    if (method === 'DELETE') return deleteSpray(env, id)
+    if (method === 'DELETE') return deleteSpray(env, id, request)
   }
 
   // ── /api/calendar-events ──────────────────────────────────────────────

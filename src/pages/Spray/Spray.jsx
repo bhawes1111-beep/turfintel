@@ -10,7 +10,7 @@ import MixCalculator    from './tabs/MixCalculator'
 import SprayReports     from './tabs/SprayReports'
 import workspace from '../../styles/workspace.module.css'
 
-const TABS = ['Overview', 'Spray Calendar', 'Build Spray Sheet', 'Spray Records', 'Planned Programs', 'Mix Calculator', 'Reports']
+const TABS = ['Overview', 'Spray Calendar', 'New Application', 'Spray Records', 'Planned Programs', 'Mix Calculator', 'Reports']
 
 /**
  * Sprays workspace — canonical TurfIntel workspace pattern (Phase 2.2 pilot).
@@ -32,7 +32,7 @@ export default function Spray() {
           <button
             type="button"
             className={workspace.workspaceActionBtn}
-            onClick={() => setActiveTab('Build Spray Sheet')}
+            onClick={() => setActiveTab('New Application')}
           >
             + New Spray
           </button>
@@ -48,7 +48,7 @@ export default function Spray() {
     >
       {activeTab === 'Overview'         && <SprayOverview />}
       {activeTab === 'Spray Calendar'   && <SprayCalendar />}
-      {activeTab === 'Build Spray Sheet' && <BuildSpraySheet />}
+      {activeTab === 'New Application' && <BuildSpraySheet />}
       {activeTab === 'Spray Records'    && <SprayRecords />}
       {activeTab === 'Planned Programs' && <PlannedPrograms />}
       {activeTab === 'Mix Calculator'   && <MixCalculator />}

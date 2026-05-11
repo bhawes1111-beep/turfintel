@@ -1,927 +1,780 @@
-import { useState, useMemo } from 'react'
+// Phase 5.9 — New Spray Application builder.
+//
+// Replaces the previous "Build Spray Sheet" aggregator. This is now a
+// tank-mix planner that drafts a brand-new spray application from
+// scratch, calculates totals live, and commits the result as a
+// permanent spray_record with cascading inventory deductions, calendar
+// event, and REI alert.
+//
+// Filename kept as BuildSpraySheet.jsx per route-stability rule —
+// only user-facing labels say "New Application".
+//
+// Persistence contracts preserved:
+//   - createSpray writes spray_records + nested spray_products / spray_areas
+//   - recordInventoryUsage decrements inventory_items atomically and logs
+//     an inventory_usage row keyed by spray_record.id
+//   - createCalendarEvent creates the operational calendar entry,
+//     deduped by (sourceId + event_type + start_date)
+//   - createAlert fires the REI advisory when applicable
+//   - courseId is injected by each store from the active scope
+//   - Soft-delete + inventory restoration happens server-side
+//     (worker/api/sprays.js → deleteSpray) — not exercised from this
+//     screen but the contract is intact for the SprayRecords UI.
+
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { TYPE_COLORS } from '../../../data/spray'
-import { useSpraysData } from '../../../utils/sprays/spraysStore'
+import { createSpray } from '../../../utils/sprays/spraysStore'
 import { useInventoryData, recordInventoryUsage } from '../../../utils/inventory/inventoryStore'
 import { useCrewData } from '../../../utils/crew/crewStore'
 import { createCalendarEvent } from '../../../utils/calendar/calendarStore'
-import { useToast } from '../../../utils/feedback/toastContext'
 import { createAlert } from '../../../utils/alerts/alertsStore'
-import ContextActions from '../../../components/contextActions/ContextActions'
-import ExpandableSection from '../../../components/expandable/ExpandableSection'
-import { EmptyState } from '../../../components/shared/EmptyState'
+import { useToast } from '../../../utils/feedback/toastContext'
+import { useSelectedCourse } from '../../../utils/courses/courseStore'
 import WorkspaceSection from '../../../components/shared/WorkspaceSection'
-import SideDrawer from '../../../components/primitives/SideDrawer'
-import exStyles from '../../../components/expandable/expandable.module.css'
 import styles from '../Spray.module.css'
 
-const TODAY  = new Date().toISOString().slice(0, 10)
-const COURSE = 'Crossroads GC'
+const TODAY    = new Date().toISOString().slice(0, 10)
+const DRAFT_KEY = 'turfintel:spray-draft-v1'
 
-const ACREAGE_MAP = {
-  'Greens':        1.2,
-  'Tees':          2.4,
-  'Fairways':     28.0,
-  'All Roughs':   18.0,
-  'Greens + Tees': 3.6,
+// ── Course geometry ──────────────────────────────────────────────────────
+// Static for Crossroads GC; future phases can move this onto the
+// courses table or per-course config.
+const AREA_OPTS = [
+  { label: 'Greens',        acres: 1.2  },
+  { label: 'Tees',          acres: 2.4  },
+  { label: 'Fairways',      acres: 28.0 },
+  { label: 'All Roughs',    acres: 18.0 },
+  { label: 'Greens + Tees', acres: 3.6  },
+  { label: 'Practice Area', acres: 1.5  },
+  { label: 'Custom',        acres: 0    },
+]
+
+const SPRAY_RIGS = [
+  { name: 'Spray Rig #1', capacity: 200 },
+  { name: 'Spray Rig #2', capacity: 200 },
+  { name: 'Backpack',     capacity: 4   },
+]
+
+const UNIT_OPTS = ['oz', 'fl oz', 'lb', 'gal', 'qt', 'pt']
+
+// 1 acre = 43.56 (× 1,000 sq ft).
+const SQFT_PER_ACRE_K = 43.56
+
+// ── Draft seed (used when localStorage is empty) ────────────────────────
+function makeEmptyDraft() {
+  return {
+    date:         TODAY,
+    startTime:    '',
+    operator:     '',
+    area:         '',
+    acres:        0,
+    target:       '',
+    waterVolume: '',
+    sprayRig:     'Spray Rig #1',
+    conditions: { temp: '', wind: '', humidity: '' },
+    observations: '',
+    rows:         [],
+  }
 }
 
-const PRODUCT_META = {
-  'Primo MAXX':          { frac: 'PGR',   ppe: 'Gloves, long-sleeved shirt' },
-  'Heritage G':          { frac: '11',    ppe: 'Gloves, eye protection, respirator' },
-  'Daconil Ultrex':      { frac: 'M05',   ppe: 'Gloves, goggles, waterproof coveralls' },
-  'Headway G':           { frac: '3 + 11',ppe: 'Gloves, eye protection' },
-  'Prodiamine 65 WDG':   { frac: '3',     ppe: 'Gloves, long-sleeved shirt, waterproof pants' },
-  'Ferromec AC':         { frac: 'n/a',   ppe: 'Gloves, eye protection' },
-  'Certainty Herbicide': { frac: 'ALS',   ppe: 'Gloves, long-sleeved shirt' },
+// ── Helpers ──────────────────────────────────────────────────────────────
+
+function uid(prefix = 'r') {
+  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`
 }
 
-const STATUS_META = {
-  completed:          { label: 'Completed',     cls: styles.statusCompleted   },
-  planned:            { label: 'Planned',        cls: styles.statusPlanned     },
-  'in-progress':      { label: 'In Progress',   cls: styles.statusInProgress  },
-  'pending-review':   { label: 'Pending Review', cls: styles.statusPending     },
+// Parse "N-P-K" or "16-4-8" out of an inventory analysis field. Returns
+// null if no obvious triple is present — we never invent nutrient
+// percentages.
+function parseAnalysisNPK(analysis) {
+  if (!analysis) return null
+  const m = analysis.match(/(\d+(?:\.\d+)?)[-\s]+(\d+(?:\.\d+)?)[-\s]+(\d+(?:\.\d+)?)/)
+  if (!m) return null
+  return {
+    n: parseFloat(m[1]),
+    p: parseFloat(m[2]),
+    k: parseFloat(m[3]),
+  }
 }
 
-const AREA_OPTS   = ['All', 'Greens', 'Tees', 'Fairways', 'All Roughs', 'Greens + Tees']
-const STATUS_OPTS = ['All', 'planned', 'in-progress', 'pending-review', 'completed']
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-// Extract the leading numeric value from a rate string, e.g. '1.5 lbs / 1,000 sq ft' → 1.5
-function parseRateQty(rateStr) {
-  const match = rateStr && rateStr.match(/^(\d+\.?\d*)/)
-  return match ? parseFloat(match[1]) : 0
+function fmt(num, digits = 1) {
+  if (num == null || Number.isNaN(num)) return '—'
+  return Number(num).toFixed(digits).replace(/\.0+$/, '')
 }
 
-// Mirrors the stockStatus function in InventoryProducts without importing it
-function invStockStatus(qty, reorderLevel) {
-  if (qty <= 0)                   return 'out'
-  if (qty <= reorderLevel * 0.5)  return 'critical'
-  if (qty <= reorderLevel)        return 'low'
+function fmtCurrency(num) {
+  if (num == null || Number.isNaN(num)) return '—'
+  return `$${num.toFixed(2)}`
+}
+
+// Inventory-aware low-stock semantics (mirrors InventoryProducts).
+function stockStatus(qty, reorderLevel) {
+  if (qty <= 0)                                return 'out'
+  if (reorderLevel == null)                    return 'good'
+  if (qty <= reorderLevel * 0.5)               return 'critical'
+  if (qty <= reorderLevel)                     return 'low'
   return 'good'
 }
 
-function holesLabel(holes) {
-  if (!holes || holes.length === 0) return '—'
-  if (holes.length === 18) return 'All 18'
-  if (holes.length === 9 && holes[0] === 1)  return 'Front 9'
-  if (holes.length === 9 && holes[0] === 10) return 'Back 9'
-  return `Holes ${holes[0]}–${holes[holes.length - 1]}`
-}
-
-function condSummary(c) {
-  if (!c || (!c.temp && !c.wind)) return '—'
-  const parts = []
-  if (c.temp)     parts.push(`${c.temp}°F`)
-  if (c.wind)     parts.push(c.wind)
-  if (c.humidity) parts.push(`${c.humidity}% RH`)
-  return parts.join(' · ')
-}
-
-function acres(area) {
-  return ACREAGE_MAP[area] || 0
-}
-
-function buildProductTable(records) {
-  const map = new Map()
-  for (const r of records) {
-    for (const p of r.products) {
-      if (!map.has(p.name)) {
-        map.set(p.name, {
-          name: p.name,
-          type: p.type,
-          rate: p.rate,
-          frac: PRODUCT_META[p.name]?.frac || '—',
-          rei:  r.rei,
-          phi:  r.phi,
-        })
-      }
-    }
-  }
-  return [...map.values()]
-}
-
-// Phase 5.8 — safe active-ingredient string for the record-sheet column.
-// No regulatory data is invented: we walk a fallback chain over fields
-// that genuinely exist on the persisted inventory row (notes →
-// manufacturer → category → FRAC/HRAC code).
-function activeIngredientFor(invItem, fracCode) {
-  if (invItem?.notes) return invItem.notes
-  const bits = []
-  if (invItem?.manufacturer) bits.push(invItem.manufacturer)
-  if (invItem?.category)     bits.push(invItem.category)
-  if (fracCode && fracCode !== '—') bits.push(`FRAC ${fracCode}`)
-  return bits.length > 0 ? bits.join(' · ') : '—'
-}
-
-function buildPPE(records) {
-  const set = new Set()
-  for (const r of records) {
-    for (const p of r.products) {
-      const ppe = PRODUCT_META[p.name]?.ppe
-      if (ppe) set.add(ppe)
-    }
-  }
-  return [...set]
-}
-
-// ── Main component ────────────────────────────────────────────────────────────
+// ── Main component ──────────────────────────────────────────────────────
 
 export default function BuildSpraySheet() {
-  const { items: inventoryProducts, usage: inventoryUsage } = useInventoryData()
-  const { records: SPRAY_RECORDS_LIVE }  = useSpraysData()
-  const { employees: crewEmployees }     = useCrewData()
-  const toast                            = useToast()
-  const navigate                         = useNavigate()
-  const [search,       setSearch]       = useState('')
-  const [dateFilter,   setDateFilter]   = useState('')
-  const [areaFilter,   setAreaFilter]   = useState('All')
-  const [statusFilter, setStatusFilter] = useState('All')
-  const [selected,     setSelected]     = useState(new Set())
-  const [modalRecord,  setModalRecord]  = useState(null)
-  const [hoveredId,    setHoveredId]    = useState(null)
-  const [expandedId,   setExpandedId]   = useState(null)
+  const { items: inventoryProducts }    = useInventoryData()
+  const { employees: crewEmployees }    = useCrewData()
+  const selectedCourse                  = useSelectedCourse()
+  const toast                           = useToast()
+  const navigate                        = useNavigate()
 
-  // Phase 5.8 — record-sheet form state. These overlay the selected
-  // records' data for the printed copy without mutating any persistent
-  // row. They reset to derived defaults whenever the selection changes.
-  const [operatorOverride, setOperatorOverride] = useState('')
-  const [observations,     setObservations]     = useState('')
-
-  function handleAddToCalendar() {
-    // ── Calendar events ──────────────────────────────────────────────────────
-    selectedRecords.forEach(r => {
-      const isPrimary    = r.products.some(p => p.type === 'Fungicide' || p.type === 'Insecticide')
-      const categoryPrio = isPrimary ? 'high' : 'medium'
-      const evtStatus    = r.status === 'completed' ? 'completed'
-                         : r.status === 'in-progress' ? 'in-progress'
-                         : 'scheduled'
-      // Phase 5.4a — calendar event now persists to D1 via calendarStore.
-      // Worker dedupe on (source_id, event_type, start_date) keeps repeat
-      // dispatches idempotent. Fire-and-forget; errors surface in store.error.
-      createCalendarEvent({
-        title:         `Spray — ${r.area}: ${r.products.map(p => p.name).join(' + ')}`,
-        date:          r.date,
-        category:      'spray',
-        priority:      categoryPrio,
-        status:        evtStatus,
-        location:      r.area,
-        assignedStaff: r.applicator ? [r.applicator] : [],
-        equipment:     ['Spray Rig #1'],
-        tags:          r.products.map(p => p.name),
-        notes:         r.notes || '',
-        sourceModule:  'spray',
-        sourceId:      r.id,
-      }).catch(() => {})
-    })
-
-    if (maxREI > 0) {
-      createAlert({
-        title:       `REI Active — ${sheetAreas}`,
-        message:     `${maxREI}-hour re-entry interval in effect after spray application on ${sheetDate}. Restrict turf access until interval expires.`,
-        module:      'spray',
-        priority:    maxREI >= 12 ? 'high' : 'medium',
-        course:      sheetAreas,
-        actionLabel: 'View Spray',
-        sourceId:    selectedRecords[0]?.id,
-      }).catch(() => {})
+  // ── Draft state (with localStorage autosave restore) ───────────────────
+  const [draft, setDraft] = useState(() => {
+    if (typeof localStorage === 'undefined') return makeEmptyDraft()
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY)
+      if (!raw) return makeEmptyDraft()
+      const parsed = JSON.parse(raw)
+      return { ...makeEmptyDraft(), ...parsed }
+    } catch {
+      return makeEmptyDraft()
     }
+  })
 
-    // ── Inventory deductions (Phase 5.2 — persisted via inventoryStore) ─────
-    // Skip records whose products have already been deducted (duplicate protection).
-    const alreadyProcessed = new Set(inventoryUsage.map(u => u.sourceId))
+  // Debounced autosave. Saves the draft 600ms after the last edit.
+  const saveTimer = useRef(null)
+  useEffect(() => {
+    if (typeof localStorage === 'undefined') return
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => {
+      try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)) } catch {}
+    }, 600)
+    return () => clearTimeout(saveTimer.current)
+  }, [draft])
 
-    selectedRecords.forEach(r => {
-      if (alreadyProcessed.has(r.id)) return
+  const [committing, setCommitting] = useState(false)
 
-      r.products.forEach(p => {
-        const qty = parseRateQty(p.rate)
-        if (qty <= 0) return
+  // ── Derived data ──────────────────────────────────────────────────────
+  const productPickerOptions = useMemo(() => {
+    return inventoryProducts
+      .filter(p => p.kind === 'product' || p.kind === 'chemical' || p.kind === 'fertilizer')
+      .sort((a, b) => a.name.localeCompare(b.name))
+  }, [inventoryProducts])
 
-        // Match by exact name, then case-insensitive fallback
-        const invItem = inventoryProducts.find(i => i.name === p.name)
-          ?? inventoryProducts.find(i => i.name.toLowerCase() === p.name.toLowerCase())
-        if (!invItem) return  // Not tracked in inventory — skip silently
-
-        if (invItem.quantity < qty) {
-          createAlert({
-            title:    `Insufficient Stock — ${p.name}`,
-            message:  `Spray requires ${qty} ${invItem.unit} but only ${invItem.quantity} ${invItem.unit} on hand. Deduction skipped.`,
-            module:   'inventory',
-            priority: 'high',
-            sourceId: r.id,
-          }).catch(() => {})
-          return
-        }
-
-        // Fire low/critical/out-of-stock alert if this deduction crosses a threshold
-        const newQty     = Math.max(0, invItem.quantity - qty)
-        const prevStatus = invStockStatus(invItem.quantity, invItem.reorderLevel)
-        const nextStatus = invStockStatus(newQty, invItem.reorderLevel)
-        if (prevStatus !== nextStatus && nextStatus !== 'good') {
-          const alertTitle = nextStatus === 'out'
-            ? `Out of Stock — ${p.name}`
-            : `${nextStatus === 'critical' ? 'Critical' : 'Low'} Stock — ${p.name}`
-          createAlert({
-            title:    alertTitle,
-            message:  `${p.name} at ${newQty} ${invItem.unit} after spray application — min. threshold ${invItem.reorderLevel} ${invItem.unit}.`,
-            module:   'inventory',
-            priority: nextStatus === 'out' || nextStatus === 'critical' ? 'high' : 'medium',
-            sourceId: r.id,
-          }).catch(() => {})
-        }
-
-        // Atomic on the server: decrements inventory_items.quantity and
-        // inserts an inventory_usage row in one transaction. Fire-and-
-        // forget — failures are caught by the store and surface in
-        // state.error; the UI's optimistic update has already happened.
-        recordInventoryUsage({
-          productName:  p.name,
-          quantityUsed: qty,
-          unit:         invItem.unit,
-          sourceId:     r.id,
-          date:         r.date,
-          area:         r.area,
-          applicator:   r.applicator,
-        }).catch(() => {})
-      })
-    })
-
-    toast.success(
-      `${selectedRecords.length} event${selectedRecords.length !== 1 ? 's' : ''} added to Operations Calendar`
-    )
-  }
-
-  const visible = useMemo(() => {
-    return SPRAY_RECORDS_LIVE.filter(r => {
-      if (areaFilter   !== 'All' && r.area   !== areaFilter)   return false
-      if (statusFilter !== 'All' && r.status !== statusFilter)  return false
-      if (dateFilter && r.date !== dateFilter)                  return false
-      if (search) {
-        const q = search.toLowerCase()
-        return (r.area ?? '').toLowerCase().includes(q)
-          || (r.applicator ?? '').toLowerCase().includes(q)
-          || (r.targetPest && r.targetPest.toLowerCase().includes(q))
-          || r.products.some(p => p.name.toLowerCase().includes(q))
-      }
-      return true
-    })
-  }, [SPRAY_RECORDS_LIVE, search, dateFilter, areaFilter, statusFilter])
-
-  const selectedRecords = useMemo(
-    () => SPRAY_RECORDS_LIVE.filter(r => selected.has(r.id)),
-    [SPRAY_RECORDS_LIVE, selected]
-  )
-
-  // Stat row (based on visible list)
-  const statsAcres    = visible.reduce((s, r) => s + acres(r.area), 0).toFixed(1)
-  const statsGallons  = visible.reduce((s, r) => s + (r.totalVolume || 0), 0)
-  const statsProducts = useMemo(() => {
-    const set = new Set()
-    visible.forEach(r => r.products.forEach(p => set.add(p.name)))
-    return set.size
-  }, [visible])
-  const statsActive = visible.filter(r => r.status === 'in-progress').length
-
-  // Derived sheet values
-  const productTable    = useMemo(() => buildProductTable(selectedRecords), [selectedRecords])
-  const ppeList         = useMemo(() => buildPPE(selectedRecords), [selectedRecords])
-
-  // ── Cross-module signal: Inventory → Sprays ─────────────────────────────
-  // For each product on the sheet, look up its live inventory stock status.
-  // Surfaced as a contextual chip in the product table — read-only, no blocking.
-  const productStockSignals = useMemo(() => {
-    const map = {}
-    productTable.forEach(p => {
-      const invItem =
-        inventoryProducts.find(i => i.name === p.name) ??
-        inventoryProducts.find(i => i.name.toLowerCase() === p.name.toLowerCase())
-      if (!invItem) return
-      const status = invStockStatus(invItem.quantity, invItem.reorderLevel)
-      if (status === 'good') return
-      map[p.name] = {
-        status,
-        quantity: invItem.quantity,
-        unit:     invItem.unit,
-        invId:    invItem.id,
-      }
-    })
-    return map
-  }, [productTable, inventoryProducts])
-  const weatherSnap     = selectedRecords.find(r => r.conditions?.temp)?.conditions ?? null
-  const sheetAreas      = [...new Set(selectedRecords.map(r => r.area))].join(', ')
-  const sheetHoles      = selectedRecords.some(r => r.holes?.length === 18)
-    ? 'All 18'
-    : [...new Set(selectedRecords.map(r => holesLabel(r.holes)))].join(', ')
-  const sheetAcres      = selectedRecords.reduce((s, r) => s + acres(r.area), 0).toFixed(1)
-  const sheetGallons    = selectedRecords.reduce((s, r) => s + (r.totalVolume || 0), 0)
-  const sheetApplicator = selectedRecords.find(r => r.applicator)?.applicator || '—'
-  const sheetDate       = selectedRecords[0]?.date || TODAY
-  const hasTankMix      = selectedRecords.some(r => r.products.length > 1)
-  const maxREI          = Math.max(...selectedRecords.map(r => r.rei || 0), 0)
-  const allNotes        = selectedRecords.filter(r => r.notes).map(r => r.notes)
-
-  // Phase 5.8 — record-sheet derived values.
-  const sheetTargets    = [...new Set(selectedRecords.map(r => r.targetPest).filter(Boolean))].join(', ')
-  const sheetTime       = selectedRecords.find(r => r.startTime)?.startTime ?? ''
   const operatorOptions = useMemo(() => {
-    if (!crewEmployees || crewEmployees.length === 0) return []
-    return crewEmployees
+    return (crewEmployees ?? [])
       .filter(e => e.status !== 'inactive')
       .map(e => ({ id: e.id ?? e.employeeId, name: e.fullName ?? e.name }))
       .sort((a, b) => a.name.localeCompare(b.name))
   }, [crewEmployees])
 
-  function toggleSelect(id) {
-    setSelected(prev => {
-      const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
+  const sprayRigSpec = SPRAY_RIGS.find(r => r.name === draft.sprayRig) ?? SPRAY_RIGS[0]
+
+  // Compute per-row totals + tank summary.
+  const enrichedRows = useMemo(() => {
+    return draft.rows.map(row => {
+      const inv  = row.inventoryItemId
+        ? inventoryProducts.find(p => p.id === row.inventoryItemId)
+        : inventoryProducts.find(p => p.name === row.name)
+      const rate = parseFloat(row.rate) || 0
+      const qtyNeeded = rate * (draft.acres || 0) * SQFT_PER_ACRE_K
+      const available = inv?.quantity ?? null
+      const cost      = inv?.costPerUnit != null
+        ? +(qtyNeeded * inv.costPerUnit).toFixed(2)
+        : null
+      const status   = inv ? stockStatus(available, inv.reorderLevel) : 'unknown'
+      const insufficient = inv && available != null && qtyNeeded > available
+      return {
+        ...row,
+        inv,
+        qtyNeeded,
+        available,
+        cost,
+        status,
+        insufficient,
+      }
+    })
+  }, [draft.rows, draft.acres, inventoryProducts])
+
+  const summary = useMemo(() => {
+    const productCount = enrichedRows.length
+    const totalCost    = enrichedRows.reduce(
+      (s, r) => s + (r.cost ?? 0),
+      0,
+    )
+    const water = parseFloat(draft.waterVolume) || 0
+    const tankFillPct = sprayRigSpec.capacity > 0
+      ? Math.min(100, Math.round((water / sprayRigSpec.capacity) * 100))
+      : 0
+
+    // Nutrient totals — only computed when at least one row's inventory
+    // item carries a parseable analysis string. We never invent values.
+    let nutrientSource = 0
+    let totalN = 0, totalP = 0, totalK = 0
+    for (const r of enrichedRows) {
+      const npk = parseAnalysisNPK(r.inv?.analysis)
+      if (!npk) continue
+      nutrientSource += 1
+      const qty = r.qtyNeeded || 0
+      totalN += (npk.n / 100) * qty
+      totalP += (npk.p / 100) * qty
+      totalK += (npk.k / 100) * qty
+    }
+
+    const reiRows = enrichedRows
+      .map(r => r.rei || 0)
+      .filter(n => n > 0)
+    const maxRei = reiRows.length > 0 ? Math.max(...reiRows) : 0
+
+    return {
+      productCount,
+      acres:        draft.acres || 0,
+      totalCost,
+      water,
+      tankFillPct,
+      nutrientSource,
+      totalN, totalP, totalK,
+      maxRei,
+      anyInsufficient: enrichedRows.some(r => r.insufficient),
+    }
+  }, [enrichedRows, draft.waterVolume, draft.acres, sprayRigSpec.capacity])
+
+  // ── Mutations on draft ────────────────────────────────────────────────
+  function patchDraft(patch) {
+    setDraft(prev => ({ ...prev, ...patch }))
+  }
+  function patchConditions(patch) {
+    setDraft(prev => ({ ...prev, conditions: { ...prev.conditions, ...patch } }))
+  }
+  function setRow(rowId, patch) {
+    setDraft(prev => ({
+      ...prev,
+      rows: prev.rows.map(r => r.id === rowId ? { ...r, ...patch } : r),
+    }))
+  }
+  function removeRow(rowId) {
+    setDraft(prev => ({ ...prev, rows: prev.rows.filter(r => r.id !== rowId) }))
+  }
+  function addRow() {
+    setDraft(prev => ({
+      ...prev,
+      rows: [...prev.rows, { id: uid('row'), inventoryItemId: null, name: '', type: '', rate: '', unit: 'oz', rei: 0 }],
+    }))
+  }
+  function pickInventoryForRow(rowId, inv) {
+    setRow(rowId, {
+      inventoryItemId: inv.id,
+      name:            inv.name,
+      type:            inv.category ?? '',
+      unit:            inv.unit ?? 'oz',
     })
   }
+  function onAreaChange(label) {
+    const opt = AREA_OPTS.find(a => a.label === label)
+    patchDraft({ area: label, acres: opt?.acres ?? draft.acres })
+  }
+  function clearDraft() {
+    if (!confirm('Discard the current spray application draft?')) return
+    setDraft(makeEmptyDraft())
+    try { localStorage.removeItem(DRAFT_KEY) } catch {}
+  }
 
-  function handleSelectAll() {
-    if (visible.length > 0 && visible.every(r => selected.has(r.id))) {
-      setSelected(new Set())
-    } else {
-      setSelected(new Set(visible.map(r => r.id)))
+  // ── Commit pipeline ──────────────────────────────────────────────────
+  async function handleCommit() {
+    if (!draft.operator)        { toast.info('Operator is required'); return }
+    if (!draft.area)            { toast.info('Area treated is required'); return }
+    if (enrichedRows.length === 0) { toast.info('Add at least one product'); return }
+    if (summary.anyInsufficient && !confirm(
+      'One or more products exceed available inventory. Commit anyway?',
+    )) return
+
+    setCommitting(true)
+    try {
+      // 1. Persist the spray record (incl. nested products + areas).
+      const payload = {
+        applicationName: `${draft.area} — ${TODAY}`,
+        targetPest:      draft.target,
+        applicator:      draft.operator,
+        course:          selectedCourse?.shortName ?? selectedCourse?.name ?? null,
+        date:            draft.date,
+        startTime:       draft.startTime,
+        status:          'completed',
+        conditions: {
+          temp:     draft.conditions.temp     ? parseFloat(draft.conditions.temp)     : null,
+          wind:     draft.conditions.wind     || null,
+          humidity: draft.conditions.humidity ? parseFloat(draft.conditions.humidity) : null,
+        },
+        rei:           summary.maxRei,
+        carrierVolume: draft.waterVolume,
+        totalVolume:   summary.water,
+        notes:         draft.observations,
+        area:          draft.area,
+        acreage:       draft.acres,
+        products: enrichedRows.map(r => ({
+          name:            r.name,
+          type:            r.type,
+          rate:            `${r.rate} ${r.unit} / 1,000 sq ft`,
+          unit:            r.unit,
+          quantityUsed:    r.qtyNeeded,
+          inventoryItemId: r.inventoryItemId,
+        })),
+      }
+      const saved = await createSpray(payload)
+
+      // 2. Inventory deductions — fire-and-forget per product so a
+      // single miss doesn't tank the whole commit.
+      const deductionResults = await Promise.allSettled(
+        enrichedRows
+          .filter(r => r.name && r.qtyNeeded > 0)
+          .map(r => recordInventoryUsage({
+            productName:   r.name,
+            quantityUsed:  r.qtyNeeded,
+            unit:          r.unit,
+            sourceId:      saved.id,
+            date:          draft.date,
+            area:          draft.area,
+            applicator:    draft.operator,
+          })),
+      )
+      const deductCount = deductionResults.filter(r => r.status === 'fulfilled').length
+
+      // 3. Calendar event (dedupe handled server-side).
+      createCalendarEvent({
+        title:         `Spray — ${draft.area}: ${enrichedRows.map(r => r.name).join(' + ')}`,
+        date:          draft.date,
+        category:      'spray',
+        priority:      summary.maxRei >= 12 ? 'high' : 'medium',
+        status:        'completed',
+        startTime:     draft.startTime,
+        location:      draft.area,
+        assignedStaff: draft.operator ? [draft.operator] : [],
+        equipment:     [draft.sprayRig],
+        tags:          enrichedRows.map(r => r.name),
+        notes:         draft.observations,
+        sourceModule:  'spray',
+        sourceId:      saved.id,
+      }).catch(() => {})
+
+      // 4. REI alert if applicable.
+      if (summary.maxRei > 0) {
+        createAlert({
+          title:    `REI Active — ${draft.area}`,
+          message:  `${summary.maxRei}-hour re-entry interval in effect after spray application on ${draft.date}.`,
+          module:   'spray',
+          priority: summary.maxRei >= 12 ? 'high' : 'medium',
+          course:   selectedCourse?.shortName ?? selectedCourse?.name ?? null,
+          actionLabel: 'View Spray',
+          sourceId:    saved.id,
+        }).catch(() => {})
+      }
+
+      // 5. Reset draft.
+      try { localStorage.removeItem(DRAFT_KEY) } catch {}
+      setDraft(makeEmptyDraft())
+      toast.success(
+        `Application committed${deductCount > 0 ? ` · ${deductCount} product${deductCount !== 1 ? 's' : ''} deducted from inventory` : ''}`,
+      )
+    } catch (err) {
+      toast.error?.(`Commit failed: ${err.message ?? err}`)
+    } finally {
+      setCommitting(false)
     }
   }
 
-  const allVisibleSelected = visible.length > 0 && visible.every(r => selected.has(r.id))
-
+  // ── Render ───────────────────────────────────────────────────────────
   return (
     <div className={styles.tabContent}>
       <WorkspaceSection
-        title="Build Spray Sheet"
-        subtitle="Select applications and assemble a crew-ready spray sheet."
+        title="New Application"
+        subtitle="Build a tank mix, preview operational totals, commit to permanent record."
       >
+        <div className={styles.naLayout}>
 
-      {/* ── Toolbar ── */}
-      <div className={styles.ssToolbar}>
-        <div className={styles.ssToolbarTop}>
-          <input
-            type="search"
-            className={styles.ssSearch}
-            placeholder="Search product, area, applicator, pest…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            aria-label="Search applications"
-          />
-          <input
-            type="date"
-            className={styles.ssDateInput}
-            value={dateFilter}
-            onChange={e => setDateFilter(e.target.value)}
-            title="Filter by date"
-          />
-          <div className={styles.ssToolbarActions}>
-            <button
-              className={styles.ssBtnPrimary}
-              disabled={selected.size === 0}
-              onClick={() => document.getElementById('ss-preview')?.scrollIntoView({ behavior: 'smooth' })}
-            >
-              Generate Spray Sheet
-            </button>
-            <button
-              className={styles.ssBtnSecondary}
-              disabled={selected.size === 0}
-              onClick={() => window.print()}
-            >
-              Print View
-            </button>
-            <button className={styles.ssBtnDisabled} disabled title="PDF export — coming soon">
-              Export PDF
-            </button>
-          </div>
-        </div>
+          {/* ── Left: builder ── */}
+          <div className={styles.naBuilder}>
 
-        <div className={styles.filterRow}>
-          <span className={styles.ssFilterLabel}>Area:</span>
-          {AREA_OPTS.map(a => (
-            <button
-              key={a}
-              className={`${styles.filterBtn} ${areaFilter === a ? styles.filterBtnActive : ''}`}
-              onClick={() => setAreaFilter(a)}
-            >
-              {a}
-            </button>
-          ))}
-        </div>
-
-        <div className={styles.filterRow}>
-          <span className={styles.ssFilterLabel}>Status:</span>
-          {STATUS_OPTS.map(s => (
-            <button
-              key={s}
-              className={`${styles.filterBtn} ${statusFilter === s ? styles.filterBtnActive : ''}`}
-              onClick={() => setStatusFilter(s)}
-            >
-              {s === 'All' ? 'All' : (STATUS_META[s]?.label || s)}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Stat row ── */}
-      <div className={styles.ssStats}>
-        <div className={styles.ssStatCard}>
-          <span className={styles.ssStatValue}>{statsAcres}</span>
-          <span className={styles.ssStatLabel}>Acres Scheduled</span>
-        </div>
-        <div className={styles.ssStatCard}>
-          <span className={styles.ssStatValue}>{statsGallons.toLocaleString()}</span>
-          <span className={styles.ssStatLabel}>Total Volume (gal)</span>
-        </div>
-        <div className={styles.ssStatCard}>
-          <span className={styles.ssStatValue}>{statsProducts}</span>
-          <span className={styles.ssStatLabel}>Unique Products</span>
-        </div>
-        <div className={styles.ssStatCard}>
-          <span className={styles.ssStatValue} style={statsActive > 0 ? { color: '#70b8e8' } : undefined}>
-            {statsActive}
-          </span>
-          <span className={styles.ssStatLabel}>Active Applications</span>
-        </div>
-      </div>
-
-      {/* ── Main split layout ── */}
-      <div className={styles.ssLayout}>
-
-        {/* ── Left: application list ── */}
-        <div className={styles.ssList}>
-          <div className={styles.ssListHeader}>
-            <span className={styles.ssListCount}>
-              {visible.length} application{visible.length !== 1 ? 's' : ''}
-              {selected.size > 0 && ` · ${selected.size} selected`}
-            </span>
-            {visible.length > 0 && (
-              <button className={styles.ssSelectAll} onClick={handleSelectAll}>
-                {allVisibleSelected ? 'Deselect All' : 'Select All'}
-              </button>
-            )}
-          </div>
-
-          {visible.length === 0 ? (
-            SPRAY_RECORDS_LIVE.length === 0 ? (
-              <EmptyState
-                title="No spray records to build from."
-                description="Create spray applications to assemble crew sheets here."
-              />
-            ) : (
-              <p className={styles.emptyState}>No applications match your filters.</p>
-            )
-          ) : (
-            <div className={styles.ssCardList}>
-              {visible.map(r => {
-                const isSelected  = selected.has(r.id)
-                const primaryType = r.products[0]?.type
-                const colors      = TYPE_COLORS[primaryType] || {}
-                const statusMeta  = STATUS_META[r.status]   || {}
-
-                return (
-                  <div
-                    key={r.id}
-                    className={`${styles.ssAppCard} ${isSelected ? styles.ssAppCardSelected : ''}`}
-                    onMouseEnter={() => setHoveredId(r.id)}
-                    onMouseLeave={() => setHoveredId(null)}
-                  >
-                    <div className={styles.ssCardRow}>
-                      <button
-                        className={styles.ssCheckbox}
-                        onClick={() => toggleSelect(r.id)}
-                        aria-label={isSelected ? 'Deselect application' : 'Select application'}
-                        aria-pressed={isSelected}
-                      >
-                        <span className={`${styles.ssCheckboxBox} ${isSelected ? styles.ssCheckboxChecked : ''}`}>
-                          {isSelected && '✓'}
-                        </span>
-                      </button>
-
-                      <button className={styles.ssAppCardBody} onClick={() => setModalRecord(r)}>
-                        <div className={styles.ssAppCardHeader}>
-                          <div className={styles.ssAppCardTitle}>
-                            <span className={styles.recordProduct}>
-                              {r.products.map(p => p.name).join(' + ')}
-                            </span>
-                            {r.products.length > 1 && (
-                              <span className={styles.mixBadge}>Tank Mix</span>
-                            )}
-                            <span
-                              className={styles.recordTypePill}
-                              style={{ background: colors.bg, color: colors.text, borderColor: colors.border }}
-                            >
-                              {primaryType}{r.products.length > 1 ? ' +' : ''}
-                            </span>
-                          </div>
-                          <span className={styles.recordDate}>{r.date}</span>
-                        </div>
-
-                        <div className={styles.ssAppCardMeta}>
-                          <span><span className={styles.ssMetaKey}>Area</span>{r.area}</span>
-                          <span><span className={styles.ssMetaKey}>Holes</span>{holesLabel(r.holes)}</span>
-                          <span><span className={styles.ssMetaKey}>Target</span>{r.targetPest || '—'}</span>
-                          <span><span className={styles.ssMetaKey}>Operator</span>{r.applicator || '—'}</span>
-                          <span><span className={styles.ssMetaKey}>Conditions</span>{condSummary(r.conditions)}</span>
-                          <span><span className={styles.ssMetaKey}>Gallons</span>{r.totalVolume ? `${r.totalVolume} gal` : '—'}</span>
-                        </div>
-
-                        <div className={styles.ssAppCardFooter}>
-                          <span className={`${styles.statusBadge} ${statusMeta.cls || ''}`}>
-                            {statusMeta.label || r.status}
-                          </span>
-                          {r.rei > 0 && <span className={styles.reiBadge}>REI {r.rei}h</span>}
-                          {r.phi > 0 && <span className={styles.ssPhiBadge}>PHI {r.phi}d</span>}
-                          <span className={styles.viewDetail}>Details →</span>
-                        </div>
-                      </button>
-
-                      <ContextActions
-                        hovered={hoveredId === r.id}
-                        actions={[{
-                          id: 'details',
-                          label: '📄 Details',
-                          onClick: e => { e.stopPropagation(); setModalRecord(r) },
-                          title: 'View application details',
-                        }]}
-                      />
-                    </div>
-
-                    <button
-                      className={`${exStyles.esExpandBar} ${expandedId === r.id ? exStyles.esExpandBarOpen : ''}`}
-                      onClick={e => { e.stopPropagation(); setExpandedId(prev => prev === r.id ? null : r.id) }}
-                      aria-expanded={expandedId === r.id}
-                    >
-                      {expandedId === r.id ? '▲ Less' : '▼ Products & conditions'}
-                    </button>
-
-                    <ExpandableSection expanded={expandedId === r.id}>
-                      <div className={exStyles.esBody} style={{ padding: '10px 14px 10px' }}>
-                        <div className={exStyles.esGrid}>
-                          <div className={exStyles.esField}>
-                            <span className={exStyles.esLabel}>Carrier Volume</span>
-                            <span className={exStyles.esValue}>{r.carrierVolume || '—'}</span>
-                          </div>
-                          <div className={exStyles.esField}>
-                            <span className={exStyles.esLabel}>Total Volume</span>
-                            <span className={exStyles.esValue}>{r.totalVolume ? `${r.totalVolume} gal` : '—'}</span>
-                          </div>
-                          {r.conditions && (
-                            <>
-                              <div className={exStyles.esField}>
-                                <span className={exStyles.esLabel}>Wind</span>
-                                <span className={exStyles.esValue}>{r.conditions.wind || '—'}</span>
-                              </div>
-                              <div className={exStyles.esField}>
-                                <span className={exStyles.esLabel}>Temp</span>
-                                <span className={exStyles.esValue}>{r.conditions.temp ? `${r.conditions.temp}°F` : '—'}</span>
-                              </div>
-                              <div className={exStyles.esField}>
-                                <span className={exStyles.esLabel}>Humidity</span>
-                                <span className={exStyles.esValue}>{r.conditions.humidity ? `${r.conditions.humidity}%` : '—'}</span>
-                              </div>
-                              <div className={exStyles.esField}>
-                                <span className={exStyles.esLabel}>Soil Temp</span>
-                                <span className={exStyles.esValue}>{r.conditions.soilTemp ? `${r.conditions.soilTemp}°F` : '—'}</span>
-                              </div>
-                            </>
-                          )}
-                        </div>
-                        {r.products.length > 0 && (
-                          <div className={exStyles.esPartsList}>
-                            <span className={exStyles.esLabel}>
-                              {r.products.length > 1 ? 'Tank Mix' : 'Product'}
-                            </span>
-                            {r.products.map((p, i) => (
-                              <div key={i} className={exStyles.esPartsItem}>
-                                <span className={exStyles.esPartsBadge}>{p.type}</span>
-                                <span>{p.name}</span>
-                                <span className={exStyles.esPartsItemCost}>{p.rate}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        {r.notes && <p className={exStyles.esNote}>{r.notes}</p>}
-                      </div>
-                    </ExpandableSection>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* ── Right: generated spray sheet ── */}
-        <div className={styles.ssPanelWrap} id="ss-preview">
-          {selected.size === 0 ? (
-            <div className={styles.ssPanelEmpty}>
-              <div className={styles.ssPanelEmptyIcon}>📋</div>
-              <p className={styles.ssPanelEmptyTitle}>No Applications Selected</p>
-              <p className={styles.ssPanelEmptyText}>
-                Select one or more applications from the list to generate your spray sheet.
-              </p>
-            </div>
-          ) : (
-            <div className={styles.srsSheet}>
-
-              {/* Header — no logos, no record reference, no sheet id */}
-              <header className={styles.srsHeader}>
-                <h2 className={styles.srsTitle}>New Application</h2>
-                <span className={styles.srsCourse}>{COURSE}</span>
-              </header>
-
-              {/* Row 1: Date of application · Sprayer operator */}
-              <div className={styles.srsRow}>
-                <div className={styles.srsCell}>
-                  <span className={styles.srsLabel}>Date of application</span>
-                  <span className={styles.srsValue}>{sheetDate}</span>
-                </div>
-                <div className={styles.srsCell}>
-                  <span className={styles.srsLabel}>Sprayer operator</span>
-                  {operatorOptions.length > 0 ? (
-                    <select
-                      className={styles.srsInput}
-                      value={operatorOverride || sheetApplicator}
-                      onChange={e => setOperatorOverride(e.target.value)}
-                      aria-label="Sprayer operator"
-                    >
-                      {sheetApplicator && !operatorOptions.some(o => o.name === sheetApplicator) && (
-                        <option value={sheetApplicator}>{sheetApplicator}</option>
-                      )}
-                      {operatorOptions.map(emp => (
-                        <option key={emp.id} value={emp.name}>{emp.name}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      type="text"
-                      className={styles.srsInput}
-                      value={operatorOverride || sheetApplicator || ''}
-                      onChange={e => setOperatorOverride(e.target.value)}
-                      placeholder="Operator name"
-                      aria-label="Sprayer operator"
-                    />
-                  )}
-                </div>
-              </div>
-
-              {/* Row 2: Area treated (full width) */}
-              <div className={styles.srsRowFull}>
-                <span className={styles.srsLabel}>Area treated</span>
-                <span className={styles.srsValue}>
-                  {sheetAreas || '—'}
-                  {sheetHoles && sheetHoles !== '—' ? ` · ${sheetHoles}` : ''}
-                  {sheetAcres ? ` · ${sheetAcres} ac` : ''}
+            <header className={styles.naHeader}>
+              <h2 className={styles.naTitle}>NEW SPRAY APPLICATION</h2>
+              <div className={styles.naHeaderMeta}>
+                <span className={styles.naMetaItem}>
+                  <span className={styles.naMetaLabel}>Course</span>
+                  <span className={styles.naMetaValue}>
+                    {selectedCourse?.shortName ?? selectedCourse?.name ?? '—'}
+                  </span>
                 </span>
               </div>
+            </header>
 
-              {/* Main product table */}
-              <div className={styles.srsTableWrap}>
-                <table className={styles.srsTable}>
-                  <thead>
-                    <tr>
-                      <th>Products used</th>
-                      <th>Active ingredients</th>
-                      <th>Application rate</th>
-                      <th>Total used</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {productTable.map((p, i) => {
-                      const invItem = inventoryProducts.find(it => it.name === p.name)
-                        ?? inventoryProducts.find(it => it.name.toLowerCase() === p.name.toLowerCase())
-                      const ai      = activeIngredientFor(invItem, p.frac)
-                      const rateQty = parseRateQty(p.rate)
-                      const totalAc = selectedRecords
-                        .filter(r => r.products.some(pp => pp.name === p.name))
-                        .reduce((s, r) => s + acres(r.area), 0)
-                      // Rate is "X / 1,000 sq ft" — convert to total over acres.
-                      // 1 acre = 43.56 thousand sq ft.
-                      const totalUsed = rateQty > 0 && totalAc > 0
-                        ? +(rateQty * totalAc * 43.56).toFixed(2)
-                        : null
-                      const totalUnit = (p.rate || '').match(/^(\d+\.?\d*)\s*([a-zA-Z]+)/)?.[2] ?? ''
-                      const sig     = productStockSignals[p.name]
-                      const sigLabel =
-                        sig?.status === 'out'      ? 'Out of stock'    :
-                        sig?.status === 'critical' ? 'Critical stock'  :
-                        sig?.status === 'low'      ? 'Low stock'       : null
-                      return (
-                        <tr key={i}>
-                          <td>
-                            <span className={styles.srsProductName}>{p.name}</span>
-                            {sigLabel && (
-                              <button
-                                type="button"
-                                className={styles.ssStockSignal}
-                                data-tone={sig.status === 'low' ? 'warn' : 'critical'}
-                                title={`${sig.quantity} ${sig.unit ?? ''} on hand — open in Inventory`}
-                                onClick={() => navigate('/inventory', {
-                                  state: { activeTab: 'Products', productId: sig.invId },
-                                })}
-                              >
-                                {sigLabel}
-                              </button>
-                            )}
-                          </td>
-                          <td className={styles.srsAi}>{ai}</td>
-                          <td>{p.rate || '—'}</td>
-                          <td>{totalUsed != null ? `${totalUsed} ${totalUnit}` : '—'}</td>
-                        </tr>
-                      )
-                    })}
-                    {productTable.length === 0 && (
-                      <tr>
-                        <td colSpan={4} className={styles.srsEmptyRow}>
-                          Select one or more applications to populate products.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Operational fields — grouped row 1: target / sprayer / water */}
-              <div className={styles.srsRow3}>
-                <div className={styles.srsCell}>
-                  <span className={styles.srsLabel}>Disease / pest / weed target</span>
-                  <span className={styles.srsValue}>{sheetTargets || '—'}</span>
-                </div>
-                <div className={styles.srsCell}>
-                  <span className={styles.srsLabel}>Sprayer used</span>
-                  <span className={styles.srsValue}>Spray Rig #1</span>
-                </div>
-                <div className={styles.srsCell}>
-                  <span className={styles.srsLabel}>Water volume</span>
-                  <span className={styles.srsValue}>
-                    {sheetGallons ? `${sheetGallons} gal` : '—'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Operational fields — grouped row 2: time / temp / wind */}
-              <div className={styles.srsRow3}>
-                <div className={styles.srsCell}>
-                  <span className={styles.srsLabel}>Time of application</span>
-                  <span className={styles.srsValue}>{sheetTime || '—'}</span>
-                </div>
-                <div className={styles.srsCell}>
-                  <span className={styles.srsLabel}>Temperature</span>
-                  <span className={styles.srsValue}>
-                    {weatherSnap?.temp != null ? `${weatherSnap.temp}°F` : '—'}
-                  </span>
-                </div>
-                <div className={styles.srsCell}>
-                  <span className={styles.srsLabel}>Wind speed</span>
-                  <span className={styles.srsValue}>{weatherSnap?.wind || '—'}</span>
-                </div>
-              </div>
-
-              {/* Observations — free-form for the printed copy */}
-              <div className={styles.srsRowFull}>
-                <span className={styles.srsLabel}>Observations</span>
-                <textarea
-                  className={styles.srsObservations}
-                  value={observations}
-                  onChange={e => setObservations(e.target.value)}
-                  placeholder={allNotes.length > 0
-                    ? allNotes.join(' · ')
-                    : 'Free-text observations, post-application notes, conditions changes…'}
-                  rows={5}
-                  aria-label="Observations"
+            {/* ── Metadata strip ── */}
+            <div className={styles.naMetaGrid}>
+              <Field label="Date">
+                <input
+                  type="date"
+                  className={styles.naInput}
+                  value={draft.date}
+                  onChange={e => patchDraft({ date: e.target.value })}
                 />
-              </div>
+              </Field>
 
-              {/* Signature row — printable blank lines */}
-              <div className={styles.srsSigRow}>
-                <div className={styles.srsSigBlock}>
-                  <div className={styles.srsSigLine} aria-hidden="true" />
-                  <span className={styles.srsSigLabel}>Manager signature</span>
-                </div>
-                <div className={styles.srsSigBlock}>
-                  <div className={styles.srsSigLine} aria-hidden="true" />
-                  <span className={styles.srsSigLabel}>
-                    Operator signature
-                    {(operatorOverride || sheetApplicator) && (
-                      <span className={styles.srsSigName}>
-                        {' '}— {operatorOverride || sheetApplicator}
-                      </span>
-                    )}
-                  </span>
-                </div>
-              </div>
+              <Field label="Time of application">
+                <input
+                  type="time"
+                  className={styles.naInput}
+                  value={draft.startTime}
+                  onChange={e => patchDraft({ startTime: e.target.value })}
+                />
+              </Field>
 
-              {/* Operations actions — preserves existing handoff */}
-              <div className={styles.srsActionRow}>
-                <button className="opActionBtn" onClick={handleAddToCalendar}>
-                  + Add to Operations Calendar
-                </button>
-                <span className={styles.srsActionHint}>
-                  {selectedRecords.length} application{selectedRecords.length !== 1 ? 's' : ''} selected
-                  {maxREI > 0 ? ` · REI alert will be created` : ''}
-                </span>
-              </div>
+              <Field label="Operator">
+                {operatorOptions.length > 0 ? (
+                  <select
+                    className={styles.naInput}
+                    value={draft.operator}
+                    onChange={e => patchDraft({ operator: e.target.value })}
+                  >
+                    <option value="">— Select —</option>
+                    {operatorOptions.map(emp => (
+                      <option key={emp.id} value={emp.name}>{emp.name}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    className={styles.naInput}
+                    value={draft.operator}
+                    onChange={e => patchDraft({ operator: e.target.value })}
+                    placeholder="Operator name"
+                  />
+                )}
+              </Field>
 
+              <Field label="Spray rig">
+                <select
+                  className={styles.naInput}
+                  value={draft.sprayRig}
+                  onChange={e => patchDraft({ sprayRig: e.target.value })}
+                >
+                  {SPRAY_RIGS.map(r => (
+                    <option key={r.name} value={r.name}>
+                      {r.name} ({r.capacity} gal)
+                    </option>
+                  ))}
+                </select>
+              </Field>
+
+              <Field label="Area treated">
+                <select
+                  className={styles.naInput}
+                  value={draft.area}
+                  onChange={e => onAreaChange(e.target.value)}
+                >
+                  <option value="">— Select —</option>
+                  {AREA_OPTS.map(a => (
+                    <option key={a.label} value={a.label}>{a.label}</option>
+                  ))}
+                </select>
+              </Field>
+
+              <Field label="Acres">
+                <input
+                  type="number"
+                  className={styles.naInput}
+                  value={draft.acres || ''}
+                  onChange={e => patchDraft({ acres: parseFloat(e.target.value) || 0 })}
+                  step="0.1"
+                  min="0"
+                  placeholder="0.0"
+                />
+              </Field>
+
+              <Field label="Target treatment" wide>
+                <input
+                  type="text"
+                  className={styles.naInput}
+                  value={draft.target}
+                  onChange={e => patchDraft({ target: e.target.value })}
+                  placeholder="Disease / pest / weed"
+                />
+              </Field>
             </div>
-          )}
-        </div>
-      </div>
 
-      {/* ── Detail drawer ── */}
-      {modalRecord && (() => {
-        const r      = modalRecord
-        const colors = TYPE_COLORS[r.products[0]?.type] || {}
-        return (
-          <SideDrawer
-            open={!!modalRecord}
-            onClose={() => setModalRecord(null)}
-            accentColor={colors.text || '#4a9e4a'}
-            ariaLabel="Spray application details"
-          >
-            <SideDrawer.Header
-              title={r.products.map(p => p.name).join(' + ')}
-              subtitle={`${r.date} · ${r.course}`}
-              onClose={() => setModalRecord(null)}
+            {/* ── Product table ── */}
+            <div className={styles.naProductWrap}>
+              <div className={styles.naSectionHeader}>
+                <h3 className={styles.naSectionTitle}>Tank Mix</h3>
+                <button
+                  type="button"
+                  className={styles.naAddBtn}
+                  onClick={addRow}
+                >+ Add product</button>
+              </div>
+
+              <table className={styles.naProductTable}>
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    <th>Type</th>
+                    <th>Rate</th>
+                    <th>Unit</th>
+                    <th>Qty Needed</th>
+                    <th>Available</th>
+                    <th>Est. Cost</th>
+                    <th aria-label="Remove" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {enrichedRows.length === 0 && (
+                    <tr>
+                      <td colSpan={8} className={styles.naEmptyRow}>
+                        No products in tank — click <strong>+ Add product</strong> to begin.
+                      </td>
+                    </tr>
+                  )}
+                  {enrichedRows.map(row => (
+                    <tr key={row.id} data-insufficient={row.insufficient ? 'true' : undefined}>
+                      <td className={styles.naProductCell}>
+                        <select
+                          className={styles.naProductSelect}
+                          value={row.inventoryItemId ?? ''}
+                          onChange={e => {
+                            const inv = productPickerOptions.find(p => p.id === e.target.value)
+                            if (inv) pickInventoryForRow(row.id, inv)
+                          }}
+                        >
+                          <option value="">— Select product —</option>
+                          {productPickerOptions.map(p => (
+                            <option key={p.id} value={p.id}>
+                              {p.name}
+                              {p.quantity != null ? ` (${p.quantity} ${p.unit ?? ''})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                        {row.status && row.status !== 'good' && row.status !== 'unknown' && (
+                          <span
+                            className={styles.naStockChip}
+                            data-tone={row.status === 'low' ? 'warn' : 'critical'}
+                            onClick={() => row.inv && navigate('/inventory', {
+                              state: { activeTab: 'Products', productId: row.inv.id },
+                            })}
+                            role="button"
+                            tabIndex={0}
+                            title="Open in Inventory"
+                          >
+                            {row.status === 'out' ? 'Out of stock'
+                              : row.status === 'critical' ? 'Critical stock'
+                              : 'Low stock'}
+                          </span>
+                        )}
+                      </td>
+                      <td className={styles.naDimCell}>{row.type || '—'}</td>
+                      <td>
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          className={styles.naRowInput}
+                          value={row.rate}
+                          onChange={e => setRow(row.id, { rate: e.target.value })}
+                          placeholder="0.0"
+                        />
+                      </td>
+                      <td>
+                        <select
+                          className={styles.naRowInput}
+                          value={row.unit}
+                          onChange={e => setRow(row.id, { unit: e.target.value })}
+                        >
+                          {UNIT_OPTS.map(u => <option key={u}>{u}</option>)}
+                        </select>
+                      </td>
+                      <td className={styles.naNumCell}>
+                        {row.qtyNeeded > 0 ? `${fmt(row.qtyNeeded, 2)} ${row.unit}` : '—'}
+                      </td>
+                      <td className={styles.naNumCell} data-warn={row.insufficient ? 'true' : undefined}>
+                        {row.available != null ? `${fmt(row.available, 1)} ${row.inv?.unit ?? ''}` : '—'}
+                      </td>
+                      <td className={styles.naNumCell}>{fmtCurrency(row.cost)}</td>
+                      <td>
+                        <button
+                          type="button"
+                          className={styles.naRemoveBtn}
+                          onClick={() => removeRow(row.id)}
+                          aria-label="Remove product"
+                          title="Remove product"
+                        >×</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                {enrichedRows.length > 0 && (
+                  <tfoot>
+                    <tr>
+                      <td colSpan={6} className={styles.naFooterLabel}>Total cost</td>
+                      <td className={styles.naNumCell}><strong>{fmtCurrency(summary.totalCost)}</strong></td>
+                      <td />
+                    </tr>
+                  </tfoot>
+                )}
+              </table>
+            </div>
+
+            {/* ── Conditions ── */}
+            <div className={styles.naSectionHeader}>
+              <h3 className={styles.naSectionTitle}>Conditions at application</h3>
+            </div>
+            <div className={styles.naConditionsGrid}>
+              <Field label="Water volume (gal)">
+                <input
+                  type="number"
+                  step="1"
+                  min="0"
+                  className={styles.naInput}
+                  value={draft.waterVolume}
+                  onChange={e => patchDraft({ waterVolume: e.target.value })}
+                  placeholder="120"
+                />
+              </Field>
+              <Field label="Temperature (°F)">
+                <input
+                  type="number"
+                  className={styles.naInput}
+                  value={draft.conditions.temp}
+                  onChange={e => patchConditions({ temp: e.target.value })}
+                  placeholder="72"
+                />
+              </Field>
+              <Field label="Wind">
+                <input
+                  type="text"
+                  className={styles.naInput}
+                  value={draft.conditions.wind}
+                  onChange={e => patchConditions({ wind: e.target.value })}
+                  placeholder="4–6 mph NE"
+                />
+              </Field>
+              <Field label="Humidity (%)">
+                <input
+                  type="number"
+                  className={styles.naInput}
+                  value={draft.conditions.humidity}
+                  onChange={e => patchConditions({ humidity: e.target.value })}
+                  placeholder="55"
+                />
+              </Field>
+            </div>
+
+            {/* ── Observations ── */}
+            <div className={styles.naSectionHeader}>
+              <h3 className={styles.naSectionTitle}>Observations</h3>
+            </div>
+            <textarea
+              className={styles.naObservations}
+              value={draft.observations}
+              onChange={e => patchDraft({ observations: e.target.value })}
+              rows={4}
+              placeholder="Field notes, growth-stage observations, conditions changes, post-application notes…"
             />
 
-            <SideDrawer.Body>
+            {/* ── Action row ── */}
+            <div className={styles.naActionRow}>
+              <button
+                type="button"
+                className={styles.naCommitBtn}
+                disabled={committing || enrichedRows.length === 0}
+                onClick={handleCommit}
+              >
+                {committing ? 'Committing…' : 'Commit Application'}
+              </button>
+              <button
+                type="button"
+                className={styles.naSecondaryBtn}
+                onClick={clearDraft}
+              >
+                Discard draft
+              </button>
+              <span className={styles.naActionHint}>
+                Draft autosaves locally · committing creates a permanent record + deducts inventory
+              </span>
+            </div>
 
-                <section className={styles.modalSection}>
-                  <h3 className={styles.modalSectionTitle}>Application</h3>
-                  <div className={styles.modalGrid}>
-                    {[
-                      ['Area',              r.area],
-                      ['Holes',             holesLabel(r.holes)],
-                      ['Target Pest / Use', r.targetPest || '—'],
-                      ['Applicator',        r.applicator || '—'],
-                      ['Carrier Volume',    r.carrierVolume],
-                      ['Total Volume',      r.totalVolume ? `${r.totalVolume} gal` : '—'],
-                      ['REI',               r.rei > 0 ? `${r.rei} hrs` : 'None'],
-                      ['PHI',               r.phi > 0 ? `${r.phi} days` : 'None'],
-                    ].map(([label, value]) => (
-                      <div key={label} className={styles.modalField}>
-                        <span className={styles.modalFieldLabel}>{label}</span>
-                        <span className={styles.modalFieldValue}>{value}</span>
-                      </div>
-                    ))}
-                    <div className={styles.modalField}>
-                      <span className={styles.modalFieldLabel}>Status</span>
-                      <span className={`${styles.statusBadge} ${STATUS_META[r.status]?.cls || ''}`}>
-                        {STATUS_META[r.status]?.label || r.status}
-                      </span>
-                    </div>
-                  </div>
-                </section>
+          </div>
 
-                <section className={styles.modalSection}>
-                  <h3 className={styles.modalSectionTitle}>Products</h3>
-                  <div className={styles.modalProductList}>
-                    {r.products.map((p, i) => {
-                      const c = TYPE_COLORS[p.type] || {}
-                      return (
-                        <div key={i} className={styles.modalProductRow}>
-                          <span className={styles.modalProductType} style={{ background: c.bg, color: c.text, borderColor: c.border }}>{p.type}</span>
-                          <span className={styles.modalProductName}>{p.name}</span>
-                          <span className={styles.modalProductRate}>{p.rate}</span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </section>
+          {/* ── Right: tank summary ── */}
+          <aside className={styles.naTankSummary}>
+            <div className={styles.naTankHeader}>
+              <h3 className={styles.naTankTitle}>Tank Summary</h3>
+              <span className={styles.naTankSub}>Live preview</span>
+            </div>
 
-                {r.conditions?.temp && (
-                  <section className={styles.modalSection}>
-                    <h3 className={styles.modalSectionTitle}>Conditions at Application</h3>
-                    <div className={styles.modalGrid}>
-                      {[
-                        ['Temperature', `${r.conditions.temp}°F`],
-                        ['Wind',        r.conditions.wind || '—'],
-                        ['Humidity',    r.conditions.humidity ? `${r.conditions.humidity}%` : '—'],
-                        ['Soil Temp',   r.conditions.soilTemp ? `${r.conditions.soilTemp}°F` : '—'],
-                      ].map(([label, value]) => (
-                        <div key={label} className={styles.modalField}>
-                          <span className={styles.modalFieldLabel}>{label}</span>
-                          <span className={styles.modalFieldValue}>{value}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-                )}
+            <SummarySection label="Operational">
+              <SummaryRow label="Products"        value={summary.productCount} />
+              <SummaryRow label="Acres covered"   value={summary.acres ? `${fmt(summary.acres, 1)} ac` : '—'} />
+              <SummaryRow label="Water volume"    value={summary.water ? `${summary.water} gal` : '—'} />
+              <SummaryRow label="Tank fill"       value={`${summary.tankFillPct}%`} tone={summary.tankFillPct > 100 ? 'critical' : undefined} />
+              <SummaryRow label="Est. cost"       value={fmtCurrency(summary.totalCost)} />
+              <SummaryRow
+                label="REI"
+                value={summary.maxRei > 0 ? `${summary.maxRei} hrs` : 'None'}
+                tone={summary.maxRei >= 12 ? 'warn' : undefined}
+              />
+            </SummarySection>
 
-                {r.notes && (
-                  <section className={styles.modalSection}>
-                    <h3 className={styles.modalSectionTitle}>Notes</h3>
-                    <p className={styles.modalNotes}>{r.notes}</p>
-                  </section>
-                )}
+            <SummarySection label="Nutrient totals (N-P-K)">
+              {summary.nutrientSource > 0 ? (
+                <>
+                  <SummaryRow label="Nitrogen (N)"   value={`${fmt(summary.totalN, 2)} ${enrichedRows[0]?.unit ?? 'oz'}`} />
+                  <SummaryRow label="Phosphorus (P)" value={`${fmt(summary.totalP, 2)} ${enrichedRows[0]?.unit ?? 'oz'}`} />
+                  <SummaryRow label="Potassium (K)"  value={`${fmt(summary.totalK, 2)} ${enrichedRows[0]?.unit ?? 'oz'}`} />
+                </>
+              ) : (
+                <span className={styles.naUnavailable}>
+                  Data unavailable — no fertilizer analysis on tank products.
+                </span>
+              )}
+            </SummarySection>
 
-            </SideDrawer.Body>
-          </SideDrawer>
-        )
-      })()}
+            <SummarySection label="Compatibility & FRAC">
+              <span className={styles.naUnavailable}>
+                Data unavailable — compatibility matrix not yet wired.
+              </span>
+            </SummarySection>
 
+            {summary.anyInsufficient && (
+              <div className={styles.naInsufficientCard} role="alert">
+                <strong>Insufficient inventory.</strong> One or more products
+                exceed available stock for this tank mix.
+              </div>
+            )}
+          </aside>
+
+        </div>
       </WorkspaceSection>
+    </div>
+  )
+}
+
+// ── Small render helpers ────────────────────────────────────────────────
+
+function Field({ label, wide, children }) {
+  return (
+    <div className={`${styles.naField}${wide ? ` ${styles.naFieldWide}` : ''}`}>
+      <span className={styles.naFieldLabel}>{label}</span>
+      {children}
+    </div>
+  )
+}
+
+function SummarySection({ label, children }) {
+  return (
+    <div className={styles.naTankSection}>
+      <div className={styles.naTankSectionLabel}>{label}</div>
+      <div className={styles.naTankSectionBody}>{children}</div>
+    </div>
+  )
+}
+
+function SummaryRow({ label, value, tone }) {
+  return (
+    <div className={styles.naTankRow}>
+      <span className={styles.naTankRowLabel}>{label}</span>
+      <span className={styles.naTankRowValue} data-tone={tone}>{value}</span>
     </div>
   )
 }

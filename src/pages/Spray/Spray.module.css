@@ -1686,3 +1686,537 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ═════════════════════════════════════════════════════════════════════════
+   Phase 5.9 — New Spray Application builder.
+
+   Operational worksheet aesthetic. Two-column desktop layout (builder
+   left, sticky tank summary right). Dense typography, structured table,
+   print-ready.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+.naLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 20px;
+  align-items: start;
+}
+
+.naBuilder {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+/* ── Builder header ─────────────────────────────────────────────────────── */
+
+.naHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 4px 0 12px;
+  border-bottom: 2px solid var(--color-text, #e4e8ec);
+}
+
+.naTitle {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--color-text, #e4e8ec);
+}
+
+.naHeaderMeta {
+  display: flex;
+  gap: 18px;
+}
+
+.naMetaItem {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+
+.naMetaLabel {
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--color-text-muted, #8a929a);
+}
+
+.naMetaValue {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-text, #e4e8ec);
+}
+
+/* ── Metadata grid ──────────────────────────────────────────────────────── */
+
+.naMetaGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.naField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 9px 11px;
+  border: 1px solid var(--color-border, rgba(255,255,255,0.08));
+  border-radius: 3px;
+  background: var(--color-surface-elevated, rgba(255,255,255,0.02));
+  min-width: 0;
+}
+
+.naFieldWide {
+  grid-column: span 2;
+}
+
+.naFieldLabel {
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--color-text-muted, #8a929a);
+}
+
+.naInput {
+  appearance: none;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text, #e4e8ec);
+  padding: 0;
+  width: 100%;
+}
+
+.naInput:focus {
+  outline: 2px solid var(--color-accent, #4a9e4a);
+  outline-offset: 1px;
+  border-radius: 2px;
+}
+
+/* ── Section headers ────────────────────────────────────────────────────── */
+
+.naSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 2px 4px;
+  border-bottom: 1px solid var(--color-border, rgba(255,255,255,0.07));
+  margin-top: 4px;
+}
+
+.naSectionTitle {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--color-text-muted, #a8b0b8);
+}
+
+.naAddBtn {
+  appearance: none;
+  background: rgba(74, 158, 74, 0.12);
+  border: 1px solid rgba(74, 158, 74, 0.32);
+  color: #6eb26e;
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 5px 12px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.naAddBtn:hover {
+  background: rgba(74, 158, 74, 0.2);
+}
+
+/* ── Product table ──────────────────────────────────────────────────────── */
+
+.naProductWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.naProductTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  border: 1px solid var(--color-border, rgba(255,255,255,0.08));
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--color-surface-elevated, rgba(255,255,255,0.02));
+}
+
+.naProductTable thead th {
+  background: rgba(255, 255, 255, 0.03);
+  padding: 8px 10px;
+  text-align: left;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.8px;
+  color: var(--color-text-muted, #8a929a);
+  border-bottom: 1px solid var(--color-border, rgba(255,255,255,0.08));
+}
+
+.naProductTable tbody td {
+  padding: 6px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  vertical-align: middle;
+}
+
+.naProductTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.naProductTable tbody tr[data-insufficient="true"] {
+  background: rgba(220, 80, 80, 0.06);
+}
+
+.naProductTable tfoot td {
+  padding: 8px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text, #e4e8ec);
+  border-top: 1px solid var(--color-border, rgba(255,255,255,0.1));
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.naFooterLabel {
+  text-align: right;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--color-text-muted, #a8b0b8);
+}
+
+.naProductCell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.naProductSelect,
+.naRowInput {
+  appearance: none;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 3px;
+  padding: 4px 6px;
+  font-family: inherit;
+  font-size: 12.5px;
+  color: var(--color-text, #e4e8ec);
+  width: 100%;
+  min-width: 0;
+}
+
+.naProductSelect:focus,
+.naRowInput:focus {
+  outline: 1px solid var(--color-accent, #4a9e4a);
+  outline-offset: 0;
+}
+
+.naDimCell {
+  color: var(--color-text-muted, #8a929a);
+  font-size: 11.5px;
+  text-transform: capitalize;
+}
+
+.naNumCell {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.naNumCell[data-warn="true"] {
+  color: #e07070;
+  font-weight: 600;
+}
+
+.naEmptyRow {
+  text-align: center;
+  padding: 24px !important;
+  color: var(--color-text-muted, #8a929a);
+  font-style: italic;
+}
+
+.naStockChip {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 2px 7px;
+  border-radius: 9px;
+  cursor: pointer;
+  user-select: none;
+  width: max-content;
+}
+
+.naStockChip[data-tone="warn"] {
+  background: rgba(220, 136, 58, 0.14);
+  color: #e0a86d;
+  border: 1px solid rgba(220, 136, 58, 0.32);
+}
+
+.naStockChip[data-tone="critical"] {
+  background: rgba(224, 112, 112, 0.14);
+  color: #e07070;
+  border: 1px solid rgba(224, 112, 112, 0.32);
+}
+
+.naRemoveBtn {
+  appearance: none;
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted, #8a929a);
+  font-size: 18px;
+  line-height: 1;
+  padding: 0 6px;
+  cursor: pointer;
+}
+
+.naRemoveBtn:hover {
+  color: #e07070;
+}
+
+/* ── Conditions row ─────────────────────────────────────────────────────── */
+
+.naConditionsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+/* ── Observations ───────────────────────────────────────────────────────── */
+
+.naObservations {
+  width: 100%;
+  border: 1px solid var(--color-border, rgba(255,255,255,0.08));
+  border-radius: 3px;
+  background: var(--color-surface-elevated, rgba(255,255,255,0.02));
+  color: var(--color-text, #e4e8ec);
+  font-family: inherit;
+  font-size: 13px;
+  padding: 10px 12px;
+  resize: vertical;
+  min-height: 90px;
+  line-height: 1.4;
+}
+
+.naObservations::placeholder {
+  color: var(--color-text-muted, #8a929a);
+  font-style: italic;
+}
+
+.naObservations:focus {
+  outline: 2px solid var(--color-accent, #4a9e4a);
+  outline-offset: 1px;
+}
+
+/* ── Action row ─────────────────────────────────────────────────────────── */
+
+.naActionRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 12px;
+  margin-top: 4px;
+  border-top: 1px dashed var(--color-border, rgba(255,255,255,0.1));
+}
+
+.naCommitBtn {
+  appearance: none;
+  background: var(--color-accent, #4a9e4a);
+  color: #ffffff;
+  border: none;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 9px 18px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.naCommitBtn:hover:not(:disabled) {
+  background: #5cae5c;
+}
+
+.naCommitBtn:disabled {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-text-muted, #8a929a);
+  cursor: not-allowed;
+}
+
+.naSecondaryBtn {
+  appearance: none;
+  background: transparent;
+  color: var(--color-text-muted, #8a929a);
+  border: 1px solid var(--color-border, rgba(255,255,255,0.12));
+  font-size: 11.5px;
+  padding: 8px 14px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.naSecondaryBtn:hover {
+  color: var(--color-text, #e4e8ec);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.naActionHint {
+  font-size: 10.5px;
+  color: var(--color-text-muted, #8a929a);
+  margin-left: auto;
+  text-align: right;
+}
+
+/* ── Tank Summary (right column) ────────────────────────────────────────── */
+
+.naTankSummary {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: sticky;
+  top: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--color-border, rgba(255,255,255,0.08));
+  border-radius: 3px;
+  background: var(--color-surface-elevated, rgba(255,255,255,0.025));
+  max-height: calc(100vh - 60px);
+  overflow-y: auto;
+}
+
+.naTankHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border, rgba(255,255,255,0.08));
+}
+
+.naTankTitle {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--color-text, #e4e8ec);
+}
+
+.naTankSub {
+  font-size: 10px;
+  color: var(--color-text-muted, #8a929a);
+}
+
+.naTankSection {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.naTankSectionLabel {
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--color-text-muted, #8a929a);
+  margin-bottom: 4px;
+}
+
+.naTankSectionBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.naTankRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 0;
+  font-size: 12px;
+}
+
+.naTankRowLabel {
+  color: var(--color-text-muted, #a8b0b8);
+}
+
+.naTankRowValue {
+  font-weight: 600;
+  color: var(--color-text, #e4e8ec);
+  font-variant-numeric: tabular-nums;
+}
+
+.naTankRowValue[data-tone="warn"]     { color: #e0a86d; }
+.naTankRowValue[data-tone="critical"] { color: #e07070; }
+
+.naUnavailable {
+  font-size: 11px;
+  font-style: italic;
+  color: var(--color-text-muted, #8a929a);
+}
+
+.naInsufficientCard {
+  padding: 10px 12px;
+  border-left: 3px solid #e07070;
+  background: rgba(224, 112, 112, 0.06);
+  font-size: 11.5px;
+  color: var(--color-text, #e4e8ec);
+}
+
+/* ── Print rules ────────────────────────────────────────────────────────── */
+
+@media print {
+  .naLayout { grid-template-columns: 1fr; }
+  .naTankSummary,
+  .naActionRow,
+  .naAddBtn,
+  .naRemoveBtn,
+  .naStockChip { display: none !important; }
+  .naProductTable thead th {
+    background: #f2efe6;
+    color: #1a2030;
+  }
+  .naBuilder,
+  .naProductTable,
+  .naField,
+  .naObservations {
+    background: #fdfdfb !important;
+    color: #1a2030 !important;
+    border-color: #c9c5b9 !important;
+  }
+  .naTitle { color: #1a2030; }
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 1100px) {
+  .naLayout { grid-template-columns: 1fr; }
+  .naTankSummary { position: static; max-height: none; }
+}
+
+@media (max-width: 760px) {
+  .naMetaGrid,
+  .naConditionsGrid { grid-template-columns: repeat(2, 1fr); }
+  .naFieldWide { grid-column: span 2; }
+  .naProductTable {
+    display: block;
+    overflow-x: auto;
+  }
+}
