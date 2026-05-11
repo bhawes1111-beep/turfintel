@@ -13,7 +13,7 @@ import WorkspaceActions from '../../components/shared/WorkspaceActions'
 import Timeline from '../../components/primitives/Timeline'
 import { useWeather } from '../../utils/weather/useWeather'
 import { useEquipmentData } from '../../utils/equipment/equipmentStore'
-import { useCalendarData, createCalendarEvent } from '../../utils/calendar/calendarStore'
+import { useCalendarData, createCalendarEvent, patchCalendarEvent } from '../../utils/calendar/calendarStore'
 import {
   useAssignmentsData,
   createCrewAssignment,
@@ -326,16 +326,46 @@ export default function OperationsBoard() {
     })
   }
 
+  // Phase 5.5c — PATCH the calendar event that backs this task. Resolves
+  // the event via the (sourceModule='operations-board', sourceId=task.id)
+  // linkage written by handleAddTask / assignEmployee. Best-effort: a
+  // cache miss (event not yet persisted, or task never had a backing
+  // event) silently no-ops.
+  function patchEventForTask(taskId, eventStatus) {
+    const event = calendarEvents.find(e =>
+      (e.metadata?.sourceId ?? e.sourceId) === taskId,
+    )
+    if (!event) return
+    patchCalendarEvent(event.id, { status: eventStatus }).catch(() => {})
+  }
+
   function handleAction(taskId, action) {
     const original = allSourceTasks.find(t => t.id === taskId)?.status ?? 'open'
     const current  = taskOverrides[taskId]?.status ?? original
+
     if (action === 'complete') {
-      setTaskOverrides(p => ({ ...p, [taskId]: { status: current === 'completed' ? original : 'completed' } }))
+      const toggledOff = current === 'completed'
+      const nextLocal  = toggledOff ? original : 'completed'
+      setTaskOverrides(p => ({ ...p, [taskId]: { status: nextLocal } }))
+      patchEventForTask(taskId, toggledOff
+        ? (TASK_STATUS_TO_EVENT[original] ?? 'scheduled')
+        : 'completed')
     } else if (action === 'hold') {
-      setTaskOverrides(p => ({ ...p, [taskId]: { status: current === 'weather-hold' ? original : 'weather-hold' } }))
+      const toggledOff = current === 'weather-hold'
+      const nextLocal  = toggledOff ? original : 'weather-hold'
+      setTaskOverrides(p => ({ ...p, [taskId]: { status: nextLocal } }))
+      patchEventForTask(taskId, toggledOff
+        ? (TASK_STATUS_TO_EVENT[original] ?? 'scheduled')
+        : 'on-hold')
     } else if (action === 'delay') {
-      toast.info('Delay scheduling coming soon')
+      // 5.5c — local board has no 'delayed' status; we PATCH the persistent
+      // event only, so the Assignments tab and downstream readers see the
+      // change. Local board card keeps its current visual state.
+      patchEventForTask(taskId, 'delayed')
+      toast.info('Event flagged as delayed')
     } else if (action === 'reassign') {
+      // Preserve current semantics — no local mutation, no PATCH. assignEmployee
+      // is the actual writer when a crew member is dropped onto the card.
       toast.info('Drag an employee from the roster to assign')
     }
   }
