@@ -13,6 +13,13 @@ import WorkspaceActions from '../../components/shared/WorkspaceActions'
 import Timeline from '../../components/primitives/Timeline'
 import { useWeather } from '../../utils/weather/useWeather'
 import { useEquipmentData } from '../../utils/equipment/equipmentStore'
+import { useCalendarData, createCalendarEvent } from '../../utils/calendar/calendarStore'
+import {
+  useAssignmentsData,
+  createCrewAssignment,
+  createEquipmentReservation,
+  deleteCrewAssignment,
+} from '../../utils/assignments/assignmentsStore'
 import workspace from '../../styles/workspace.module.css'
 import styles from './OperationsBoard.module.css'
 
@@ -100,12 +107,36 @@ function formatDate(isoStr) {
   return `${weekday} · ${rest}`
 }
 
+// ── Persistence mappers (Phase 5.5b) ──────────────────────────────────────
+// OperationsBoard tasks → calendar events. Reuses the Phase 5.4a Worker
+// dedupe (sourceId + event_type + start_date) so repeat assignment writes
+// don't create duplicate events.
+
+const TASK_PRIORITY_TO_EVENT = {
+  critical: 'high',
+  high:     'high',
+  medium:   'medium',
+  routine:  'low',
+  low:      'low',
+}
+
+const TASK_STATUS_TO_EVENT = {
+  'in-progress':  'in-progress',
+  'completed':    'completed',
+  'pending':      'scheduled',
+  'open':         'scheduled',
+  'blocked':      'scheduled',
+  'weather-hold': 'scheduled',
+}
+
 export default function OperationsBoard() {
   const toast = useToast()
   const navigate = useNavigate()
   const addTaskRef = useRef(null)
   const { current: weatherCurrent } = useWeather()
   const { equipment, serviceLog }   = useEquipmentData()
+  const { events: calendarEvents }  = useCalendarData()
+  const { crewAssignments }         = useAssignmentsData()
 
   // ── Tab / layout ─────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState('board')
@@ -334,6 +365,26 @@ export default function OperationsBoard() {
     }))
   }
 
+  // ── Persistence helpers (Phase 5.5b) ────────────────────────────────────
+  // Each board task maps 1:1 to a calendar event. We use task.id as the
+  // sourceId so the Phase 5.4a Worker dedupe (sourceId + event_type +
+  // start_date) collapses repeat writes. assignEmployee can therefore
+  // call ensureEventForTask() blindly without tracking event ids.
+  async function ensureEventForTask(task) {
+    return createCalendarEvent({
+      title:        task.title,
+      date:         selectedDate,
+      category:     'crew',
+      priority:     TASK_PRIORITY_TO_EVENT[task.priority] ?? 'medium',
+      status:       TASK_STATUS_TO_EVENT[task.status] ?? 'scheduled',
+      location:     task.assignedArea || '',
+      tags:         [],
+      notes:        task.notes || '',
+      sourceModule: 'operations-board',
+      sourceId:     task.id,
+    })
+  }
+
   function handleAddTask() {
     if (!newTask.title) {
       toast.info('Select a task to add')
@@ -354,6 +405,24 @@ export default function OperationsBoard() {
     setCreatedTasks(prev => [...prev, task])
     toast.success(`"${task.title}" added`)
     setNewTask(BLANK_TASK)
+
+    // Phase 5.5b — persist a calendar event for the task, plus an
+    // equipment reservation per selected chip. Fire-and-forget; the
+    // local board state has already optimistically updated.
+    ensureEventForTask(task)
+      .then(evt => {
+        if (task.equipment.length === 0) return
+        return Promise.all(task.equipment.map(chip => {
+          const eq = eqByCategory[chip]
+          return createEquipmentReservation({
+            calendarEventId: evt.id,
+            equipmentId:     eq?.id ?? null,
+            equipmentName:   chip,
+            notes:           task.notes || null,
+          }).catch(() => {})
+        }))
+      })
+      .catch(() => {})
   }
 
   function rosterDot(log) {
@@ -401,17 +470,48 @@ export default function OperationsBoard() {
     const task    = effectiveTasks.find(t => t.id === taskId)
     const current = task?.assignedTo ?? []
     if (current.includes(empId)) return
-    const firstName = empById[empId]?.fullName.split(' ')[0] ?? empId
+    const emp       = empById[empId]
+    const firstName = emp?.fullName.split(' ')[0] ?? empId
     setTaskAssignments(p => ({ ...p, [taskId]: [...current, empId] }))
     toast.success(`${firstName} assigned`)
+
+    // Phase 5.5b — persist the assignment. Ensures a backing calendar
+    // event exists (Worker dedupes on sourceId), then writes a crew row
+    // (Worker dedupes on calendar_event_id + employee_name). Failures
+    // are silent: the optimistic UX has already landed.
+    if (!emp || !task) return
+    ensureEventForTask(task)
+      .then(evt => createCrewAssignment({
+        calendarEventId: evt.id,
+        employeeName:    emp.fullName,
+        role:            emp.role ?? null,
+        status:          'assigned',
+        notes:           null,
+      }))
+      .catch(() => {})
   }
 
   function unassignEmployee(taskId, empId) {
     const task    = effectiveTasks.find(t => t.id === taskId)
     const current = task?.assignedTo ?? []
-    const firstName = empById[empId]?.fullName.split(' ')[0] ?? empId
+    const emp       = empById[empId]
+    const firstName = emp?.fullName.split(' ')[0] ?? empId
     setTaskAssignments(p => ({ ...p, [taskId]: current.filter(id => id !== empId) }))
     toast.info(`${firstName} removed`)
+
+    // Phase 5.5b — remove the persistent assignment. Lookup via cached
+    // calendar event (sourceId === task.id) and crewAssignments
+    // (calendarEventId + employeeName). Best-effort: a cache miss means
+    // nothing to remove server-side either.
+    if (!emp || !task) return
+    const event = calendarEvents.find(e =>
+      (e.metadata?.sourceId ?? e.sourceId) === task.id,
+    )
+    if (!event) return
+    const row = crewAssignments.find(a =>
+      a.calendarEventId === event.id && a.employeeName === emp.fullName,
+    )
+    if (row) deleteCrewAssignment(row.id).catch(() => {})
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
