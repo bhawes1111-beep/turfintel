@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
-import { TASKS, EMPLOYEES } from '../../../data/crew'
+import { TASKS } from '../../../data/crew'
+import { useCrewData } from '../../../utils/crew/crewStore'
 import { EmptyState } from '../../../components/shared/EmptyState'
 import styles from '../Crew.module.css'
 
@@ -44,6 +45,7 @@ function pct(task) {
 }
 
 export default function CrewTasks() {
+  const { employees: EMPLOYEES } = useCrewData()
   const [search,         setSearch]         = useState('')
   const [deptFilter,     setDeptFilter]     = useState('All')
   const [statusFilter,   setStatusFilter]   = useState('All')
@@ -57,7 +59,7 @@ export default function CrewTasks() {
     return () => window.removeEventListener('keydown', onKey)
   }, [selected])
 
-  const empMap = useMemo(() => new Map(EMPLOYEES.map(e => [e.employeeId, e])), [])
+  const empMap = useMemo(() => new Map(EMPLOYEES.map(e => [e.employeeId, e])), [EMPLOYEES])
 
   const stats = useMemo(() => ({
     open:        TASKS.filter(t => t.status === 'open' || t.status === 'blocked').length,

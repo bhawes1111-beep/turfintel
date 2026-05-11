@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, Fragment } from 'react'
-import { SCHEDULE, EMPLOYEES } from '../../../data/crew'
+import { SCHEDULE } from '../../../data/crew'
+import { useCrewData } from '../../../utils/crew/crewStore'
 import { useToast } from '../../../utils/feedback/toastContext'
 import { EmptyState } from '../../../components/shared/EmptyState'
 import styles from '../Crew.module.css'
@@ -101,13 +102,13 @@ function statusBadgeClass(color) {
   return map[color] || 'csbSBGreen'
 }
 
-function emptyForm(date, emp) {
+function emptyForm(date, emp, employees = []) {
   return {
     id:             null,
-    employeeId:     emp?.employeeId    || EMPLOYEES[0]?.employeeId    || '',
-    employeeName:   emp?.fullName      || EMPLOYEES[0]?.fullName      || '',
-    department:     emp?.department    || EMPLOYEES[0]?.department    || '',
-    role:           emp?.role          || EMPLOYEES[0]?.role          || '',
+    employeeId:     emp?.employeeId    || employees[0]?.employeeId    || '',
+    employeeName:   emp?.fullName      || employees[0]?.fullName      || '',
+    department:     emp?.department    || employees[0]?.department    || '',
+    role:           emp?.role          || employees[0]?.role          || '',
     date:           date,
     shiftType:      'standard',
     startTime:      '6:00 AM',
@@ -145,6 +146,7 @@ function formFromShift(shift) {
 
 export default function CrewSchedule() {
   const toast                      = useToast()
+  const { employees: EMPLOYEES }   = useCrewData()
   const [view,      setView]      = useState('week')
   const [navDate,   setNavDate]   = useState(TODAY)
   const [shifts,    setShifts]    = useState(SCHEDULE)
@@ -196,7 +198,7 @@ export default function CrewSchedule() {
   }
 
   function openAdd(emp, date) {
-    setForm(emptyForm(date || navDate, emp))
+    setForm(emptyForm(date || navDate, emp, EMPLOYEES))
     setPanelMode('add')
     setPanelOpen(true)
   }

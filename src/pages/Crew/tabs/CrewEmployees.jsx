@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import { EMPLOYEES } from '../../../data/crew'
+import { useCrewData } from '../../../utils/crew/crewStore'
 import { EmptyState } from '../../../components/shared/EmptyState'
 import styles from '../Crew.module.css'
 
@@ -47,10 +47,11 @@ function yearsService(hireDate) {
 }
 
 function isSupervisor(emp) {
-  return emp.role.includes('Lead') || emp.department === 'Supervisory'
+  return (emp.role ?? '').includes('Lead') || emp.department === 'Supervisory'
 }
 
 export default function CrewEmployees() {
+  const { employees: EMPLOYEES } = useCrewData()
   const [search,       setSearch]       = useState('')
   const [deptFilter,   setDeptFilter]   = useState('All')
   const [statusFilter, setStatusFilter] = useState('All')
@@ -66,28 +67,34 @@ export default function CrewEmployees() {
   const stats = useMemo(() => {
     const activeCount     = EMPLOYEES.filter(e => e.status === 'active').length
     const supervisorCount = EMPLOYEES.filter(e => isSupervisor(e)).length
-    const certifiedCount  = EMPLOYEES.filter(e => e.certifications.length > 0).length
-    const avgRate         = EMPLOYEES.reduce((s, e) => s + e.hourlyRate, 0) / EMPLOYEES.length
+    const certifiedCount  = EMPLOYEES.filter(e => (e.certifications ?? []).length > 0).length
+    // hourlyRate is intentionally outside scope of the crew vertical
+    // (Phase 5.6 is not payroll). Compute over whatever rates exist; if
+    // none, surface "—" instead of NaN.
+    const withRates = EMPLOYEES.filter(e => typeof e.hourlyRate === 'number')
+    const avgRate   = withRates.length > 0
+      ? withRates.reduce((s, e) => s + e.hourlyRate, 0) / withRates.length
+      : null
     return { activeCount, supervisorCount, certifiedCount, avgRate }
-  }, [])
+  }, [EMPLOYEES])
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
     return EMPLOYEES
       .filter(e => {
         if (q &&
-          !e.fullName.toLowerCase().includes(q) &&
-          !e.role.toLowerCase().includes(q) &&
-          !e.assignedArea.toLowerCase().includes(q)) return false
+          !(e.fullName ?? '').toLowerCase().includes(q) &&
+          !(e.role ?? '').toLowerCase().includes(q) &&
+          !(e.assignedArea ?? '').toLowerCase().includes(q)) return false
         if (deptFilter   !== 'All' && e.department !== deptFilter)   return false
         if (statusFilter !== 'All' && e.status     !== statusFilter) return false
         return true
       })
       .sort((a, b) => {
         const sd = (SORT_STATUS[a.status] ?? 9) - (SORT_STATUS[b.status] ?? 9)
-        return sd !== 0 ? sd : a.fullName.localeCompare(b.fullName)
+        return sd !== 0 ? sd : (a.fullName ?? '').localeCompare(b.fullName ?? '')
       })
-  }, [search, deptFilter, statusFilter])
+  }, [EMPLOYEES, search, deptFilter, statusFilter])
 
   return (
     <div className={styles.ceWrap}>
@@ -115,7 +122,7 @@ export default function CrewEmployees() {
         <div className={styles.ceStatCard}>
           <span className={styles.ceStatLabel}>Avg Hourly Rate</span>
           <span className={`${styles.ceStatValue} ${styles.ceStatGreen}`}>
-            ${stats.avgRate.toFixed(2)}
+            {stats.avgRate != null ? `$${stats.avgRate.toFixed(2)}` : '—'}
           </span>
         </div>
       </div>
@@ -189,8 +196,10 @@ export default function CrewEmployees() {
               <span className={styles.ceCardArea}>{emp.assignedArea}</span>
 
               <div className={styles.ceCardFooter}>
-                <span className={styles.ceCardRate}>${emp.hourlyRate}/hr</span>
-                {emp.certifications.length > 0 && (
+                <span className={styles.ceCardRate}>
+                  {typeof emp.hourlyRate === 'number' ? `$${emp.hourlyRate}/hr` : '—'}
+                </span>
+                {(emp.certifications ?? []).length > 0 && (
                   <span className={styles.ceCertBadge}>
                     {emp.certifications.length} cert{emp.certifications.length !== 1 ? 's' : ''}
                   </span>
@@ -215,7 +224,7 @@ export default function CrewEmployees() {
       {selected && (() => {
         const sm     = STATUS_META[selected.status] || { label: selected.status, cls: '' }
         const accent = ACCENT[selected.status] || 'var(--color-accent)'
-        const yrs    = yearsService(selected.hireDate)
+        const yrs    = selected.hireDate ? yearsService(selected.hireDate) : null
 
         return (
           <div className={styles.ceModalOverlay} onClick={() => setSelected(null)}>
@@ -258,11 +267,13 @@ export default function CrewEmployees() {
                     </div>
                     <div className={styles.ceField}>
                       <span className={styles.ceFieldLabel}>Years of Service</span>
-                      <span className={styles.ceFieldValue}>{yrs} yr{yrs !== 1 ? 's' : ''}</span>
+                      <span className={styles.ceFieldValue}>
+                        {yrs != null ? `${yrs} yr${yrs !== 1 ? 's' : ''}` : '—'}
+                      </span>
                     </div>
                     <div className={styles.ceField}>
                       <span className={styles.ceFieldLabel}>Supervisor</span>
-                      <span className={styles.ceFieldValue}>{selected.supervisor}</span>
+                      <span className={styles.ceFieldValue}>{selected.supervisor ?? '—'}</span>
                     </div>
                     <div className={styles.ceField}>
                       <span className={styles.ceFieldLabel}>Status</span>
@@ -279,11 +290,11 @@ export default function CrewEmployees() {
                   <div className={styles.ceFieldGrid}>
                     <div className={styles.ceField}>
                       <span className={styles.ceFieldLabel}>Phone</span>
-                      <span className={styles.ceFieldValue}>{selected.phone}</span>
+                      <span className={styles.ceFieldValue}>{selected.phone ?? '—'}</span>
                     </div>
                     <div className={styles.ceField}>
                       <span className={styles.ceFieldLabel}>Email</span>
-                      <span className={styles.ceFieldValue}>{selected.email}</span>
+                      <span className={styles.ceFieldValue}>{selected.email ?? '—'}</span>
                     </div>
                   </div>
                 </div>
@@ -294,11 +305,13 @@ export default function CrewEmployees() {
                   <div className={styles.ceFieldGrid}>
                     <div className={styles.ceField}>
                       <span className={styles.ceFieldLabel}>Hourly Rate</span>
-                      <span className={styles.ceFieldValue}>${selected.hourlyRate}/hr</span>
+                      <span className={styles.ceFieldValue}>
+                        {typeof selected.hourlyRate === 'number' ? `$${selected.hourlyRate}/hr` : '—'}
+                      </span>
                     </div>
                     <div className={styles.ceField}>
                       <span className={styles.ceFieldLabel}>Assigned Area</span>
-                      <span className={styles.ceFieldValue}>{selected.assignedArea}</span>
+                      <span className={styles.ceFieldValue}>{selected.assignedArea ?? '—'}</span>
                     </div>
                   </div>
                 </div>
@@ -306,7 +319,7 @@ export default function CrewEmployees() {
                 {/* Certifications & Training */}
                 <div className={styles.ceModalSection}>
                   <p className={styles.ceModalSectionTitle}>Certifications &amp; Training</p>
-                  {selected.certifications.length > 0 ? (
+                  {(selected.certifications ?? []).length > 0 ? (
                     <div className={styles.ceCertList}>
                       {selected.certifications.map(cert => (
                         <span key={cert} className={styles.ceCertTag}>{cert}</span>
@@ -317,15 +330,17 @@ export default function CrewEmployees() {
                   )}
                 </div>
 
-                {/* Languages */}
-                <div className={styles.ceModalSection}>
-                  <p className={styles.ceModalSectionTitle}>Languages</p>
-                  <div className={styles.ceLangList}>
-                    {selected.languages.map(lang => (
-                      <span key={lang} className={styles.ceLangTag}>{lang}</span>
-                    ))}
+                {/* Languages (legacy field — only rendered when present) */}
+                {(selected.languages ?? []).length > 0 && (
+                  <div className={styles.ceModalSection}>
+                    <p className={styles.ceModalSectionTitle}>Languages</p>
+                    <div className={styles.ceLangList}>
+                      {selected.languages.map(lang => (
+                        <span key={lang} className={styles.ceLangTag}>{lang}</span>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Notes */}
                 {selected.notes && (

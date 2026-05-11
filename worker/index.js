@@ -68,6 +68,13 @@ import {
   updateEquipmentReservation,
   deleteEquipmentReservation,
 } from './api/assignments.js'
+import {
+  listCrewEmployees,
+  getCrewEmployee,
+  createCrewEmployee,
+  updateCrewEmployee,
+  deleteCrewEmployee,
+} from './api/crew.js'
 
 export default {
   async fetch(request, env, ctx) {
@@ -257,6 +264,21 @@ async function handleApi(request, env, url) {
     if (method === 'GET')    return getEquipmentReservation(env, id)
     if (method === 'PATCH')  return updateEquipmentReservation(env, id, request)
     if (method === 'DELETE') return deleteEquipmentReservation(env, id)
+  }
+
+  // ── /api/crew-employees ───────────────────────────────────────────────
+  if (pathname === '/api/crew-employees') {
+    if (method === 'GET')  return listCrewEmployees(env)
+    if (method === 'POST') return createCrewEmployee(env, request)
+  }
+
+  // ── /api/crew-employees/:id ───────────────────────────────────────────
+  const empMatch = pathname.match(/^\/api\/crew-employees\/([^/]+)$/)
+  if (empMatch) {
+    const id = decodeURIComponent(empMatch[1])
+    if (method === 'GET')    return getCrewEmployee(env, id)
+    if (method === 'PATCH')  return updateCrewEmployee(env, id, request)
+    if (method === 'DELETE') return deleteCrewEmployee(env, id)
   }
 
   return notFound()

@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from '../../utils/feedback/toastContext'
-import { EMPLOYEES, TASKS, HOURS_LOG } from '../../data/crew'
+import { TASKS, HOURS_LOG } from '../../data/crew'
 import CrewSchedule     from '../Crew/tabs/CrewSchedule'
 import CrewAssignments  from '../Crew/tabs/CrewAssignments'
 import CrewEmployees    from '../Crew/tabs/CrewEmployees'
@@ -13,6 +13,7 @@ import WorkspaceActions from '../../components/shared/WorkspaceActions'
 import Timeline from '../../components/primitives/Timeline'
 import { useWeather } from '../../utils/weather/useWeather'
 import { useEquipmentData } from '../../utils/equipment/equipmentStore'
+import { useCrewData } from '../../utils/crew/crewStore'
 import { useCalendarData, createCalendarEvent, patchCalendarEvent } from '../../utils/calendar/calendarStore'
 import {
   useAssignmentsData,
@@ -137,6 +138,7 @@ export default function OperationsBoard() {
   const { equipment, serviceLog }   = useEquipmentData()
   const { events: calendarEvents }  = useCalendarData()
   const { crewAssignments }         = useAssignmentsData()
+  const { employees: EMPLOYEES }    = useCrewData()
 
   // ── Tab / layout ─────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState('board')
@@ -231,7 +233,7 @@ export default function OperationsBoard() {
     const map = {}
     EMPLOYEES.forEach(e => { map[e.employeeId] = e })
     return map
-  }, [])
+  }, [EMPLOYEES])
 
   const todayLog = useMemo(() => {
     const map = {}
@@ -282,7 +284,7 @@ export default function OperationsBoard() {
         })
         return { emp, firstName: emp.fullName.split(' ')[0], blocks }
       }),
-  [effectiveTasks, todayLog])
+  [effectiveTasks, todayLog, EMPLOYEES])
 
   const stats = useMemo(() => {
     const logs = Object.values(todayLog)
