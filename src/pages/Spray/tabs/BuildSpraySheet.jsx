@@ -627,7 +627,7 @@ export default function BuildSpraySheet() {
 
               {/* Header — no logos, no record reference, no sheet id */}
               <header className={styles.srsHeader}>
-                <h2 className={styles.srsTitle}>Spray Record Sheet</h2>
+                <h2 className={styles.srsTitle}>New Application</h2>
                 <span className={styles.srsCourse}>{COURSE}</span>
               </header>
 
