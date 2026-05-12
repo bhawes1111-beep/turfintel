@@ -75,6 +75,64 @@ const UNIT_OPTS = ['oz', 'fl oz', 'lb', 'gal', 'qt', 'pt']
 // 1 acre = 43.56 (× 1,000 sq ft).
 const SQFT_PER_ACRE_K = 43.56
 
+// 1 US gallon = 128 fluid ounces. Used for oz ↔ gal conversions when
+// deducting inventory from a rate expressed in the opposite measure.
+const OZ_PER_GAL = 128
+
+// Rate units supported on each product row. The measure (oz vs gal)
+// dictates the resulting quantity's natural unit. The denominator
+// (acre vs 1000 sq ft) dictates the formula.
+const RATE_UNIT_OPTS = [
+  { value: 'oz_per_acre',          label: 'oz / acre',          measure: 'oz',  perK: false },
+  { value: 'oz_per_1000sqft',      label: 'oz / 1,000 sq ft',   measure: 'oz',  perK: true  },
+  { value: 'gallons_per_acre',     label: 'gal / acre',         measure: 'gal', perK: false },
+  { value: 'gallons_per_1000sqft', label: 'gal / 1,000 sq ft',  measure: 'gal', perK: true  },
+]
+
+function rateUnitSpec(rateUnit) {
+  return RATE_UNIT_OPTS.find(o => o.value === rateUnit) ?? RATE_UNIT_OPTS[0]
+}
+
+// Rate value × acres, scaled by 1,000-sq-ft if the rate denominator is
+// per-thousand-sq-ft. Returns the quantity in the rate's natural measure
+// (oz or gal — see rateUnitSpec.measure).
+function computeQty(rate, acres, rateUnit) {
+  const spec = rateUnitSpec(rateUnit)
+  const r = Number(rate)  || 0
+  const a = Number(acres) || 0
+  return spec.perK ? r * a * SQFT_PER_ACRE_K : r * a
+}
+
+// Convert a quantity in the rate's natural measure into the inventory
+// item's stored unit, when the conversion is unambiguous. Returns:
+//   { qty, ok: true }  — same measure (no conversion needed)
+//   { qty, ok: true, converted: true } — fluid oz ↔ gal conversion applied
+//   { qty, ok: false, rateMeasure, invUnit } — cross-form mismatch
+//     (e.g. rate gallons, inventory lbs) — caller should warn + skip.
+function convertToInventoryUnit(qty, rateMeasure, invUnit) {
+  if (!invUnit) return { qty, ok: true }       // no metadata — pass through
+  const inv = String(invUnit).trim().toLowerCase()
+  const rm  = String(rateMeasure).trim().toLowerCase()
+  // Direct same-measure match (oz↔oz, gal↔gal, fl oz↔fl oz)
+  if (inv === rm)                           return { qty, ok: true }
+  if (rm === 'oz'  && inv === 'fl oz')      return { qty, ok: true }
+  if (rm === 'gal' && inv === 'gallons')    return { qty, ok: true }
+  // Fluid oz ↔ gallons
+  if (rm === 'oz'  && (inv === 'gal' || inv === 'gallons')) {
+    return { qty: qty / OZ_PER_GAL, ok: true, converted: true }
+  }
+  if (rm === 'gal' && (inv === 'oz' || inv === 'fl oz')) {
+    return { qty: qty * OZ_PER_GAL, ok: true, converted: true }
+  }
+  // Cross-form (lbs / qt / pt / etc.) — refuse.
+  return { qty, ok: false, rateMeasure: rm, invUnit: inv }
+}
+
+function formatRateLabel(rate, rateUnit) {
+  const spec = rateUnitSpec(rateUnit)
+  return `${rate} ${spec.label}`
+}
+
 // ── Draft seed (used when localStorage is empty) ────────────────────────
 function makeEmptyDraft() {
   return {
@@ -167,13 +225,23 @@ export default function BuildSpraySheet() {
   }, [selectedCourse])
 
   // ── Draft state (with localStorage autosave restore) ───────────────────
+  // Legacy drafts predate the rateUnit field — every row had an implicit
+  // oz_per_1000sqft rate. Backfill on read so quantity math doesn't shift
+  // for in-flight drafts.
   const [draft, setDraft] = useState(() => {
     if (typeof localStorage === 'undefined') return makeEmptyDraft()
     try {
       const raw = localStorage.getItem(DRAFT_KEY)
       if (!raw) return makeEmptyDraft()
       const parsed = JSON.parse(raw)
-      return { ...makeEmptyDraft(), ...parsed }
+      const migrated = {
+        ...makeEmptyDraft(),
+        ...parsed,
+        rows: Array.isArray(parsed.rows)
+          ? parsed.rows.map(r => ({ rateUnit: r.rateUnit ?? 'oz_per_1000sqft', ...r }))
+          : [],
+      }
+      return migrated
     } catch {
       return makeEmptyDraft()
     }
@@ -214,18 +282,31 @@ export default function BuildSpraySheet() {
       const inv  = row.inventoryItemId
         ? inventoryProducts.find(p => p.id === row.inventoryItemId)
         : inventoryProducts.find(p => p.name === row.name)
-      const rate = parseFloat(row.rate) || 0
-      const qtyNeeded = rate * (draft.acres || 0) * SQFT_PER_ACRE_K
+      const rateUnit = row.rateUnit ?? 'oz_per_1000sqft'
+      const spec     = rateUnitSpec(rateUnit)
+      const qtyNeeded = computeQty(row.rate, draft.acres, rateUnit)
+      // qtyUnit is the natural unit of the computed quantity (oz or gal),
+      // distinct from row.unit which is the inventory unit. They may
+      // differ — see convertToInventoryUnit in the commit pipeline.
+      const qtyUnit   = spec.measure
+      // Cost is computed against inventory pricing, so when the rate
+      // measure differs from the inventory unit we convert first.
+      const conv      = convertToInventoryUnit(qtyNeeded, qtyUnit, inv?.unit)
+      const qtyInInv  = conv.ok ? conv.qty : qtyNeeded
       const available = inv?.quantity ?? null
       const cost      = inv?.costPerUnit != null
-        ? +(qtyNeeded * inv.costPerUnit).toFixed(2)
+        ? +(qtyInInv * inv.costPerUnit).toFixed(2)
         : null
       const status   = inv ? stockStatus(available, inv.reorderLevel) : 'unknown'
-      const insufficient = inv && available != null && qtyNeeded > available
+      const insufficient = inv && available != null && conv.ok && qtyInInv > available
       return {
         ...row,
+        rateUnit,
         inv,
-        qtyNeeded,
+        qtyNeeded,        // quantity in rate's natural measure (oz or gal)
+        qtyUnit,          // 'oz' or 'gal' — natural unit of qtyNeeded
+        qtyInInv,         // quantity in inventory's unit (converted)
+        unitConversion:   conv,
         available,
         cost,
         status,
@@ -245,10 +326,22 @@ export default function BuildSpraySheet() {
       ? Math.min(100, Math.round((water / sprayRigSpec.capacity) * 100))
       : 0
 
+    // Per-measure buckets — keeps oz and gal totals visually separated
+    // in the tank summary instead of summing apples + oranges.
+    let totalOz = 0, totalGal = 0
+    for (const r of enrichedRows) {
+      if (r.qtyUnit === 'oz')  totalOz  += r.qtyNeeded || 0
+      if (r.qtyUnit === 'gal') totalGal += r.qtyNeeded || 0
+    }
+
     // Nutrient totals — only computed when at least one row's inventory
-    // item carries a parseable analysis string. We never invent values.
+    // item carries a parseable analysis string. Totals are expressed in
+    // the rate's natural measure (mixed oz + gal contributions are
+    // accumulated together — superintendents read this as a guidance
+    // pound-equivalent, not a single bottling unit).
     let nutrientSource = 0
     let totalN = 0, totalP = 0, totalK = 0
+    const nSources = new Set()
     for (const r of enrichedRows) {
       const npk = parseAnalysisNPK(r.inv?.analysis)
       if (!npk) continue
@@ -257,6 +350,7 @@ export default function BuildSpraySheet() {
       totalN += (npk.n / 100) * qty
       totalP += (npk.p / 100) * qty
       totalK += (npk.k / 100) * qty
+      if (r.inv?.nitrogenSource) nSources.add(r.inv.nitrogenSource)
     }
 
     const reiRows = enrichedRows
@@ -264,16 +358,28 @@ export default function BuildSpraySheet() {
       .filter(n => n > 0)
     const maxRei = reiRows.length > 0 ? Math.max(...reiRows) : 0
 
+    const unitMismatches = enrichedRows
+      .filter(r => r.inv && r.unitConversion && !r.unitConversion.ok)
+      .map(r => ({
+        name:        r.name,
+        rateMeasure: r.unitConversion.rateMeasure,
+        invUnit:     r.unitConversion.invUnit,
+      }))
+
     return {
       productCount,
       acres:        draft.acres || 0,
       totalCost,
+      totalOz,
+      totalGal,
       water,
       tankFillPct,
       nutrientSource,
       totalN, totalP, totalK,
+      nitrogenSources: Array.from(nSources),
       maxRei,
       anyInsufficient: enrichedRows.some(r => r.insufficient),
+      unitMismatches,
     }
   }, [enrichedRows, draft.waterVolume, draft.acres, sprayRigSpec.capacity])
 
@@ -294,9 +400,19 @@ export default function BuildSpraySheet() {
     setDraft(prev => ({ ...prev, rows: prev.rows.filter(r => r.id !== rowId) }))
   }
   function addRow() {
+    const defaultRateUnit = selectedCourse?.defaultSprayUnits ?? 'oz_per_acre'
     setDraft(prev => ({
       ...prev,
-      rows: [...prev.rows, { id: uid('row'), inventoryItemId: null, name: '', type: '', rate: '', unit: 'oz', rei: 0 }],
+      rows: [...prev.rows, {
+        id:              uid('row'),
+        inventoryItemId: null,
+        name:            '',
+        type:            '',
+        rate:            '',
+        rateUnit:        defaultRateUnit,
+        unit:            'oz',
+        rei:             0,
+      }],
     }))
   }
   function pickInventoryForRow(rowId, inv) {
@@ -351,30 +467,52 @@ export default function BuildSpraySheet() {
         products: enrichedRows.map(r => ({
           name:            r.name,
           type:            r.type,
-          rate:            `${r.rate} ${r.unit} / 1,000 sq ft`,
+          rate:            formatRateLabel(r.rate, r.rateUnit),
+          rateUnit:        r.rateUnit,
           unit:            r.unit,
           quantityUsed:    r.qtyNeeded,
+          quantityUnit:    r.qtyUnit,
           inventoryItemId: r.inventoryItemId,
         })),
       }
       const saved = await createSpray(payload)
 
-      // 2. Inventory deductions — fire-and-forget per product so a
-      // single miss doesn't tank the whole commit.
+      // 2. Inventory deductions — convert quantity to the inventory
+      // item's stored unit when possible (fluid oz ↔ gal). Cross-form
+      // mismatches (e.g. rate gallons, inventory lbs) are skipped with
+      // a visible warning so we never silently mis-deduct.
+      const deductable = enrichedRows.filter(r => r.name && r.qtyNeeded > 0)
+      const skipped = []
       const deductionResults = await Promise.allSettled(
-        enrichedRows
-          .filter(r => r.name && r.qtyNeeded > 0)
-          .map(r => recordInventoryUsage({
-            productName:   r.name,
-            quantityUsed:  r.qtyNeeded,
-            unit:          r.unit,
-            sourceId:      saved.id,
-            date:          draft.date,
-            area:          draft.area,
-            applicator:    draft.operator,
-          })),
+        deductable
+          .filter(r => {
+            // No inventory match → still record usage with rate-natural unit.
+            if (!r.inv) return true
+            if (r.unitConversion?.ok) return true
+            skipped.push(r)
+            return false
+          })
+          .map(r => {
+            const useInvUnit = r.inv && r.unitConversion?.ok
+            return recordInventoryUsage({
+              productName:   r.name,
+              quantityUsed:  useInvUnit ? r.qtyInInv : r.qtyNeeded,
+              unit:          useInvUnit ? r.inv.unit : r.qtyUnit,
+              sourceId:      saved.id,
+              date:          draft.date,
+              area:          draft.area,
+              applicator:    draft.operator,
+            })
+          }),
       )
       const deductCount = deductionResults.filter(r => r.status === 'fulfilled').length
+
+      if (skipped.length > 0) {
+        const names = skipped.map(r => r.name).join(', ')
+        toast.warning(
+          `Inventory deduction skipped for ${names}: rate unit (${skipped[0].qtyUnit}) cannot be safely converted to inventory unit (${skipped[0].inv?.unit}). Adjust the row or update the inventory record.`,
+        )
+      }
 
       // 3. Calendar event (dedupe handled server-side).
       createCalendarEvent({
@@ -553,7 +691,8 @@ export default function BuildSpraySheet() {
                     <th>Product</th>
                     <th>Type</th>
                     <th>Rate</th>
-                    <th>Unit</th>
+                    <th>Rate Unit</th>
+                    <th>Inv. Unit</th>
                     <th>Qty Needed</th>
                     <th>Available</th>
                     <th>Est. Cost</th>
@@ -563,7 +702,7 @@ export default function BuildSpraySheet() {
                 <tbody>
                   {enrichedRows.length === 0 && (
                     <tr>
-                      <td colSpan={8} className={styles.naEmptyRow}>
+                      <td colSpan={9} className={styles.naEmptyRow}>
                         No products in tank — click <strong>+ Add product</strong> to begin.
                       </td>
                     </tr>
@@ -619,17 +758,39 @@ export default function BuildSpraySheet() {
                       <td>
                         <select
                           className={styles.naRowInput}
+                          value={row.rateUnit}
+                          onChange={e => setRow(row.id, { rateUnit: e.target.value })}
+                          title="Rate denominator"
+                        >
+                          {RATE_UNIT_OPTS.map(o => (
+                            <option key={o.value} value={o.value}>{o.label}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td>
+                        <select
+                          className={styles.naRowInput}
                           value={row.unit}
                           onChange={e => setRow(row.id, { unit: e.target.value })}
+                          title="Inventory unit (how this product is stocked)"
                         >
                           {UNIT_OPTS.map(u => <option key={u}>{u}</option>)}
                         </select>
                       </td>
                       <td className={styles.naNumCell}>
-                        {row.qtyNeeded > 0 ? `${fmt(row.qtyNeeded, 2)} ${row.unit}` : '—'}
+                        {row.qtyNeeded > 0 ? `${fmt(row.qtyNeeded, 2)} ${row.qtyUnit}` : '—'}
                       </td>
                       <td className={styles.naNumCell} data-warn={row.insufficient ? 'true' : undefined}>
                         {row.available != null ? `${fmt(row.available, 1)} ${row.inv?.unit ?? ''}` : '—'}
+                        {row.inv && row.unitConversion && !row.unitConversion.ok && (
+                          <span
+                            className={styles.naStockChip}
+                            data-tone="critical"
+                            title={`Rate is in ${row.unitConversion.rateMeasure} but inventory is in ${row.unitConversion.invUnit}. Inventory deduction will be skipped on commit.`}
+                          >
+                            Unit mismatch
+                          </span>
+                        )}
                       </td>
                       <td className={styles.naNumCell}>{fmtCurrency(row.cost)}</td>
                       <td>
@@ -647,7 +808,7 @@ export default function BuildSpraySheet() {
                 {enrichedRows.length > 0 && (
                   <tfoot>
                     <tr>
-                      <td colSpan={6} className={styles.naFooterLabel}>Total cost</td>
+                      <td colSpan={7} className={styles.naFooterLabel}>Total cost</td>
                       <td className={styles.naNumCell}><strong>{fmtCurrency(summary.totalCost)}</strong></td>
                       <td />
                     </tr>
@@ -766,12 +927,29 @@ export default function BuildSpraySheet() {
               />
             </SummarySection>
 
+            <SummarySection label="Product totals">
+              <SummaryRow
+                label="Total product (oz)"
+                value={summary.totalOz > 0 ? `${fmt(summary.totalOz, 2)} oz` : '—'}
+              />
+              <SummaryRow
+                label="Total product (gal)"
+                value={summary.totalGal > 0 ? `${fmt(summary.totalGal, 3)} gal` : '—'}
+              />
+            </SummarySection>
+
             <SummarySection label="Nutrient totals (N-P-K)">
               {summary.nutrientSource > 0 ? (
                 <>
-                  <SummaryRow label="Nitrogen (N)"   value={`${fmt(summary.totalN, 2)} ${enrichedRows[0]?.unit ?? 'oz'}`} />
-                  <SummaryRow label="Phosphorus (P)" value={`${fmt(summary.totalP, 2)} ${enrichedRows[0]?.unit ?? 'oz'}`} />
-                  <SummaryRow label="Potassium (K)"  value={`${fmt(summary.totalK, 2)} ${enrichedRows[0]?.unit ?? 'oz'}`} />
+                  <SummaryRow label="Nitrogen (N)"   value={`${fmt(summary.totalN, 2)} (rate-unit basis)`} />
+                  <SummaryRow label="Phosphorus (P)" value={`${fmt(summary.totalP, 2)} (rate-unit basis)`} />
+                  <SummaryRow label="Potassium (K)"  value={`${fmt(summary.totalK, 2)} (rate-unit basis)`} />
+                  <SummaryRow
+                    label="Nitrogen source"
+                    value={summary.nitrogenSources.length > 0
+                      ? summary.nitrogenSources.join(', ')
+                      : 'Data unavailable'}
+                  />
                 </>
               ) : (
                 <span className={styles.naUnavailable}>
@@ -785,6 +963,15 @@ export default function BuildSpraySheet() {
                 Data unavailable — compatibility matrix not yet wired.
               </span>
             </SummarySection>
+
+            {summary.unitMismatches.length > 0 && (
+              <div className={styles.naInsufficientCard} role="alert">
+                <strong>Unit mismatch.</strong> {summary.unitMismatches.length === 1
+                  ? `${summary.unitMismatches[0].name} rate is in ${summary.unitMismatches[0].rateMeasure} but inventory is in ${summary.unitMismatches[0].invUnit}.`
+                  : `${summary.unitMismatches.length} products have rate units incompatible with inventory.`}
+                {' '}Inventory will not be deducted for these rows on commit.
+              </div>
+            )}
 
             {summary.anyInsufficient && (
               <div className={styles.naInsufficientCard} role="alert">
