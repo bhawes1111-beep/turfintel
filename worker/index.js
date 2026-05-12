@@ -82,6 +82,13 @@ import {
   updateCourse,
   deleteCourse,
 } from './api/courses.js'
+import {
+  listOperationsNotes,
+  getOperationsNote,
+  createOperationsNote,
+  updateOperationsNote,
+  deleteOperationsNote,
+} from './api/operationsNotes.js'
 
 export default {
   async fetch(request, env, ctx) {
@@ -291,6 +298,25 @@ async function handleApi(request, env, url) {
     if (method === 'GET')    return getCrewEmployee(env, id)
     if (method === 'PATCH')  return updateCrewEmployee(env, id, request)
     if (method === 'DELETE') return deleteCrewEmployee(env, id)
+  }
+
+  // ── /api/operations-notes ─────────────────────────────────────────────
+  if (pathname === '/api/operations-notes') {
+    if (method === 'GET') {
+      const date   = url.searchParams.get('date')   || null
+      const status = url.searchParams.get('status') || 'active'
+      return listOperationsNotes(env, courseId, { date, status })
+    }
+    if (method === 'POST') return createOperationsNote(env, request)
+  }
+
+  // ── /api/operations-notes/:id ─────────────────────────────────────────
+  const notesMatch = pathname.match(/^\/api\/operations-notes\/([^/]+)$/)
+  if (notesMatch) {
+    const id = decodeURIComponent(notesMatch[1])
+    if (method === 'GET')    return getOperationsNote(env, id)
+    if (method === 'PATCH')  return updateOperationsNote(env, id, request)
+    if (method === 'DELETE') return deleteOperationsNote(env, id)
   }
 
   // ── /api/courses ──────────────────────────────────────────────────────

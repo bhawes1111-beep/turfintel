@@ -25,6 +25,7 @@ import { useAlertsData }      from '../../utils/alerts/alertsStore'
 import { useCrewData }        from '../../utils/crew/crewStore'
 import { useWeather }         from '../../utils/weather/useWeather'
 import { useSelectedCourse }  from '../../utils/courses/courseStore'
+import { useOperationsNotesData } from '../../utils/operations/notesStore'
 import styles from './DisplayBoard.module.css'
 
 const TODAY = new Date().toISOString().slice(0, 10)
@@ -67,6 +68,7 @@ export default function DisplayBoard({ boardMode = false }) {
   const { employees }           = useCrewData()
   const { current, forecast }   = useWeather()
   const selectedCourse          = useSelectedCourse()
+  const { notes: dailyNotes }   = useOperationsNotesData()
 
   // ── Today filter (canonical) ──────────────────────────────────────────
   const todayEvents = useMemo(() => {
@@ -126,6 +128,25 @@ export default function DisplayBoard({ boardMode = false }) {
       })
       .slice(0, 6)
   }, [alerts])
+
+  // ── Today's daily briefings (Phase 6) ─────────────────────────────────
+  // Phase 6 makes these the primary Notices source. Alerts and event
+  // descriptions fall back only when no notes exist for today.
+  const NOTE_PRIORITY_ORDER = {
+    urgent: 0, safety: 1, weather: 2, important: 3, routine: 4,
+  }
+  const todayNotes = useMemo(() => {
+    return (dailyNotes ?? [])
+      .filter(n => n.status === 'active')
+      .filter(n => n.noteDate === TODAY)
+      .sort((a, b) => {
+        if (a.pinned !== b.pinned) return a.pinned ? -1 : 1
+        const pa = NOTE_PRIORITY_ORDER[a.priority] ?? 9
+        const pb = NOTE_PRIORITY_ORDER[b.priority] ?? 9
+        if (pa !== pb) return pa - pb
+        return (b.updatedAt ?? '').localeCompare(a.updatedAt ?? '')
+      })
+  }, [dailyNotes])
 
   const rootCls = boardMode ? `${styles.root} ${styles.rootBoard}` : styles.root
 
@@ -242,9 +263,15 @@ export default function DisplayBoard({ boardMode = false }) {
         {/* Safety / Daily Notices */}
         <DisplaySection
           title="Daily Notices"
-          hint="Safety, course conditions, supervisor notes"
+          hint={todayNotes.length > 0
+            ? `${todayNotes.length} briefing${todayNotes.length !== 1 ? 's' : ''} from supervisor`
+            : 'Safety, course conditions, supervisor notes'}
         >
-          <NoticesPanel events={todayEvents} alerts={liveAlerts} />
+          <NoticesPanel
+            notes={todayNotes}
+            events={todayEvents}
+            alerts={liveAlerts}
+          />
         </DisplaySection>
 
         {/* Photos placeholder */}
@@ -425,19 +452,39 @@ function RoutingPanel({ events }) {
   ))
 }
 
-function NoticesPanel({ events, alerts }) {
-  // Surface any event descriptions that look like daily notes + any
-  // high-priority alerts as crew-readable notices.
+function NoticesPanel({ notes, events, alerts }) {
+  // Phase 6 — operations_daily_notes is now the primary source. Each
+  // priority tier maps to a tone the renderer uses for the left border.
+  // Falls back to high-priority alerts + event descriptions only when
+  // the supervisor hasn't posted any briefings for today.
+  if (notes && notes.length > 0) {
+    return notes.map(n => (
+      <div
+        key={n.id}
+        className={styles.noticeRow}
+        data-tone={noticeTone(n.priority)}
+        data-pinned={n.pinned ? 'true' : undefined}
+      >
+        <strong>
+          {n.pinned && '📌 '}
+          {n.title || titleFromBody(n.body)}
+        </strong>
+        <p>{n.body}</p>
+      </div>
+    ))
+  }
+
+  // ── Fallback: alerts + event descriptions (legacy Phase 5 behaviour)
+  const highAlerts = alerts.filter(a => a.priority === 'high')
   const eventNotes = events
     .filter(e => e.description && e.description.length > 0)
     .slice(0, 4)
-  const highAlerts = alerts.filter(a => a.priority === 'high')
 
   if (eventNotes.length === 0 && highAlerts.length === 0) {
     return (
       <p className={styles.empty}>
-        No high-priority notices today. Supervisor / weather notes will surface
-        here once they're written into today's task descriptions or alerts.
+        No briefings posted for today. Supervisors post operational notes from
+        Operations &gt; Daily Briefing.
       </p>
     )
   }
@@ -457,4 +504,24 @@ function NoticesPanel({ events, alerts }) {
       ))}
     </>
   )
+}
+
+function noticeTone(priority) {
+  switch (priority) {
+    case 'urgent':
+    case 'safety':
+      return 'alert'
+    case 'weather':
+      return 'weather'
+    case 'important':
+      return 'important'
+    default:
+      return undefined
+  }
+}
+
+function titleFromBody(body) {
+  if (!body) return 'Briefing'
+  const first = body.split('\n')[0]
+  return first.length > 60 ? first.slice(0, 57) + '…' : first
 }

@@ -4,8 +4,8 @@ import { useToast } from '../../utils/feedback/toastContext'
 import { TASKS, HOURS_LOG } from '../../data/crew'
 // Schedule, Employees, and Hours tabs moved to the Employee Management
 // workspace in Phase 4 — Operations now focuses on daily field execution.
-import CrewAssignments  from '../Crew/tabs/CrewAssignments'
-import CrewNotes        from '../Crew/tabs/CrewNotes'
+import CrewAssignments    from '../Crew/tabs/CrewAssignments'
+import DailyBriefingPanel from './DailyBriefingPanel'
 import { EmptyState } from '../../components/shared/EmptyState'
 import PageShell from '../../components/layout/PageShell'
 import WorkspaceActions from '../../components/shared/WorkspaceActions'
@@ -81,7 +81,7 @@ const DENSITY_OPTIONS = ['Compact', 'Comfortable', 'Expanded']
 const TABS = [
   { id: 'board',       label: 'Operations Board' },
   { id: 'assignments', label: 'Assignments' },
-  { id: 'notes',       label: 'Notes' },
+  { id: 'notes',       label: 'Daily Briefing' },
 ]
 const TAB_LABELS  = TABS.map(t => t.label)
 const LABEL_TO_ID = Object.fromEntries(TABS.map(t => [t.label, t.id]))
@@ -588,7 +588,7 @@ export default function OperationsBoard() {
       {activeTab !== 'board' && (
         <div className={styles.obSecondary}>
           {activeTab === 'assignments' && <CrewAssignments />}
-          {activeTab === 'notes'       && <CrewNotes />}
+          {activeTab === 'notes'       && <DailyBriefingPanel />}
         </div>
       )}
 
