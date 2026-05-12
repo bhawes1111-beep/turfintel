@@ -16,6 +16,16 @@
       "database_name": "turfintel-db",
       "database_id": "43aafc7e-478a-40a7-9b1b-ac8d2e589b9e"
     }
+  ],
+
+  // R2 bucket for operational photo attachments (Phase 8).
+  // Bucket created 2026-05-12 via `npx wrangler r2 bucket create turfintel-photos`.
+  // Worker accesses it as `env.PHOTOS` — see worker/api/attachments.js.
+  "r2_buckets": [
+    {
+      "binding": "PHOTOS",
+      "bucket_name": "turfintel-photos"
+    }
   ]
 
   //

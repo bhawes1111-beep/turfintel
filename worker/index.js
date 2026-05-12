@@ -89,6 +89,13 @@ import {
   updateOperationsNote,
   deleteOperationsNote,
 } from './api/operationsNotes.js'
+import {
+  listAttachments,
+  getAttachment,
+  streamAttachment,
+  createAttachment,
+  deleteAttachment,
+} from './api/attachments.js'
 
 export default {
   async fetch(request, env, ctx) {
@@ -298,6 +305,31 @@ async function handleApi(request, env, url) {
     if (method === 'GET')    return getCrewEmployee(env, id)
     if (method === 'PATCH')  return updateCrewEmployee(env, id, request)
     if (method === 'DELETE') return deleteCrewEmployee(env, id)
+  }
+
+  // ── /api/attachments/:id/file (must precede /api/attachments/:id) ─────
+  const attachFileMatch = pathname.match(/^\/api\/attachments\/([^/]+)\/file$/)
+  if (attachFileMatch) {
+    const id = decodeURIComponent(attachFileMatch[1])
+    if (method === 'GET') return streamAttachment(env, id)
+  }
+
+  // ── /api/attachments ──────────────────────────────────────────────────
+  if (pathname === '/api/attachments') {
+    if (method === 'GET') {
+      const parentType = url.searchParams.get('parentType') || null
+      const parentId   = url.searchParams.get('parentId')   || null
+      return listAttachments(env, courseId, { parentType, parentId })
+    }
+    if (method === 'POST') return createAttachment(env, request)
+  }
+
+  // ── /api/attachments/:id ──────────────────────────────────────────────
+  const attachMatch = pathname.match(/^\/api\/attachments\/([^/]+)$/)
+  if (attachMatch) {
+    const id = decodeURIComponent(attachMatch[1])
+    if (method === 'GET')    return getAttachment(env, id)
+    if (method === 'DELETE') return deleteAttachment(env, id)
   }
 
   // ── /api/operations-notes ─────────────────────────────────────────────

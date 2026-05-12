@@ -26,6 +26,7 @@ import { useCrewData }        from '../../utils/crew/crewStore'
 import { useWeather }         from '../../utils/weather/useWeather'
 import { useSelectedCourse }  from '../../utils/courses/courseStore'
 import { useOperationsNotesData } from '../../utils/operations/notesStore'
+import { useAttachmentsForParent } from '../../utils/attachments/attachmentsStore'
 import styles from './DisplayBoard.module.css'
 
 const TODAY = new Date().toISOString().slice(0, 10)
@@ -459,18 +460,11 @@ function NoticesPanel({ notes, events, alerts }) {
   // the supervisor hasn't posted any briefings for today.
   if (notes && notes.length > 0) {
     return notes.map(n => (
-      <div
+      <NoticeWithPhotos
         key={n.id}
-        className={styles.noticeRow}
-        data-tone={noticeTone(n.priority)}
-        data-pinned={n.pinned ? 'true' : undefined}
-      >
-        <strong>
-          {n.pinned && '📌 '}
-          {n.title || titleFromBody(n.body)}
-        </strong>
-        <p>{n.body}</p>
-      </div>
+        note={n}
+        tone={noticeTone(n.priority)}
+      />
     ))
   }
 
@@ -524,4 +518,42 @@ function titleFromBody(body) {
   if (!body) return 'Briefing'
   const first = body.split('\n')[0]
   return first.length > 60 ? first.slice(0, 57) + '…' : first
+}
+
+/**
+ * Single notice row + attached photo strip (Phase 8).
+ * Per-note hook so the Display Board only fetches attachments for the
+ * briefings actually visible today.
+ */
+function NoticeWithPhotos({ note, tone }) {
+  const { attachments } = useAttachmentsForParent('daily_briefing', note.id)
+  return (
+    <div
+      className={styles.noticeRow}
+      data-tone={tone}
+      data-pinned={note.pinned ? 'true' : undefined}
+    >
+      <strong>
+        {note.pinned && '📌 '}
+        {note.title || titleFromBody(note.body)}
+      </strong>
+      <p>{note.body}</p>
+      {attachments.length > 0 && (
+        <div className={styles.noticePhotos}>
+          {attachments.map(att => (
+            <a
+              key={att.id}
+              className={styles.noticePhoto}
+              href={att.url}
+              target="_blank"
+              rel="noreferrer"
+              title={att.caption ?? att.fileName ?? 'briefing photo'}
+            >
+              <img src={att.url} alt={att.caption ?? att.fileName ?? 'briefing photo'} />
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
