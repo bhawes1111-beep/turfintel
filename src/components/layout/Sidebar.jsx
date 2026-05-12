@@ -205,9 +205,10 @@ const ICONS = {
    they just don't appear in the sidebar anymore.                          */
 
 const NAV_TREE = [
-  { id: 'dashboard',  label: 'Dashboard',  icon: 'dashboard',  to: '/dashboard'  },
-  { id: 'operations', label: 'Operations', icon: 'operations', to: '/crew'       },
-  { id: 'agronomy',   label: 'Agronomy',   icon: 'agronomy',   to: '/disease'    },
+  { id: 'dashboard',  label: 'Dashboard',           icon: 'dashboard',  to: '/dashboard'  },
+  { id: 'operations', label: 'Operations',          icon: 'operations', to: '/crew'       },
+  { id: 'employees',  label: 'Employee Management', icon: 'crew',       to: '/employees'  },
+  { id: 'agronomy',   label: 'Agronomy',            icon: 'agronomy',   to: '/disease'    },
   { id: 'sprays',     label: 'Sprays',     icon: 'spray',      to: '/spray'      },
   { id: 'irrigation', label: 'Irrigation', icon: 'irrigation', to: '/irrigation' },
   { id: 'equipment',  label: 'Equipment',  icon: 'equipment',  to: '/equipment'  },

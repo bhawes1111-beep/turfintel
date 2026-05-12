@@ -5,6 +5,7 @@ import Layout from './components/layout/Layout'
 import Login from './pages/Login/Login'
 import Dashboard from './pages/Dashboard/Dashboard'
 import OperationsBoard from './pages/Operations/OperationsBoard'
+import Employees from './pages/Employees/Employees'
 import Chemical from './pages/Chemical/Chemical'
 import Spray from './pages/Spray/Spray'
 import Disease from './pages/Disease/Disease'
@@ -34,6 +35,7 @@ export default function App() {
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="crew/*" element={<OperationsBoard />} />
+          <Route path="employees/*" element={<Employees />} />
           <Route path="chemical/*" element={<Chemical />} />
           <Route path="spray/*" element={<Spray />} />
           <Route path="disease/*" element={<Disease />} />

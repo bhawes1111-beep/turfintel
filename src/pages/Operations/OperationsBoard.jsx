@@ -2,10 +2,9 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from '../../utils/feedback/toastContext'
 import { TASKS, HOURS_LOG } from '../../data/crew'
-import CrewSchedule     from '../Crew/tabs/CrewSchedule'
+// Schedule, Employees, and Hours tabs moved to the Employee Management
+// workspace in Phase 4 — Operations now focuses on daily field execution.
 import CrewAssignments  from '../Crew/tabs/CrewAssignments'
-import CrewEmployees    from '../Crew/tabs/CrewEmployees'
-import CrewHours        from '../Crew/tabs/CrewHours'
 import CrewNotes        from '../Crew/tabs/CrewNotes'
 import { EmptyState } from '../../components/shared/EmptyState'
 import PageShell from '../../components/layout/PageShell'
@@ -81,10 +80,7 @@ const DENSITY_OPTIONS = ['Compact', 'Comfortable', 'Expanded']
 
 const TABS = [
   { id: 'board',       label: 'Operations Board' },
-  { id: 'schedule',    label: 'Schedule' },
   { id: 'assignments', label: 'Assignments' },
-  { id: 'employees',   label: 'Employees' },
-  { id: 'hours',       label: 'Hours' },
   { id: 'notes',       label: 'Notes' },
 ]
 const TAB_LABELS  = TABS.map(t => t.label)
@@ -579,7 +575,8 @@ export default function OperationsBoard() {
           <button
             type="button"
             className={`${workspace.workspaceActionBtn} ${workspace.workspaceActionBtnSecondary}`}
-            onClick={() => setActiveTab('schedule')}
+            onClick={() => navigate('/employees')}
+            title="Schedule moved to Employee Management"
           >
             Schedule
           </button>
@@ -587,13 +584,10 @@ export default function OperationsBoard() {
       }
     >
 
-      {/* ── Crew sub-tabs ────────────────────────────────────────────────── */}
+      {/* ── Operations sub-tabs ───────────────────────────────────────────── */}
       {activeTab !== 'board' && (
         <div className={styles.obSecondary}>
-          {activeTab === 'schedule'    && <CrewSchedule />}
           {activeTab === 'assignments' && <CrewAssignments />}
-          {activeTab === 'employees'   && <CrewEmployees />}
-          {activeTab === 'hours'       && <CrewHours />}
           {activeTab === 'notes'       && <CrewNotes />}
         </div>
       )}

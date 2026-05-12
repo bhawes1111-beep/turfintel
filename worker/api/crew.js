@@ -27,22 +27,28 @@ function parseJsonArray(raw) {
 function rowToEmployee(row) {
   if (!row) return null
   return {
-    id:             row.id,
-    employeeId:     row.id,                              // legacy alias
-    name:           row.name,
-    fullName:       row.name,                            // legacy alias
-    role:           row.role,
-    department:     row.department,
-    status:         row.status,
-    phone:          row.phone,
-    email:          row.email,
-    assignedArea:   row.assigned_area,
-    skills:         parseJsonArray(row.skills_json),
-    certifications: parseJsonArray(row.certifications_json),
-    notes:          row.notes,
-    courseId:       row.course_id,
-    createdAt:      row.created_at,
-    updatedAt:      row.updated_at,
+    id:                row.id,
+    employeeId:        row.id,                              // legacy alias
+    name:              row.name,
+    fullName:          row.name,                            // legacy alias
+    role:              row.role,
+    department:        row.department,
+    status:            row.status,
+    phone:             row.phone,
+    email:             row.email,
+    assignedArea:      row.assigned_area,
+    skills:            parseJsonArray(row.skills_json),
+    certifications:    parseJsonArray(row.certifications_json),
+    notes:             row.notes,
+    // Phase 4 — employee management fields. pay_rate is PRIVATE
+    // management data; UI must not render it outside Employee Management.
+    payRate:           row.pay_rate,
+    hireDate:          row.hire_date,
+    pesticideLicense:  row.pesticide_license,
+    emergencyContact:  row.emergency_contact,
+    courseId:          row.course_id,
+    createdAt:         row.created_at,
+    updatedAt:         row.updated_at,
   }
 }
 
@@ -50,15 +56,19 @@ function rowToEmployee(row) {
 // in updateCrewEmployee so callers can pass real arrays instead of
 // pre-stringified blobs.
 const CORE_COLUMNS = {
-  name:         'name',
-  fullName:     'name',           // legacy alias accepted on write
-  role:         'role',
-  department:   'department',
-  status:       'status',
-  phone:        'phone',
-  email:        'email',
-  assignedArea: 'assigned_area',
-  notes:        'notes',
+  name:              'name',
+  fullName:          'name',           // legacy alias accepted on write
+  role:              'role',
+  department:        'department',
+  status:            'status',
+  phone:             'phone',
+  email:             'email',
+  assignedArea:      'assigned_area',
+  notes:             'notes',
+  payRate:           'pay_rate',
+  hireDate:          'hire_date',
+  pesticideLicense:  'pesticide_license',
+  emergencyContact:  'emergency_contact',
 }
 
 // ── List + Get ────────────────────────────────────────────────────────────
@@ -91,20 +101,26 @@ export async function createCrewEmployee(env, request) {
   await env.DB.prepare(`
     INSERT INTO crew_employees (
       id, name, role, department, status, phone, email,
-      assigned_area, skills_json, certifications_json, notes, course_id
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      assigned_area, skills_json, certifications_json, notes,
+      pay_rate, hire_date, pesticide_license, emergency_contact,
+      course_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id,
     name,
-    body.role         ?? null,
-    body.department   ?? null,
-    body.status       ?? 'active',
-    body.phone        ?? null,
-    body.email        ?? null,
-    body.assignedArea ?? null,
+    body.role             ?? null,
+    body.department       ?? null,
+    body.status           ?? 'active',
+    body.phone            ?? null,
+    body.email            ?? null,
+    body.assignedArea     ?? null,
     body.skills         ? JSON.stringify(body.skills)         : null,
     body.certifications ? JSON.stringify(body.certifications) : null,
-    body.notes        ?? null,
+    body.notes            ?? null,
+    body.payRate          ?? null,
+    body.hireDate         ?? null,
+    body.pesticideLicense ?? null,
+    body.emergencyContact ?? null,
     resolveCourseId(body),
   ).run()
 

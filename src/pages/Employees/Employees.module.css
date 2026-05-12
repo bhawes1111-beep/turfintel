@@ -1,0 +1,401 @@
+/* Phase 4 — Employee Management styles. Compact operational layout. */
+
+/* ── Stat row (Overview) ─────────────────────────────────────────────── */
+
+.statRow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.statCard {
+  border: 1px solid rgba(74, 158, 74, 0.18);
+  background: linear-gradient(160deg, var(--color-card) 0%, var(--color-bg) 100%);
+  border-radius: 8px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.statLabel {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(212, 237, 212, 0.55);
+}
+
+.statValue {
+  font-size: 22px;
+  font-weight: 700;
+  color: #4ade80;
+  font-variant-numeric: tabular-nums;
+}
+
+.statValueMuted { color: rgba(212, 237, 212, 0.7); }
+
+.statPrivate {
+  font-size: 10px;
+  color: rgba(245, 158, 11, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+
+/* ── Section cards (Roles / Certs / Recent) ────────────────────────────── */
+
+.section {
+  background: var(--color-card);
+  border: 1px solid rgba(74, 158, 74, 0.14);
+  border-radius: 8px;
+  padding: 16px 18px;
+  margin-bottom: 16px;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 10px;
+}
+
+.sectionTitle {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(74, 222, 128, 0.78);
+  margin: 0;
+}
+
+.sectionHint {
+  font-size: 11px;
+  color: rgba(212, 237, 212, 0.4);
+}
+
+/* ── Roster (Active / Inactive grids) ──────────────────────────────────── */
+
+.toolbar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.search {
+  flex: 1;
+  min-width: 220px;
+  padding: 8px 12px;
+  background: rgba(4, 12, 6, 0.85);
+  border: 1px solid rgba(74, 158, 74, 0.2);
+  border-radius: 6px;
+  color: rgba(212, 237, 212, 0.85);
+  font-size: 12.5px;
+}
+
+.search:focus {
+  outline: none;
+  border-color: rgba(74, 222, 128, 0.45);
+}
+
+.chipRow {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.chip {
+  padding: 5px 11px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  font-size: 11px;
+  color: rgba(212, 237, 212, 0.65);
+  cursor: pointer;
+  transition: all 0.13s;
+}
+
+.chip:hover { color: #d4edd4; border-color: rgba(255, 255, 255, 0.18); }
+
+.chipActive {
+  background: rgba(34, 197, 94, 0.18);
+  border-color: rgba(34, 197, 94, 0.4);
+  color: #4ade80;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.card {
+  background: linear-gradient(160deg, var(--color-card) 0%, var(--color-bg) 100%);
+  border: 1px solid rgba(74, 158, 74, 0.16);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.13s, transform 0.13s;
+}
+
+.card:hover {
+  border-color: rgba(74, 222, 128, 0.4);
+  transform: translateY(-1px);
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.cardName {
+  font-size: 14px;
+  font-weight: 600;
+  color: #d4edd4;
+}
+
+.cardRole {
+  font-size: 11.5px;
+  color: rgba(212, 237, 212, 0.6);
+}
+
+.cardDept {
+  font-size: 11px;
+  color: rgba(212, 237, 212, 0.45);
+}
+
+.statusBadge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.statusActive {
+  background: rgba(34, 197, 94, 0.18);
+  color: #4ade80;
+}
+
+.statusInactive {
+  background: rgba(120, 120, 120, 0.18);
+  color: rgba(212, 237, 212, 0.5);
+}
+
+.statusOnLeave {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fbbf24;
+}
+
+.cardFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.payRate {
+  font-size: 11.5px;
+  color: #4ade80;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.payRateMissing {
+  font-size: 11px;
+  color: rgba(212, 237, 212, 0.35);
+}
+
+.privateTag {
+  font-size: 9px;
+  color: rgba(245, 158, 11, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-left: 4px;
+}
+
+/* ── Empty / Loading states ────────────────────────────────────────────── */
+
+.empty {
+  padding: 32px 16px;
+  text-align: center;
+  color: rgba(212, 237, 212, 0.4);
+  font-size: 12px;
+  font-style: italic;
+}
+
+/* ── Roles table ───────────────────────────────────────────────────────── */
+
+.roleRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 9px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.roleRow:first-of-type { border-top: none; }
+
+.roleName {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #d4edd4;
+}
+
+.roleCount {
+  font-size: 11.5px;
+  color: rgba(212, 237, 212, 0.55);
+}
+
+/* ── Modal / form ──────────────────────────────────────────────────────── */
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 24px;
+}
+
+.modal {
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--color-card);
+  border: 1px solid rgba(74, 158, 74, 0.3);
+  border-radius: 10px;
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modalTitle {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #4ade80;
+  margin: 0;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.formField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.formFieldWide { grid-column: span 2; }
+
+.formLabel {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(212, 237, 212, 0.55);
+}
+
+.formInput,
+.formSelect,
+.formTextarea {
+  padding: 7px 10px;
+  background: rgba(4, 12, 6, 0.85);
+  border: 1px solid rgba(74, 158, 74, 0.2);
+  border-radius: 5px;
+  color: rgba(212, 237, 212, 0.92);
+  font-size: 12px;
+  font-family: inherit;
+}
+
+.formInput:focus,
+.formSelect:focus,
+.formTextarea:focus {
+  outline: none;
+  border-color: rgba(74, 222, 128, 0.5);
+}
+
+.formTextarea { min-height: 60px; resize: vertical; }
+
+.privateNotice {
+  font-size: 10.5px;
+  color: rgba(245, 158, 11, 0.78);
+  background: rgba(245, 158, 11, 0.06);
+  border: 1px solid rgba(245, 158, 11, 0.18);
+  border-radius: 6px;
+  padding: 8px 10px;
+  line-height: 1.5;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.btnPrimary {
+  padding: 8px 16px;
+  background: rgba(34, 197, 94, 0.18);
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  border-radius: 6px;
+  color: #4ade80;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btnPrimary:hover { background: rgba(34, 197, 94, 0.28); }
+.btnPrimary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btnSecondary {
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: rgba(212, 237, 212, 0.7);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.btnSecondary:hover { background: rgba(255, 255, 255, 0.06); }
+
+.btnDanger {
+  padding: 6px 12px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.32);
+  border-radius: 5px;
+  color: #f87171;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.btnDanger:hover { background: rgba(239, 68, 68, 0.18); }
+
+/* ── Responsive ───────────────────────────────────────────────────────── */
+
+@media (max-width: 760px) {
+  .statRow { grid-template-columns: repeat(2, 1fr); }
+  .formGrid { grid-template-columns: 1fr; }
+  .formFieldWide { grid-column: span 1; }
+}
