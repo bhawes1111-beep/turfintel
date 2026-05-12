@@ -1,0 +1,541 @@
+/* Phase 5 — Display Board styles.
+   High-contrast, glanceable, TV / tablet friendly. */
+
+.root {
+  --db-base-size: 14px;
+  --db-pad: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 18px 22px 24px;
+  color: var(--color-text, #e4e8ec);
+  font-size: var(--db-base-size);
+  line-height: 1.4;
+}
+
+/* Board mode: cover the viewport, drop the app shell, scale type up. */
+.rootBoard {
+  --db-base-size: 17px;
+  --db-pad: 26px;
+  position: fixed;
+  inset: 0;
+  background: #06120c;
+  background-image:
+    radial-gradient(circle at 0% 0%, rgba(74, 158, 74, 0.08) 0%, transparent 45%),
+    radial-gradient(circle at 100% 100%, rgba(34, 197, 94, 0.06) 0%, transparent 45%);
+  overflow-y: auto;
+  padding: 28px 36px 36px;
+  z-index: 60;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────── */
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  border-bottom: 1px solid rgba(74, 158, 74, 0.22);
+  padding-bottom: 10px;
+  margin-bottom: 4px;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #4ade80;
+  margin: 0;
+}
+
+.rootBoard .title { font-size: 36px; }
+
+.subtitle {
+  font-size: 13px;
+  color: rgba(212, 237, 212, 0.6);
+  margin: 4px 0 0;
+}
+
+.rootBoard .subtitle { font-size: 18px; }
+
+.headerActions {
+  display: flex;
+  gap: 10px;
+}
+
+.modeBtn {
+  padding: 8px 16px;
+  background: rgba(34, 197, 94, 0.14);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  border-radius: 6px;
+  color: #4ade80;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  letter-spacing: 0.02em;
+}
+
+.modeBtn:hover {
+  background: rgba(34, 197, 94, 0.24);
+}
+
+.rootBoard .modeBtn { font-size: 14px; padding: 10px 20px; }
+
+/* ── Top band: Weather + Alerts ─────────────────────────────────────── */
+
+.topBand {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 14px;
+}
+
+.weatherCard,
+.alertsCard {
+  background: linear-gradient(160deg, var(--color-card) 0%, var(--color-bg) 100%);
+  border: 1px solid rgba(74, 158, 74, 0.18);
+  border-radius: 10px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.weatherLabel,
+.alertsLabel {
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(212, 237, 212, 0.55);
+  font-weight: 600;
+}
+
+.weatherTemp {
+  font-size: 38px;
+  font-weight: 700;
+  color: #4ade80;
+  font-variant-numeric: tabular-nums;
+}
+
+.rootBoard .weatherTemp { font-size: 56px; }
+
+.weatherSub {
+  font-size: 12.5px;
+  color: rgba(212, 237, 212, 0.7);
+}
+
+.rootBoard .weatherSub { font-size: 15px; }
+
+.alertList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.alertItem {
+  padding: 8px 12px;
+  border-left: 3px solid rgba(74, 158, 74, 0.4);
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+  font-size: 12.5px;
+  color: rgba(212, 237, 212, 0.88);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.alertItem[data-priority="high"] {
+  border-left-color: #f87171;
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.alertItem[data-priority="medium"] {
+  border-left-color: #fbbf24;
+}
+
+.rootBoard .alertItem { font-size: 15px; }
+
+/* ── Main grid ──────────────────────────────────────────────────────── */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.section {
+  background: linear-gradient(160deg, var(--color-card) 0%, var(--color-bg) 100%);
+  border: 1px solid rgba(74, 158, 74, 0.18);
+  border-radius: 10px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 160px;
+}
+
+.sectionWide {
+  grid-column: span 2;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  border-bottom: 1px dashed rgba(74, 158, 74, 0.15);
+  padding-bottom: 8px;
+}
+
+.sectionTitle {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(74, 222, 128, 0.85);
+  margin: 0;
+}
+
+.rootBoard .sectionTitle { font-size: 17px; }
+
+.sectionHint {
+  font-size: 11px;
+  color: rgba(212, 237, 212, 0.45);
+  font-variant-numeric: tabular-nums;
+}
+
+.rootBoard .sectionHint { font-size: 13px; }
+
+.sectionBody {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── Task cards (in "Today's Tasks") ────────────────────────────────── */
+
+.taskCard {
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.taskCard[data-priority="high"] {
+  border-color: rgba(239, 68, 68, 0.32);
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.taskCardTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.taskTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: #d4edd4;
+}
+
+.rootBoard .taskTitle { font-size: 18px; }
+
+.taskBadge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  border-radius: 10px;
+  background: rgba(34, 197, 94, 0.18);
+  color: #4ade80;
+}
+
+.taskBadge[data-priority="high"] {
+  background: rgba(239, 68, 68, 0.18);
+  color: #fca5a5;
+}
+
+.taskBadge[data-priority="medium"] {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fbbf24;
+}
+
+.rootBoard .taskBadge { font-size: 12px; padding: 4px 10px; }
+
+.taskMetaRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: rgba(212, 237, 212, 0.6);
+}
+
+.rootBoard .taskMetaRow { font-size: 14px; }
+
+.taskCrewRow {
+  display: flex;
+  gap: 6px;
+  font-size: 12.5px;
+  color: rgba(212, 237, 212, 0.85);
+}
+
+.taskLabel {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(212, 237, 212, 0.5);
+  font-weight: 600;
+  align-self: center;
+}
+
+.rootBoard .taskCrewRow { font-size: 14.5px; }
+
+.taskNotes {
+  font-size: 12.5px;
+  color: rgba(212, 237, 212, 0.7);
+  margin: 4px 0 0;
+  line-height: 1.45;
+}
+
+.rootBoard .taskNotes { font-size: 14.5px; }
+
+/* ── Spray cards ────────────────────────────────────────────────────── */
+
+.sprayCard {
+  border: 1px solid rgba(74, 158, 74, 0.22);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.sprayCard[data-rei="true"] {
+  border-color: rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.sprayHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sprayName {
+  font-size: 14px;
+  font-weight: 600;
+  color: #d4edd4;
+}
+
+.rootBoard .sprayName { font-size: 17px; }
+
+.reiBadge {
+  padding: 3px 8px;
+  background: rgba(239, 68, 68, 0.22);
+  color: #fca5a5;
+  border-radius: 10px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.rootBoard .reiBadge { font-size: 12px; padding: 4px 10px; }
+
+.sprayCarrier,
+.sprayProducts {
+  font-size: 12px;
+  color: rgba(212, 237, 212, 0.75);
+  margin: 2px 0 0;
+}
+
+.rootBoard .sprayCarrier,
+.rootBoard .sprayProducts { font-size: 14px; }
+
+/* ── Equipment list ─────────────────────────────────────────────────── */
+
+.equipmentRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.06);
+}
+
+.equipmentRow:last-child { border-bottom: none; }
+
+.equipmentName {
+  font-weight: 600;
+  color: #d4edd4;
+  font-size: 13px;
+}
+
+.equipmentMeta {
+  font-size: 12px;
+  color: rgba(212, 237, 212, 0.6);
+}
+
+.equipmentStatus {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(34, 197, 94, 0.18);
+  color: #4ade80;
+  font-weight: 600;
+}
+
+.equipmentStatus[data-status="in-use"] {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fbbf24;
+}
+
+.rootBoard .equipmentName { font-size: 15px; }
+.rootBoard .equipmentMeta { font-size: 13.5px; }
+
+/* ── Routing rows ───────────────────────────────────────────────────── */
+
+.routingRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border-left: 3px solid rgba(74, 158, 74, 0.4);
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+}
+
+.routingTitle {
+  font-weight: 600;
+  font-size: 13px;
+  color: #d4edd4;
+}
+
+.routingMeta {
+  font-size: 11.5px;
+  color: rgba(212, 237, 212, 0.6);
+}
+
+.routingTags {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.routingTag {
+  background: rgba(74, 158, 74, 0.16);
+  color: #4ade80;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+/* ── Notices ────────────────────────────────────────────────────────── */
+
+.noticeRow {
+  border-left: 3px solid rgba(74, 158, 74, 0.4);
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.noticeRow strong {
+  font-size: 13px;
+  color: #d4edd4;
+}
+
+.noticeRow p {
+  font-size: 12px;
+  color: rgba(212, 237, 212, 0.75);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.noticeRow[data-tone="alert"] {
+  border-left-color: #f87171;
+  background: rgba(239, 68, 68, 0.06);
+}
+
+.rootBoard .noticeRow strong { font-size: 15px; }
+.rootBoard .noticeRow p      { font-size: 14px; }
+
+/* ── Empty state ────────────────────────────────────────────────────── */
+
+.empty {
+  font-size: 12px;
+  font-style: italic;
+  color: rgba(212, 237, 212, 0.4);
+  margin: 0;
+}
+
+.rootBoard .empty { font-size: 14px; }
+
+/* ── Footer ─────────────────────────────────────────────────────────── */
+
+.footer {
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(74, 158, 74, 0.15);
+  display: flex;
+  justify-content: space-between;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(212, 237, 212, 0.35);
+}
+
+.rootBoard .footer { font-size: 12px; }
+
+/* ── Responsive ─────────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  .sectionWide { grid-column: span 1; }
+  .topBand {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .root { padding: 12px 14px 20px; }
+  .equipmentRow { grid-template-columns: 1fr; }
+}
+
+/* ── Print (for kiosk / printed daily sheet) ────────────────────────── */
+
+@media print {
+  .root,
+  .rootBoard {
+    position: static;
+    background: white;
+    color: #111;
+  }
+  .header,
+  .section,
+  .weatherCard,
+  .alertsCard {
+    background: white;
+    border-color: #999;
+    color: #111;
+  }
+  .title { color: #166534; }
+  .sectionTitle { color: #166534; }
+  .modeBtn { display: none; }
+  .empty { color: #555; }
+}

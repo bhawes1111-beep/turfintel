@@ -180,6 +180,13 @@ const ICONS = {
       <path d="M14.5 21a4 4 0 0 1 7 0"/>
     </SVG>
   ),
+  display: (
+    <SVG>
+      <rect x="2" y="4" width="20" height="13" rx="2"/>
+      <line x1="8"  y1="21" x2="16" y2="21"/>
+      <line x1="12" y1="17" x2="12" y2="21"/>
+    </SVG>
+  ),
   settings: (
     <SVG>
       <circle cx="12" cy="12" r="3"/>
@@ -205,9 +212,10 @@ const ICONS = {
    they just don't appear in the sidebar anymore.                          */
 
 const NAV_TREE = [
-  { id: 'dashboard',  label: 'Dashboard',           icon: 'dashboard',  to: '/dashboard'  },
-  { id: 'operations', label: 'Operations',          icon: 'operations', to: '/crew'       },
-  { id: 'employees',  label: 'Employee Management', icon: 'crew',       to: '/employees'  },
+  { id: 'dashboard',     label: 'Dashboard',           icon: 'dashboard',  to: '/dashboard'     },
+  { id: 'operations',    label: 'Operations',          icon: 'operations', to: '/crew'          },
+  { id: 'display-board', label: 'Display Board',       icon: 'display',    to: '/display-board' },
+  { id: 'employees',     label: 'Employee Management', icon: 'crew',       to: '/employees'     },
   { id: 'agronomy',   label: 'Agronomy',            icon: 'agronomy',   to: '/disease'    },
   { id: 'sprays',     label: 'Sprays',     icon: 'spray',      to: '/spray'      },
   { id: 'irrigation', label: 'Irrigation', icon: 'irrigation', to: '/irrigation' },
