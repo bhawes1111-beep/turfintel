@@ -133,6 +133,89 @@ function formatRateLabel(rate, rateUnit) {
   return `${rate} ${spec.label}`
 }
 
+// ── Carrier + load planning helpers (Phase 3) ───────────────────────────
+//
+// Total carrier water (gallons) for the application:
+//   gallons_per_acre        → rate × acres
+//   gallons_per_1000sqft    → rate × acres × 43.56
+//
+// These are pure proportional math; product splits are scaled by water
+// share and never trigger unit conversion. Unit-mismatch protection on
+// deduction (Phase 2) still applies at commit time.
+
+const CARRIER_UNIT_OPTS = [
+  { value: 'gallons_per_acre',     label: 'gal / acre',        perK: false },
+  { value: 'gallons_per_1000sqft', label: 'gal / 1,000 sq ft', perK: true  },
+]
+
+function carrierUnitSpec(unit) {
+  return CARRIER_UNIT_OPTS.find(o => o.value === unit) ?? CARRIER_UNIT_OPTS[0]
+}
+
+function computeCarrierGal(rate, unit, acres) {
+  const spec = carrierUnitSpec(unit)
+  const r = Number(rate)  || 0
+  const a = Number(acres) || 0
+  return spec.perK ? r * a * SQFT_PER_ACRE_K : r * a
+}
+
+/**
+ * Plan loads against a given total water and tank capacity.
+ * Returns null when inputs are unusable (so the UI can prompt instead).
+ *
+ *   loadsRequired   exact decimal (1232/160 = 7.7)
+ *   fullLoads       integer count of full-tank loads
+ *   partialGal      water in the final partial tank (0 if loads divide evenly)
+ *   hasPartial      whether a partial load is needed
+ *   totalLoads      fullLoads + (hasPartial ? 1 : 0)
+ *   perLoadFullGal  water per full load (= tankCapacity)
+ */
+function planLoadOut(totalWaterGal, tankCapacityGal) {
+  if (!Number.isFinite(totalWaterGal) || totalWaterGal <= 0) return null
+  if (!Number.isFinite(tankCapacityGal) || tankCapacityGal <= 0) return null
+  const loadsRequired = totalWaterGal / tankCapacityGal
+  const fullLoads     = Math.floor(loadsRequired + 1e-9)  // tolerate float dust
+  const partialGal    = Math.max(0, totalWaterGal - fullLoads * tankCapacityGal)
+  const hasPartial    = partialGal > 0.01
+  return {
+    loadsRequired,
+    fullLoads,
+    partialGal:    hasPartial ? partialGal : 0,
+    hasPartial,
+    totalLoads:    fullLoads + (hasPartial ? 1 : 0),
+    perLoadFullGal: tankCapacityGal,
+  }
+}
+
+/**
+ * Compact, human-readable carrier summary written to spray_records.carrier_volume.
+ * No schema change needed; the column has always been TEXT.
+ */
+function formatCarrierSummary(draft, summary) {
+  const rate = parseFloat(draft.carrierRate) || 0
+  if (rate <= 0) {
+    return summary.totalCarrierGal > 0
+      ? `${Math.round(summary.totalCarrierGal)} gal total`
+      : null
+  }
+  const unitLabel = carrierUnitSpec(draft.carrierUnit).label
+  const head      = `${rate} ${unitLabel} · ${Math.round(summary.totalCarrierGal)} gal total`
+  const plan      = summary.loadPlan
+  if (!plan) return head
+  const planStr = plan.hasPartial
+    ? `${plan.fullLoads} full + 1 partial (${Math.round(plan.partialGal)} gal)`
+    : `${plan.fullLoads} full`
+  return `${head} · ${planStr}`
+}
+
+/** Scale a product quantity by this load's share of total water. */
+function splitPerLoad(productQty, totalWaterGal, perLoadWaterGal) {
+  if (!Number.isFinite(productQty) || productQty <= 0) return 0
+  if (!Number.isFinite(totalWaterGal) || totalWaterGal <= 0) return 0
+  if (!Number.isFinite(perLoadWaterGal) || perLoadWaterGal <= 0) return 0
+  return productQty * (perLoadWaterGal / totalWaterGal)
+}
+
 // ── Draft seed (used when localStorage is empty) ────────────────────────
 function makeEmptyDraft() {
   return {
@@ -142,8 +225,10 @@ function makeEmptyDraft() {
     area:           '',
     acres:          0,
     target:         '',
-    waterVolume:    '',
-    carrierAmount:  '',
+    waterVolume:    '',          // fallback manual gallons if no carrierRate set
+    carrierRate:    '',          // numeric rate, e.g. "44"
+    carrierUnit:    'gallons_per_acre',
+    tankCapacity:   '',          // override gallons; falls back to sprayRig preset
     sprayRig:       'Spray Rig #1',
     conditions: { temp: '', wind: '', humidity: '' },
     observations:   '',
@@ -321,9 +406,20 @@ export default function BuildSpraySheet() {
       (s, r) => s + (r.cost ?? 0),
       0,
     )
-    const water = parseFloat(draft.waterVolume) || 0
-    const tankFillPct = sprayRigSpec.capacity > 0
-      ? Math.min(100, Math.round((water / sprayRigSpec.capacity) * 100))
+
+    // Carrier / load planning (Phase 3) — carrier rate × acres takes
+    // precedence; fall back to the legacy manual waterVolume field when
+    // no rate is set so existing drafts keep working.
+    const derivedCarrierGal = computeCarrierGal(draft.carrierRate, draft.carrierUnit, draft.acres)
+    const manualWaterGal    = parseFloat(draft.waterVolume) || 0
+    const totalCarrierGal   = derivedCarrierGal > 0 ? derivedCarrierGal : manualWaterGal
+    const manualTankCap     = parseFloat(draft.tankCapacity) || 0
+    const effectiveTankCap  = manualTankCap > 0 ? manualTankCap : sprayRigSpec.capacity
+    const loadPlan          = planLoadOut(totalCarrierGal, effectiveTankCap)
+
+    const water = totalCarrierGal
+    const tankFillPct = effectiveTankCap > 0
+      ? Math.min(100, Math.round((Math.min(water, effectiveTankCap) / effectiveTankCap) * 100))
       : 0
 
     // Per-measure buckets — keeps oz and gal totals visually separated
@@ -373,6 +469,9 @@ export default function BuildSpraySheet() {
       totalOz,
       totalGal,
       water,
+      totalCarrierGal,
+      effectiveTankCap,
+      loadPlan,
       tankFillPct,
       nutrientSource,
       totalN, totalP, totalK,
@@ -381,7 +480,15 @@ export default function BuildSpraySheet() {
       anyInsufficient: enrichedRows.some(r => r.insufficient),
       unitMismatches,
     }
-  }, [enrichedRows, draft.waterVolume, draft.acres, sprayRigSpec.capacity])
+  }, [
+    enrichedRows,
+    draft.waterVolume,
+    draft.acres,
+    draft.carrierRate,
+    draft.carrierUnit,
+    draft.tankCapacity,
+    sprayRigSpec.capacity,
+  ])
 
   // ── Mutations on draft ────────────────────────────────────────────────
   function patchDraft(patch) {
@@ -459,8 +566,11 @@ export default function BuildSpraySheet() {
           humidity: draft.conditions.humidity ? parseFloat(draft.conditions.humidity) : null,
         },
         rei:           summary.maxRei,
-        carrierVolume: draft.carrierAmount || null,
-        totalVolume:   summary.water,
+        // Structured carrier summary so SprayRecords can show the rate
+        // and load plan at a glance. e.g. "44 gal/acre · 1232 gal total
+        // · 7 full + 1 partial".
+        carrierVolume: formatCarrierSummary(draft, summary),
+        totalVolume:   summary.totalCarrierGal,
         notes:         draft.observations,
         area:          draft.area,
         acreage:       draft.acres,
@@ -634,6 +744,43 @@ export default function BuildSpraySheet() {
                     <option key={r.name} value={r.name}>
                       {r.name} ({r.capacity} gal)
                     </option>
+                  ))}
+                </select>
+              </Field>
+
+              <Field label="Tank capacity (gal)">
+                <input
+                  type="number"
+                  step="1"
+                  min="0"
+                  className={styles.naInput}
+                  value={draft.tankCapacity}
+                  onChange={e => patchDraft({ tankCapacity: e.target.value })}
+                  placeholder={String(sprayRigSpec.capacity)}
+                  title={`Defaults to ${sprayRigSpec.capacity} gal from ${sprayRigSpec.name}`}
+                />
+              </Field>
+
+              <Field label="Carrier rate">
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  className={styles.naInput}
+                  value={draft.carrierRate}
+                  onChange={e => patchDraft({ carrierRate: e.target.value })}
+                  placeholder="44"
+                />
+              </Field>
+
+              <Field label="Carrier unit">
+                <select
+                  className={styles.naInput}
+                  value={draft.carrierUnit}
+                  onChange={e => patchDraft({ carrierUnit: e.target.value })}
+                >
+                  {CARRIER_UNIT_OPTS.map(o => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
                   ))}
                 </select>
               </Field>
@@ -817,29 +964,44 @@ export default function BuildSpraySheet() {
               </table>
             </div>
 
+            {/* ── Load Plan (Phase 3) ── */}
+            <div className={styles.naSectionHeader}>
+              <h3 className={styles.naSectionTitle}>Load Plan</h3>
+              {summary.loadPlan && (
+                <span className={styles.naLoadPlanHint}>
+                  {summary.loadPlan.fullLoads} full
+                  {summary.loadPlan.hasPartial
+                    ? ` + 1 partial (${fmt(summary.loadPlan.partialGal, 0)} gal)`
+                    : ''}
+                </span>
+              )}
+            </div>
+            <LoadPlanPanel
+              summary={summary}
+              draft={draft}
+              enrichedRows={enrichedRows}
+            />
+
             {/* ── Conditions ── */}
             <div className={styles.naSectionHeader}>
               <h3 className={styles.naSectionTitle}>Conditions at application</h3>
             </div>
             <div className={styles.naConditionsGrid}>
-              <Field label="Water volume (gal)">
+              <Field label="Total water (gal)">
                 <input
                   type="number"
                   step="1"
                   min="0"
                   className={styles.naInput}
-                  value={draft.waterVolume}
+                  value={summary.totalCarrierGal > 0 && parseFloat(draft.carrierRate) > 0
+                    ? Math.round(summary.totalCarrierGal * 10) / 10
+                    : draft.waterVolume}
                   onChange={e => patchDraft({ waterVolume: e.target.value })}
-                  placeholder="120"
-                />
-              </Field>
-              <Field label="Carrier amount (gal/A)">
-                <input
-                  type="text"
-                  className={styles.naInput}
-                  value={draft.carrierAmount}
-                  onChange={e => patchDraft({ carrierAmount: e.target.value })}
-                  placeholder="2 gal/A"
+                  readOnly={parseFloat(draft.carrierRate) > 0}
+                  placeholder="auto from carrier rate"
+                  title={parseFloat(draft.carrierRate) > 0
+                    ? 'Derived from carrier rate × acres. Clear carrier rate to enter manually.'
+                    : 'Manual entry. Set a carrier rate above to derive automatically.'}
                 />
               </Field>
               <Field label="Temperature (°F)">
@@ -1012,6 +1174,106 @@ function SummaryRow({ label, value, tone }) {
     <div className={styles.naTankRow}>
       <span className={styles.naTankRowLabel}>{label}</span>
       <span className={styles.naTankRowValue} data-tone={tone}>{value}</span>
+    </div>
+  )
+}
+
+/**
+ * Load Plan panel (Phase 3).
+ *
+ * Renders three blocks:
+ *   1. Header stats — total carrier, tank capacity, loads required, full/partial.
+ *   2. Per-load table — one row per full load + one row for the partial,
+ *      with a column per product showing the scaled quantity in that load.
+ *   3. Empty-state prompt when carrier rate or tank capacity is missing.
+ *
+ * Per-load product splits are pure proportional scaling on qtyNeeded, so
+ * no unit conversion is involved. The Phase 2 unit-mismatch protection
+ * remains in effect at commit time.
+ */
+function LoadPlanPanel({ summary, draft, enrichedRows }) {
+  const plan = summary.loadPlan
+  if (!plan) {
+    return (
+      <div className={styles.naLoadPlan}>
+        <p className={styles.naUnavailable}>
+          Set a <strong>carrier rate</strong>, <strong>acres</strong>, and
+          <strong> tank capacity</strong> above to generate the load plan.
+        </p>
+      </div>
+    )
+  }
+
+  const productRows = enrichedRows.filter(r => r.name && r.qtyNeeded > 0)
+
+  return (
+    <div className={styles.naLoadPlan}>
+      <div className={styles.naLoadPlanStats}>
+        <LoadStat label="Total Carrier"   value={`${fmt(summary.totalCarrierGal, 0)} gal`} />
+        <LoadStat label="Tank Capacity"   value={`${fmt(summary.effectiveTankCap, 0)} gal`} />
+        <LoadStat label="Loads Required"  value={fmt(plan.loadsRequired, 2)} />
+        <LoadStat
+          label="Operational Breakdown"
+          value={`${plan.fullLoads} Full${plan.hasPartial ? ' + 1 Partial' : ''}`}
+        />
+      </div>
+
+      {productRows.length === 0 ? (
+        <p className={styles.naUnavailable}>
+          Add products to the tank mix to see per-load splits.
+        </p>
+      ) : (
+        <table className={styles.naLoadTable}>
+          <thead>
+            <tr>
+              <th>Load</th>
+              <th>Water</th>
+              {productRows.map(r => (
+                <th key={r.id}>{r.name}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {Array.from({ length: plan.fullLoads }).map((_, i) => (
+              <tr key={`full-${i}`}>
+                <td className={styles.naLoadCellLabel}>Load {i + 1}</td>
+                <td className={styles.naLoadCellNum}>
+                  {fmt(plan.perLoadFullGal, 0)} gal
+                </td>
+                {productRows.map(r => (
+                  <td key={r.id} className={styles.naLoadCellNum}>
+                    {fmt(splitPerLoad(r.qtyNeeded, summary.totalCarrierGal, plan.perLoadFullGal), 2)}
+                    {' '}{r.qtyUnit}
+                  </td>
+                ))}
+              </tr>
+            ))}
+            {plan.hasPartial && (
+              <tr className={styles.naLoadPartialRow}>
+                <td className={styles.naLoadCellLabel}>Final Load (Partial)</td>
+                <td className={styles.naLoadCellNum}>
+                  {fmt(plan.partialGal, 0)} gal
+                </td>
+                {productRows.map(r => (
+                  <td key={r.id} className={styles.naLoadCellNum}>
+                    {fmt(splitPerLoad(r.qtyNeeded, summary.totalCarrierGal, plan.partialGal), 2)}
+                    {' '}{r.qtyUnit}
+                  </td>
+                ))}
+              </tr>
+            )}
+          </tbody>
+        </table>
+      )}
+    </div>
+  )
+}
+
+function LoadStat({ label, value }) {
+  return (
+    <div className={styles.naLoadStat}>
+      <span className={styles.naLoadStatLabel}>{label}</span>
+      <span className={styles.naLoadStatValue}>{value}</span>
     </div>
   )
 }

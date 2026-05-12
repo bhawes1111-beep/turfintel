@@ -2022,8 +2022,116 @@ select.naInput option {
 
 .naConditionsGrid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
+}
+
+/* ── Load Plan (Phase 3) ────────────────────────────────────────────────── */
+
+.naLoadPlan {
+  border: 1px solid var(--color-border, rgba(255, 255, 255, 0.08));
+  border-radius: 4px;
+  background: var(--color-surface-elevated, rgba(255, 255, 255, 0.02));
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.naLoadPlanHint {
+  font-size: 11px;
+  color: var(--color-text-muted, #8a929a);
+  letter-spacing: 0.02em;
+}
+
+.naLoadPlanStats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
+}
+
+.naLoadStat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.naLoadStatLabel {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted, #8a929a);
+}
+
+.naLoadStatValue {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text, #e4e8ec);
+  font-variant-numeric: tabular-nums;
+}
+
+.naLoadTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.naLoadTable th,
+.naLoadTable td {
+  padding: 6px 10px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.naLoadTable th {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted, #8a929a);
+}
+
+.naLoadCellLabel {
+  font-weight: 600;
+  color: var(--color-text, #e4e8ec);
+  white-space: nowrap;
+}
+
+.naLoadCellNum {
+  color: rgba(212, 237, 212, 0.85);
+  white-space: nowrap;
+}
+
+.naLoadPartialRow td {
+  background: rgba(74, 158, 74, 0.05);
+}
+
+.naLoadPartialRow .naLoadCellLabel {
+  color: #4ade80;
+}
+
+/* Print: load plan should print cleanly on operator worksheets. */
+@media print {
+  .naLoadPlan {
+    background: white;
+    color: #111;
+    border-color: #999;
+  }
+  .naLoadStatLabel,
+  .naLoadTable th {
+    color: #555;
+  }
+  .naLoadStatValue,
+  .naLoadCellLabel,
+  .naLoadCellNum {
+    color: #111;
+  }
+  .naLoadPartialRow td {
+    background: #f5f9f0;
+  }
 }
 
 /* ── Observations ───────────────────────────────────────────────────────── */
@@ -2238,9 +2346,11 @@ select.naInput option {
 
 @media (max-width: 760px) {
   .naMetaGrid,
-  .naConditionsGrid { grid-template-columns: repeat(2, 1fr); }
+  .naConditionsGrid,
+  .naLoadPlanStats { grid-template-columns: repeat(2, 1fr); }
   .naFieldWide { grid-column: span 2; }
-  .naProductTable {
+  .naProductTable,
+  .naLoadTable {
     display: block;
     overflow-x: auto;
   }
