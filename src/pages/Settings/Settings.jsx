@@ -31,10 +31,11 @@ import { useAppPrefs } from '../../utils/prefs/useAppPrefs'
 import { EmptyState } from '../../components/shared/EmptyState'
 import PageShell from '../../components/layout/PageShell'
 
-import ProfileSection         from './sections/ProfileSection'
-import CourseSection          from './sections/CourseSection'
-import CourseScopeSection     from './sections/CourseScopeSection'
-import AppPreferencesSection  from './sections/AppPreferencesSection'
+import ProfileSection             from './sections/ProfileSection'
+import CourseSection              from './sections/CourseSection'
+import CourseScopeSection         from './sections/CourseScopeSection'
+import CourseConfigurationSection from './sections/CourseConfigurationSection'
+import AppPreferencesSection      from './sections/AppPreferencesSection'
 import WeatherDataSection     from './sections/WeatherDataSection'
 import TeamSection            from './sections/TeamSection'
 import DataManagementSection  from './sections/DataManagementSection'
@@ -84,6 +85,21 @@ const SECTIONS = [
       'course scope', 'scope', 'active course', 'operational course',
       'multi-course', 'multi course', 'tenant', 'tenancy',
       'crossroads', 'switch course', 'data scope',
+    ],
+  },
+  {
+    key: 'course-configuration',
+    label: 'Course Configuration',
+    component: CourseConfigurationSection,
+    keywords: [
+      'course configuration', 'configuration', 'course setup', 'setup',
+      'acreage', 'acres', 'total acreage',
+      'greens', 'tees', 'fairways', 'rough', 'sprayable', 'practice area',
+      'custom areas', 'nursery', 'bunker', 'landscape', 'native',
+      'short course', 'event lawn', 'overflow', 'expansion',
+      'spray units', 'default spray units', 'units',
+      'oz per acre', 'oz per 1000', 'gallons per acre', 'gallons per 1000',
+      'operational defaults',
     ],
   },
   {
