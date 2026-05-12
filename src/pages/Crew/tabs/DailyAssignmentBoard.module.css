@@ -1,0 +1,468 @@
+/* Phase 11 — Daily Assignment Board + Equipment Picker. */
+
+.section {
+  background: linear-gradient(160deg, var(--color-card) 0%, var(--color-bg) 100%);
+  border: 1px solid rgba(74, 158, 74, 0.2);
+  border-radius: 10px;
+  padding: 18px 20px;
+  margin-bottom: 18px;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.headerLeft { display: flex; flex-direction: column; gap: 4px; }
+
+.sectionTitle {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(74, 222, 128, 0.85);
+  margin: 0;
+}
+
+.sectionHint {
+  font-size: 11.5px;
+  color: rgba(212, 237, 212, 0.55);
+  margin: 0;
+}
+
+/* ── Date selector ──────────────────────────────────────────────────── */
+
+.dateNav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dateNavBtn {
+  width: 26px;
+  height: 26px;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(74, 158, 74, 0.35);
+  border-radius: 5px;
+  color: #4ade80;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.dateNavBtn:hover { background: rgba(34, 197, 94, 0.22); }
+
+.dateNavText {
+  font-variant-numeric: tabular-nums;
+  font-size: 12.5px;
+  color: rgba(212, 237, 212, 0.85);
+  padding: 0 6px;
+}
+
+.todayBtn {
+  padding: 3px 9px;
+  background: rgba(74, 158, 74, 0.1);
+  border: 1px solid rgba(74, 158, 74, 0.3);
+  border-radius: 10px;
+  color: #4ade80;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+/* ── Schedule notice ────────────────────────────────────────────────── */
+
+.scheduleNotice {
+  font-size: 11px;
+  color: rgba(245, 158, 11, 0.78);
+  background: rgba(245, 158, 11, 0.05);
+  border: 1px solid rgba(245, 158, 11, 0.18);
+  border-radius: 6px;
+  padding: 8px 11px;
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+.scheduleNotice strong { color: #fbbf24; }
+
+/* ── Empty ──────────────────────────────────────────────────────────── */
+
+.empty {
+  padding: 18px 14px;
+  text-align: center;
+  font-style: italic;
+  font-size: 12px;
+  color: rgba(212, 237, 212, 0.45);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  margin: 0;
+}
+
+/* ── Assignment table ───────────────────────────────────────────────── */
+
+.assignTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  table-layout: auto;
+}
+
+.assignTable thead th {
+  padding: 8px 10px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(212, 237, 212, 0.5);
+  border-bottom: 1px solid rgba(74, 158, 74, 0.18);
+}
+
+.assignTable tbody tr {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  transition: background 0.13s;
+}
+
+.assignTable tbody tr:hover {
+  background: rgba(74, 158, 74, 0.04);
+}
+
+.assignTable tbody tr[data-busy="true"] {
+  opacity: 0.55;
+}
+
+.assignTable td {
+  padding: 10px;
+  vertical-align: middle;
+}
+
+.cellName {
+  font-weight: 600;
+  color: #d4edd4;
+}
+
+.cellRole {
+  font-size: 11.5px;
+  color: rgba(212, 237, 212, 0.7);
+}
+
+.cellDept {
+  color: rgba(212, 237, 212, 0.45);
+  font-size: 11px;
+}
+
+/* Task select */
+
+.taskSelect {
+  width: 100%;
+  min-width: 180px;
+  padding: 6px 10px;
+  background: rgba(4, 12, 6, 0.85);
+  border: 1px solid rgba(74, 158, 74, 0.28);
+  border-radius: 5px;
+  color: rgba(212, 237, 212, 0.92);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.taskSelect:focus  { outline: none; border-color: rgba(74, 222, 128, 0.55); }
+.taskSelect:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Equipment chips (inline on the row) */
+
+.chipRow {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.chip {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 2px 9px;
+  background: rgba(34, 197, 94, 0.18);
+  border: 1px solid rgba(74, 222, 128, 0.4);
+  color: #4ade80;
+  border-radius: 12px;
+  white-space: nowrap;
+}
+
+.chip[data-status="in-use"] {
+  background: rgba(14, 165, 233, 0.18);
+  border-color: rgba(56, 189, 248, 0.4);
+  color: #38bdf8;
+}
+
+.chipsEmpty {
+  font-size: 11px;
+  color: rgba(212, 237, 212, 0.3);
+}
+
+/* Equipment button */
+
+.equipBtn {
+  padding: 6px 13px;
+  background: rgba(34, 197, 94, 0.14);
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  border-radius: 6px;
+  color: #4ade80;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.equipBtn:hover:not(:disabled) {
+  background: rgba(34, 197, 94, 0.22);
+}
+
+.equipBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Modal ──────────────────────────────────────────────────────────── */
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 24px;
+}
+
+.modal {
+  width: 100%;
+  max-width: 640px;
+  max-height: 86vh;
+  background: var(--color-card);
+  border: 1px solid rgba(74, 158, 74, 0.4);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px 22px 12px;
+  border-bottom: 1px solid rgba(74, 158, 74, 0.18);
+}
+
+.modalTitle {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #4ade80;
+  margin: 0;
+}
+
+.modalSub {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: rgba(212, 237, 212, 0.75);
+}
+
+.modalSub strong { color: #d4edd4; }
+
+.modalClose {
+  background: none;
+  border: none;
+  color: rgba(212, 237, 212, 0.6);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.modalClose:hover { color: #f87171; }
+
+.modalSearch {
+  padding: 12px 22px;
+  background: rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid rgba(74, 158, 74, 0.12);
+}
+
+.modalSearchInput {
+  width: 100%;
+  padding: 7px 12px;
+  background: rgba(4, 12, 6, 0.85);
+  border: 1px solid rgba(74, 158, 74, 0.28);
+  border-radius: 6px;
+  color: rgba(212, 237, 212, 0.95);
+  font-size: 12.5px;
+  font-family: inherit;
+}
+
+.modalSearchInput:focus { outline: none; border-color: rgba(74, 222, 128, 0.55); }
+
+.equipmentList {
+  list-style: none;
+  margin: 0;
+  padding: 8px 0;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.equipmentEmpty {
+  padding: 22px;
+  text-align: center;
+  font-style: italic;
+  font-size: 12px;
+  color: rgba(212, 237, 212, 0.4);
+}
+
+.equipmentRow {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 11px 22px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.equipmentRow:hover { background: rgba(74, 158, 74, 0.04); }
+.equipmentRow:last-child { border-bottom: none; }
+
+.equipmentMain { display: flex; flex-direction: column; gap: 3px; }
+
+.equipmentName {
+  font-weight: 600;
+  font-size: 13px;
+  color: #d4edd4;
+}
+
+.equipmentCategory {
+  font-size: 10.5px;
+  color: rgba(212, 237, 212, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.equipmentStatusCol {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: flex-start;
+}
+
+.statusPill {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 10px;
+}
+
+.statusPill[data-status="available"] {
+  background: rgba(34, 197, 94, 0.18);
+  color: #4ade80;
+}
+
+.statusPill[data-status="reserved"] {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fbbf24;
+}
+
+.statusPill[data-status="in-use"] {
+  background: rgba(14, 165, 233, 0.2);
+  color: #38bdf8;
+}
+
+.statusPill[data-status="maintenance"] {
+  background: rgba(239, 68, 68, 0.18);
+  color: #fca5a5;
+}
+
+.statusPill[data-status="unknown"] {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(212, 237, 212, 0.5);
+}
+
+.equipmentHint {
+  font-size: 10px;
+  color: rgba(212, 237, 212, 0.5);
+  font-style: italic;
+}
+
+.equipmentAction { display: flex; gap: 6px; }
+
+.btnPrimary {
+  padding: 6px 14px;
+  background: rgba(34, 197, 94, 0.2);
+  border: 1px solid rgba(34, 197, 94, 0.45);
+  border-radius: 6px;
+  color: #4ade80;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btnPrimary:hover:not(:disabled) { background: rgba(34, 197, 94, 0.3); }
+.btnPrimary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btnSecondary {
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  color: rgba(212, 237, 212, 0.78);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.btnSecondary:hover { background: rgba(255, 255, 255, 0.08); }
+
+.btnDanger {
+  padding: 6px 14px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.32);
+  border-radius: 6px;
+  color: #fca5a5;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btnDanger:hover:not(:disabled) { background: rgba(239, 68, 68, 0.22); }
+.btnDanger:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 22px;
+  border-top: 1px solid rgba(74, 158, 74, 0.18);
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────── */
+
+@media (max-width: 760px) {
+  .assignTable thead { display: none; }
+  .assignTable tbody tr {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 6px;
+    padding: 10px;
+  }
+  .assignTable td { padding: 4px 0; }
+  .taskSelect { min-width: 0; }
+  .equipmentRow { grid-template-columns: 1fr; gap: 6px; }
+}

@@ -11,16 +11,13 @@
 
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  useAssignmentsData,
-  patchEquipmentReservation,
-} from '../../../utils/assignments/assignmentsStore'
+import { useAssignmentsData } from '../../../utils/assignments/assignmentsStore'
 import { useCalendarData } from '../../../utils/calendar/calendarStore'
 import { useEquipmentData } from '../../../utils/equipment/equipmentStore'
 import { useCrewData } from '../../../utils/crew/crewStore'
-import { useToast } from '../../../utils/feedback/toastContext'
 import StatusBoard from '../../../components/primitives/StatusBoard'
 import { EmptyState } from '../../../components/shared/EmptyState'
+import DailyAssignmentBoard from './DailyAssignmentBoard'
 import styles from './CrewAssignments.module.css'
 
 const TODAY    = new Date().toISOString().slice(0, 10)
@@ -65,23 +62,10 @@ function groupBy(items, key) {
 
 export default function CrewAssignments() {
   const navigate                                      = useNavigate()
-  const toast                                         = useToast()
   const { crewAssignments, equipmentReservations, loading } = useAssignmentsData()
   const { events: calendarEvents }                    = useCalendarData()
   const { equipment }                                 = useEquipmentData()
   const { employees }                                 = useCrewData()
-
-  // ── Phase 10 link / unlink ────────────────────────────────────────────
-  async function linkReservation(reservationId, crewAssignmentId) {
-    try {
-      await patchEquipmentReservation(reservationId, {
-        crewAssignmentId: crewAssignmentId || null,
-      })
-      toast.success(crewAssignmentId ? 'Equipment linked to operator' : 'Equipment unlinked')
-    } catch (err) {
-      toast.error(`Link failed: ${err.message}`)
-    }
-  }
 
   const horizonEnd = useMemo(() => addDays(TODAY, HORIZON), [])
 
@@ -314,155 +298,15 @@ export default function CrewAssignments() {
         />
       )}
 
-      {/* ── A. Today's Assignments ── */}
-      <section className={styles.section}>
-        <header className={styles.sectionHeader}>
-          <h3 className={styles.sectionTitle}>Today's Assignments</h3>
-          <span className={styles.sectionMeta}>{fmtDate(TODAY)}</span>
-        </header>
-        {todaysEvents.filter(e => (assignmentsByEvent.get(e.id) ?? []).length > 0).length === 0 ? (
-          <EmptyState
-            compact
-            title="No crew assigned for today."
-            description="Assignments scheduled to today's events will appear here."
-          />
-        ) : (
-          <div className={styles.cardList}>
-            {todaysEvents.map(event => {
-              const assignments = (assignmentsByEvent.get(event.id) ?? [])
-                .filter(a => a.status !== 'cancelled')
-              if (assignments.length === 0) return null
-              return (
-                <article key={event.id} className={styles.eventCard}>
-                  <header className={styles.eventCardHeader}>
-                    <span className={styles.eventTitle}>{event.title}</span>
-                    <span className={styles.eventMeta}>
-                      {event.eventType ?? event.category ?? 'event'}
-                      {event.location ? ` · ${event.location}` : ''}
-                      {fmtTimeRange(event.startTime, event.endTime)
-                        ? ` · ${fmtTimeRange(event.startTime, event.endTime)}` : ''}
-                    </span>
-                  </header>
-                  <ul className={styles.assignmentList}>
-                    {assignments.map(a => {
-                      const emp  = resolveEmployee(a)
-                      const role = emp?.role ?? a.role
-                      const meta = [emp?.department, emp?.assignedArea].filter(Boolean).join(' · ')
-                      return (
-                        <li key={a.id} className={styles.assignmentRow} data-status={a.status}>
-                          <span className={styles.assignmentName}>
-                            {emp?.fullName ?? a.employeeName}
-                            {meta && <small className={styles.assignmentMeta}> · {meta}</small>}
-                          </span>
-                          {role && <span className={styles.assignmentRole}>{role}</span>}
-                          <span className={styles.assignmentStatus}>{a.status}</span>
-                          {a.notes && <span className={styles.assignmentNotes}>{a.notes}</span>}
-                        </li>
-                      )
-                    })}
-                  </ul>
-                </article>
-              )
-            })}
-          </div>
-        )}
-      </section>
+      {/* ── Phase 11 — Daily Assignment Board (employee-first) ── */}
+      <DailyAssignmentBoard
+        employees={employees}
+        events={calendarEvents}
+        crewAssignments={crewAssignments}
+        equipmentReservations={equipmentReservations}
+        equipment={equipment}
+      />
 
-      {/* ── B. Equipment Reservations ── */}
-      <section className={styles.section}>
-        <header className={styles.sectionHeader}>
-          <h3 className={styles.sectionTitle}>Equipment Reservations</h3>
-          <span className={styles.sectionMeta}>Today + next {HORIZON} days</span>
-        </header>
-        {(() => {
-          const eventsWithReservations = [...todaysEvents, ...upcomingEvents]
-            .filter(e => (reservationsByEvent.get(e.id) ?? []).some(r => r.status !== 'cancelled'))
-          if (eventsWithReservations.length === 0) {
-            return (
-              <EmptyState
-                compact
-                title="No active equipment reservations."
-                description="Reservations created from MaintenanceLogs or future scheduling flows will appear here."
-              />
-            )
-          }
-          return (
-            <div className={styles.cardList}>
-              {eventsWithReservations.map(event => {
-                const reservations = (reservationsByEvent.get(event.id) ?? [])
-                  .filter(r => r.status !== 'cancelled')
-                const eventCrew = (assignmentsByEvent.get(event.id) ?? [])
-                  .filter(a => a.status !== 'cancelled')
-                return (
-                  <article key={event.id} className={styles.eventCard}>
-                    <header className={styles.eventCardHeader}>
-                      <span className={styles.eventTitle}>{event.title}</span>
-                      <span className={styles.eventMeta}>
-                        {fmtDate(event.startDate ?? event.date)}
-                        {event.location ? ` · ${event.location}` : ''}
-                      </span>
-                    </header>
-                    <ul className={styles.assignmentList}>
-                      {reservations.map(r => {
-                        const eq = equipmentByName.get(r.equipmentName)
-                        const isOos = eq?.status === 'out-of-service'
-                        return (
-                          <li
-                            key={r.id}
-                            className={styles.assignmentRow}
-                            data-status={r.status}
-                            data-warn={isOos ? 'true' : undefined}
-                          >
-                            <button
-                              type="button"
-                              className={styles.equipmentLink}
-                              disabled={!eq}
-                              onClick={() => eq && navigate('/equipment', {
-                                state: { activeTab: 'Equipment List', equipmentId: eq.id },
-                              })}
-                              title={eq ? `${eq.name} — ${eq.status}` : r.equipmentName}
-                            >
-                              {isOos && '🔒 '}
-                              {r.equipmentName}
-                            </button>
-                            <span className={styles.assignmentStatus}>{r.status}</span>
-
-                            {/* Phase 10 — link reservation to a specific crew row */}
-                            {eventCrew.length > 0 ? (
-                              <select
-                                className={styles.operatorLink}
-                                value={r.crewAssignmentId ?? ''}
-                                onChange={e => linkReservation(r.id, e.target.value)}
-                                title="Link to a specific operator on this event"
-                              >
-                                <option value="">— Operator —</option>
-                                {eventCrew.map(a => {
-                                  const emp = resolveEmployee(a)
-                                  return (
-                                    <option key={a.id} value={a.id}>
-                                      {emp?.fullName ?? a.employeeName}
-                                    </option>
-                                  )
-                                })}
-                              </select>
-                            ) : (
-                              <span className={styles.operatorHint}>
-                                Add crew to assign operator
-                              </span>
-                            )}
-
-                            {r.notes && <span className={styles.assignmentNotes}>{r.notes}</span>}
-                          </li>
-                        )
-                      })}
-                    </ul>
-                  </article>
-                )
-              })}
-            </div>
-          )
-        })()}
-      </section>
 
       {/* ── C. Unassigned Operational Events ── */}
       <section className={styles.section}>
