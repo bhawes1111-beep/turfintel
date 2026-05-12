@@ -511,6 +511,15 @@
   color: var(--db-fg-mute);
 }
 
+/* Phase 10 — inline chips beside the operator's name */
+.crewChips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-left: 6px;
+  align-items: center;
+}
+
 /* ── Notes column ───────────────────────────────────────────────────── */
 
 .notesColumn {

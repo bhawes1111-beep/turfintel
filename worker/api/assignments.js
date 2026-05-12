@@ -39,16 +39,19 @@ function rowToCrewAssignment(row) {
 function rowToEquipmentReservation(row) {
   if (!row) return null
   return {
-    id:              row.id,
-    calendarEventId: row.calendar_event_id,
-    equipmentId:     row.equipment_id,
-    equipmentName:   row.equipment_name,
-    status:          row.status,
-    notes:           row.notes,
-    reservedAt:      row.reserved_at,
-    courseId:        row.course_id,
-    createdAt:       row.created_at,
-    updatedAt:       row.updated_at,
+    id:                row.id,
+    calendarEventId:   row.calendar_event_id,
+    // Phase 10 — soft FK to a specific crew_assignment so the Display
+    // Board can render this chip next to the operator who's using it.
+    crewAssignmentId:  row.crew_assignment_id,
+    equipmentId:       row.equipment_id,
+    equipmentName:     row.equipment_name,
+    status:            row.status,
+    notes:             row.notes,
+    reservedAt:        row.reserved_at,
+    courseId:          row.course_id,
+    createdAt:         row.created_at,
+    updatedAt:         row.updated_at,
   }
 }
 
@@ -63,12 +66,13 @@ const CREW_CORE_COLUMNS = {
 }
 
 const RES_CORE_COLUMNS = {
-  calendarEventId: 'calendar_event_id',
-  equipmentId:     'equipment_id',
-  equipmentName:   'equipment_name',
-  status:          'status',
-  notes:           'notes',
-  reservedAt:      'reserved_at',
+  calendarEventId:   'calendar_event_id',
+  crewAssignmentId:  'crew_assignment_id',
+  equipmentId:       'equipment_id',
+  equipmentName:     'equipment_name',
+  status:            'status',
+  notes:             'notes',
+  reservedAt:        'reserved_at',
 }
 
 // ── Crew Assignments ──────────────────────────────────────────────────────
@@ -195,15 +199,17 @@ export async function createEquipmentReservation(env, request) {
 
   await env.DB.prepare(`
     INSERT INTO equipment_reservations (
-      id, calendar_event_id, equipment_id, equipment_name, status, notes, course_id
-    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+      id, calendar_event_id, crew_assignment_id,
+      equipment_id, equipment_name, status, notes, course_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id,
     calendarEventId,
-    body.equipmentId ?? null,
+    body.crewAssignmentId ?? null,
+    body.equipmentId      ?? null,
     body.equipmentName,
-    body.status      ?? 'reserved',
-    body.notes       ?? null,
+    body.status           ?? 'reserved',
+    body.notes            ?? null,
     resolveCourseId(body),
   ).run()
 

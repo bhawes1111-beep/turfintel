@@ -291,3 +291,27 @@
 .signalText {
   color: var(--color-text, #e4e8ec);
 }
+
+/* ── Phase 10 — operator link on equipment reservations ──────────────── */
+
+.operatorLink {
+  margin-left: 8px;
+  padding: 3px 8px;
+  background: rgba(4, 12, 6, 0.85);
+  border: 1px solid rgba(74, 158, 74, 0.3);
+  border-radius: 5px;
+  color: rgba(212, 237, 212, 0.85);
+  font-size: 11.5px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.operatorLink:hover  { border-color: rgba(74, 222, 128, 0.5); }
+.operatorLink:focus  { outline: none; border-color: rgba(74, 222, 128, 0.65); }
+
+.operatorHint {
+  margin-left: 8px;
+  font-size: 10.5px;
+  font-style: italic;
+  color: rgba(212, 237, 212, 0.35);
+}

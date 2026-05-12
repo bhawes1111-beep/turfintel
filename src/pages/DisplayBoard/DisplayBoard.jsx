@@ -432,24 +432,53 @@ function ModeToggle({ boardMode, navigate }) {
 /* ── Task card ──────────────────────────────────────────────────────── */
 
 function TaskCard({ event, equipment, crew, resolveName }) {
+  // ── Phase 10 chip resolution ──────────────────────────────────────────
+  // Priority order per spec:
+  //   1. linked employee equipment       (chip rendered beside the crew row)
+  //   2. task-level reservation chips    (unlinked equipment_reservations)
+  //   3. event.equipment[] payload       (legacy, no reservations exist)
+  //   4. no chips
+  //
+  // A reservation linked to a crew_assignment we can locate goes under
+  // that employee's row. Everything else stays at the task header.
+  const crewIds          = new Set(crew.map(a => a.id))
+  const linkedByAssign   = new Map()
+  const taskLevelChips   = []
+  for (const r of equipment) {
+    if (r.crewAssignmentId && crewIds.has(r.crewAssignmentId)) {
+      if (!linkedByAssign.has(r.crewAssignmentId)) {
+        linkedByAssign.set(r.crewAssignmentId, [])
+      }
+      linkedByAssign.get(r.crewAssignmentId).push({
+        id: r.id, name: r.equipmentName, status: r.status,
+      })
+    } else {
+      taskLevelChips.push({
+        id: r.id, name: r.equipmentName, status: r.status,
+      })
+    }
+  }
+
+  // Fallback to event.equipment[] payload only when no reservations
+  // exist on the event at all.
+  const headerChips = taskLevelChips.length > 0
+    ? taskLevelChips
+    : (equipment.length === 0
+        ? (event.equipment ?? []).map((name, i) => ({ id: `eq-${i}`, name, status: null }))
+        : [])
+
   const crewRows = crew.map(a => ({
     id:       a.id,
     name:     a.employeeId ? (resolveName(a.employeeId) ?? a.employeeName) : a.employeeName,
     role:     a.role,
-    notes:    a.notes,
+    chips:    linkedByAssign.get(a.id) ?? [],
   }))
-  // Fallback to event.assignedStaff if no crew_assignments rows exist
-  // for the event — keeps cards populated when assignments are
-  // managed via the calendar payload only.
+  // Fallback to event.assignedStaff[] only when no crew_assignments rows
+  // exist for the event. These fallback rows can't carry linked chips
+  // (no row id to match on).
   const fallbackNames = crewRows.length === 0
-    ? (event.assignedStaff ?? []).map((name, i) => ({ id: `fb-${i}`, name, role: null, notes: null }))
+    ? (event.assignedStaff ?? []).map((name, i) => ({ id: `fb-${i}`, name, role: null, chips: [] }))
     : crewRows
-
-  // Equipment falls back to event.equipment array (payload-side) when
-  // no equipment_reservations exist.
-  const equipChips = equipment.length > 0
-    ? equipment.map(r => ({ id: r.id, name: r.equipmentName, status: r.status }))
-    : (event.equipment ?? []).map((name, i) => ({ id: `eq-${i}`, name, status: null }))
 
   return (
     <article className={styles.taskCard} data-priority={event.priority}>
@@ -467,9 +496,9 @@ function TaskCard({ event, equipment, crew, resolveName }) {
         </span>
       </header>
 
-      {equipChips.length > 0 && (
+      {headerChips.length > 0 && (
         <div className={styles.chipRow}>
-          {equipChips.map(c => (
+          {headerChips.map(c => (
             <span
               key={c.id}
               className={styles.chip}
@@ -492,6 +521,20 @@ function TaskCard({ event, equipment, crew, resolveName }) {
             <li key={c.id} className={styles.crewRow}>
               <span className={styles.crewName}>{c.name}</span>
               {c.role && <span className={styles.crewRole}>· {c.role}</span>}
+              {c.chips.length > 0 && (
+                <span className={styles.crewChips}>
+                  {c.chips.map(chip => (
+                    <span
+                      key={chip.id}
+                      className={styles.chip}
+                      data-status={chip.status}
+                      title={chip.status ? `${chip.name} · ${chip.status}` : chip.name}
+                    >
+                      {chip.name}
+                    </span>
+                  ))}
+                </span>
+              )}
             </li>
           ))}
         </ul>

@@ -1,18 +1,24 @@
-// CrewAssignments — Phase 5.5 read-side payoff for the assignments vertical.
+// CrewAssignments — assignments vertical read-side + Phase 10 linker.
 //
 // Surfaces persistent crew_assignments + equipment_reservations alongside
 // the calendar_events they belong to. Morning-meeting view: today's
 // crew, today's equipment, what's unassigned, where pressure is building.
 //
-// All data is read-only here. Writers live elsewhere (MaintenanceLogs,
-// future scheduling flows); this tab does not create or edit records.
+// Phase 10 adds an inline linker per equipment reservation so a
+// supervisor can tie a specific machine to a specific operator on the
+// same event (e.g. GTX 3 → Carlos). The Display Board then renders the
+// chip next to that employee instead of at the task level.
 
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAssignmentsData } from '../../../utils/assignments/assignmentsStore'
+import {
+  useAssignmentsData,
+  patchEquipmentReservation,
+} from '../../../utils/assignments/assignmentsStore'
 import { useCalendarData } from '../../../utils/calendar/calendarStore'
 import { useEquipmentData } from '../../../utils/equipment/equipmentStore'
 import { useCrewData } from '../../../utils/crew/crewStore'
+import { useToast } from '../../../utils/feedback/toastContext'
 import StatusBoard from '../../../components/primitives/StatusBoard'
 import { EmptyState } from '../../../components/shared/EmptyState'
 import styles from './CrewAssignments.module.css'
@@ -59,10 +65,23 @@ function groupBy(items, key) {
 
 export default function CrewAssignments() {
   const navigate                                      = useNavigate()
+  const toast                                         = useToast()
   const { crewAssignments, equipmentReservations, loading } = useAssignmentsData()
   const { events: calendarEvents }                    = useCalendarData()
   const { equipment }                                 = useEquipmentData()
   const { employees }                                 = useCrewData()
+
+  // ── Phase 10 link / unlink ────────────────────────────────────────────
+  async function linkReservation(reservationId, crewAssignmentId) {
+    try {
+      await patchEquipmentReservation(reservationId, {
+        crewAssignmentId: crewAssignmentId || null,
+      })
+      toast.success(crewAssignmentId ? 'Equipment linked to operator' : 'Equipment unlinked')
+    } catch (err) {
+      toast.error(`Link failed: ${err.message}`)
+    }
+  }
 
   const horizonEnd = useMemo(() => addDays(TODAY, HORIZON), [])
 
@@ -372,6 +391,8 @@ export default function CrewAssignments() {
               {eventsWithReservations.map(event => {
                 const reservations = (reservationsByEvent.get(event.id) ?? [])
                   .filter(r => r.status !== 'cancelled')
+                const eventCrew = (assignmentsByEvent.get(event.id) ?? [])
+                  .filter(a => a.status !== 'cancelled')
                 return (
                   <article key={event.id} className={styles.eventCard}>
                     <header className={styles.eventCardHeader}>
@@ -405,6 +426,31 @@ export default function CrewAssignments() {
                               {r.equipmentName}
                             </button>
                             <span className={styles.assignmentStatus}>{r.status}</span>
+
+                            {/* Phase 10 — link reservation to a specific crew row */}
+                            {eventCrew.length > 0 ? (
+                              <select
+                                className={styles.operatorLink}
+                                value={r.crewAssignmentId ?? ''}
+                                onChange={e => linkReservation(r.id, e.target.value)}
+                                title="Link to a specific operator on this event"
+                              >
+                                <option value="">— Operator —</option>
+                                {eventCrew.map(a => {
+                                  const emp = resolveEmployee(a)
+                                  return (
+                                    <option key={a.id} value={a.id}>
+                                      {emp?.fullName ?? a.employeeName}
+                                    </option>
+                                  )
+                                })}
+                              </select>
+                            ) : (
+                              <span className={styles.operatorHint}>
+                                Add crew to assign operator
+                              </span>
+                            )}
+
                             {r.notes && <span className={styles.assignmentNotes}>{r.notes}</span>}
                           </li>
                         )
