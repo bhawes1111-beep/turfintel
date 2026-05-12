@@ -19,6 +19,7 @@ import {
 } from '../../../utils/assignments/assignmentsStore'
 import { useToast } from '../../../utils/feedback/toastContext'
 import EquipmentPickerModal from './EquipmentPickerModal'
+import TasksManagerModal from './TasksManagerModal'
 import styles from './DailyAssignmentBoard.module.css'
 
 function shiftDate(iso, days) {
@@ -47,6 +48,7 @@ export default function DailyAssignmentBoard({
   const toast = useToast()
   const [selectedDate, setSelectedDate] = useState(TODAY_ISO)
   const [modalEmpId,   setModalEmpId]   = useState(null)
+  const [tasksModalOpen, setTasksModalOpen] = useState(false)
   const [busyEmpId,    setBusyEmpId]    = useState(null)
 
   // ── Day-scoped derivations ────────────────────────────────────────────
@@ -183,6 +185,14 @@ export default function DailyAssignmentBoard({
               onClick={() => setSelectedDate(TODAY_ISO())}
             >Today</button>
           )}
+          <button
+            type="button"
+            className={styles.tasksBtn}
+            onClick={() => setTasksModalOpen(true)}
+            title="Add or edit the day's tasks"
+          >
+            Tasks ({dayEvents.length})
+          </button>
         </div>
       </header>
 
@@ -284,6 +294,14 @@ export default function DailyAssignmentBoard({
           reservations={equipmentReservations}
           dayEventIds={dayEventIds}
           onClose={() => setModalEmpId(null)}
+        />
+      )}
+
+      {tasksModalOpen && (
+        <TasksManagerModal
+          selectedDate={selectedDate}
+          dayEvents={dayEvents}
+          onClose={() => setTasksModalOpen(false)}
         />
       )}
 
