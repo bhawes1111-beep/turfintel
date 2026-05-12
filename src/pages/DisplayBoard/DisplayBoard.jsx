@@ -1,22 +1,25 @@
-// Phase 5 — Display Board.
+// Phase 9 — Display Board redesign.
 //
-// Employee-facing daily operations view. Read-only. Surfaces what's
-// scheduled, who's assigned, what equipment is in play, and any
-// safety / weather signal the crew should see at the 5:30 AM meeting.
+// Crew-facing operations board styled like a real superintendent's
+// 5:30 AM briefing wall. Three columns + bottom date strip:
 //
-// Privacy invariant: this page never imports payRate, emergencyContact,
-// or inventory cost. The only crew field used is name (for assignment
-// row display). Anything sourced from /pages/Employees is forbidden.
+//   ┌─SIDEBAR──┬─TASK CARDS GRID──────┬─NOTES COLUMN─┐
+//   │ brand    │ Cards wrap into      │ Daily        │
+//   │ course   │ 2–3 columns; each    │ briefings    │
+//   │ date     │ card shows title,    │ + photos     │
+//   │ clock    │ equipment chips,     │ + sprays     │
+//   │ weather  │ assigned crew rows.  │              │
+//   │ equip    │                      │              │
+//   └──────────┴──────────────────────┴──────────────┘
+//   │ Sun  Mon  Tue  Wed  Thu  Fri  Sat              │
+//   └────────────────────────────────────────────────┘
 //
-// Two render modes:
-//   Standard (/display-board)        — inside Layout, sidebar visible
-//   Board    (/display-board/board)  — top-level route, sidebar hidden,
-//                                       larger text, designed for TV / tablet
-//
-// All data comes from existing persistent verticals — no new schema,
-// no new endpoints, no duplication.
+// Read-only. Sourced from existing persistent verticals:
+//   calendar_events, crew_assignments, equipment_reservations,
+//   spray_records, operations_daily_notes, operational_attachments,
+//   crew_employees (name only — no payRate / private fields).
 
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useCalendarData }    from '../../utils/calendar/calendarStore'
 import { useSpraysData }      from '../../utils/sprays/spraysStore'
@@ -29,10 +32,12 @@ import { useOperationsNotesData } from '../../utils/operations/notesStore'
 import { useAttachmentsForParent } from '../../utils/attachments/attachmentsStore'
 import styles from './DisplayBoard.module.css'
 
-const TODAY = new Date().toISOString().slice(0, 10)
+const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
-const PRIORITY_LABELS = { high: 'HIGH', medium: 'MED', routine: 'ROUTINE', low: 'LOW' }
-const PRIORITY_ORDER  = { high: 0, medium: 1, routine: 2, low: 3 }
+const PRIORITY_ORDER = { high: 0, medium: 1, routine: 2, low: 3 }
+const NOTE_PRIORITY_ORDER = {
+  urgent: 0, safety: 1, weather: 2, important: 3, routine: 4,
+}
 
 const EVENT_TYPE_LABEL = {
   spray:       'Spray',
@@ -42,14 +47,16 @@ const EVENT_TYPE_LABEL = {
   irrigation:  'Irrigation',
 }
 
-function fmtTime(t) {
-  if (!t) return ''
-  // accepts "HH:MM" or "HH:MM:SS"
-  const [h, m] = t.split(':')
-  const hour = parseInt(h, 10)
-  const am   = hour < 12
-  const h12  = ((hour + 11) % 12) + 1
-  return `${h12}:${m} ${am ? 'AM' : 'PM'}`
+const PRIORITY_LABEL = {
+  high: 'HIGH', medium: 'MED', routine: 'ROUTINE', low: 'LOW',
+}
+
+function isoToday() { return new Date().toISOString().slice(0, 10) }
+
+function shiftDate(iso, days) {
+  const d = new Date(`${iso}T00:00:00`)
+  d.setDate(d.getDate() + days)
+  return d.toISOString().slice(0, 10)
 }
 
 function prettyDate(iso) {
@@ -60,457 +67,32 @@ function prettyDate(iso) {
   })
 }
 
-export default function DisplayBoard({ boardMode = false }) {
-  const navigate                = useNavigate()
-  const { events }              = useCalendarData()
-  const { records: sprays }     = useSpraysData()
-  const { crewAssignments, equipmentReservations } = useAssignmentsData()
-  const { alerts }              = useAlertsData()
-  const { employees }           = useCrewData()
-  const { current, forecast }   = useWeather()
-  const selectedCourse          = useSelectedCourse()
-  const { notes: dailyNotes }   = useOperationsNotesData()
-
-  // ── Today filter (canonical) ──────────────────────────────────────────
-  const todayEvents = useMemo(() => {
-    return events
-      .filter(e => e.startDate === TODAY)
-      .sort((a, b) => {
-        const pa = PRIORITY_ORDER[a.priority] ?? 9
-        const pb = PRIORITY_ORDER[b.priority] ?? 9
-        if (pa !== pb) return pa - pb
-        return (a.startTime ?? '').localeCompare(b.startTime ?? '')
-      })
-  }, [events])
-
-  const todayEventIds = useMemo(
-    () => new Set(todayEvents.map(e => e.id)),
-    [todayEvents],
-  )
-
-  // ── Crew lookup (NAME ONLY — never pay rate or private fields) ────────
-  const employeeNameLookup = useMemo(() => {
-    const m = new Map()
-    for (const e of employees) {
-      m.set(e.id, e.name ?? e.fullName ?? '—')
-    }
-    return m
-  }, [employees])
-
-  // ── Spray operations today ────────────────────────────────────────────
-  const todaySprays = useMemo(() => {
-    return sprays
-      .filter(s => s.date === TODAY && s.status !== 'deleted')
-      .sort((a, b) => (a.startTime ?? '').localeCompare(b.startTime ?? ''))
-  }, [sprays])
-
-  // ── Equipment in play today ───────────────────────────────────────────
-  const todayEquipment = useMemo(() => {
-    return equipmentReservations
-      .filter(r => r.calendarEventId && todayEventIds.has(r.calendarEventId))
-      .filter(r => r.status !== 'cancelled' && r.status !== 'released')
-  }, [equipmentReservations, todayEventIds])
-
-  // ── Crew assignments today ────────────────────────────────────────────
-  const todayCrew = useMemo(() => {
-    return crewAssignments
-      .filter(a => a.calendarEventId && todayEventIds.has(a.calendarEventId))
-      .filter(a => a.status !== 'cancelled')
-  }, [crewAssignments, todayEventIds])
-
-  // ── Active alerts ─────────────────────────────────────────────────────
-  const liveAlerts = useMemo(() => {
-    return (alerts ?? [])
-      .filter(a => a.status !== 'dismissed' && a.status !== 'acknowledged')
-      .sort((a, b) => {
-        const pa = PRIORITY_ORDER[a.priority] ?? 9
-        const pb = PRIORITY_ORDER[b.priority] ?? 9
-        return pa - pb
-      })
-      .slice(0, 6)
-  }, [alerts])
-
-  // ── Today's daily briefings (Phase 6) ─────────────────────────────────
-  // Phase 6 makes these the primary Notices source. Alerts and event
-  // descriptions fall back only when no notes exist for today.
-  const NOTE_PRIORITY_ORDER = {
-    urgent: 0, safety: 1, weather: 2, important: 3, routine: 4,
-  }
-  const todayNotes = useMemo(() => {
-    return (dailyNotes ?? [])
-      .filter(n => n.status === 'active')
-      .filter(n => n.noteDate === TODAY)
-      .sort((a, b) => {
-        if (a.pinned !== b.pinned) return a.pinned ? -1 : 1
-        const pa = NOTE_PRIORITY_ORDER[a.priority] ?? 9
-        const pb = NOTE_PRIORITY_ORDER[b.priority] ?? 9
-        if (pa !== pb) return pa - pb
-        return (b.updatedAt ?? '').localeCompare(a.updatedAt ?? '')
-      })
-  }, [dailyNotes])
-
-  const rootCls = boardMode ? `${styles.root} ${styles.rootBoard}` : styles.root
-
-  return (
-    <div className={rootCls}>
-
-      {/* ── Header ─────────────────────────────────────────────────────── */}
-      <header className={styles.header}>
-        <div className={styles.headerLeft}>
-          <h1 className={styles.title}>Daily Board</h1>
-          <p className={styles.subtitle}>
-            {prettyDate(TODAY)}
-            {selectedCourse?.name ? ` · ${selectedCourse.shortName ?? selectedCourse.name}` : ''}
-          </p>
-        </div>
-        <div className={styles.headerActions}>
-          {!boardMode && (
-            <button
-              type="button"
-              className={styles.modeBtn}
-              onClick={() => navigate('/display-board/board')}
-              title="Switch to full-screen TV / tablet mode"
-            >
-              Board Mode →
-            </button>
-          )}
-          {boardMode && (
-            <Link
-              to="/display-board"
-              className={styles.modeBtn}
-              title="Return to standard navigation"
-            >
-              ← Exit Board Mode
-            </Link>
-          )}
-        </div>
-      </header>
-
-      {/* ── Weather + Alerts band ──────────────────────────────────────── */}
-      <div className={styles.topBand}>
-        <WeatherCard current={current} forecast={forecast} />
-        <AlertsCard alerts={liveAlerts} />
-      </div>
-
-      {/* ── Main grid ──────────────────────────────────────────────────── */}
-      <div className={styles.grid}>
-
-        {/* Today's Tasks */}
-        <DisplaySection
-          title="Today's Tasks"
-          hint={todayEvents.length === 0 ? 'No scheduled tasks for today' : `${todayEvents.length} scheduled`}
-          wide
-        >
-          {todayEvents.length === 0 ? (
-            <p className={styles.empty}>Nothing on the board for {prettyDate(TODAY)}.</p>
-          ) : (
-            todayEvents.map(ev => (
-              <TaskCard
-                key={ev.id}
-                event={ev}
-                crew={todayCrew.filter(a => a.calendarEventId === ev.id)}
-                equipment={todayEquipment.filter(r => r.calendarEventId === ev.id)}
-                resolveName={empId => employeeNameLookup.get(empId)}
-              />
-            ))
-          )}
-        </DisplaySection>
-
-        {/* Spray Operations */}
-        <DisplaySection
-          title="Spray Operations"
-          hint={todaySprays.length === 0 ? 'No spray applications today' : `${todaySprays.length} application${todaySprays.length !== 1 ? 's' : ''}`}
-        >
-          {todaySprays.length === 0 ? (
-            <p className={styles.empty}>No spray applications scheduled today.</p>
-          ) : (
-            todaySprays.map(s => (
-              <SprayCard key={s.id} spray={s} />
-            ))
-          )}
-        </DisplaySection>
-
-        {/* Equipment */}
-        <DisplaySection
-          title="Equipment in Play"
-          hint={todayEquipment.length === 0 ? 'No reservations today' : `${todayEquipment.length} reserved`}
-        >
-          {todayEquipment.length === 0 ? (
-            <p className={styles.empty}>No equipment reserved for today's tasks.</p>
-          ) : (
-            todayEquipment.map(r => {
-              const linkedEvent = todayEvents.find(e => e.id === r.calendarEventId)
-              return (
-                <div key={r.id} className={styles.equipmentRow}>
-                  <span className={styles.equipmentName}>{r.equipmentName}</span>
-                  <span className={styles.equipmentMeta}>
-                    {linkedEvent?.title ?? '—'}
-                  </span>
-                  <span className={styles.equipmentStatus} data-status={r.status}>{r.status}</span>
-                </div>
-              )
-            })
-          )}
-        </DisplaySection>
-
-        {/* Routing / Mow patterns — sourced from event tags */}
-        <DisplaySection
-          title="Routing & Mow Patterns"
-          hint="From today's task tags"
-        >
-          <RoutingPanel events={todayEvents} />
-        </DisplaySection>
-
-        {/* Safety / Daily Notices */}
-        <DisplaySection
-          title="Daily Notices"
-          hint={todayNotes.length > 0
-            ? `${todayNotes.length} briefing${todayNotes.length !== 1 ? 's' : ''} from supervisor`
-            : 'Safety, course conditions, supervisor notes'}
-        >
-          <NoticesPanel
-            notes={todayNotes}
-            events={todayEvents}
-            alerts={liveAlerts}
-          />
-        </DisplaySection>
-
-        {/* Photos placeholder */}
-        <DisplaySection
-          title="Photos"
-          hint="Field photos arrive in a future phase"
-        >
-          <p className={styles.empty}>
-            Photo upload &amp; task photo gallery will be added in a future
-            phase. This section is reserved for crew-shot photos that
-            superintendents can pin from the Operations Board.
-          </p>
-        </DisplaySection>
-
-      </div>
-
-      <footer className={styles.footer}>
-        <span>Display Board · read-only · employee-facing</span>
-        <span>Updated {new Date().toLocaleTimeString()}</span>
-      </footer>
-    </div>
-  )
+function fmtTime(t) {
+  if (!t) return ''
+  const [h, m] = t.split(':')
+  const hour = parseInt(h, 10)
+  const am   = hour < 12
+  const h12  = ((hour + 11) % 12) + 1
+  return `${h12}:${m} ${am ? 'AM' : 'PM'}`
 }
 
-/* ── Sub-components ─────────────────────────────────────────────────── */
-
-function DisplaySection({ title, hint, wide, children }) {
-  return (
-    <section className={`${styles.section} ${wide ? styles.sectionWide : ''}`}>
-      <div className={styles.sectionHeader}>
-        <h2 className={styles.sectionTitle}>{title}</h2>
-        {hint && <span className={styles.sectionHint}>{hint}</span>}
-      </div>
-      <div className={styles.sectionBody}>{children}</div>
-    </section>
-  )
-}
-
-function WeatherCard({ current, forecast }) {
-  const temp = current?.currentTemp
-  const has  = Number.isFinite(temp)
-  const nextDay = forecast?.[0]
-  return (
-    <div className={styles.weatherCard}>
-      <span className={styles.weatherLabel}>Weather</span>
-      {has ? (
-        <>
-          <span className={styles.weatherTemp}>{Math.round(temp)}°F</span>
-          {current?.wind && (
-            <span className={styles.weatherSub}>
-              {current.wind}{current.windDir ? ` ${current.windDir}` : ''}
-            </span>
-          )}
-          {current?.humidity != null && (
-            <span className={styles.weatherSub}>Humidity {current.humidity}%</span>
-          )}
-          {nextDay && (nextDay.label || nextDay.shortForecast) && (
-            <span className={styles.weatherSub}>
-              Tomorrow: {nextDay.label ?? nextDay.shortForecast}
-            </span>
-          )}
-        </>
-      ) : (
-        <span className={styles.empty}>Weather not loaded.</span>
-      )}
-    </div>
-  )
-}
-
-function AlertsCard({ alerts }) {
-  return (
-    <div className={styles.alertsCard}>
-      <span className={styles.alertsLabel}>Active Alerts</span>
-      {alerts.length === 0 ? (
-        <span className={styles.empty}>No active alerts.</span>
-      ) : (
-        <ul className={styles.alertList}>
-          {alerts.map(a => (
-            <li key={a.id} className={styles.alertItem} data-priority={a.priority}>
-              <strong>{a.title}</strong>
-              {a.message && <span>{a.message}</span>}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  )
-}
-
-function TaskCard({ event, crew, equipment, resolveName }) {
-  const crewNames = crew.map(a =>
-    a.employeeId ? (resolveName(a.employeeId) ?? a.employeeName) : a.employeeName,
-  )
-  return (
-    <div className={styles.taskCard} data-priority={event.priority}>
-      <div className={styles.taskCardTop}>
-        <span className={styles.taskTitle}>{event.title}</span>
-        <span className={styles.taskBadge} data-priority={event.priority}>
-          {PRIORITY_LABELS[event.priority] ?? 'TASK'}
-        </span>
-      </div>
-      <div className={styles.taskMetaRow}>
-        {event.startTime && <span>⏰ {fmtTime(event.startTime)}</span>}
-        {event.eventType && <span>· {EVENT_TYPE_LABEL[event.eventType] ?? event.eventType}</span>}
-        {event.location && <span>· {event.location}</span>}
-      </div>
-      {crewNames.length > 0 && (
-        <div className={styles.taskCrewRow}>
-          <span className={styles.taskLabel}>Crew:</span>
-          <span>{crewNames.join(' · ')}</span>
-        </div>
-      )}
-      {equipment.length > 0 && (
-        <div className={styles.taskCrewRow}>
-          <span className={styles.taskLabel}>Equipment:</span>
-          <span>{equipment.map(e => e.equipmentName).join(' · ')}</span>
-        </div>
-      )}
-      {event.description && (
-        <p className={styles.taskNotes}>{event.description}</p>
-      )}
-    </div>
-  )
-}
-
-function SprayCard({ spray }) {
-  const reiActive = (spray.rei ?? 0) > 0
-  return (
-    <div className={styles.sprayCard} data-rei={reiActive ? 'true' : undefined}>
-      <div className={styles.sprayHeader}>
-        <span className={styles.sprayName}>{spray.applicationName ?? spray.area ?? 'Spray Application'}</span>
-        {reiActive && (
-          <span className={styles.reiBadge}>REI {spray.rei}h</span>
-        )}
-      </div>
-      <div className={styles.taskMetaRow}>
-        {spray.applicator && <span>{spray.applicator}</span>}
-        {spray.area && <span>· {spray.area}</span>}
-        {spray.acreage != null && <span>· {spray.acreage} ac</span>}
-      </div>
-      {spray.carrierVolume && (
-        <p className={styles.sprayCarrier}>{spray.carrierVolume}</p>
-      )}
-      {Array.isArray(spray.products) && spray.products.length > 0 && (
-        <p className={styles.sprayProducts}>
-          {spray.products.map(p => p.name).filter(Boolean).join(' + ')}
-        </p>
-      )}
-    </div>
-  )
-}
-
-function RoutingPanel({ events }) {
-  // Pull routing-relevant tags from today's events.
-  const routes = events
-    .filter(e => (e.tags ?? []).length > 0 || /mow|roll/i.test(e.title ?? ''))
-    .map(e => ({
-      title:    e.title,
-      tags:     e.tags ?? [],
-      location: e.location,
-    }))
-
-  if (routes.length === 0) {
-    return <p className={styles.empty}>No routing or mow pattern notes on today's tasks.</p>
-  }
-  return routes.map((r, i) => (
-    <div key={i} className={styles.routingRow}>
-      <span className={styles.routingTitle}>{r.title}</span>
-      {r.location && <span className={styles.routingMeta}>{r.location}</span>}
-      {r.tags.length > 0 && (
-        <div className={styles.routingTags}>
-          {r.tags.map(t => (
-            <span key={t} className={styles.routingTag}>{t}</span>
-          ))}
-        </div>
-      )}
-    </div>
-  ))
-}
-
-function NoticesPanel({ notes, events, alerts }) {
-  // Phase 6 — operations_daily_notes is now the primary source. Each
-  // priority tier maps to a tone the renderer uses for the left border.
-  // Falls back to high-priority alerts + event descriptions only when
-  // the supervisor hasn't posted any briefings for today.
-  if (notes && notes.length > 0) {
-    return notes.map(n => (
-      <NoticeWithPhotos
-        key={n.id}
-        note={n}
-        tone={noticeTone(n.priority)}
-      />
-    ))
-  }
-
-  // ── Fallback: alerts + event descriptions (legacy Phase 5 behaviour)
-  const highAlerts = alerts.filter(a => a.priority === 'high')
-  const eventNotes = events
-    .filter(e => e.description && e.description.length > 0)
-    .slice(0, 4)
-
-  if (eventNotes.length === 0 && highAlerts.length === 0) {
-    return (
-      <p className={styles.empty}>
-        No briefings posted for today. Supervisors post operational notes from
-        Operations &gt; Daily Briefing.
-      </p>
-    )
-  }
-  return (
-    <>
-      {highAlerts.map(a => (
-        <div key={a.id} className={styles.noticeRow} data-tone="alert">
-          <strong>{a.title}</strong>
-          {a.message && <p>{a.message}</p>}
-        </div>
-      ))}
-      {eventNotes.map(e => (
-        <div key={e.id} className={styles.noticeRow}>
-          <strong>{e.title}</strong>
-          <p>{e.description}</p>
-        </div>
-      ))}
-    </>
-  )
+function weekOf(iso) {
+  const d = new Date(`${iso}T00:00:00`)
+  d.setDate(d.getDate() - d.getDay())   // back to Sunday
+  return Array.from({ length: 7 }, (_, i) => {
+    const day = new Date(d)
+    day.setDate(d.getDate() + i)
+    return day.toISOString().slice(0, 10)
+  })
 }
 
 function noticeTone(priority) {
   switch (priority) {
     case 'urgent':
-    case 'safety':
-      return 'alert'
-    case 'weather':
-      return 'weather'
-    case 'important':
-      return 'important'
-    default:
-      return undefined
+    case 'safety':    return 'alert'
+    case 'weather':   return 'weather'
+    case 'important': return 'important'
+    default:          return undefined
   }
 }
 
@@ -520,11 +102,428 @@ function titleFromBody(body) {
   return first.length > 60 ? first.slice(0, 57) + '…' : first
 }
 
-/**
- * Single notice row + attached photo strip (Phase 8).
- * Per-note hook so the Display Board only fetches attachments for the
- * briefings actually visible today.
- */
+// ── Main component ───────────────────────────────────────────────────────
+
+export default function DisplayBoard({ boardMode = false }) {
+  const navigate                                    = useNavigate()
+  const { events }                                  = useCalendarData()
+  const { records: sprays }                         = useSpraysData()
+  const { crewAssignments, equipmentReservations }  = useAssignmentsData()
+  const { alerts }                                  = useAlertsData()
+  const { employees }                               = useCrewData()
+  const { current, forecast }                       = useWeather()
+  const selectedCourse                              = useSelectedCourse()
+  const { notes: dailyNotes }                       = useOperationsNotesData()
+
+  // Display date — defaults to today, can shift via the date selector.
+  const [selectedDate, setSelectedDate] = useState(isoToday)
+
+  // Live clock — tick every second.
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  // ── Crew name lookup (ID → name; never reads payRate) ─────────────────
+  const employeeNameLookup = useMemo(() => {
+    const m = new Map()
+    for (const e of employees) m.set(e.id, e.name ?? e.fullName ?? '—')
+    return m
+  }, [employees])
+
+  // ── Date-scoped derivations ───────────────────────────────────────────
+  const dayEvents = useMemo(() => {
+    return events
+      .filter(e => e.startDate === selectedDate)
+      .sort((a, b) => {
+        const pa = PRIORITY_ORDER[a.priority] ?? 9
+        const pb = PRIORITY_ORDER[b.priority] ?? 9
+        if (pa !== pb) return pa - pb
+        return (a.startTime ?? '').localeCompare(b.startTime ?? '')
+      })
+  }, [events, selectedDate])
+
+  const dayEventIds = useMemo(
+    () => new Set(dayEvents.map(e => e.id)),
+    [dayEvents],
+  )
+
+  const daySprays = useMemo(() => {
+    return sprays
+      .filter(s => s.date === selectedDate && s.status !== 'deleted')
+      .sort((a, b) => (a.startTime ?? '').localeCompare(b.startTime ?? ''))
+  }, [sprays, selectedDate])
+
+  const dayEquipment = useMemo(() => {
+    return equipmentReservations
+      .filter(r => r.calendarEventId && dayEventIds.has(r.calendarEventId))
+      .filter(r => r.status !== 'cancelled' && r.status !== 'released')
+  }, [equipmentReservations, dayEventIds])
+
+  const dayCrew = useMemo(() => {
+    return crewAssignments
+      .filter(a => a.calendarEventId && dayEventIds.has(a.calendarEventId))
+      .filter(a => a.status !== 'cancelled')
+  }, [crewAssignments, dayEventIds])
+
+  const liveAlerts = useMemo(() => {
+    return (alerts ?? [])
+      .filter(a => a.status !== 'dismissed' && a.status !== 'acknowledged')
+      .slice(0, 6)
+  }, [alerts])
+
+  const dayNotes = useMemo(() => {
+    return (dailyNotes ?? [])
+      .filter(n => n.status === 'active')
+      .filter(n => n.noteDate === selectedDate)
+      .sort((a, b) => {
+        if (a.pinned !== b.pinned) return a.pinned ? -1 : 1
+        const pa = NOTE_PRIORITY_ORDER[a.priority] ?? 9
+        const pb = NOTE_PRIORITY_ORDER[b.priority] ?? 9
+        if (pa !== pb) return pa - pb
+        return (b.updatedAt ?? '').localeCompare(a.updatedAt ?? '')
+      })
+  }, [dailyNotes, selectedDate])
+
+  // Per-event lookup for equipment + crew (so the card render is O(N) total).
+  const equipByEvent = useMemo(() => {
+    const m = new Map()
+    for (const r of dayEquipment) {
+      if (!m.has(r.calendarEventId)) m.set(r.calendarEventId, [])
+      m.get(r.calendarEventId).push(r)
+    }
+    return m
+  }, [dayEquipment])
+
+  const crewByEvent = useMemo(() => {
+    const m = new Map()
+    for (const a of dayCrew) {
+      if (!m.has(a.calendarEventId)) m.set(a.calendarEventId, [])
+      m.get(a.calendarEventId).push(a)
+    }
+    return m
+  }, [dayCrew])
+
+  // ── Render ────────────────────────────────────────────────────────────
+  const rootCls = boardMode ? `${styles.root} ${styles.rootBoard}` : styles.root
+  const weekIsos = weekOf(selectedDate)
+  const todayIso = isoToday()
+
+  return (
+    <div className={rootCls}>
+
+      <aside className={styles.sidebar}>
+        <BrandHeader course={selectedCourse} />
+
+        <DateClockPanel
+          selectedDate={selectedDate}
+          onChange={setSelectedDate}
+          now={now}
+          todayIso={todayIso}
+        />
+
+        <ConditionsPanel current={current} forecast={forecast} />
+
+        <EquipmentStatusPanel
+          reservations={dayEquipment}
+          eventTitleLookup={Object.fromEntries(dayEvents.map(e => [e.id, e.title]))}
+        />
+
+        <ModeToggle boardMode={boardMode} navigate={navigate} />
+      </aside>
+
+      <main className={styles.taskBoard}>
+        <header className={styles.taskBoardHeader}>
+          <h1 className={styles.taskBoardTitle}>Daily Operations Board</h1>
+          <span className={styles.taskBoardSubtitle}>
+            {prettyDate(selectedDate)}
+            {dayEvents.length > 0 && ` · ${dayEvents.length} task${dayEvents.length !== 1 ? 's' : ''}`}
+          </span>
+        </header>
+
+        {dayEvents.length === 0 ? (
+          <div className={styles.emptyBoard}>
+            <p>No tasks scheduled for {prettyDate(selectedDate)}.</p>
+            <p className={styles.emptyHint}>
+              Tasks added in Operations &gt; Operations Board appear here automatically.
+            </p>
+          </div>
+        ) : (
+          <div className={styles.tasksGrid}>
+            {dayEvents.map(ev => (
+              <TaskCard
+                key={ev.id}
+                event={ev}
+                equipment={equipByEvent.get(ev.id) ?? []}
+                crew={crewByEvent.get(ev.id) ?? []}
+                resolveName={empId => employeeNameLookup.get(empId)}
+              />
+            ))}
+          </div>
+        )}
+      </main>
+
+      <aside className={styles.notesColumn}>
+        <NotesPanel notes={dayNotes} alerts={liveAlerts} events={dayEvents} />
+        {daySprays.length > 0 && (
+          <SprayPanel sprays={daySprays} />
+        )}
+        {liveAlerts.length > 0 && dayNotes.length > 0 && (
+          <AlertsPanel alerts={liveAlerts} />
+        )}
+      </aside>
+
+      <footer className={styles.dateStrip}>
+        {weekIsos.map((iso, i) => {
+          const dnum = Number(iso.slice(8, 10))
+          const isSelected = iso === selectedDate
+          const isToday    = iso === todayIso
+          return (
+            <button
+              key={iso}
+              type="button"
+              className={
+                `${styles.dateCell}`
+                + (isSelected ? ` ${styles.dateCellActive}` : '')
+                + (isToday    ? ` ${styles.dateCellToday}`  : '')
+              }
+              onClick={() => setSelectedDate(iso)}
+            >
+              <span className={styles.dateCellLabel}>{DAY_LABELS[i]}</span>
+              <span className={styles.dateCellNum}>{dnum}</span>
+            </button>
+          )
+        })}
+      </footer>
+    </div>
+  )
+}
+
+/* ── Sidebar pieces ─────────────────────────────────────────────────── */
+
+function BrandHeader({ course }) {
+  return (
+    <div className={styles.brand}>
+      <span className={styles.brandMark}>TurfIntel</span>
+      <span className={styles.brandCourse}>
+        {course?.shortName ?? course?.name ?? '—'}
+      </span>
+    </div>
+  )
+}
+
+function DateClockPanel({ selectedDate, onChange, now, todayIso }) {
+  const hh = String(now.getHours()).padStart(2, '0')
+  const mm = String(now.getMinutes()).padStart(2, '0')
+  const ss = String(now.getSeconds()).padStart(2, '0')
+  return (
+    <div className={styles.dateClockPanel}>
+      <div className={styles.dateRow}>
+        <button
+          type="button"
+          className={styles.dateNav}
+          onClick={() => onChange(shiftDate(selectedDate, -1))}
+          aria-label="Previous day"
+        >‹</button>
+        <span className={styles.dateText}>{selectedDate}</span>
+        <button
+          type="button"
+          className={styles.dateNav}
+          onClick={() => onChange(shiftDate(selectedDate, 1))}
+          aria-label="Next day"
+        >›</button>
+      </div>
+      {selectedDate !== todayIso && (
+        <button
+          type="button"
+          className={styles.todayBtn}
+          onClick={() => onChange(todayIso)}
+        >
+          Jump to today
+        </button>
+      )}
+      <div className={styles.clock}>
+        <span className={styles.clockH}>{hh}</span>
+        <span className={styles.clockSep}>:</span>
+        <span className={styles.clockM}>{mm}</span>
+        <span className={styles.clockS}>:{ss}</span>
+      </div>
+    </div>
+  )
+}
+
+function ConditionsPanel({ current, forecast }) {
+  const temp = current?.currentTemp
+  const has  = Number.isFinite(temp)
+  const next = forecast?.[0]
+  return (
+    <div className={styles.sidePanel}>
+      <span className={styles.sidePanelLabel}>Current Conditions</span>
+      {has ? (
+        <>
+          <span className={styles.bigTemp}>{Math.round(temp)}°F</span>
+          {current?.wind && (
+            <span className={styles.sidePanelSub}>
+              Wind {current.wind}{current.windDir ? ` ${current.windDir}` : ''}
+            </span>
+          )}
+          {current?.humidity != null && (
+            <span className={styles.sidePanelSub}>Humidity {current.humidity}%</span>
+          )}
+          {current?.dewPoint != null && (
+            <span className={styles.sidePanelSub}>Dew Point {current.dewPoint}°F</span>
+          )}
+        </>
+      ) : (
+        <span className={styles.sidePanelEmpty}>Weather not loaded.</span>
+      )}
+      {next && (next.label || next.shortForecast) && (
+        <div className={styles.forecastRow}>
+          <span className={styles.sidePanelSub}>
+            Tomorrow: <strong>{next.label ?? next.shortForecast}</strong>
+          </span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function EquipmentStatusPanel({ reservations, eventTitleLookup }) {
+  return (
+    <div className={styles.sidePanel}>
+      <span className={styles.sidePanelLabel}>Equipment Status</span>
+      {reservations.length === 0 ? (
+        <span className={styles.sidePanelEmpty}>No equipment reserved today.</span>
+      ) : (
+        <ul className={styles.equipList}>
+          {reservations.map(r => (
+            <li key={r.id} className={styles.equipRow}>
+              <span className={styles.equipChip}>{r.equipmentName}</span>
+              <span className={styles.equipMeta}>
+                {eventTitleLookup[r.calendarEventId] ?? '—'}
+              </span>
+              <span className={styles.equipStatus} data-status={r.status}>{r.status}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+function ModeToggle({ boardMode, navigate }) {
+  if (boardMode) {
+    return (
+      <Link to="/display-board" className={styles.modeBtn}>← Exit Board Mode</Link>
+    )
+  }
+  return (
+    <button
+      type="button"
+      className={styles.modeBtn}
+      onClick={() => navigate('/display-board/board')}
+    >
+      Board Mode →
+    </button>
+  )
+}
+
+/* ── Task card ──────────────────────────────────────────────────────── */
+
+function TaskCard({ event, equipment, crew, resolveName }) {
+  const crewRows = crew.map(a => ({
+    id:       a.id,
+    name:     a.employeeId ? (resolveName(a.employeeId) ?? a.employeeName) : a.employeeName,
+    role:     a.role,
+    notes:    a.notes,
+  }))
+  // Fallback to event.assignedStaff if no crew_assignments rows exist
+  // for the event — keeps cards populated when assignments are
+  // managed via the calendar payload only.
+  const fallbackNames = crewRows.length === 0
+    ? (event.assignedStaff ?? []).map((name, i) => ({ id: `fb-${i}`, name, role: null, notes: null }))
+    : crewRows
+
+  // Equipment falls back to event.equipment array (payload-side) when
+  // no equipment_reservations exist.
+  const equipChips = equipment.length > 0
+    ? equipment.map(r => ({ id: r.id, name: r.equipmentName, status: r.status }))
+    : (event.equipment ?? []).map((name, i) => ({ id: `eq-${i}`, name, status: null }))
+
+  return (
+    <article className={styles.taskCard} data-priority={event.priority}>
+      <header className={styles.taskCardHeader}>
+        <div className={styles.taskTitleBlock}>
+          <h2 className={styles.taskTitle}>{event.title}</h2>
+          <div className={styles.taskMetaRow}>
+            {event.startTime && <span>⏰ {fmtTime(event.startTime)}</span>}
+            {event.eventType && <span>{EVENT_TYPE_LABEL[event.eventType] ?? event.eventType}</span>}
+            {event.location && <span>{event.location}</span>}
+          </div>
+        </div>
+        <span className={styles.priorityPill} data-priority={event.priority}>
+          {PRIORITY_LABEL[event.priority] ?? 'TASK'}
+        </span>
+      </header>
+
+      {equipChips.length > 0 && (
+        <div className={styles.chipRow}>
+          {equipChips.map(c => (
+            <span
+              key={c.id}
+              className={styles.chip}
+              data-status={c.status}
+              title={c.status ? `${c.name} · ${c.status}` : c.name}
+            >
+              {c.name}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {event.description && (
+        <p className={styles.taskDescription}>{event.description}</p>
+      )}
+
+      {fallbackNames.length > 0 && (
+        <ul className={styles.crewList}>
+          {fallbackNames.map(c => (
+            <li key={c.id} className={styles.crewRow}>
+              <span className={styles.crewName}>{c.name}</span>
+              {c.role && <span className={styles.crewRole}>· {c.role}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </article>
+  )
+}
+
+/* ── Notes column pieces ────────────────────────────────────────────── */
+
+function NotesPanel({ notes, alerts, events }) {
+  return (
+    <section className={styles.notesPanel}>
+      <header className={styles.notesPanelHeader}>
+        <h3 className={styles.notesPanelTitle}>Daily Briefing</h3>
+        <span className={styles.notesPanelHint}>
+          {notes.length > 0
+            ? `${notes.length} from supervisor`
+            : 'Safety · routing · conditions'}
+        </span>
+      </header>
+      {notes.length > 0 ? (
+        notes.map(n => (
+          <NoticeWithPhotos key={n.id} note={n} tone={noticeTone(n.priority)} />
+        ))
+      ) : (
+        <FallbackNotices alerts={alerts} events={events} />
+      )}
+    </section>
+  )
+}
+
 function NoticeWithPhotos({ note, tone }) {
   const { attachments } = useAttachmentsForParent('daily_briefing', note.id)
   return (
@@ -533,11 +532,11 @@ function NoticeWithPhotos({ note, tone }) {
       data-tone={tone}
       data-pinned={note.pinned ? 'true' : undefined}
     >
-      <strong>
+      <strong className={styles.noticeTitle}>
         {note.pinned && '📌 '}
         {note.title || titleFromBody(note.body)}
       </strong>
-      <p>{note.body}</p>
+      <p className={styles.noticeBody}>{note.body}</p>
       {attachments.length > 0 && (
         <div className={styles.noticePhotos}>
           {attachments.map(att => (
@@ -555,5 +554,95 @@ function NoticeWithPhotos({ note, tone }) {
         </div>
       )}
     </div>
+  )
+}
+
+function FallbackNotices({ alerts, events }) {
+  const highAlerts = alerts.filter(a => a.priority === 'high')
+  const eventNotes = events
+    .filter(e => e.description && e.description.length > 0)
+    .slice(0, 4)
+  if (highAlerts.length === 0 && eventNotes.length === 0) {
+    return (
+      <p className={styles.notesEmpty}>
+        No briefings yet. Post one in Operations &gt; Daily Briefing.
+      </p>
+    )
+  }
+  return (
+    <>
+      {highAlerts.map(a => (
+        <div key={a.id} className={styles.noticeRow} data-tone="alert">
+          <strong className={styles.noticeTitle}>{a.title}</strong>
+          {a.message && <p className={styles.noticeBody}>{a.message}</p>}
+        </div>
+      ))}
+      {eventNotes.map(e => (
+        <div key={e.id} className={styles.noticeRow}>
+          <strong className={styles.noticeTitle}>{e.title}</strong>
+          <p className={styles.noticeBody}>{e.description}</p>
+        </div>
+      ))}
+    </>
+  )
+}
+
+function SprayPanel({ sprays }) {
+  return (
+    <section className={styles.notesPanel}>
+      <header className={styles.notesPanelHeader}>
+        <h3 className={styles.notesPanelTitle}>Spray Operations</h3>
+        <span className={styles.notesPanelHint}>
+          {sprays.length} application{sprays.length !== 1 ? 's' : ''}
+        </span>
+      </header>
+      {sprays.map(s => (
+        <div
+          key={s.id}
+          className={styles.sprayRow}
+          data-rei={(s.rei ?? 0) > 0 ? 'true' : undefined}
+        >
+          <div className={styles.sprayHeader}>
+            <span className={styles.sprayName}>
+              {s.applicationName ?? s.area ?? 'Spray Application'}
+            </span>
+            {(s.rei ?? 0) > 0 && (
+              <span className={styles.reiBadge}>REI {s.rei}h</span>
+            )}
+          </div>
+          <div className={styles.taskMetaRow}>
+            {s.applicator && <span>{s.applicator}</span>}
+            {s.area && <span>· {s.area}</span>}
+            {s.acreage != null && <span>· {s.acreage} ac</span>}
+          </div>
+          {Array.isArray(s.products) && s.products.length > 0 && (
+            <p className={styles.sprayProducts}>
+              {s.products.map(p => p.name).filter(Boolean).join(' + ')}
+            </p>
+          )}
+        </div>
+      ))}
+    </section>
+  )
+}
+
+function AlertsPanel({ alerts }) {
+  return (
+    <section className={styles.notesPanel}>
+      <header className={styles.notesPanelHeader}>
+        <h3 className={styles.notesPanelTitle}>Active Alerts</h3>
+        <span className={styles.notesPanelHint}>{alerts.length}</span>
+      </header>
+      {alerts.map(a => (
+        <div
+          key={a.id}
+          className={styles.noticeRow}
+          data-tone={a.priority === 'high' ? 'alert' : undefined}
+        >
+          <strong className={styles.noticeTitle}>{a.title}</strong>
+          {a.message && <p className={styles.noticeBody}>{a.message}</p>}
+        </div>
+      ))}
+    </section>
   )
 }

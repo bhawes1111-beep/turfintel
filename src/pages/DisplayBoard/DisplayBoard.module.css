@@ -1,506 +1,614 @@
-/* Phase 5 — Display Board styles.
-   High-contrast, glanceable, TV / tablet friendly. */
+/* Phase 9 — Display Board redesign.
+   Grid: sidebar | task board | notes column / bottom date strip.
+   High-contrast, TV-friendly, glanceable at 5:30 AM. */
 
 .root {
-  --db-base-size: 14px;
-  --db-pad: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  padding: 18px 22px 24px;
-  color: var(--color-text, #e4e8ec);
-  font-size: var(--db-base-size);
+  --db-base: 14px;
+  --db-sidebar-w: 280px;
+  --db-notes-w:   320px;
+  --db-bg:        #06120c;
+  --db-card:      #0d1a13;
+  --db-card-edge: rgba(74, 158, 74, 0.18);
+  --db-fg:        #d4edd4;
+  --db-fg-mute:   rgba(212, 237, 212, 0.55);
+  --db-accent:    #4ade80;
+  --db-accent-d:  rgba(74, 222, 128, 0.18);
+
+  display: grid;
+  grid-template-columns: var(--db-sidebar-w) 1fr var(--db-notes-w);
+  grid-template-rows: 1fr auto;
+  grid-template-areas:
+    "sidebar tasks notes"
+    "strip   strip strip";
+  gap: 14px;
+  padding: 14px;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(74, 158, 74, 0.05) 0%, transparent 45%),
+    var(--db-bg);
+  color: var(--db-fg);
+  font-size: var(--db-base);
   line-height: 1.4;
+  min-height: 100%;
 }
 
-/* Board mode: cover the viewport, drop the app shell, scale type up. */
+/* Board mode: cover the viewport, scale type up. */
 .rootBoard {
-  --db-base-size: 17px;
-  --db-pad: 26px;
+  --db-base: 16px;
+  --db-sidebar-w: 320px;
+  --db-notes-w:   360px;
+
   position: fixed;
   inset: 0;
-  background: #06120c;
-  background-image:
-    radial-gradient(circle at 0% 0%, rgba(74, 158, 74, 0.08) 0%, transparent 45%),
-    radial-gradient(circle at 100% 100%, rgba(34, 197, 94, 0.06) 0%, transparent 45%);
-  overflow-y: auto;
-  padding: 28px 36px 36px;
   z-index: 60;
+  padding: 20px;
+  overflow: auto;
 }
 
-/* ── Header ─────────────────────────────────────────────────────────── */
+/* ── Grid areas ─────────────────────────────────────────────────────── */
 
-.header {
+.sidebar      { grid-area: sidebar; }
+.taskBoard    { grid-area: tasks; }
+.notesColumn  { grid-area: notes; }
+.dateStrip    { grid-area: strip; }
+
+/* ── Sidebar ────────────────────────────────────────────────────────── */
+
+.sidebar {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  border-bottom: 1px solid rgba(74, 158, 74, 0.22);
-  padding-bottom: 10px;
-  margin-bottom: 4px;
-}
-
-.title {
-  font-size: 24px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: #4ade80;
-  margin: 0;
-}
-
-.rootBoard .title { font-size: 36px; }
-
-.subtitle {
-  font-size: 13px;
-  color: rgba(212, 237, 212, 0.6);
-  margin: 4px 0 0;
-}
-
-.rootBoard .subtitle { font-size: 18px; }
-
-.headerActions {
-  display: flex;
-  gap: 10px;
-}
-
-.modeBtn {
-  padding: 8px 16px;
-  background: rgba(34, 197, 94, 0.14);
-  border: 1px solid rgba(34, 197, 94, 0.35);
-  border-radius: 6px;
-  color: #4ade80;
-  font-size: 12.5px;
-  font-weight: 600;
-  cursor: pointer;
-  text-decoration: none;
-  letter-spacing: 0.02em;
-}
-
-.modeBtn:hover {
-  background: rgba(34, 197, 94, 0.24);
-}
-
-.rootBoard .modeBtn { font-size: 14px; padding: 10px 20px; }
-
-/* ── Top band: Weather + Alerts ─────────────────────────────────────── */
-
-.topBand {
-  display: grid;
-  grid-template-columns: 1fr 2fr;
-  gap: 14px;
-}
-
-.weatherCard,
-.alertsCard {
-  background: linear-gradient(160deg, var(--color-card) 0%, var(--color-bg) 100%);
-  border: 1px solid rgba(74, 158, 74, 0.18);
+  flex-direction: column;
+  gap: 12px;
+  background: linear-gradient(170deg, rgba(20, 38, 26, 0.85) 0%, rgba(10, 22, 14, 0.95) 100%);
+  border: 1px solid var(--db-card-edge);
   border-radius: 10px;
-  padding: 16px 18px;
+  padding: 18px 18px 14px;
+  min-width: 0;
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(74, 158, 74, 0.18);
+}
+
+.brandMark {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--db-accent);
+  text-transform: uppercase;
+}
+
+.rootBoard .brandMark { font-size: 22px; }
+
+.brandCourse {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--db-fg-mute);
+}
+
+.dateClockPanel {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(74, 158, 74, 0.12);
 }
 
-.weatherLabel,
-.alertsLabel {
+.dateRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dateText {
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  color: var(--db-fg);
+  letter-spacing: 0.02em;
+}
+
+.dateNav {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(74, 158, 74, 0.35);
+  border-radius: 6px;
+  color: var(--db-accent);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.dateNav:hover { background: rgba(34, 197, 94, 0.22); }
+
+.todayBtn {
+  align-self: flex-start;
+  padding: 3px 8px;
   font-size: 10.5px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: rgba(212, 237, 212, 0.55);
+  background: rgba(74, 158, 74, 0.1);
+  border: 1px solid rgba(74, 158, 74, 0.24);
+  border-radius: 10px;
+  color: var(--db-accent);
+  cursor: pointer;
+  letter-spacing: 0.02em;
+}
+
+.clock {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-top: 6px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.05em;
+  color: var(--db-fg);
   font-weight: 600;
 }
 
-.weatherTemp {
+.clockH, .clockM {
   font-size: 38px;
+  line-height: 1;
+}
+
+.rootBoard .clockH,
+.rootBoard .clockM { font-size: 54px; }
+
+.clockSep {
+  font-size: 32px;
+  color: var(--db-accent);
+  animation: tick 1s steps(2) infinite;
+}
+
+.rootBoard .clockSep { font-size: 48px; }
+
+.clockS {
+  font-size: 14px;
+  color: var(--db-fg-mute);
+  margin-left: 4px;
+}
+
+@keyframes tick {
+  50% { opacity: 0.35; }
+}
+
+/* Sidebar panel (Conditions, Equipment Status) */
+
+.sidePanel {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px 0 12px;
+  border-bottom: 1px solid rgba(74, 158, 74, 0.12);
+}
+
+.sidePanel:last-of-type { border-bottom: none; }
+
+.sidePanelLabel {
+  font-size: 10px;
   font-weight: 700;
-  color: #4ade80;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(74, 222, 128, 0.7);
+}
+
+.sidePanelSub {
+  font-size: 11.5px;
+  color: var(--db-fg-mute);
+}
+
+.sidePanelEmpty {
+  font-size: 11px;
+  color: rgba(212, 237, 212, 0.35);
+  font-style: italic;
+}
+
+.bigTemp {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--db-accent);
   font-variant-numeric: tabular-nums;
+  line-height: 1.1;
 }
 
-.rootBoard .weatherTemp { font-size: 56px; }
+.rootBoard .bigTemp { font-size: 44px; }
 
-.weatherSub {
-  font-size: 12.5px;
-  color: rgba(212, 237, 212, 0.7);
-}
+.forecastRow { margin-top: 4px; }
 
-.rootBoard .weatherSub { font-size: 15px; }
+/* Equipment status list */
 
-.alertList {
+.equipList {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
 }
 
-.alertItem {
-  padding: 8px 12px;
-  border-left: 3px solid rgba(74, 158, 74, 0.4);
-  background: rgba(255, 255, 255, 0.02);
-  border-radius: 4px;
-  font-size: 12.5px;
-  color: rgba(212, 237, 212, 0.88);
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.alertItem[data-priority="high"] {
-  border-left-color: #f87171;
-  background: rgba(239, 68, 68, 0.08);
-}
-
-.alertItem[data-priority="medium"] {
-  border-left-color: #fbbf24;
-}
-
-.rootBoard .alertItem { font-size: 15px; }
-
-/* ── Main grid ──────────────────────────────────────────────────────── */
-
-.grid {
+.equipRow {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  grid-template-columns: auto 1fr auto;
+  gap: 6px;
+  align-items: center;
+  font-size: 11px;
 }
 
-.section {
-  background: linear-gradient(160deg, var(--color-card) 0%, var(--color-bg) 100%);
-  border: 1px solid rgba(74, 158, 74, 0.18);
+.equipChip {
+  background: rgba(34, 197, 94, 0.18);
+  border: 1px solid rgba(74, 222, 128, 0.35);
   border-radius: 10px;
-  padding: 16px 18px;
+  padding: 2px 8px;
+  color: var(--db-accent);
+  font-weight: 600;
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.equipMeta {
+  font-size: 10.5px;
+  color: var(--db-fg-mute);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.equipStatus {
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--db-fg-mute);
+}
+
+.equipStatus[data-status="reserved"] { color: #fbbf24; }
+.equipStatus[data-status="in-use"]   { color: #38bdf8; }
+
+/* Mode toggle button */
+
+.modeBtn {
+  margin-top: auto;
+  align-self: stretch;
+  text-align: center;
+  padding: 9px 14px;
+  background: rgba(34, 197, 94, 0.14);
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  border-radius: 6px;
+  color: var(--db-accent);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  letter-spacing: 0.04em;
+}
+
+.modeBtn:hover { background: rgba(34, 197, 94, 0.22); }
+
+/* ── Task board ─────────────────────────────────────────────────────── */
+
+.taskBoard {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  min-height: 160px;
+  gap: 14px;
+  min-width: 0;
 }
 
-.sectionWide {
-  grid-column: span 2;
-}
-
-.sectionHeader {
+.taskBoardHeader {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  border-bottom: 1px dashed rgba(74, 158, 74, 0.15);
-  padding-bottom: 8px;
+  gap: 14px;
+  padding: 0 4px;
 }
 
-.sectionTitle {
-  font-size: 14px;
+.taskBoardTitle {
+  font-size: 22px;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(74, 222, 128, 0.85);
+  letter-spacing: 0.02em;
+  color: var(--db-accent);
   margin: 0;
 }
 
-.rootBoard .sectionTitle { font-size: 17px; }
+.rootBoard .taskBoardTitle { font-size: 30px; }
 
-.sectionHint {
-  font-size: 11px;
-  color: rgba(212, 237, 212, 0.45);
-  font-variant-numeric: tabular-nums;
+.taskBoardSubtitle {
+  font-size: 12px;
+  color: var(--db-fg-mute);
+  letter-spacing: 0.02em;
 }
 
-.rootBoard .sectionHint { font-size: 13px; }
+.rootBoard .taskBoardSubtitle { font-size: 14px; }
 
-.sectionBody {
+.tasksGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 14px;
+  align-content: start;
+}
+
+.emptyBoard {
+  padding: 60px 24px;
+  text-align: center;
+  background: var(--db-card);
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  color: var(--db-fg-mute);
+}
+
+.emptyBoard p { margin: 4px 0; }
+
+.emptyHint {
+  font-size: 11.5px;
+  color: rgba(212, 237, 212, 0.4);
+  font-style: italic;
+}
+
+/* ── Task card ──────────────────────────────────────────────────────── */
+
+.taskCard {
   display: flex;
   flex-direction: column;
   gap: 10px;
-}
-
-/* ── Task cards (in "Today's Tasks") ────────────────────────────────── */
-
-.taskCard {
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(255, 255, 255, 0.02);
+  background: linear-gradient(165deg, var(--db-card) 0%, #08160d 100%);
+  border: 1px solid var(--db-card-edge);
+  border-left: 3px solid var(--db-accent);
   border-radius: 8px;
-  padding: 12px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  padding: 14px 16px;
 }
 
 .taskCard[data-priority="high"] {
-  border-color: rgba(239, 68, 68, 0.32);
-  background: rgba(239, 68, 68, 0.05);
+  border-left-color: #f87171;
+  background: linear-gradient(165deg, rgba(239, 68, 68, 0.08) 0%, var(--db-card) 100%);
 }
 
-.taskCardTop {
+.taskCard[data-priority="medium"] {
+  border-left-color: #fbbf24;
+}
+
+.taskCardHeader {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  gap: 8px;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.taskTitleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
 }
 
 .taskTitle {
   font-size: 15px;
-  font-weight: 600;
-  color: #d4edd4;
+  font-weight: 700;
+  color: var(--db-fg);
+  margin: 0;
+  line-height: 1.25;
 }
 
 .rootBoard .taskTitle { font-size: 18px; }
-
-.taskBadge {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  padding: 3px 8px;
-  border-radius: 10px;
-  background: rgba(34, 197, 94, 0.18);
-  color: #4ade80;
-}
-
-.taskBadge[data-priority="high"] {
-  background: rgba(239, 68, 68, 0.18);
-  color: #fca5a5;
-}
-
-.taskBadge[data-priority="medium"] {
-  background: rgba(245, 158, 11, 0.18);
-  color: #fbbf24;
-}
-
-.rootBoard .taskBadge { font-size: 12px; padding: 4px 10px; }
 
 .taskMetaRow {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  font-size: 12px;
-  color: rgba(212, 237, 212, 0.6);
+  font-size: 11.5px;
+  color: var(--db-fg-mute);
 }
 
-.rootBoard .taskMetaRow { font-size: 14px; }
+.rootBoard .taskMetaRow { font-size: 13px; }
 
-.taskCrewRow {
-  display: flex;
-  gap: 6px;
-  font-size: 12.5px;
-  color: rgba(212, 237, 212, 0.85);
-}
-
-.taskLabel {
-  font-size: 10.5px;
+.priorityPill {
+  font-size: 9.5px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: rgba(212, 237, 212, 0.5);
-  font-weight: 600;
-  align-self: center;
-}
-
-.rootBoard .taskCrewRow { font-size: 14.5px; }
-
-.taskNotes {
-  font-size: 12.5px;
-  color: rgba(212, 237, 212, 0.7);
-  margin: 4px 0 0;
-  line-height: 1.45;
-}
-
-.rootBoard .taskNotes { font-size: 14.5px; }
-
-/* ── Spray cards ────────────────────────────────────────────────────── */
-
-.sprayCard {
-  border: 1px solid rgba(74, 158, 74, 0.22);
-  border-radius: 8px;
-  padding: 12px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.sprayCard[data-rei="true"] {
-  border-color: rgba(239, 68, 68, 0.35);
-  background: rgba(239, 68, 68, 0.05);
-}
-
-.sprayHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.sprayName {
-  font-size: 14px;
-  font-weight: 600;
-  color: #d4edd4;
-}
-
-.rootBoard .sprayName { font-size: 17px; }
-
-.reiBadge {
+  letter-spacing: 0.08em;
   padding: 3px 8px;
+  border-radius: 10px;
+  background: var(--db-accent-d);
+  color: var(--db-accent);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.priorityPill[data-priority="high"] {
   background: rgba(239, 68, 68, 0.22);
   color: #fca5a5;
-  border-radius: 10px;
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
-.rootBoard .reiBadge { font-size: 12px; padding: 4px 10px; }
-
-.sprayCarrier,
-.sprayProducts {
-  font-size: 12px;
-  color: rgba(212, 237, 212, 0.75);
-  margin: 2px 0 0;
-}
-
-.rootBoard .sprayCarrier,
-.rootBoard .sprayProducts { font-size: 14px; }
-
-/* ── Equipment list ─────────────────────────────────────────────────── */
-
-.equipmentRow {
-  display: grid;
-  grid-template-columns: 1fr 1fr auto;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border-bottom: 1px dashed rgba(255, 255, 255, 0.06);
-}
-
-.equipmentRow:last-child { border-bottom: none; }
-
-.equipmentName {
-  font-weight: 600;
-  color: #d4edd4;
-  font-size: 13px;
-}
-
-.equipmentMeta {
-  font-size: 12px;
-  color: rgba(212, 237, 212, 0.6);
-}
-
-.equipmentStatus {
-  font-size: 10.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  padding: 2px 8px;
-  border-radius: 10px;
-  background: rgba(34, 197, 94, 0.18);
-  color: #4ade80;
-  font-weight: 600;
-}
-
-.equipmentStatus[data-status="in-use"] {
-  background: rgba(245, 158, 11, 0.18);
+.priorityPill[data-priority="medium"] {
+  background: rgba(245, 158, 11, 0.22);
   color: #fbbf24;
 }
 
-.rootBoard .equipmentName { font-size: 15px; }
-.rootBoard .equipmentMeta { font-size: 13.5px; }
-
-/* ── Routing rows ───────────────────────────────────────────────────── */
-
-.routingRow {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 8px 10px;
-  border-left: 3px solid rgba(74, 158, 74, 0.4);
-  background: rgba(255, 255, 255, 0.02);
-  border-radius: 4px;
-}
-
-.routingTitle {
-  font-weight: 600;
-  font-size: 13px;
-  color: #d4edd4;
-}
-
-.routingMeta {
-  font-size: 11.5px;
-  color: rgba(212, 237, 212, 0.6);
-}
-
-.routingTags {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-}
-
-.routingTag {
-  background: rgba(74, 158, 74, 0.16);
-  color: #4ade80;
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-}
-
-/* ── Notices ────────────────────────────────────────────────────────── */
-
-.noticeRow {
-  border-left: 3px solid rgba(74, 158, 74, 0.4);
-  padding: 8px 10px;
-  background: rgba(255, 255, 255, 0.02);
-  border-radius: 4px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.noticeRow strong {
-  font-size: 13px;
-  color: #d4edd4;
-}
-
-.noticeRow p {
-  font-size: 12px;
-  color: rgba(212, 237, 212, 0.75);
+.taskDescription {
+  font-size: 12.5px;
+  color: rgba(212, 237, 212, 0.78);
   margin: 0;
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.18);
+  border-radius: 5px;
   line-height: 1.5;
 }
 
-.noticeRow[data-tone="alert"] {
-  border-left-color: #f87171;
-  background: rgba(239, 68, 68, 0.06);
+.rootBoard .taskDescription { font-size: 14px; }
+
+/* Equipment chips */
+
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
 }
 
-.noticeRow[data-tone="weather"] {
-  border-left-color: #38bdf8;
-  background: rgba(14, 165, 233, 0.05);
+.chip {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 3px 10px;
+  background: rgba(34, 197, 94, 0.16);
+  border: 1px solid rgba(74, 222, 128, 0.4);
+  color: var(--db-accent);
+  border-radius: 12px;
+  white-space: nowrap;
 }
 
-.noticeRow[data-tone="important"] {
-  border-left-color: #4ade80;
-  background: rgba(74, 222, 128, 0.04);
+.rootBoard .chip { font-size: 12px; padding: 4px 12px; }
+
+.chip[data-status="in-use"] {
+  background: rgba(14, 165, 233, 0.18);
+  border-color: rgba(56, 189, 248, 0.4);
+  color: #38bdf8;
 }
 
-.noticeRow[data-pinned="true"] {
-  box-shadow: 0 0 0 1px rgba(74, 222, 128, 0.4);
+.chip[data-status="cancelled"],
+.chip[data-status="released"] {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: var(--db-fg-mute);
 }
 
-/* ── Notice photo strip (Phase 8) ───────────────────────────────────── */
+/* Crew list */
+
+.crewList {
+  list-style: none;
+  margin: 0;
+  padding: 8px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.06);
+}
+
+.crewRow {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  font-size: 12.5px;
+  color: rgba(212, 237, 212, 0.88);
+}
+
+.rootBoard .crewRow { font-size: 14px; }
+
+.crewRow::before {
+  content: '▸';
+  color: var(--db-accent);
+  font-size: 10px;
+}
+
+.crewName {
+  font-weight: 600;
+}
+
+.crewRole {
+  font-size: 11px;
+  color: var(--db-fg-mute);
+}
+
+/* ── Notes column ───────────────────────────────────────────────────── */
+
+.notesColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.notesPanel {
+  background: linear-gradient(165deg, var(--db-card) 0%, #08160d 100%);
+  border: 1px solid var(--db-card-edge);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.notesPanelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 1px dashed rgba(74, 158, 74, 0.16);
+  padding-bottom: 8px;
+}
+
+.notesPanelTitle {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(74, 222, 128, 0.85);
+  margin: 0;
+}
+
+.rootBoard .notesPanelTitle { font-size: 14px; }
+
+.notesPanelHint {
+  font-size: 10.5px;
+  color: var(--db-fg-mute);
+  font-variant-numeric: tabular-nums;
+}
+
+.notesEmpty {
+  font-size: 12px;
+  color: rgba(212, 237, 212, 0.4);
+  font-style: italic;
+  margin: 0;
+}
+
+.noticeRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border-left: 3px solid rgba(74, 158, 74, 0.4);
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+}
+
+.noticeRow[data-tone="alert"]    { border-left-color: #f87171; background: rgba(239, 68, 68, 0.06); }
+.noticeRow[data-tone="weather"]  { border-left-color: #38bdf8; background: rgba(14, 165, 233, 0.05); }
+.noticeRow[data-tone="important"]{ border-left-color: #4ade80; background: rgba(74, 222, 128, 0.04); }
+.noticeRow[data-pinned="true"]   { box-shadow: 0 0 0 1px rgba(74, 222, 128, 0.4); }
+
+.noticeTitle {
+  font-size: 12.5px;
+  color: var(--db-fg);
+}
+
+.rootBoard .noticeTitle { font-size: 14.5px; }
+
+.noticeBody {
+  font-size: 11.5px;
+  color: rgba(212, 237, 212, 0.78);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.rootBoard .noticeBody { font-size: 13.5px; }
+
+/* Notice photos (Phase 8) */
 
 .noticePhotos {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 5px;
   margin-top: 4px;
 }
 
 .noticePhoto {
   display: block;
-  width: 72px;
-  height: 72px;
+  width: 60px;
+  height: 60px;
   border-radius: 4px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(0, 0, 0, 0.4);
 }
 
 .noticePhoto img {
@@ -510,59 +618,156 @@
   display: block;
 }
 
-.rootBoard .noticePhoto {
-  width: 100px;
-  height: 100px;
+.rootBoard .noticePhoto { width: 84px; height: 84px; }
+
+/* Spray rows */
+
+.sprayRow {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+  border-left: 3px solid rgba(74, 158, 74, 0.3);
 }
 
-.rootBoard .noticeRow strong { font-size: 15px; }
-.rootBoard .noticeRow p      { font-size: 14px; }
+.sprayRow[data-rei="true"] {
+  border-left-color: #f87171;
+  background: rgba(239, 68, 68, 0.05);
+}
 
-/* ── Empty state ────────────────────────────────────────────────────── */
+.sprayHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+}
 
-.empty {
-  font-size: 12px;
-  font-style: italic;
-  color: rgba(212, 237, 212, 0.4);
+.sprayName {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--db-fg);
+}
+
+.rootBoard .sprayName { font-size: 14px; }
+
+.reiBadge {
+  padding: 2px 7px;
+  background: rgba(239, 68, 68, 0.22);
+  color: #fca5a5;
+  border-radius: 9px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sprayProducts {
+  font-size: 11px;
+  color: rgba(212, 237, 212, 0.75);
   margin: 0;
 }
 
-.rootBoard .empty { font-size: 14px; }
+/* ── Bottom date strip ──────────────────────────────────────────────── */
 
-/* ── Footer ─────────────────────────────────────────────────────────── */
-
-.footer {
-  margin-top: 4px;
-  padding-top: 10px;
-  border-top: 1px dashed rgba(74, 158, 74, 0.15);
-  display: flex;
-  justify-content: space-between;
-  font-size: 10.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: rgba(212, 237, 212, 0.35);
+.dateStrip {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px 4px 4px;
 }
 
-.rootBoard .footer { font-size: 12px; }
+.dateCell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 6px;
+  background: var(--db-card);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--db-fg-mute);
+  font-family: inherit;
+  transition: background 0.13s, border-color 0.13s, color 0.13s;
+}
+
+.dateCell:hover {
+  background: rgba(74, 158, 74, 0.08);
+  border-color: rgba(74, 158, 74, 0.3);
+  color: var(--db-fg);
+}
+
+.dateCellLabel {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.rootBoard .dateCellLabel { font-size: 12px; }
+
+.dateCellNum {
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.rootBoard .dateCellNum { font-size: 30px; }
+
+.dateCellToday {
+  border-color: rgba(74, 222, 128, 0.35);
+}
+
+.dateCellToday .dateCellLabel {
+  color: var(--db-accent);
+}
+
+.dateCellActive {
+  background: rgba(34, 197, 94, 0.18);
+  border-color: rgba(74, 222, 128, 0.55);
+  color: var(--db-fg);
+  box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.18);
+}
+
+.dateCellActive .dateCellLabel { color: var(--db-accent); }
+.dateCellActive .dateCellNum   { color: var(--db-fg); }
 
 /* ── Responsive ─────────────────────────────────────────────────────── */
 
+@media (max-width: 1280px) {
+  .root {
+    grid-template-columns: var(--db-sidebar-w) 1fr;
+    grid-template-areas:
+      "sidebar tasks"
+      "sidebar notes"
+      "strip   strip";
+  }
+}
+
 @media (max-width: 900px) {
-  .grid {
+  .root {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      "sidebar"
+      "tasks"
+      "notes"
+      "strip";
   }
-  .sectionWide { grid-column: span 1; }
-  .topBand {
-    grid-template-columns: 1fr;
-  }
+  .tasksGrid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 600px) {
-  .root { padding: 12px 14px 20px; }
-  .equipmentRow { grid-template-columns: 1fr; }
+  .root { padding: 10px; gap: 10px; }
+  .clockH, .clockM { font-size: 30px; }
+  .clockSep { font-size: 24px; }
+  .dateCell { padding: 6px 4px; }
+  .dateCellNum { font-size: 16px; }
 }
 
-/* ── Print (for kiosk / printed daily sheet) ────────────────────────── */
+/* ── Print ──────────────────────────────────────────────────────────── */
 
 @media print {
   .root,
@@ -571,16 +776,19 @@
     background: white;
     color: #111;
   }
-  .header,
-  .section,
-  .weatherCard,
-  .alertsCard {
-    background: white;
-    border-color: #999;
-    color: #111;
+  .sidebar,
+  .taskCard,
+  .notesPanel,
+  .dateCell {
+    background: white !important;
+    color: #111 !important;
+    border-color: #999 !important;
   }
-  .title { color: #166534; }
-  .sectionTitle { color: #166534; }
+  .taskBoardTitle,
+  .brandMark,
+  .sidePanelLabel,
+  .notesPanelTitle { color: #166534; }
   .modeBtn { display: none; }
-  .empty { color: #555; }
+  .clock { color: #111; }
+  .clockSep { animation: none; opacity: 1; }
 }
