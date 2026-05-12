@@ -37,16 +37,31 @@ const TODAY    = new Date().toISOString().slice(0, 10)
 const DRAFT_KEY = 'turfintel:spray-draft-v1'
 
 // ── Course geometry ──────────────────────────────────────────────────────
-// Static for Crossroads GC; future phases can move this onto the
-// courses table or per-course config.
-const AREA_OPTS = [
+// The live `areaOpts` is derived inside the component from the selected
+// course's Course Configuration (built-in acreage fields +
+// customCourseAreas). FALLBACK_AREA_OPTS is used only when the active
+// course has no acreage configured yet — so a fresh install still gets
+// a usable picker.
+const FALLBACK_AREA_OPTS = [
   { label: 'Greens',        acres: 1.2  },
   { label: 'Tees',          acres: 2.4  },
   { label: 'Fairways',      acres: 28.0 },
   { label: 'All Roughs',    acres: 18.0 },
   { label: 'Greens + Tees', acres: 3.6  },
   { label: 'Practice Area', acres: 1.5  },
-  { label: 'Custom',        acres: 0    },
+]
+
+const CUSTOM_AREA_OPT = { label: 'Custom', acres: 0 }
+
+// Order matches the Course Configuration UI. acresTotal is intentionally
+// excluded — it's a reference metric, not a sprayable surface category.
+const BUILTIN_AREA_FIELDS = [
+  { key: 'acresGreens',    label: 'Greens' },
+  { key: 'acresTees',      label: 'Tees' },
+  { key: 'acresFairways',  label: 'Fairways' },
+  { key: 'acresRough',     label: 'Rough' },
+  { key: 'acresSprayable', label: 'Sprayable' },
+  { key: 'acresPractice',  label: 'Practice Area' },
 ]
 
 const SPRAY_RIGS = [
@@ -125,6 +140,31 @@ export default function BuildSpraySheet() {
   const selectedCourse                  = useSelectedCourse()
   const toast                           = useToast()
   const navigate                        = useNavigate()
+
+  // ── Spray area options (Phase 1b) ──────────────────────────────────────
+  // Built-in acreage fields + customCourseAreas from Course Configuration.
+  // Falls back to legacy hardcoded list when the active course has no
+  // acreage configured yet, so a fresh install still works.
+  const areaOpts = useMemo(() => {
+    const builtIn = BUILTIN_AREA_FIELDS
+      .map(({ key, label }) => {
+        const v = selectedCourse?.[key]
+        return Number.isFinite(v) && v > 0 ? { label, acres: v } : null
+      })
+      .filter(Boolean)
+
+    const custom = Array.isArray(selectedCourse?.customCourseAreas)
+      ? selectedCourse.customCourseAreas
+          .map(a => (a?.name && Number.isFinite(a.acres) && a.acres > 0
+            ? { label: a.name, acres: a.acres }
+            : null))
+          .filter(Boolean)
+      : []
+
+    const derived = [...builtIn, ...custom]
+    const base    = derived.length > 0 ? derived : FALLBACK_AREA_OPTS
+    return [...base, CUSTOM_AREA_OPT]
+  }, [selectedCourse])
 
   // ── Draft state (with localStorage autosave restore) ───────────────────
   const [draft, setDraft] = useState(() => {
@@ -268,7 +308,7 @@ export default function BuildSpraySheet() {
     })
   }
   function onAreaChange(label) {
-    const opt = AREA_OPTS.find(a => a.label === label)
+    const opt = areaOpts.find(a => a.label === label)
     patchDraft({ area: label, acres: opt?.acres ?? draft.acres })
   }
   function clearDraft() {
@@ -467,7 +507,7 @@ export default function BuildSpraySheet() {
                   onChange={e => onAreaChange(e.target.value)}
                 >
                   <option value="">— Select —</option>
-                  {AREA_OPTS.map(a => (
+                  {areaOpts.map(a => (
                     <option key={a.label} value={a.label}>{a.label}</option>
                   ))}
                 </select>
