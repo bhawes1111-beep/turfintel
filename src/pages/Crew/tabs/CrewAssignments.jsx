@@ -260,12 +260,23 @@ export default function CrewAssignments() {
     )
   }
 
-  const hasAnyData =
-    crewAssignments.length > 0 ||
-    equipmentReservations.length > 0
-
   return (
     <div className={styles.tabContent}>
+
+      {/* ── Phase 11 — Daily Assignment Board (employee-first) ──
+          This is the primary surface. The legacy "no crew or equipment
+          data yet" EmptyState used to gate the old task-first sections;
+          it's removed because the new board is always usable. The 4-tile
+          StatusBoard moves below so it acts as context for the
+          Unassigned / Pressure sections rather than blocking the new
+          flow. */}
+      <DailyAssignmentBoard
+        employees={employees}
+        events={calendarEvents}
+        crewAssignments={crewAssignments}
+        equipmentReservations={equipmentReservations}
+        equipment={equipment}
+      />
 
       {/* Summary stats */}
       <StatusBoard columns={4}>
@@ -290,22 +301,6 @@ export default function CrewAssignments() {
           tone={pressureSignals.length > 0 ? 'warn' : 'ok'}
         />
       </StatusBoard>
-
-      {!hasAnyData && (
-        <EmptyState
-          title="No crew or equipment data yet."
-          description="Assignments and reservations created from MaintenanceLogs and other workflows will appear here for morning planning."
-        />
-      )}
-
-      {/* ── Phase 11 — Daily Assignment Board (employee-first) ── */}
-      <DailyAssignmentBoard
-        employees={employees}
-        events={calendarEvents}
-        crewAssignments={crewAssignments}
-        equipmentReservations={equipmentReservations}
-        equipment={equipment}
-      />
 
 
       {/* ── C. Unassigned Operational Events ── */}
