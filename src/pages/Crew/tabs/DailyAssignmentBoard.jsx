@@ -13,6 +13,7 @@ import { useMemo, useState } from 'react'
 import {
   createCrewAssignment,
   deleteCrewAssignment,
+  createEquipmentReservation,
   patchEquipmentReservation,
 } from '../../../utils/assignments/assignmentsStore'
 import { useToast } from '../../../utils/feedback/toastContext'
@@ -54,6 +55,42 @@ function taskOptionLabel(event) {
     : `${event.title}${location}`
 }
 
+// ── Quick-assign category patterns ────────────────────────────────────
+// Heuristic title-matching keeps us schema-free: real-world task names
+// like "Mow Greens 1-9", "Rake Bunkers Front", "Hand Water Fairways"
+// all fall into these buckets by keyword. Spray is also event-type-aware
+// so a "Tribute Total" spray task without the word "spray" still
+// matches. 'misc' is the catch-all for tasks none of the above caught.
+const QUICK_CATEGORIES = [
+  { key: 'greens',   label: 'Greens',   pattern: /\bgreen/i },
+  { key: 'tees',     label: 'Tees',     pattern: /\btee/i },
+  { key: 'fairways', label: 'Fairways', pattern: /\bfairway|\bfwy\b/i },
+  { key: 'setup',    label: 'Setup',    pattern: /setup|cup|flag|pin|hole change/i },
+  { key: 'bunkers',  label: 'Bunkers',  pattern: /bunker|sand|rake/i },
+  { key: 'detail',   label: 'Detail',   pattern: /detail|trim|edge|weed|blow\b/i },
+  { key: 'spray',    label: 'Spray',    pattern: /spray|apply|chem/i },
+  { key: 'misc',     label: 'Misc',     pattern: null },
+]
+
+function eventMatchesCategory(event, key) {
+  if (!key) return true
+  const cat = QUICK_CATEGORIES.find(c => c.key === key)
+  if (!cat) return true
+  if (cat.pattern) {
+    if (cat.pattern.test(event.title ?? '')) return true
+    if (key === 'spray' && event.eventType === 'spray') return true
+    return false
+  }
+  // 'misc' = doesn't match any specific category
+  const matchedAnySpecific = QUICK_CATEGORIES
+    .filter(c => c.pattern)
+    .some(c =>
+      c.pattern.test(event.title ?? '')
+      || (c.key === 'spray' && event.eventType === 'spray'),
+    )
+  return !matchedAnySpecific
+}
+
 export default function DailyAssignmentBoard({
   employees,
   events,
@@ -66,11 +103,17 @@ export default function DailyAssignmentBoard({
   const [modalEmpId,   setModalEmpId]   = useState(null)
   const [tasksModalOpen, setTasksModalOpen] = useState(false)
   const [busyEmpId,    setBusyEmpId]    = useState(null)
+  const [quickFilter,  setQuickFilter]  = useState(null)   // category key | null
+  const [bulkBusy,     setBulkBusy]     = useState(null)   // 'copy' | 'clear' | null
 
   // ── Day-scoped derivations ────────────────────────────────────────────
+  // Dropdown only surfaces tasks the operator could still perform —
+  // cancelled / completed events are filtered out so the dropdown stays
+  // a real "what's on the board today" picker.
   const dayEvents = useMemo(() => {
     return events
       .filter(e => (e.startDate ?? e.date) === selectedDate)
+      .filter(e => e.status !== 'cancelled' && e.status !== 'completed')
       .sort((a, b) => (a.startTime ?? '').localeCompare(b.startTime ?? ''))
   }, [events, selectedDate])
 
@@ -113,6 +156,60 @@ export default function DailyAssignmentBoard({
     }
     return m
   }, [equipmentReservations])
+
+  // ── Quick-assign filter derivations ───────────────────────────────────
+  const categoryCounts = useMemo(() => {
+    const m = {}
+    for (const c of QUICK_CATEGORIES) {
+      m[c.key] = dayEvents.filter(e => eventMatchesCategory(e, c.key)).length
+    }
+    return m
+  }, [dayEvents])
+
+  // dropdownOptionsFor — returns the list of events visible in a single
+  // row's dropdown. Honors the current quick filter but always keeps the
+  // row's currently-assigned event in the list so the select value
+  // doesn't go orphan when the filter excludes it.
+  function dropdownOptionsFor(assignment) {
+    if (!quickFilter) return dayEvents
+    const base = dayEvents.filter(e => eventMatchesCategory(e, quickFilter))
+    if (assignment && !base.some(e => e.id === assignment.calendarEventId)) {
+      const pinned = dayEvents.find(e => e.id === assignment.calendarEventId)
+      if (pinned) return [pinned, ...base]
+    }
+    return base
+  }
+
+  // ── Summary chips ─────────────────────────────────────────────────────
+  const summary = useMemo(() => {
+    const assignedEmps = new Set()
+    const linkedByAssignmentIds = new Set()
+    for (const a of crewAssignments) {
+      if (a.status === 'cancelled') continue
+      if (!dayEventIds.has(a.calendarEventId)) continue
+      assignedEmps.add(a.employeeId || a.employeeName)
+      linkedByAssignmentIds.add(a.id)
+    }
+    const linkedEquipment = equipmentReservations.filter(r =>
+      r.crewAssignmentId
+      && linkedByAssignmentIds.has(r.crewAssignmentId)
+      && r.status !== 'cancelled'
+      && r.status !== 'released',
+    ).length
+    const eventsWithCrew = new Set(
+      crewAssignments
+        .filter(a => a.status !== 'cancelled' && dayEventIds.has(a.calendarEventId))
+        .map(a => a.calendarEventId),
+    )
+    const openTasks = dayEvents.filter(e => !eventsWithCrew.has(e.id)).length
+
+    return {
+      assigned:   assignedEmps.size,
+      unassigned: Math.max(0, dayEmployees.length - assignedEmps.size),
+      linkedEquipment,
+      openTasks,
+    }
+  }, [crewAssignments, equipmentReservations, dayEventIds, dayEvents, dayEmployees])
 
   // ── Mutations ─────────────────────────────────────────────────────────
   //
@@ -174,6 +271,120 @@ export default function DailyAssignmentBoard({
     return handleTaskChange(emp, '')
   }
 
+  // ── Copy Yesterday ────────────────────────────────────────────────────
+  //
+  // Walk yesterday's crew_assignments and, for each, try to recreate the
+  // same operator → task pairing today. Title-match locates today's
+  // event; missing tasks and missing employees skip safely. Equipment
+  // linkages are recreated as FRESH reservations on today's event, not
+  // duplicated rows. Worker dedupes by (event, equipment_name) — if a
+  // reservation already exists on today's event for the same equipment
+  // we PATCH it to link to the new operator instead of erroring.
+  async function handleCopyYesterday() {
+    const yesterdayIso = shiftDate(selectedDate, -1)
+    setBulkBusy('copy')
+    try {
+      const ydEvents = events.filter(e => (e.startDate ?? e.date) === yesterdayIso)
+      const ydEventIds = new Set(ydEvents.map(e => e.id))
+      const ydAssignments = crewAssignments.filter(a =>
+        a.status !== 'cancelled' && ydEventIds.has(a.calendarEventId),
+      )
+
+      let copied = 0
+      let skipped = 0
+      for (const oldA of ydAssignments) {
+        const oldEvent = ydEvents.find(e => e.id === oldA.calendarEventId)
+        if (!oldEvent) { skipped++; continue }
+        const oldTitle = (oldEvent.title ?? '').trim().toLowerCase()
+        const todayEvent = dayEvents.find(e =>
+          (e.title ?? '').trim().toLowerCase() === oldTitle,
+        )
+        if (!todayEvent) { skipped++; continue }
+        // Verify employee still exists in current roster (and isn't inactive).
+        const empStillThere = oldA.employeeId
+          ? employees.find(e => e.id === oldA.employeeId && e.status !== 'inactive')
+          : employees.find(e => e.name === oldA.employeeName && e.status !== 'inactive')
+        if (!empStillThere) { skipped++; continue }
+
+        try {
+          const newA = await createCrewAssignment({
+            calendarEventId: todayEvent.id,
+            employeeId:      oldA.employeeId ?? empStillThere.id,
+            employeeName:    oldA.employeeName,
+            role:            oldA.role ?? null,
+            status:          'assigned',
+          })
+
+          // Carry equipment links across — fresh reservations on today's
+          // event, linked to today's new assignment id.
+          const oldRes = equipmentReservations.filter(r =>
+            r.crewAssignmentId === oldA.id
+            && r.status !== 'cancelled'
+            && r.status !== 'released',
+          )
+          for (const oldR of oldRes) {
+            try {
+              const newR = await createEquipmentReservation({
+                calendarEventId:  todayEvent.id,
+                crewAssignmentId: newA.id,
+                equipmentId:      oldR.equipmentId ?? null,
+                equipmentName:    oldR.equipmentName,
+                status:           'reserved',
+              })
+              // Worker dedupes by (event, equipment_name) and returns
+              // the existing row. If that row doesn't already link to
+              // our new operator, PATCH it across.
+              if (newR?.id && newR.crewAssignmentId !== newA.id) {
+                await patchEquipmentReservation(newR.id, {
+                  crewAssignmentId: newA.id,
+                })
+              }
+            } catch {
+              // single equipment row failure shouldn't kill the whole
+              // copy — log + continue
+            }
+          }
+          copied += 1
+        } catch {
+          skipped += 1
+        }
+      }
+      toast.success(
+        `Copied ${copied} assignment${copied !== 1 ? 's' : ''} from yesterday${
+          skipped > 0 ? ` · ${skipped} skipped` : ''
+        }`,
+      )
+    } finally {
+      setBulkBusy(null)
+    }
+  }
+
+  // ── Clear Day ─────────────────────────────────────────────────────────
+  async function handleClearDay() {
+    if (!confirm(`Clear all assignments for ${prettyDate(selectedDate)}?`)) return
+    setBulkBusy('clear')
+    try {
+      const todayAssignmentRows = crewAssignments.filter(a =>
+        a.status !== 'cancelled' && dayEventIds.has(a.calendarEventId),
+      )
+      let cleared = 0
+      for (const a of todayAssignmentRows) {
+        try {
+          await unlinkReservationsFor(a.id)
+          await deleteCrewAssignment(a.id)
+          cleared += 1
+        } catch {
+          // continue past individual failures
+        }
+      }
+      toast.success(
+        `Cleared ${cleared} assignment${cleared !== 1 ? 's' : ''} for today`,
+      )
+    } finally {
+      setBulkBusy(null)
+    }
+  }
+
   function openEquipmentModalFor(emp) {
     const assignment = assignmentByEmpId.get(emp.id) ?? assignmentByEmpId.get(emp.name)
     if (!assignment) {
@@ -233,6 +444,26 @@ export default function DailyAssignmentBoard({
           >
             Tasks ({dayEvents.length})
           </button>
+          <button
+            type="button"
+            className={styles.tasksBtn}
+            data-variant="copy"
+            onClick={handleCopyYesterday}
+            disabled={bulkBusy !== null}
+            title="Carry yesterday's operator → task pairings into today"
+          >
+            {bulkBusy === 'copy' ? 'Copying…' : 'Copy Yesterday'}
+          </button>
+          <button
+            type="button"
+            className={styles.tasksBtn}
+            data-variant="clear"
+            onClick={handleClearDay}
+            disabled={bulkBusy !== null}
+            title="Clear every operator assignment for the selected day"
+          >
+            {bulkBusy === 'clear' ? 'Clearing…' : 'Clear Day'}
+          </button>
         </div>
       </header>
 
@@ -240,6 +471,62 @@ export default function DailyAssignmentBoard({
         <strong>Note:</strong> Persistent daily schedules are a future
         phase. The board shows every <em>active</em> employee as a
         fallback so morning assignment works today.
+      </div>
+
+      {/* Summary chips (Phase 12) */}
+      <div className={styles.summaryRow}>
+        <div className={styles.summaryChip} data-tone="info">
+          <span className={styles.summaryChipNum}>{summary.assigned}</span>
+          <span className={styles.summaryChipLabel}>Assigned</span>
+        </div>
+        <div className={styles.summaryChip} data-tone={summary.unassigned > 0 ? 'warn' : 'ok'}>
+          <span className={styles.summaryChipNum}>{summary.unassigned}</span>
+          <span className={styles.summaryChipLabel}>Unassigned</span>
+        </div>
+        <div className={styles.summaryChip} data-tone="info">
+          <span className={styles.summaryChipNum}>{summary.linkedEquipment}</span>
+          <span className={styles.summaryChipLabel}>Equipment Linked</span>
+        </div>
+        <div className={styles.summaryChip} data-tone={summary.openTasks > 0 ? 'warn' : 'ok'}>
+          <span className={styles.summaryChipNum}>{summary.openTasks}</span>
+          <span className={styles.summaryChipLabel}>Open Tasks</span>
+        </div>
+      </div>
+
+      {/* Quick-assign category strip (Phase 12) */}
+      <div className={styles.quickStrip} role="tablist">
+        {QUICK_CATEGORIES.map(c => {
+          const count    = categoryCounts[c.key] ?? 0
+          const isActive = quickFilter === c.key
+          return (
+            <button
+              key={c.key}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              className={`${styles.quickChip} ${isActive ? styles.quickChipOn : ''}`}
+              data-key={c.key}
+              disabled={count === 0}
+              onClick={() => setQuickFilter(isActive ? null : c.key)}
+              title={count > 0
+                ? `Filter dropdowns to ${count} ${c.label} task${count !== 1 ? 's' : ''}`
+                : `No ${c.label} tasks today`}
+            >
+              {c.label}
+              <span className={styles.quickChipCount}>{count}</span>
+            </button>
+          )
+        })}
+        {quickFilter && (
+          <button
+            type="button"
+            className={styles.quickChipClear}
+            onClick={() => setQuickFilter(null)}
+            title="Show all tasks"
+          >
+            Clear filter
+          </button>
+        )}
       </div>
 
       {dayEvents.length === 0 && (
@@ -294,7 +581,7 @@ export default function DailyAssignmentBoard({
                       onChange={e => handleTaskChange(emp, e.target.value)}
                     >
                       <option value="">— Unassigned —</option>
-                      {dayEvents.map(ev => (
+                      {dropdownOptionsFor(assignment).map(ev => (
                         <option key={ev.id} value={ev.id}>{taskOptionLabel(ev)}</option>
                       ))}
                     </select>
