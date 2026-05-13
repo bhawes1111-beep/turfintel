@@ -18,7 +18,21 @@ import {
   deleteEmployeeSchedule,
 } from '../../../utils/schedules/schedulesStore'
 import { useToast } from '../../../utils/feedback/toastContext'
+import SaveTemplateModal from './SaveTemplateModal'
+import TemplatesModal   from './TemplatesModal'
 import styles from './WeeklyScheduleEditor.module.css'
+
+const COMMON_ROLES = [
+  'Setup Crew',
+  'Greens',
+  'Tees',
+  'Fairways',
+  'Bunker Crew',
+  'Spray Tech',
+  'Mechanic',
+  'Irrigation',
+  'Detail',
+]
 
 const DAYS = [
   { dow: 0, short: 'Sun', long: 'Sunday' },
@@ -56,6 +70,8 @@ export default function WeeklyScheduleEditor() {
   const toast                         = useToast()
 
   const [editingKey, setEditingKey] = useState(null) // `${empId}:${dow}` | null
+  const [saveOpen,      setSaveOpen]      = useState(false)
+  const [templatesOpen, setTemplatesOpen] = useState(false)
 
   // Only active employees show up. Inactive crew shouldn't get scheduled.
   const activeEmployees = useMemo(() => {
@@ -80,13 +96,14 @@ export default function WeeklyScheduleEditor() {
     return scheduleIndex.get(empId)?.[dow] ?? null
   }
 
-  async function saveCell({ row, empId, dow, status, startTime, endTime }) {
+  async function saveCell({ row, empId, dow, status, startTime, endTime, role }) {
     try {
       if (row) {
         await patchEmployeeSchedule(row.id, {
           status,
           startTime: status === 'scheduled' ? (startTime || DEFAULT_START) : null,
           endTime:   status === 'scheduled' ? (endTime   || DEFAULT_END)   : null,
+          role:      role?.trim() || null,
         })
       } else {
         await createEmployeeSchedule({
@@ -95,6 +112,7 @@ export default function WeeklyScheduleEditor() {
           status,
           startTime:  status === 'scheduled' ? (startTime || DEFAULT_START) : null,
           endTime:    status === 'scheduled' ? (endTime   || DEFAULT_END)   : null,
+          role:       role?.trim() || null,
         })
       }
       setEditingKey(null)
@@ -175,6 +193,36 @@ export default function WeeklyScheduleEditor() {
         </div>
       </header>
 
+      {/* Template controls (Phase 14) */}
+      <div className={styles.templateBar}>
+        <button
+          type="button"
+          className={styles.tplBtn}
+          onClick={() => setSaveOpen(true)}
+          title="Snapshot the current schedule as a reusable template"
+        >
+          Save Template
+        </button>
+        <button
+          type="button"
+          className={styles.tplBtn}
+          data-variant="apply"
+          onClick={() => setTemplatesOpen(true)}
+          title="Apply or manage saved templates"
+        >
+          Apply Template
+        </button>
+        <button
+          type="button"
+          className={styles.tplBtn}
+          data-variant="manage"
+          onClick={() => setTemplatesOpen(true)}
+          title="View, apply, or delete saved templates"
+        >
+          Manage Templates
+        </button>
+      </div>
+
       {error && <p className={styles.errorBanner}>Schedule load error: {error}</p>}
 
       <div className={styles.tableWrap}>
@@ -232,6 +280,9 @@ export default function WeeklyScheduleEditor() {
                                   {row.endTime && `–${fmtTime(row.endTime)}`}
                                 </span>
                               )}
+                              {row.status === 'scheduled' && row.role && (
+                                <span className={styles.cellRoleTag}>{row.role}</span>
+                              )}
                             </>
                           ) : (
                             <span className={styles.cellEmpty}>—</span>
@@ -263,6 +314,18 @@ export default function WeeklyScheduleEditor() {
         or clear the day.
       </p>
 
+      {saveOpen && (
+        <SaveTemplateModal
+          schedules={schedules}
+          onClose={() => setSaveOpen(false)}
+        />
+      )}
+      {templatesOpen && (
+        <TemplatesModal
+          onClose={() => setTemplatesOpen(false)}
+        />
+      )}
+
     </div>
   )
 }
@@ -273,6 +336,7 @@ function CellEditor({ row, empId, dow, dayLabel, empName, onSave, onClear, onCan
   const [status,    setStatus]    = useState(row?.status    ?? 'scheduled')
   const [startTime, setStartTime] = useState(row?.startTime ?? DEFAULT_START)
   const [endTime,   setEndTime]   = useState(row?.endTime   ?? DEFAULT_END)
+  const [role,      setRole]      = useState(row?.role      ?? '')
   const isScheduled = status === 'scheduled'
 
   return (
@@ -291,29 +355,45 @@ function CellEditor({ row, empId, dow, dayLabel, empName, onSave, onClear, onCan
         ))}
       </select>
       {isScheduled && (
-        <div className={styles.cellEditorTimes}>
+        <>
+          <div className={styles.cellEditorTimes}>
+            <input
+              type="time"
+              className={styles.cellEditorField}
+              value={startTime}
+              onChange={e => setStartTime(e.target.value)}
+              aria-label="Start time"
+            />
+            <span className={styles.cellEditorDash}>→</span>
+            <input
+              type="time"
+              className={styles.cellEditorField}
+              value={endTime}
+              onChange={e => setEndTime(e.target.value)}
+              aria-label="End time"
+            />
+          </div>
           <input
-            type="time"
+            type="text"
             className={styles.cellEditorField}
-            value={startTime}
-            onChange={e => setStartTime(e.target.value)}
-            aria-label="Start time"
+            value={role}
+            onChange={e => setRole(e.target.value)}
+            placeholder="Role (optional) — Greens, Spray Tech…"
+            list="role-suggestions"
+            aria-label="Role for this shift"
           />
-          <span className={styles.cellEditorDash}>→</span>
-          <input
-            type="time"
-            className={styles.cellEditorField}
-            value={endTime}
-            onChange={e => setEndTime(e.target.value)}
-            aria-label="End time"
-          />
-        </div>
+          <datalist id="role-suggestions">
+            {COMMON_ROLES.map(r => (
+              <option key={r} value={r} />
+            ))}
+          </datalist>
+        </>
       )}
       <div className={styles.cellEditorActions}>
         <button
           type="button"
           className={styles.cellEditorSave}
-          onClick={() => onSave({ row, empId, dow, status, startTime, endTime })}
+          onClick={() => onSave({ row, empId, dow, status, startTime, endTime, role })}
         >Save</button>
         <button
           type="button"

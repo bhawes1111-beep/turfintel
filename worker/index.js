@@ -103,6 +103,14 @@ import {
   updateEmployeeSchedule,
   deleteEmployeeSchedule,
 } from './api/schedules.js'
+import {
+  listScheduleTemplates,
+  getScheduleTemplate,
+  createScheduleTemplate,
+  updateScheduleTemplate,
+  deleteScheduleTemplate,
+  applyScheduleTemplate,
+} from './api/scheduleTemplates.js'
 
 export default {
   async fetch(request, env, ctx) {
@@ -337,6 +345,28 @@ async function handleApi(request, env, url) {
     const id = decodeURIComponent(attachMatch[1])
     if (method === 'GET')    return getAttachment(env, id)
     if (method === 'DELETE') return deleteAttachment(env, id)
+  }
+
+  // ── /api/schedule-templates/:id/apply (must precede /:id) ────────────
+  const tplApplyMatch = pathname.match(/^\/api\/schedule-templates\/([^/]+)\/apply$/)
+  if (tplApplyMatch) {
+    const id = decodeURIComponent(tplApplyMatch[1])
+    if (method === 'POST') return applyScheduleTemplate(env, id, request)
+  }
+
+  // ── /api/schedule-templates ───────────────────────────────────────────
+  if (pathname === '/api/schedule-templates') {
+    if (method === 'GET')  return listScheduleTemplates(env, courseId)
+    if (method === 'POST') return createScheduleTemplate(env, request)
+  }
+
+  // ── /api/schedule-templates/:id ───────────────────────────────────────
+  const tplMatch = pathname.match(/^\/api\/schedule-templates\/([^/]+)$/)
+  if (tplMatch) {
+    const id = decodeURIComponent(tplMatch[1])
+    if (method === 'GET')    return getScheduleTemplate(env, id)
+    if (method === 'PATCH')  return updateScheduleTemplate(env, id, request)
+    if (method === 'DELETE') return deleteScheduleTemplate(env, id)
   }
 
   // ── /api/employee-schedules ───────────────────────────────────────────

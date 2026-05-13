@@ -138,6 +138,19 @@ export default function DailyAssignmentBoard({
 
   const usingScheduleFallback = weeklySchedules.length === 0
 
+  // Index: scheduleRoleByEmpId for selectedDow. Lets the row render
+  // surface a per-day operational role (e.g. "Spray Tech") that
+  // overrides the employee's static profile role.
+  const scheduleRoleByEmpId = useMemo(() => {
+    const m = new Map()
+    for (const s of weeklySchedules) {
+      if (s.dayOfWeek !== selectedDow) continue
+      if (s.status !== 'scheduled') continue
+      if (s.role) m.set(s.employeeId, s.role)
+    }
+    return m
+  }, [weeklySchedules, selectedDow])
+
   const dayEmployees = useMemo(() => {
     if (usingScheduleFallback) {
       return employees
@@ -604,8 +617,23 @@ export default function DailyAssignmentBoard({
                 >
                   <td className={styles.cellName}>{emp.name}</td>
                   <td className={styles.cellRole}>
-                    {emp.role || '—'}
-                    {emp.department && <span className={styles.cellDept}> · {emp.department}</span>}
+                    {(() => {
+                      const dayRole = scheduleRoleByEmpId.get(emp.id)
+                      if (dayRole) {
+                        return (
+                          <>
+                            <span className={styles.dayRolePill}>{dayRole}</span>
+                            {emp.role && <span className={styles.cellDept}> · {emp.role}</span>}
+                          </>
+                        )
+                      }
+                      return (
+                        <>
+                          {emp.role || '—'}
+                          {emp.department && <span className={styles.cellDept}> · {emp.department}</span>}
+                        </>
+                      )
+                    })()}
                   </td>
                   <td className={styles.taskCell}>
                     <select
