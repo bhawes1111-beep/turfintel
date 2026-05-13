@@ -30,6 +30,7 @@ import { useWeather }         from '../../utils/weather/useWeather'
 import { useSelectedCourse }  from '../../utils/courses/courseStore'
 import { useOperationsNotesData } from '../../utils/operations/notesStore'
 import { useAttachmentsForParent } from '../../utils/attachments/attachmentsStore'
+import OperationalIntelligencePanel from '../../components/shared/OperationalIntelligencePanel'
 import styles from './DisplayBoard.module.css'
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -265,6 +266,7 @@ export default function DisplayBoard({ boardMode = false }) {
       </main>
 
       <aside className={styles.notesColumn}>
+        <OperationalIntelligencePanel />
         <NotesPanel notes={dayNotes} alerts={liveAlerts} events={dayEvents} />
         {daySprays.length > 0 && (
           <SprayPanel sprays={daySprays} />
