@@ -96,6 +96,13 @@ import {
   createAttachment,
   deleteAttachment,
 } from './api/attachments.js'
+import {
+  listEmployeeSchedules,
+  getEmployeeSchedule,
+  createEmployeeSchedule,
+  updateEmployeeSchedule,
+  deleteEmployeeSchedule,
+} from './api/schedules.js'
 
 export default {
   async fetch(request, env, ctx) {
@@ -330,6 +337,21 @@ async function handleApi(request, env, url) {
     const id = decodeURIComponent(attachMatch[1])
     if (method === 'GET')    return getAttachment(env, id)
     if (method === 'DELETE') return deleteAttachment(env, id)
+  }
+
+  // ── /api/employee-schedules ───────────────────────────────────────────
+  if (pathname === '/api/employee-schedules') {
+    if (method === 'GET')  return listEmployeeSchedules(env, courseId)
+    if (method === 'POST') return createEmployeeSchedule(env, request)
+  }
+
+  // ── /api/employee-schedules/:id ───────────────────────────────────────
+  const schedMatch = pathname.match(/^\/api\/employee-schedules\/([^/]+)$/)
+  if (schedMatch) {
+    const id = decodeURIComponent(schedMatch[1])
+    if (method === 'GET')    return getEmployeeSchedule(env, id)
+    if (method === 'PATCH')  return updateEmployeeSchedule(env, id, request)
+    if (method === 'DELETE') return deleteEmployeeSchedule(env, id)
   }
 
   // ── /api/operations-notes ─────────────────────────────────────────────

@@ -259,6 +259,19 @@
 
 .scheduleNotice strong { color: #fbbf24; }
 
+.scheduleNoticeOk {
+  font-size: 11px;
+  color: rgba(74, 222, 128, 0.78);
+  background: rgba(34, 197, 94, 0.06);
+  border: 1px solid rgba(74, 222, 128, 0.22);
+  border-radius: 6px;
+  padding: 7px 11px;
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+.scheduleNoticeOk strong { color: #4ade80; }
+
 /* ── Empty ──────────────────────────────────────────────────────────── */
 
 .empty {

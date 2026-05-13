@@ -17,6 +17,7 @@ import {
   patchEquipmentReservation,
 } from '../../../utils/assignments/assignmentsStore'
 import { useToast } from '../../../utils/feedback/toastContext'
+import { useEmployeeSchedulesData } from '../../../utils/schedules/schedulesStore'
 import EquipmentPickerModal from './EquipmentPickerModal'
 import TasksManagerModal from './TasksManagerModal'
 import styles from './DailyAssignmentBoard.module.css'
@@ -99,6 +100,7 @@ export default function DailyAssignmentBoard({
   equipment,
 }) {
   const toast = useToast()
+  const { schedules: weeklySchedules } = useEmployeeSchedulesData()
   const [selectedDate, setSelectedDate] = useState(TODAY_ISO)
   const [modalEmpId,   setModalEmpId]   = useState(null)
   const [tasksModalOpen, setTasksModalOpen] = useState(false)
@@ -122,13 +124,36 @@ export default function DailyAssignmentBoard({
     [dayEvents],
   )
 
-  // Scheduled employees → no persistent schedule table yet, so we
-  // surface every active employee as the fallback per spec.
+  // Scheduled employees (Phase 13):
+  //   - If the employee_schedules table has any rows for this course,
+  //     the board surfaces employees whose recurring schedule for the
+  //     selected day-of-week is status='scheduled'.
+  //   - If the table is empty, fall back to every active employee so
+  //     morning assignment still works on day one.
+  // status='off' / 'vacation' / 'sick' rows are intentionally excluded
+  // from the day's roster — those employees aren't working that day.
+  const selectedDow = useMemo(() => {
+    return new Date(`${selectedDate}T00:00:00`).getDay()
+  }, [selectedDate])
+
+  const usingScheduleFallback = weeklySchedules.length === 0
+
   const dayEmployees = useMemo(() => {
+    if (usingScheduleFallback) {
+      return employees
+        .filter(e => e.status === 'active' || e.status === 'on-leave')
+        .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
+    }
+    const scheduledIds = new Set(
+      weeklySchedules
+        .filter(s => s.dayOfWeek === selectedDow && s.status === 'scheduled')
+        .map(s => s.employeeId),
+    )
     return employees
-      .filter(e => e.status === 'active' || e.status === 'on-leave')
+      .filter(e => scheduledIds.has(e.id))
+      .filter(e => e.status !== 'inactive')
       .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
-  }, [employees])
+  }, [employees, weeklySchedules, selectedDow, usingScheduleFallback])
 
   // Index: which crew_assignment row this employee currently holds on
   // selectedDate. We only consider assignments tied to one of today's
@@ -467,11 +492,20 @@ export default function DailyAssignmentBoard({
         </div>
       </header>
 
-      <div className={styles.scheduleNotice}>
-        <strong>Note:</strong> Persistent daily schedules are a future
-        phase. The board shows every <em>active</em> employee as a
-        fallback so morning assignment works today.
-      </div>
+      {usingScheduleFallback ? (
+        <div className={styles.scheduleNotice}>
+          <strong>Using active employee fallback —</strong> no schedules
+          configured. Add weekly shifts in
+          <strong> Employee Management &gt; Schedule</strong> to drive
+          this board from real scheduled crew.
+        </div>
+      ) : (
+        <div className={styles.scheduleNoticeOk}>
+          <strong>Scheduled crew:</strong> {dayEmployees.length} for{' '}
+          {prettyDate(selectedDate)}. Edit shifts in
+          <strong> Employee Management &gt; Schedule</strong>.
+        </div>
+      )}
 
       {/* Summary chips (Phase 12) */}
       <div className={styles.summaryRow}>
