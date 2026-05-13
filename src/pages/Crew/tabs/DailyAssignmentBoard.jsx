@@ -13,9 +13,7 @@ import { useMemo, useState } from 'react'
 import {
   createCrewAssignment,
   deleteCrewAssignment,
-  patchCrewAssignment,
   patchEquipmentReservation,
-  createEquipmentReservation,
 } from '../../../utils/assignments/assignmentsStore'
 import { useToast } from '../../../utils/feedback/toastContext'
 import EquipmentPickerModal from './EquipmentPickerModal'
@@ -37,6 +35,24 @@ function prettyDate(iso) {
 }
 
 const TODAY_ISO = () => new Date().toISOString().slice(0, 10)
+
+function fmtTime(t) {
+  if (!t) return ''
+  const [h, m] = t.split(':')
+  const hour = parseInt(h, 10)
+  if (!Number.isFinite(hour)) return t
+  const am  = hour < 12
+  const h12 = ((hour + 11) % 12) + 1
+  return `${h12}:${m} ${am ? 'AM' : 'PM'}`
+}
+
+function taskOptionLabel(event) {
+  const time = fmtTime(event.startTime)
+  const location = event.location ? ` (${event.location})` : ''
+  return time
+    ? `${time} · ${event.title}${location}`
+    : `${event.title}${location}`
+}
 
 export default function DailyAssignmentBoard({
   employees,
@@ -99,12 +115,31 @@ export default function DailyAssignmentBoard({
   }, [equipmentReservations])
 
   // ── Mutations ─────────────────────────────────────────────────────────
+  //
+  // Clear / switch flow:
+  //   1. PATCH every equipment_reservation linked to the OLD assignment
+  //      to crewAssignmentId=null. Reservations stay alive at task level
+  //      so the Display Board renders them in the task header via the
+  //      Phase 10 fallback chain.
+  //   2. DELETE the old crew_assignment.
+  //   3. (switch only) CREATE the new crew_assignment for the new event.
+  // Step 1 prevents stale orphan crew_assignment_ids; equipment data is
+  // preserved, never deleted.
+  async function unlinkReservationsFor(assignmentId) {
+    const linked = (reservationsByAssignment.get(assignmentId) ?? [])
+    if (linked.length === 0) return
+    await Promise.allSettled(
+      linked.map(r => patchEquipmentReservation(r.id, { crewAssignmentId: null }))
+    )
+  }
+
   async function handleTaskChange(emp, newEventId) {
     setBusyEmpId(emp.id)
     try {
       const existing = assignmentByEmpId.get(emp.id) ?? assignmentByEmpId.get(emp.name)
       if (newEventId === '') {
         if (existing) {
+          await unlinkReservationsFor(existing.id)
           await deleteCrewAssignment(existing.id)
           toast.success(`Cleared task for ${emp.name}`)
         }
@@ -112,9 +147,10 @@ export default function DailyAssignmentBoard({
       }
       if (existing && existing.calendarEventId === newEventId) return // no-op
       if (existing) {
-        // Switch task: delete + create so any prior equipment links go
-        // stale (the Display Board will gracefully fall back to
-        // task-level chips for those reservations).
+        // Switch task: unlink reservations first (they belong to the
+        // old task), then delete + create. Equipment stays on the old
+        // task at the header level for the next operator to claim.
+        await unlinkReservationsFor(existing.id)
         await deleteCrewAssignment(existing.id)
       }
       await createCrewAssignment({
@@ -132,6 +168,10 @@ export default function DailyAssignmentBoard({
     } finally {
       setBusyEmpId(null)
     }
+  }
+
+  function handleClear(emp) {
+    return handleTaskChange(emp, '')
   }
 
   function openEquipmentModalFor(emp) {
@@ -229,14 +269,24 @@ export default function DailyAssignmentBoard({
             {dayEmployees.map(emp => {
               const assignment = assignmentByEmpId.get(emp.id) ?? assignmentByEmpId.get(emp.name)
               const linkedRes  = assignment ? (reservationsByAssignment.get(assignment.id) ?? []) : []
+              const rowState   = !assignment
+                                 ? 'unassigned'
+                                 : (linkedRes.length > 0 ? 'equipped' : 'assigned')
+              const equipLabel = assignment
+                ? (linkedRes.length > 0 ? `Equipment (${linkedRes.length})` : 'Equipment')
+                : 'Pick task first'
               return (
-                <tr key={emp.id} data-busy={busyEmpId === emp.id ? 'true' : undefined}>
+                <tr
+                  key={emp.id}
+                  data-busy={busyEmpId === emp.id ? 'true' : undefined}
+                  data-state={rowState}
+                >
                   <td className={styles.cellName}>{emp.name}</td>
                   <td className={styles.cellRole}>
                     {emp.role || '—'}
                     {emp.department && <span className={styles.cellDept}> · {emp.department}</span>}
                   </td>
-                  <td>
+                  <td className={styles.taskCell}>
                     <select
                       className={styles.taskSelect}
                       value={assignment?.calendarEventId ?? ''}
@@ -245,9 +295,19 @@ export default function DailyAssignmentBoard({
                     >
                       <option value="">— Unassigned —</option>
                       {dayEvents.map(ev => (
-                        <option key={ev.id} value={ev.id}>{ev.title}</option>
+                        <option key={ev.id} value={ev.id}>{taskOptionLabel(ev)}</option>
                       ))}
                     </select>
+                    {assignment && (
+                      <button
+                        type="button"
+                        className={styles.clearBtn}
+                        onClick={() => handleClear(emp)}
+                        disabled={busyEmpId === emp.id}
+                        title="Clear task and unlink equipment"
+                        aria-label={`Clear task for ${emp.name}`}
+                      >×</button>
+                    )}
                   </td>
                   <td>
                     {linkedRes.length > 0 ? (
@@ -271,11 +331,12 @@ export default function DailyAssignmentBoard({
                     <button
                       type="button"
                       className={styles.equipBtn}
+                      data-state={rowState}
                       disabled={!assignment || busyEmpId === emp.id}
                       onClick={() => openEquipmentModalFor(emp)}
                       title={assignment ? 'Assign / unassign machines' : 'Pick a task first'}
                     >
-                      Equipment
+                      {equipLabel}
                     </button>
                   </td>
                 </tr>

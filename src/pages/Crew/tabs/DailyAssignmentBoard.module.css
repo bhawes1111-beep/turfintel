@@ -142,7 +142,8 @@
 
 .assignTable tbody tr {
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-  transition: background 0.13s;
+  border-left: 3px solid transparent;
+  transition: background 0.13s, border-left-color 0.13s, opacity 0.13s;
 }
 
 .assignTable tbody tr:hover {
@@ -151,6 +152,28 @@
 
 .assignTable tbody tr[data-busy="true"] {
   opacity: 0.55;
+}
+
+/* ── Row visual states (Phase 11c polish) ───────────────────────────── */
+
+.assignTable tbody tr[data-state="unassigned"] {
+  opacity: 0.7;
+  border-left-color: transparent;
+}
+
+.assignTable tbody tr[data-state="unassigned"]:hover { opacity: 0.95; }
+
+.assignTable tbody tr[data-state="assigned"] {
+  border-left-color: rgba(74, 222, 128, 0.45);
+}
+
+.assignTable tbody tr[data-state="equipped"] {
+  border-left-color: #4ade80;
+  background: rgba(74, 222, 128, 0.04);
+}
+
+.assignTable tbody tr[data-state="equipped"]:hover {
+  background: rgba(74, 222, 128, 0.08);
 }
 
 .assignTable td {
@@ -173,7 +196,38 @@
   font-size: 11px;
 }
 
-/* Task select */
+/* Task select + clear */
+
+.taskCell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.clearBtn {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.28);
+  border-radius: 50%;
+  color: #fca5a5;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.13s, border-color 0.13s, color 0.13s;
+}
+
+.clearBtn:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.22);
+  border-color: rgba(239, 68, 68, 0.45);
+  color: #fff;
+}
+
+.clearBtn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .taskSelect {
   width: 100%;
@@ -241,8 +295,17 @@
 }
 
 .equipBtn:disabled {
-  opacity: 0.4;
+  opacity: 0.5;
   cursor: not-allowed;
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: rgba(212, 237, 212, 0.45);
+}
+
+.equipBtn[data-state="equipped"] {
+  background: rgba(34, 197, 94, 0.24);
+  border-color: rgba(74, 222, 128, 0.55);
+  color: #4ade80;
 }
 
 /* ── Modal ──────────────────────────────────────────────────────────── */
@@ -326,6 +389,62 @@
 
 .modalSearchInput:focus { outline: none; border-color: rgba(74, 222, 128, 0.55); }
 
+/* ── Filter chips (Phase 11c polish) ────────────────────────────────── */
+
+.filterChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.filterChip {
+  padding: 4px 11px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  color: rgba(212, 237, 212, 0.7);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.filterChip:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #d4edd4;
+}
+
+.filterChipOn {
+  background: rgba(34, 197, 94, 0.18);
+  border-color: rgba(74, 222, 128, 0.45);
+  color: #4ade80;
+}
+
+.filterChip[data-key="available"].filterChipOn  { background: rgba(34, 197, 94, 0.22); }
+.filterChip[data-key="reserved"].filterChipOn   { background: rgba(245, 158, 11, 0.2); border-color: rgba(251, 191, 36, 0.45); color: #fbbf24; }
+.filterChip[data-key="maintenance"].filterChipOn { background: rgba(239, 68, 68, 0.18); border-color: rgba(248, 113, 113, 0.45); color: #fca5a5; }
+
+.filterChipCount {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.28);
+  color: rgba(212, 237, 212, 0.6);
+  letter-spacing: 0;
+  min-width: 16px;
+  text-align: center;
+}
+
+.filterChipOn .filterChipCount {
+  background: rgba(0, 0, 0, 0.4);
+  color: currentColor;
+}
+
 .equipmentList {
   list-style: none;
   margin: 0;
@@ -377,37 +496,44 @@
 }
 
 .statusPill {
-  font-size: 9.5px;
+  font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  padding: 3px 9px;
-  border-radius: 10px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  white-space: nowrap;
 }
 
 .statusPill[data-status="available"] {
-  background: rgba(34, 197, 94, 0.18);
+  background: rgba(34, 197, 94, 0.2);
+  border-color: rgba(74, 222, 128, 0.4);
   color: #4ade80;
 }
 
 .statusPill[data-status="reserved"] {
-  background: rgba(245, 158, 11, 0.18);
+  background: rgba(245, 158, 11, 0.2);
+  border-color: rgba(251, 191, 36, 0.4);
   color: #fbbf24;
 }
 
 .statusPill[data-status="in-use"] {
-  background: rgba(14, 165, 233, 0.2);
+  background: rgba(14, 165, 233, 0.22);
+  border-color: rgba(56, 189, 248, 0.4);
   color: #38bdf8;
 }
 
 .statusPill[data-status="maintenance"] {
-  background: rgba(239, 68, 68, 0.18);
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(248, 113, 113, 0.4);
   color: #fca5a5;
 }
 
 .statusPill[data-status="unknown"] {
   background: rgba(255, 255, 255, 0.06);
-  color: rgba(212, 237, 212, 0.5);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: rgba(212, 237, 212, 0.55);
 }
 
 .equipmentHint {

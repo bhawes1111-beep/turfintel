@@ -56,6 +56,7 @@ export default function EquipmentPickerModal({
 }) {
   const toast                     = useToast()
   const [search, setSearch]       = useState('')
+  const [filter, setFilter]       = useState('all')   // all | available | reserved | maintenance
   const [busyKey, setBusyKey]     = useState(null)
 
   useEffect(() => {
@@ -78,17 +79,43 @@ export default function EquipmentPickerModal({
     return m
   }, [reservations, dayEventIds])
 
-  // ── Equipment list (filtered by search) ───────────────────────────────
+  // ── Equipment list (filter chip + search, sorted Available first) ────
+  // Sort order: available < reserved < in-use < maintenance < unknown,
+  // then alphabetical inside each status bucket.
+  const STATUS_RANK = { available: 0, reserved: 1, 'in-use': 2, maintenance: 3, unknown: 4 }
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     return equipment
-      .filter(eq => {
+      .map(eq => ({
+        eq,
+        status: deriveStatus(eq, todayResByName.get(eq.name) ?? []),
+      }))
+      .filter(({ eq, status }) => {
+        if (filter === 'available'   && status.kind !== 'available')   return false
+        if (filter === 'reserved'    && !(status.kind === 'reserved' || status.kind === 'in-use')) return false
+        if (filter === 'maintenance' && status.kind !== 'maintenance') return false
         if (!q) return true
-        const hay = `${eq.name ?? ''} ${eq.category ?? ''} ${eq.status ?? ''}`.toLowerCase()
+        const hay = `${eq.name ?? ''} ${eq.category ?? ''} ${status.label}`.toLowerCase()
         return hay.includes(q)
       })
-      .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
-  }, [equipment, search])
+      .sort((a, b) => {
+        const ra = STATUS_RANK[a.status.kind] ?? 9
+        const rb = STATUS_RANK[b.status.kind] ?? 9
+        if (ra !== rb) return ra - rb
+        return (a.eq.name ?? '').localeCompare(b.eq.name ?? '')
+      })
+  }, [equipment, search, filter, todayResByName])
+
+  const filterCounts = useMemo(() => {
+    let avail = 0, reserved = 0, maintenance = 0
+    for (const eq of equipment) {
+      const s = deriveStatus(eq, todayResByName.get(eq.name) ?? [])
+      if (s.kind === 'available')                              avail++
+      else if (s.kind === 'reserved' || s.kind === 'in-use')   reserved++
+      else if (s.kind === 'maintenance')                       maintenance++
+    }
+    return { all: equipment.length, avail, reserved, maintenance }
+  }, [equipment, todayResByName])
 
   // ── Actions ───────────────────────────────────────────────────────────
   async function handleAssign(eq) {
@@ -166,14 +193,33 @@ export default function EquipmentPickerModal({
             onChange={e => setSearch(e.target.value)}
             autoFocus
           />
+          <div className={styles.filterChips} role="tablist">
+            {[
+              { key: 'all',         label: 'All',         count: filterCounts.all },
+              { key: 'available',   label: 'Available',   count: filterCounts.avail },
+              { key: 'reserved',    label: 'Reserved',    count: filterCounts.reserved },
+              { key: 'maintenance', label: 'Maintenance', count: filterCounts.maintenance },
+            ].map(f => (
+              <button
+                key={f.key}
+                type="button"
+                role="tab"
+                aria-selected={filter === f.key}
+                className={`${styles.filterChip} ${filter === f.key ? styles.filterChipOn : ''}`}
+                data-key={f.key}
+                onClick={() => setFilter(f.key)}
+              >
+                {f.label} <span className={styles.filterChipCount}>{f.count}</span>
+              </button>
+            ))}
+          </div>
         </div>
 
         <ul className={styles.equipmentList}>
           {filtered.length === 0 ? (
             <li className={styles.equipmentEmpty}>No equipment matches.</li>
-          ) : filtered.map(eq => {
+          ) : filtered.map(({ eq, status }) => {
             const todayResForEq = todayResByName.get(eq.name) ?? []
-            const status        = deriveStatus(eq, todayResForEq)
 
             // Is THIS reservation tied to THIS employee on THIS event?
             const linkedToThis = todayResForEq.find(r =>
