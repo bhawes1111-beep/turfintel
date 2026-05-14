@@ -6,7 +6,7 @@
 // Important: notes are crew-visible. The UI carries an explicit
 // reminder so management never types disciplinary content here.
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import {
   useOperationsNotesData,
   createOperationsNote,

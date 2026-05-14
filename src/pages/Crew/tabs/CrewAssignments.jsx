@@ -1,16 +1,12 @@
-// CrewAssignments — assignments vertical read-side + Phase 10 linker.
+// CrewAssignments — Operations Assignments tab shell.
 //
-// Surfaces persistent crew_assignments + equipment_reservations alongside
-// the calendar_events they belong to. Morning-meeting view: today's
-// crew, today's equipment, what's unassigned, where pressure is building.
-//
-// Phase 10 adds an inline linker per equipment reservation so a
-// supervisor can tie a specific machine to a specific operator on the
-// same event (e.g. GTX 3 → Carlos). The Display Board then renders the
-// chip next to that employee instead of at the task level.
+// Phase 11 made the employee-first DailyAssignmentBoard the primary
+// surface here (task dropdown + equipment picker per operator). This
+// component now just composes that board with the supporting
+// morning-meeting context panels below it: a 4-tile StatusBoard, the
+// Unassigned Events list, and the Pressure Signals feed.
 
 import { useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useAssignmentsData } from '../../../utils/assignments/assignmentsStore'
 import { useCalendarData } from '../../../utils/calendar/calendarStore'
 import { useEquipmentData } from '../../../utils/equipment/equipmentStore'
@@ -41,13 +37,6 @@ function fmtDate(iso) {
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
 }
 
-function fmtTimeRange(start, end) {
-  if (!start && !end) return ''
-  if (start && !end)  return start
-  if (!start && end)  return `– ${end}`
-  return `${start} – ${end}`
-}
-
 function groupBy(items, key) {
   const map = new Map()
   for (const item of items) {
@@ -61,7 +50,6 @@ function groupBy(items, key) {
 // ── Component ────────────────────────────────────────────────────────────
 
 export default function CrewAssignments() {
-  const navigate                                      = useNavigate()
   const { crewAssignments, equipmentReservations, loading } = useAssignmentsData()
   const { events: calendarEvents }                    = useCalendarData()
   const { equipment }                                 = useEquipmentData()
@@ -81,29 +69,6 @@ export default function CrewAssignments() {
     equipment.forEach(e => map.set(e.name, e))
     return map
   }, [equipment])
-
-  // ── Employee join (Phase 5.6c) ─────────────────────────────────────────
-  // Prefer assignment.employeeId; fall back to assignment.employeeName.
-  // Legacy rows written before Phase 5.6b carry employeeId=null and are
-  // resolved by name only. The Worker mapper returns both id+employeeId
-  // and name+fullName aliases, so the maps key on either side.
-  const employeesById = useMemo(() => {
-    const map = new Map()
-    employees.forEach(e => map.set(e.id, e))
-    return map
-  }, [employees])
-
-  const employeesByName = useMemo(() => {
-    const map = new Map()
-    employees.forEach(e => map.set(e.name, e))
-    return map
-  }, [employees])
-
-  function resolveEmployee(assignment) {
-    return (assignment.employeeId && employeesById.get(assignment.employeeId))
-        || employeesByName.get(assignment.employeeName)
-        || null
-  }
 
   // ── Bucket events by date relative to TODAY. ────────────────────────────
   const { todaysEvents, upcomingEvents } = useMemo(() => {

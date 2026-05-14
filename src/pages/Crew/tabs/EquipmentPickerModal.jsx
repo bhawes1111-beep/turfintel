@@ -31,6 +31,9 @@ const MAINTENANCE_STATES = new Set([
   'broken',
 ])
 
+// Sort rank for the equipment list — available surfaces first.
+const STATUS_RANK = { available: 0, reserved: 1, 'in-use': 2, maintenance: 3, unknown: 4 }
+
 function deriveStatus(eq, todayReservationsForEq) {
   if (!eq?.status) return { kind: 'unknown', label: 'Status unknown' }
   if (MAINTENANCE_STATES.has(eq.status)) {
@@ -81,8 +84,8 @@ export default function EquipmentPickerModal({
 
   // ── Equipment list (filter chip + search, sorted Available first) ────
   // Sort order: available < reserved < in-use < maintenance < unknown,
-  // then alphabetical inside each status bucket.
-  const STATUS_RANK = { available: 0, reserved: 1, 'in-use': 2, maintenance: 3, unknown: 4 }
+  // then alphabetical inside each status bucket. STATUS_RANK is
+  // module-scoped (see top of file) so the memo dep array stays clean.
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     return equipment
