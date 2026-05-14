@@ -1,6 +1,10 @@
-// ── NWS API response normalizer ────────────────────────────────────────────────
-// Converts raw NWS observation + forecast JSON into the evaluator-compatible shape.
-// evaluator.js and recommendations.js are never modified — only this layer changes.
+// ── Weather normalizer ─────────────────────────────────────────────────────────
+// Converts raw provider JSON (NWS observation/forecast, METAR, and the
+// Ambient Weather station feed) into the single evaluator-compatible
+// `current` / `forecast` shape. evaluator.js and recommendations.js are
+// never modified — only this layer changes. Every provider runs through
+// the same ET / disease / spray helpers so the derived fields stay
+// consistent regardless of which source supplied the raw observation.
 
 const KMH_TO_MPH = 0.621371
 const MS_TO_MPH  = 2.23694
@@ -164,6 +168,77 @@ export function normalizeObservation(obs) {
     diseasePressure: computeDiseasePressure(tempF, humidity, dewF),
     sprayWindow:     computeSprayWindow(windMph, humidity, tempF),
     timestamp:       p.timestamp ?? new Date().toISOString(),
+  }
+}
+
+// ── normalizeAmbient ───────────────────────────────────────────────────────────
+// Input:  Ambient Weather `lastData` object + provider meta
+//         ({ deviceName, observedAt, sourceLabel })
+// Output: evaluator-compatible `current` object with source metadata.
+//
+// Ambient is a personal weather station — it reports real-time
+// observations only (no forecast). Field availability varies by station
+// hardware: a station without a soil probe has no soiltemp1f, one
+// without a pyranometer has no solarradiation, etc. Missing sensors map
+// cleanly to null. The derived fields (etRate / diseasePressure /
+// sprayWindow) run through the SAME helpers as normalizeObservation so
+// the Ambient `current` is interchangeable with the NWS one downstream.
+
+function numOrNull(v) {
+  return typeof v === 'number' && Number.isFinite(v) ? v : null
+}
+
+export function normalizeAmbient(lastData, meta = {}) {
+  if (!lastData || typeof lastData.tempf !== 'number') return null
+
+  const tempF    = Math.round(lastData.tempf)
+  const humidity = numOrNull(lastData.humidity) ?? 0
+  const windMph  = Math.round(numOrNull(lastData.windspeedmph) ?? 0)
+  const gustMph  = numOrNull(lastData.windgustmph)
+  const windDir  = degreesToDir(numOrNull(lastData.winddir))
+
+  // dewPoint: Ambient may key it dewPoint or dewPointf (both °F).
+  const dewRaw   = numOrNull(lastData.dewPoint) ?? numOrNull(lastData.dewPointf)
+  const dewF     = dewRaw != null ? Math.round(dewRaw) : tempF - 15
+
+  // feelsLike: prefer the station's reported value, otherwise compute.
+  const feelsRaw = numOrNull(lastData.feelsLike) ?? numOrNull(lastData.feelsLikef)
+  const feelsLike = feelsRaw != null
+    ? Math.round(feelsRaw)
+    : computeFeelsLike(tempF, humidity, windMph)
+
+  const rain24   = numOrNull(lastData.dailyrainin) ?? 0
+  const rainHr   = numOrNull(lastData.hourlyrainin)
+  const solar    = numOrNull(lastData.solarradiation)
+  const soilTemp = numOrNull(lastData.soiltemp1f)
+  const pressure = numOrNull(lastData.baromrelin)
+
+  const etRate    = estimateET(tempF, humidity, windMph)
+  const etDeficit = parseFloat((etRate * 0.85).toFixed(2))
+
+  return {
+    location:        meta.deviceName ?? 'Course Station',
+    currentTemp:     tempF,
+    feelsLike,
+    humidity:        Math.round(humidity),
+    wind:            windMph,
+    windGust:        gustMph,
+    windDir,
+    rainfall24h:     parseFloat(rain24.toFixed(2)),
+    rainfallHourly:  rainHr != null ? parseFloat(rainHr.toFixed(2)) : null,
+    soilTemp,
+    solarRadiation:  solar,
+    pressure,
+    dewPoint:        dewF,
+    etRate,
+    etDeficit,
+    diseasePressure: computeDiseasePressure(tempF, humidity, dewF),
+    sprayWindow:     computeSprayWindow(windMph, humidity, tempF),
+    timestamp:       lastData.date ?? meta.observedAt ?? new Date().toISOString(),
+    // Source metadata — surfaced as a subtle label in the UI.
+    source:          'ambient',
+    sourceLabel:     meta.sourceLabel ?? 'Ambient Weather',
+    observedAt:      lastData.date ?? meta.observedAt ?? null,
   }
 }
 

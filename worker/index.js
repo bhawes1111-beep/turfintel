@@ -111,6 +111,7 @@ import {
   deleteScheduleTemplate,
   applyScheduleTemplate,
 } from './api/scheduleTemplates.js'
+import { getAmbientCurrent } from './api/weather.js'
 
 export default {
   async fetch(request, env, ctx) {
@@ -141,11 +142,20 @@ async function handleApi(request, env, url) {
   // ── /api/health ───────────────────────────────────────────────────────
   if (pathname === '/api/health') {
     return json({
-      ok:   true,
-      db:   !!env.DB,
-      auth: !!env.ADMIN_KEY,
-      ts:   new Date().toISOString(),
+      ok:      true,
+      db:      !!env.DB,
+      auth:    !!env.ADMIN_KEY,
+      ambient: !!env.AMBIENT_WEATHER_API_KEY && !!env.AMBIENT_WEATHER_APPLICATION_KEY,
+      ts:      new Date().toISOString(),
     })
+  }
+
+  // ── /api/weather/ambient/current ──────────────────────────────────────
+  // Read-only, no D1 dependency. Handled before the D1 guard so weather
+  // works even if the database binding is ever absent. Server-side only —
+  // the Ambient secrets never reach the browser.
+  if (pathname === '/api/weather/ambient/current') {
+    if (method === 'GET') return getAmbientCurrent(env)
   }
 
   // ── Mutation auth gate (Phase 5.1b) ─────────────────────────────────

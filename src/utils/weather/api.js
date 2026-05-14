@@ -1,17 +1,26 @@
 // ── Weather API fetch layer ────────────────────────────────────────────────────
-// Fetches from NWS and METAR sources; falls back to localStorage cache.
-// Returns normalized, evaluator-compatible objects only — never raw API shapes.
+// Fetches from the course's Ambient Weather station (primary), then NWS
+// and METAR (fallback); falls back to localStorage cache. Returns
+// normalized, evaluator-compatible objects only — never raw API shapes.
 // Never throws — all failures return null or [].
 //
-// Source priority chain (fetchWeatherBundle):
-//   1. Fresh localStorage cache (< 15 min TTL)
-//   2. NWS KSAV observation  →  normalize to current
-//   3. AviationWeather METAR →  normalize to current  (if NWS fails)
-//   4. NWS gridpoint forecast (parallel with current)
-//   5. Stale localStorage cache (any age, if all live sources fail)
+// Source priority chain (fetchCurrentWithSource):
+//   1. Ambient Weather station — via the worker (/api/weather/ambient/current),
+//      which holds the API keys server-side. Primary live source.
+//   2. NWS KSAV observation    — fallback if Ambient is unconfigured/down.
+//   3. AviationWeather METAR   — fallback if NWS also fails.
+//
+// fetchWeatherBundle wraps that with:
+//   0. Fresh localStorage cache (< 10 min TTL)
+//   …current chain above…  +  NWS gridpoint forecast (always — Ambient
+//      stations report real-time obs only, no forecast)
+//   last. Stale localStorage cache (any age, if all live sources fail)
+//
+// Every bundle carries { source, sourceLabel, observedAt } so the UI can
+// show a subtle "Ambient Weather" / "NWS fallback" label.
 // Diagnostics logged to console.debug — no UI exposure.
 
-import { normalizeObservation, normalizeForecast, normalizeMetar } from './normalize'
+import { normalizeObservation, normalizeForecast, normalizeMetar, normalizeAmbient } from './normalize'
 
 const CACHE_KEY      = 'turfintel-weather-cache'
 const CACHE_TTL_MS   = 10 * 60 * 1000
@@ -68,18 +77,77 @@ async function resolveForecastUrl() {
   return url
 }
 
+// ── Ambient Weather (primary) ──────────────────────────────────────────────────
+// Hits the worker proxy, which holds the API keys. Reads the JSON body
+// even on non-2xx so it can tell "keys not configured" (503) apart from
+// "Ambient API failed" (502) — both fall back to NWS, but with distinct
+// console diagnostics.
+
+async function fetchAmbientCurrent() {
+  let payload
+  try {
+    const res = await fetch('/api/weather/ambient/current', {
+      signal: AbortSignal.timeout(8000),
+    })
+    payload = await res.json().catch(() => null)
+  } catch {
+    console.debug('[TurfIntel Weather] Ambient endpoint unreachable — falling back to NWS')
+    return null
+  }
+  if (!payload) return null
+  if (payload.configured === false) {
+    console.debug('[TurfIntel Weather] Ambient Weather not configured (worker secrets unset) — using NWS')
+    return null
+  }
+  if (payload.error || !payload.lastData) {
+    console.debug('[TurfIntel Weather] Ambient Weather unavailable (%s) — using NWS', payload.error ?? 'no data')
+    return null
+  }
+  const data = normalizeAmbient(payload.lastData, {
+    deviceName:  payload.deviceName,
+    observedAt:  payload.observedAt,
+    sourceLabel: payload.sourceLabel,
+  })
+  if (!data) return null
+  return {
+    data,
+    source:      'ambient',
+    sourceLabel: 'Ambient Weather',
+    observedAt:  payload.observedAt ?? data.observedAt ?? null,
+  }
+}
+
 // ── Internal: fetch current with source label ──────────────────────────────────
+// Ambient first, then NWS, then METAR. Each result carries source +
+// sourceLabel + observedAt.
 
 async function fetchCurrentWithSource() {
+  const ambient = await fetchAmbientCurrent()
+  if (ambient) return ambient
+
   const nwsObs = await safeJson(NWS_OBS_URL, { headers: NWS_HEADERS })
   const nwsData = normalizeObservation(nwsObs)
-  if (nwsData) return { data: nwsData, source: 'nws' }
+  if (nwsData) {
+    return {
+      data: nwsData,
+      source: 'nws',
+      sourceLabel: 'NWS fallback',
+      observedAt: nwsData.timestamp ?? null,
+    }
+  }
 
   const metar = await safeJson(METAR_URL)
   const metarData = normalizeMetar(metar)
-  if (metarData) return { data: metarData, source: 'metar' }
+  if (metarData) {
+    return {
+      data: metarData,
+      source: 'metar',
+      sourceLabel: 'METAR fallback',
+      observedAt: metarData.timestamp ?? null,
+    }
+  }
 
-  return { data: null, source: null }
+  return { data: null, source: null, sourceLabel: null, observedAt: null }
 }
 
 // ── Public: individual fetchers ────────────────────────────────────────────────
@@ -115,10 +183,16 @@ export async function fetchWeatherBundle() {
 
   // 2. Live fetch — current and forecast in parallel
   const [currentResult, forecast] = await Promise.all([fetchCurrentWithSource(), fetchForecast()])
-  const { data: current, source } = currentResult
+  const { data: current, source, sourceLabel, observedAt } = currentResult
 
   if (current) {
-    const bundle = { current, forecast: forecast.length ? forecast : [], source }
+    const bundle = {
+      current,
+      forecast: forecast.length ? forecast : [],
+      source,
+      sourceLabel,
+      observedAt,
+    }
     writeCache(bundle)
     console.debug(
       '[TurfIntel Weather] source=%s forecastDays=%d%s fetched-at=%s',

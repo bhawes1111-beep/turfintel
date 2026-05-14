@@ -194,6 +194,19 @@
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: rgba(74, 222, 128, 0.7);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* Subtle weather provider label — "Ambient Weather" / "NWS fallback" */
+.sourceTag {
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  color: rgba(212, 237, 212, 0.4);
 }
 
 .sidePanelSub {

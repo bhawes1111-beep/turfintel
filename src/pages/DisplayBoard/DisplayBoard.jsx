@@ -117,7 +117,7 @@ export default function DisplayBoard({ boardMode = false }) {
   const { crewAssignments, equipmentReservations }  = useAssignmentsData()
   const { alerts }                                  = useAlertsData()
   const { employees }                               = useCrewData()
-  const { current, forecast }                       = useWeather()
+  const { current, forecast, sourceLabel: weatherSource } = useWeather()
   const selectedCourse                              = useSelectedCourse()
   const { notes: dailyNotes }                       = useOperationsNotesData()
 
@@ -252,7 +252,7 @@ export default function DisplayBoard({ boardMode = false }) {
           todayIso={todayIso}
         />
 
-        <ConditionsPanel current={current} forecast={forecast} />
+        <ConditionsPanel current={current} forecast={forecast} sourceLabel={weatherSource} />
 
         <EquipmentStatusPanel
           reservations={dayEquipment}
@@ -394,19 +394,25 @@ function DateClockPanel({ selectedDate, onChange, now, todayIso }) {
   )
 }
 
-function ConditionsPanel({ current, forecast }) {
+function ConditionsPanel({ current, forecast, sourceLabel }) {
   const temp = current?.currentTemp
   const has  = Number.isFinite(temp)
   const next = forecast?.[0]
   return (
     <div className={styles.sidePanel}>
-      <span className={styles.sidePanelLabel}>Current Conditions</span>
+      <span className={styles.sidePanelLabel}>
+        Current Conditions
+        {sourceLabel && (
+          <span className={styles.sourceTag}>{sourceLabel}</span>
+        )}
+      </span>
       {has ? (
         <>
           <span className={styles.bigTemp}>{Math.round(temp)}°F</span>
-          {current?.wind && (
+          {current?.wind != null && (
             <span className={styles.sidePanelSub}>
               Wind {current.wind}{current.windDir ? ` ${current.windDir}` : ''}
+              {current.windGust != null && ` · gust ${Math.round(current.windGust)}`}
             </span>
           )}
           {current?.humidity != null && (

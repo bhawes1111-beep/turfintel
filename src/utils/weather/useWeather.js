@@ -15,6 +15,10 @@ export function useWeather() {
   const [error,       setError]       = useState(null)
   const [lastUpdated, setLastUpdated] = useState(null)
   const [isStale,     setIsStale]     = useState(false)
+  // Provider metadata — which source supplied the live observation.
+  const [source,      setSource]      = useState(null)
+  const [sourceLabel, setSourceLabel] = useState(null)
+  const [observedAt,  setObservedAt]  = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -28,6 +32,9 @@ export function useWeather() {
         setEtTrend(buildEtTrend(fc))
         setLastUpdated(new Date())
         setIsStale(!!bundle.stale)
+        setSource(bundle.source ?? null)
+        setSourceLabel(bundle.sourceLabel ?? null)
+        setObservedAt(bundle.observedAt ?? null)
       } else {
         console.debug('[TurfIntel Weather] hook: no bundle — falling back to placeholder data')
         setError('Live weather unavailable.')
@@ -59,6 +66,10 @@ export function useWeather() {
     lastUpdated,
     isStale,
     isLive:      !!current && !isStale,
+    // Provider metadata — null until the first successful load.
+    source,                                       // 'ambient' | 'nws' | 'metar' | null
+    sourceLabel: sourceLabel ?? (current ? 'Live weather' : 'No live data'),
+    observedAt,
     refresh:     load,
   }
 }
