@@ -53,7 +53,7 @@ export default function CrewAssignments() {
   const { crewAssignments, equipmentReservations, loading } = useAssignmentsData()
   const { events: calendarEvents }                    = useCalendarData()
   const { equipment }                                 = useEquipmentData()
-  const { employees }                                 = useCrewData()
+  const { employees, loading: crewLoading }           = useCrewData()
 
   const horizonEnd = useMemo(() => addDays(TODAY, HORIZON), [])
 
@@ -217,7 +217,10 @@ export default function CrewAssignments() {
 
   // ── Render ──────────────────────────────────────────────────────────────
 
-  if (loading) {
+  // Gate on BOTH the assignments store and the crew store. Without the
+  // crew check, the board could mount with employees=[] mid-load and
+  // flash a false "No active employees in the roster" empty state.
+  if (loading || crewLoading) {
     return (
       <div className={styles.tabContent}>
         <EmptyState compact title="Loading assignments…" description="" />

@@ -21,17 +21,22 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useCalendarData }    from '../../utils/calendar/calendarStore'
-import { useSpraysData }      from '../../utils/sprays/spraysStore'
-import { useAssignmentsData } from '../../utils/assignments/assignmentsStore'
-import { useAlertsData }      from '../../utils/alerts/alertsStore'
-import { useCrewData }        from '../../utils/crew/crewStore'
+import { useCalendarData,    refreshCalendarData }    from '../../utils/calendar/calendarStore'
+import { useSpraysData,      refreshSpraysData }      from '../../utils/sprays/spraysStore'
+import { useAssignmentsData, refreshAssignmentsData } from '../../utils/assignments/assignmentsStore'
+import { useAlertsData,      refreshAlertsData }      from '../../utils/alerts/alertsStore'
+import { useCrewData,        refreshCrewData }        from '../../utils/crew/crewStore'
 import { useWeather }         from '../../utils/weather/useWeather'
 import { useSelectedCourse }  from '../../utils/courses/courseStore'
-import { useOperationsNotesData } from '../../utils/operations/notesStore'
+import { useOperationsNotesData, refreshOperationsNotesData } from '../../utils/operations/notesStore'
 import { useAttachmentsForParent } from '../../utils/attachments/attachmentsStore'
 import OperationalIntelligencePanel from '../../components/shared/OperationalIntelligencePanel'
 import styles from './DisplayBoard.module.css'
+
+// The board is meant to live on a TV all morning — re-pull the
+// operational verticals every few minutes so a task added at 6 AM
+// shows up without anyone touching the screen.
+const BOARD_REFRESH_MS = 3 * 60 * 1000
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
@@ -107,7 +112,7 @@ function titleFromBody(body) {
 
 export default function DisplayBoard({ boardMode = false }) {
   const navigate                                    = useNavigate()
-  const { events }                                  = useCalendarData()
+  const { events, loading: eventsLoading }          = useCalendarData()
   const { records: sprays }                         = useSpraysData()
   const { crewAssignments, equipmentReservations }  = useAssignmentsData()
   const { alerts }                                  = useAlertsData()
@@ -125,6 +130,29 @@ export default function DisplayBoard({ boardMode = false }) {
     const id = setInterval(() => setNow(new Date()), 1000)
     return () => clearInterval(id)
   }, [])
+
+  // Auto-refresh the operational verticals so a board left on a TV
+  // stays live without a manual reload. Weather already self-refreshes
+  // inside useWeather.
+  const [lastSync, setLastSync] = useState(() => new Date())
+  useEffect(() => {
+    const id = setInterval(() => {
+      Promise.allSettled([
+        refreshCalendarData(),
+        refreshSpraysData(),
+        refreshAssignmentsData(),
+        refreshAlertsData(),
+        refreshCrewData(),
+        refreshOperationsNotesData(),
+      ]).then(() => setLastSync(new Date()))
+    }, BOARD_REFRESH_MS)
+    return () => clearInterval(id)
+  }, [])
+
+  // First-paint guard — before the calendar store resolves, every
+  // section would otherwise render its empty state ("No tasks…"),
+  // making a freshly-opened board look broken.
+  const isFirstLoad = eventsLoading && events.length === 0
 
   // ── Crew name lookup (ID → name; never reads payRate) ─────────────────
   const employeeNameLookup = useMemo(() => {
@@ -231,6 +259,11 @@ export default function DisplayBoard({ boardMode = false }) {
           eventTitleLookup={Object.fromEntries(dayEvents.map(e => [e.id, e.title]))}
         />
 
+        <div className={styles.syncLine}>
+          Synced {lastSync.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          {' · '}auto-refresh 3 min
+        </div>
+
         <ModeToggle boardMode={boardMode} navigate={navigate} />
       </aside>
 
@@ -245,10 +278,16 @@ export default function DisplayBoard({ boardMode = false }) {
 
         {dayEvents.length === 0 ? (
           <div className={styles.emptyBoard}>
-            <p>No tasks scheduled for {prettyDate(selectedDate)}.</p>
-            <p className={styles.emptyHint}>
-              Tasks added in Operations &gt; Operations Board appear here automatically.
-            </p>
+            {isFirstLoad ? (
+              <p>Loading operations board…</p>
+            ) : (
+              <>
+                <p>No tasks scheduled for {prettyDate(selectedDate)}.</p>
+                <p className={styles.emptyHint}>
+                  Tasks added in Operations &gt; Operations Board appear here automatically.
+                </p>
+              </>
+            )}
           </div>
         ) : (
           <div className={styles.tasksGrid}>
