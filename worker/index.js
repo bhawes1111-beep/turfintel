@@ -111,7 +111,12 @@ import {
   deleteScheduleTemplate,
   applyScheduleTemplate,
 } from './api/scheduleTemplates.js'
-import { getAmbientCurrent } from './api/weather.js'
+import {
+  getAmbientCurrent,
+  createWeatherObservation,
+  listWeatherHistory,
+  getLatestWeather,
+} from './api/weather.js'
 
 export default {
   async fetch(request, env, ctx) {
@@ -173,6 +178,28 @@ async function handleApi(request, env, url) {
   if (!env.DB) {
     if (method === 'GET') return json([])
     return json({ error: 'D1 not configured yet — run the bootstrap commands in wrangler.jsonc' }, 503)
+  }
+
+  // ── /api/weather/current ──────────────────────────────────────────────
+  // Latest STORED observation for the course (most recent capture).
+  if (pathname === '/api/weather/current') {
+    if (method === 'GET') return getLatestWeather(env, courseId)
+  }
+
+  // ── /api/weather/history ──────────────────────────────────────────────
+  if (pathname === '/api/weather/history') {
+    if (method === 'GET') {
+      const from  = url.searchParams.get('from')  || null
+      const to    = url.searchParams.get('to')    || null
+      const limit = url.searchParams.get('limit') || null
+      return listWeatherHistory(env, courseId, { from, to, limit })
+    }
+  }
+
+  // ── /api/weather/observations ─────────────────────────────────────────
+  // POST is mutation-gated above. Stores one normalized snapshot.
+  if (pathname === '/api/weather/observations') {
+    if (method === 'POST') return createWeatherObservation(env, request)
   }
 
   // ── /api/equipment ────────────────────────────────────────────────────

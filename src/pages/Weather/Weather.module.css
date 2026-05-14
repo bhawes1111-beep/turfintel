@@ -1,0 +1,323 @@
+/* Phase 18 — Weather workspace styles. Operational, compact. */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── Source bar ─────────────────────────────────────────────────────── */
+
+.sourceBar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(74, 158, 74, 0.18);
+  border-radius: 8px;
+}
+
+.sourceLabel {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #4ade80;
+}
+
+.sourceMeta {
+  font-size: 11px;
+  color: rgba(212, 237, 212, 0.5);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Field groups ───────────────────────────────────────────────────── */
+
+.fieldGroup {
+  background: linear-gradient(160deg, var(--color-card) 0%, var(--color-bg) 100%);
+  border: 1px solid rgba(74, 158, 74, 0.16);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.groupTitle {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(74, 222, 128, 0.78);
+  margin: 0 0 12px;
+}
+
+.fieldGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 9px 11px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+}
+
+.fieldLabel {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(212, 237, 212, 0.5);
+}
+
+.fieldValue {
+  font-size: 16px;
+  font-weight: 600;
+  color: #d4edd4;
+  font-variant-numeric: tabular-nums;
+}
+
+.fieldUnavailable {
+  font-size: 12px;
+  font-weight: 400;
+  font-style: italic;
+  color: rgba(212, 237, 212, 0.35);
+}
+
+.fieldValue[data-tone="favorable"]   { color: #4ade80; }
+.fieldValue[data-tone="marginal"]    { color: #fbbf24; }
+.fieldValue[data-tone="unfavorable"] { color: #fca5a5; }
+
+/* ── Forecast ───────────────────────────────────────────────────────── */
+
+.forecastGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.forecastCard {
+  background: linear-gradient(160deg, var(--color-card) 0%, var(--color-bg) 100%);
+  border: 1px solid rgba(74, 158, 74, 0.16);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.forecastDay {
+  font-size: 13px;
+  font-weight: 700;
+  color: #d4edd4;
+}
+
+.forecastDate {
+  font-size: 10.5px;
+  color: rgba(212, 237, 212, 0.45);
+}
+
+.forecastTemps {
+  font-size: 18px;
+  font-weight: 600;
+  color: #4ade80;
+  font-variant-numeric: tabular-nums;
+  margin-top: 2px;
+}
+
+.forecastLow {
+  color: rgba(212, 237, 212, 0.55);
+  font-size: 14px;
+}
+
+.forecastMeta {
+  display: flex;
+  gap: 5px;
+  font-size: 11px;
+  color: rgba(212, 237, 212, 0.6);
+}
+
+.forecastSignals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+/* ── Mini status pills (shared by forecast + history) ───────────────── */
+
+.miniPill {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(212, 237, 212, 0.7);
+  white-space: nowrap;
+}
+
+.miniPill[data-tone="ideal"]    { background: rgba(34, 197, 94, 0.2);  color: #4ade80; }
+.miniPill[data-tone="caution"]  { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+.miniPill[data-tone="poor"]     { background: rgba(239, 68, 68, 0.2);  color: #fca5a5; }
+
+.miniPill[data-disease="low"]      { background: rgba(34, 197, 94, 0.2);  color: #4ade80; }
+.miniPill[data-disease="medium"]   { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+.miniPill[data-disease="high"]     { background: rgba(239, 68, 68, 0.2);  color: #fca5a5; }
+.miniPill[data-disease="critical"] { background: rgba(239, 68, 68, 0.32); color: #fecaca; }
+
+/* ── History toolbar ────────────────────────────────────────────────── */
+
+.historyToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.captureBtn {
+  padding: 8px 16px;
+  background: rgba(34, 197, 94, 0.2);
+  border: 1px solid rgba(34, 197, 94, 0.45);
+  border-radius: 6px;
+  color: #4ade80;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.captureBtn:hover:not(:disabled) { background: rgba(34, 197, 94, 0.3); }
+.captureBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.filterGroup {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filterLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(212, 237, 212, 0.5);
+}
+
+.filterInput {
+  padding: 5px 8px;
+  background: rgba(4, 12, 6, 0.85);
+  border: 1px solid rgba(74, 158, 74, 0.25);
+  border-radius: 5px;
+  color: #d4edd4;
+  font-size: 11.5px;
+  font-family: inherit;
+}
+
+.filterInput:focus { outline: none; border-color: rgba(74, 222, 128, 0.5); }
+
+.filterBtn {
+  padding: 6px 12px;
+  background: rgba(56, 189, 248, 0.14);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  border-radius: 5px;
+  color: #38bdf8;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.filterBtn:hover { background: rgba(56, 189, 248, 0.22); }
+
+.filterClear {
+  padding: 6px 10px;
+  background: transparent;
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  border-radius: 5px;
+  color: rgba(212, 237, 212, 0.55);
+  font-size: 11px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.filterClear:hover { color: #fca5a5; border-color: rgba(239, 68, 68, 0.4); }
+
+/* ── History table ──────────────────────────────────────────────────── */
+
+.tableWrap {
+  overflow-x: auto;
+  border: 1px solid rgba(74, 158, 74, 0.16);
+  border-radius: 8px;
+}
+
+.historyTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.historyTable thead th {
+  padding: 9px 12px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(212, 237, 212, 0.5);
+  background: rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid rgba(74, 158, 74, 0.18);
+  white-space: nowrap;
+}
+
+.historyTable td {
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  color: rgba(212, 237, 212, 0.85);
+  white-space: nowrap;
+}
+
+.historyTable tbody tr:hover { background: rgba(74, 158, 74, 0.04); }
+
+.tdTime { font-weight: 600; color: #d4edd4; }
+.tdMuted {
+  color: rgba(212, 237, 212, 0.4);
+  font-size: 11px;
+  font-style: italic;
+}
+
+/* ── Shared ─────────────────────────────────────────────────────────── */
+
+.empty {
+  padding: 32px 20px;
+  text-align: center;
+  font-size: 12.5px;
+  font-style: italic;
+  color: rgba(212, 237, 212, 0.45);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  line-height: 1.6;
+}
+
+.errorBanner {
+  font-size: 11.5px;
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin: 0;
+}
