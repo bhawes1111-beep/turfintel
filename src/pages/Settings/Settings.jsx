@@ -66,15 +66,14 @@ const SECTIONS = [
   },
   {
     key: 'course',
-    label: 'Course',
+    label: 'Course Information',
     component: CourseSection,
     keywords: [
-      'course', 'facility', 'crosswinds',
-      'name', 'location', 'time zone', 'timezone',
-      'routing', 'press & roll', 'units',
+      'course', 'course information', 'facility', 'crosswinds', 'crossroads',
+      'name', 'short name', 'location', 'status', 'edit course',
+      'time zone', 'timezone', 'routing', 'press & roll',
       'weather station', 'coordinates', 'anchor',
-      'bounds', 'bounding box',
-      'aerial', 'image', 'map zoom', 'default zoom',
+      'bounds', 'bounding box', 'map zoom', 'default zoom', 'geometry',
     ],
   },
   {
