@@ -23,13 +23,16 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { createSpray } from '../../../utils/sprays/spraysStore'
+import { createSpray, useSpraysData } from '../../../utils/sprays/spraysStore'
 import { useInventoryData, recordInventoryUsage } from '../../../utils/inventory/inventoryStore'
+import { useImportedLabels } from '../../../utils/inventory/labelImportStore'
 import { useCrewData } from '../../../utils/crew/crewStore'
 import { createCalendarEvent } from '../../../utils/calendar/calendarStore'
 import { createAlert } from '../../../utils/alerts/alertsStore'
 import { useToast } from '../../../utils/feedback/toastContext'
 import { useSelectedCourse } from '../../../utils/courses/courseStore'
+import { analyzeSprayDraft } from '../../../utils/chemistry'
+import ChemicalIntelligencePanel from '../../../components/chemistry/ChemicalIntelligencePanel'
 import WorkspaceSection from '../../../components/shared/WorkspaceSection'
 import styles from '../Spray.module.css'
 
@@ -280,9 +283,23 @@ function stockStatus(qty, reorderLevel) {
 export default function BuildSpraySheet() {
   const { items: inventoryProducts }    = useInventoryData()
   const { employees: crewEmployees }    = useCrewData()
+  const { labels: importedLabels }      = useImportedLabels()
+  const { records: sprayHistory }       = useSpraysData()
   const selectedCourse                  = useSelectedCourse()
   const toast                           = useToast()
   const navigate                        = useNavigate()
+
+  // ── Chemistry intelligence inputs (Phase 22B) ────────────────────────
+  // Build a stable lookup from inventory-item-id → label row so the
+  // history analyzer can resolve FRAC/HRAC/IRAC codes per past
+  // application without re-scanning the labels array each call.
+  const labelsByItemId = useMemo(() => {
+    const out = {}
+    for (const lbl of importedLabels ?? []) {
+      if (lbl?.inventoryItemId) out[lbl.inventoryItemId] = lbl
+    }
+    return out
+  }, [importedLabels])
 
   // ── Spray area options (Phase 1b) ──────────────────────────────────────
   // Built-in acreage fields + customCourseAreas from Course Configuration.
@@ -399,6 +416,39 @@ export default function BuildSpraySheet() {
       }
     })
   }, [draft.rows, draft.acres, inventoryProducts])
+
+  // ── Chemistry intelligence analysis (Phase 22B) ──────────────────────
+  // tankProducts is the typed shape the analyzer expects:
+  //   { id, name, label } — label is the inventory_product_labels row or
+  //   null when the product hasn't been imported through the wizard.
+  // We re-derive on every relevant change so the panel updates live as
+  // products / area / date change.
+  const tankProducts = useMemo(() => {
+    return enrichedRows
+      .filter(r => r.inventoryItemId)
+      .map(r => ({
+        id:    r.inventoryItemId,
+        name:  r.name,
+        label: labelsByItemId[r.inventoryItemId] ?? null,
+      }))
+  }, [enrichedRows, labelsByItemId])
+
+  const labeledTankCount = useMemo(
+    () => tankProducts.filter(p => p.label).length,
+    [tankProducts],
+  )
+
+  const chemAnalysis = useMemo(() => {
+    if (tankProducts.length === 0) return null
+    return analyzeSprayDraft({
+      tankProducts,
+      sprayHistory:    sprayHistory ?? [],
+      labelsByItemId,
+      draftArea:       draft.area,
+      referenceDate:   draft.date,
+      lookbackDays:    21,
+    })
+  }, [tankProducts, sprayHistory, labelsByItemId, draft.area, draft.date])
 
   const summary = useMemo(() => {
     const productCount = enrichedRows.length
@@ -1120,10 +1170,12 @@ export default function BuildSpraySheet() {
               )}
             </SummarySection>
 
-            <SummarySection label="Compatibility & FRAC">
-              <span className={styles.naUnavailable}>
-                Data unavailable — compatibility matrix not yet wired.
-              </span>
+            <SummarySection label="Chemical Intelligence">
+              <ChemicalIntelligencePanel
+                analysis={chemAnalysis}
+                tankProductCount={tankProducts.length}
+                labeledProductCount={labeledTankCount}
+              />
             </SummarySection>
 
             {summary.unitMismatches.length > 0 && (

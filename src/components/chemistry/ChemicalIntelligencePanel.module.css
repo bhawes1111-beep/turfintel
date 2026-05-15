@@ -1,0 +1,180 @@
+/* Phase 22B — Chemical Intelligence panel.
+ *
+ * Compact intelligence chips and warning lines that slot into the Spray
+ * Builder's Tank Summary aside. Follows the existing Spray.module.css
+ * naTankSection vocabulary so the panel sits flush with surrounding
+ * Operational / Product totals / Nutrient sections — same paddings,
+ * same muted label color, same row rhythm.
+ *
+ * Severity palette intentionally mirrors the canonical TurfIntel
+ * severity tokens (info=green, warn=amber, high=red) so future Phase 22
+ * dashboards can share the visual language without re-skinning.
+ */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.badge {
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  padding: 3px 7px;
+  border-radius: 9999px;
+  white-space: nowrap;
+}
+
+.badge[data-severity="info"] {
+  color: #4a9e4a;
+  background: rgba(74, 158, 74, 0.10);
+  border: 1px solid rgba(74, 158, 74, 0.25);
+}
+
+.badge[data-severity="warn"] {
+  color: #d4883a;
+  background: rgba(210, 130, 40, 0.10);
+  border: 1px solid rgba(210, 130, 40, 0.25);
+}
+
+.badge[data-severity="high"] {
+  color: #e07070;
+  background: rgba(220, 80, 80, 0.10);
+  border: 1px solid rgba(220, 80, 80, 0.25);
+}
+
+.badge[data-severity="good"] {
+  color: #4a9e4a;
+  background: rgba(74, 158, 74, 0.10);
+  border: 1px solid rgba(74, 158, 74, 0.25);
+}
+
+.codeChipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.codeChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 7px;
+  border-radius: 4px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--color-text, #e4e8ec);
+}
+
+.codeChip[data-risk="high"]    { border-color: rgba(220, 80, 80, 0.40); }
+.codeChip[data-risk="medium"]  { border-color: rgba(210, 130, 40, 0.40); }
+.codeChip[data-risk="low"]     { border-color: rgba(74, 158, 74, 0.40); }
+.codeChip[data-risk="unknown"] { border-color: rgba(255, 255, 255, 0.10); opacity: 0.75; }
+
+.codeChipType {
+  font-size: 9px;
+  color: var(--color-text-muted, #8a929a);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.codeChipRisk {
+  font-size: 9px;
+  color: var(--color-text-muted, #8a929a);
+  font-weight: 500;
+}
+
+.codeChipRisk[data-risk="high"]   { color: #e07070; }
+.codeChipRisk[data-risk="medium"] { color: #d4883a; }
+.codeChipRisk[data-risk="low"]    { color: #4a9e4a; }
+
+/* ── Warning lines ───────────────────────────────────────────────────── */
+
+.warningList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.warning {
+  padding: 7px 9px;
+  border-radius: 4px;
+  border-left: 3px solid transparent;
+  font-size: 11.5px;
+  background: rgba(255, 255, 255, 0.025);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.warning[data-severity="info"] {
+  border-left-color: #4a9e4a;
+  background: rgba(74, 158, 74, 0.05);
+}
+
+.warning[data-severity="warn"] {
+  border-left-color: #d4883a;
+  background: rgba(210, 130, 40, 0.06);
+}
+
+.warning[data-severity="high"] {
+  border-left-color: #e07070;
+  background: rgba(220, 80, 80, 0.07);
+}
+
+.warning[data-severity="good"] {
+  border-left-color: #4a9e4a;
+  background: rgba(74, 158, 74, 0.05);
+}
+
+.warningTitle {
+  font-weight: 600;
+  color: var(--color-text, #e4e8ec);
+  font-size: 11.5px;
+  line-height: 1.3;
+}
+
+.warningDetail {
+  color: var(--color-text-muted, #a8b0b8);
+  font-size: 10.5px;
+  line-height: 1.4;
+}
+
+.cleanState {
+  padding: 7px 9px;
+  border-radius: 4px;
+  border-left: 3px solid #4a9e4a;
+  background: rgba(74, 158, 74, 0.05);
+  font-size: 11px;
+  color: var(--color-text, #e4e8ec);
+  line-height: 1.4;
+}
+
+.missingState {
+  padding: 7px 9px;
+  border-radius: 4px;
+  border-left: 3px solid var(--color-text-muted, #8a929a);
+  background: rgba(255, 255, 255, 0.02);
+  font-size: 10.5px;
+  font-style: italic;
+  color: var(--color-text-muted, #a8b0b8);
+  line-height: 1.4;
+}
+
+.metaLine {
+  font-size: 10px;
+  color: var(--color-text-muted, #8a929a);
+  font-style: italic;
+}
