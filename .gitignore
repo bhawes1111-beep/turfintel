@@ -15,6 +15,9 @@ dist-ssr
 # Wrangler local state / cache (local D1, build artifacts)
 .wrangler
 
+# Claude Code local workspace (settings, transcripts, plans)
+.claude
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
