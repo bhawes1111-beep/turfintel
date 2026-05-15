@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, Fragment } from 'react'
 import { createPortal } from 'react-dom'
+import { Icon } from '../shared/icons'
 import { useToast } from '../../utils/feedback/toastContext'
 import {
   uploadLabelPdf,
@@ -81,6 +82,26 @@ function fmtBytes(n) {
   return `${(n / 1024 / 1024).toFixed(1)} MB`
 }
 
+function fmtTime(d) {
+  if (!d) return ''
+  try {
+    return d.toLocaleString(undefined, {
+      month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+    })
+  } catch {
+    return ''
+  }
+}
+
+// Fields surfaced in the duplicate comparison card.
+const DUP_FIELDS = [
+  ['Category',     'category',     'category'],
+  ['Unit',         'unit',         'unit'],
+  ['Quantity',     'quantity',     'quantity'],
+  ['Manufacturer', 'manufacturer', 'manufacturer'],
+  ['EPA #',        'epaNumber',    'epaNumber'],
+]
+
 export default function ChemicalImportWizard({ onClose, onSaved }) {
   const toast = useToast()
   const itemIdRef = useRef(newItemId())
@@ -93,6 +114,7 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
   const [uploading, setUploading]     = useState(false)
   const [uploadError, setUploadError] = useState(null)
   const [attachment, setAttachment]   = useState(null)
+  const [uploadedAt, setUploadedAt]   = useState(null)
   const [dragOver, setDragOver]       = useState(false)
 
   // Step 2 — extract
@@ -140,6 +162,7 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
     try {
       const att = await uploadLabelPdf({ file, draftItemId: itemIdRef.current })
       setAttachment(att)
+      setUploadedAt(new Date())
       setStep(1)
       runExtraction(att)
     } catch (err) {
@@ -252,25 +275,34 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
       aria-label="Chemical Import Wizard"
     >
       <div className={styles.modal} onClick={e => e.stopPropagation()}>
-        {/* Header + step indicator */}
+        {/* Header */}
         <div className={styles.header}>
           <div>
             <h2 className={styles.title}>Chemical Import Wizard</h2>
             <p className={styles.subtitle}>Add a chemical from its label PDF.</p>
           </div>
-          <button className={styles.closeBtn} onClick={handleClose} aria-label="Close">✕</button>
+          <button className={styles.closeBtn} onClick={handleClose} aria-label="Close">
+            <Icon name="close" size={16} />
+          </button>
         </div>
 
+        {/* Step progress */}
         <div className={styles.steps}>
           {STEPS.map((label, i) => (
-            <div
-              key={label}
-              className={styles.stepChip}
-              data-state={i === step ? 'active' : i < step ? 'done' : 'todo'}
-            >
-              <span className={styles.stepNum}>{i < step ? '✓' : i + 1}</span>
-              {label}
-            </div>
+            <Fragment key={label}>
+              {i > 0 && (
+                <span className={styles.connector} data-filled={i <= step ? 'yes' : 'no'} />
+              )}
+              <div
+                className={styles.stepItem}
+                data-state={i === step ? 'active' : i < step ? 'done' : 'todo'}
+              >
+                <span className={styles.stepDot}>
+                  {i < step ? '✓' : i + 1}
+                </span>
+                <span className={styles.stepLabel}>{label}</span>
+              </div>
+            </Fragment>
           ))}
         </div>
 
@@ -295,9 +327,15 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
                   className={styles.fileInput}
                   onChange={e => pickFile(e.target.files?.[0])}
                 />
-                <span className={styles.dropIcon}>📄</span>
+                <span className={styles.pdfGlyph}>
+                  <svg viewBox="0 0 20 20" width="24" height="24" fill="currentColor" aria-hidden="true">
+                    <path d="M5 1.5h7L16 5.5v12A1.5 1.5 0 0114.5 19h-9A1.5 1.5 0 014 17.5v-14A1.5 1.5 0 015.5 1.5z" />
+                    <path d="M11.5 1.5V6h4.5" opacity="0.35" />
+                  </svg>
+                  <span className={styles.pdfGlyphTag}>PDF</span>
+                </span>
                 <span className={styles.dropText}>
-                  {file ? file.name : 'Drop a label PDF here, or click to browse'}
+                  {dragOver ? 'Drop to attach the label PDF' : 'Drop a label PDF here, or click to browse'}
                 </span>
                 <span className={styles.dropHint}>
                   PDF only · max {MAX_PDF_BYTES / 1024 / 1024} MB
@@ -306,9 +344,11 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
 
               {file && (
                 <div className={styles.fileRow}>
-                  <span className={styles.fileName}>{file.name}</span>
+                  <Icon name="inventory" size={15} className={styles.fileRowIcon} />
+                  <span className={styles.fileName} title={file.name}>{file.name}</span>
                   <span className={styles.fileSize}>{fmtBytes(file.size)}</span>
                   <button
+                    type="button"
                     className={styles.linkBtn}
                     onClick={() => { setFile(null); setUploadError(null) }}
                   >
@@ -320,8 +360,11 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
               {uploadError && <p className={styles.errorBanner}>{uploadError}</p>}
 
               <div className={styles.actions}>
-                <button className={styles.btnGhost} onClick={handleClose}>Cancel</button>
+                <button type="button" className={styles.btnGhost} onClick={handleClose}>
+                  Cancel
+                </button>
                 <button
+                  type="button"
                   className={styles.btnPrimary}
                   disabled={!file || uploading}
                   onClick={handleUpload}
@@ -337,7 +380,15 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
             <div className={styles.stepPane}>
               {attachment && (
                 <div className={styles.fileRow}>
-                  <span className={styles.fileName}>{attachment.fileName || 'Label PDF'}</span>
+                  <Icon name="inventory" size={15} className={styles.fileRowIcon} />
+                  <span className={styles.fileCol}>
+                    <span className={styles.fileName} title={attachment.fileName || 'Label PDF'}>
+                      {attachment.fileName || 'Label PDF'}
+                    </span>
+                    {uploadedAt && (
+                      <span className={styles.fileMeta}>Uploaded {fmtTime(uploadedAt)}</span>
+                    )}
+                  </span>
                   <a
                     className={styles.linkBtn}
                     href={attachment.url}
@@ -350,7 +401,12 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
               )}
 
               {extracting && (
-                <p className={styles.infoBanner}>Analyzing label PDF…</p>
+                <div className={styles.scanRow}>
+                  <span className={styles.scanIcon} data-busy="yes">
+                    <Icon name="scan" size={18} />
+                  </span>
+                  <span>Analyzing label PDF…</span>
+                </div>
               )}
 
               {extractError && (
@@ -359,30 +415,46 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
 
               {!extracting && extractResult && !extractResult.configured && (
                 <div className={styles.notice}>
-                  <p className={styles.noticeTitle}>AI extraction not configured yet</p>
-                  <p className={styles.noticeBody}>
-                    {extractResult.message ||
-                      'Automatic label reading is not available. You can enter the label details manually in the next step.'}
-                  </p>
+                  <span className={styles.noticeIcon}>
+                    <Icon name="scan" size={18} />
+                  </span>
+                  <div>
+                    <p className={styles.noticeTitle}>AI extraction not configured yet</p>
+                    <p className={styles.noticeBody}>
+                      {extractResult.message ||
+                        'Automatic label reading is not available. You can enter the label details manually in the next step.'}
+                    </p>
+                  </div>
                 </div>
               )}
 
               {!extracting && extractResult?.configured && (
                 <div className={styles.notice} data-tone="ok">
-                  <p className={styles.noticeTitle}>Draft extracted</p>
-                  <p className={styles.noticeBody}>
-                    Review every field on the next step — AI extraction may be incomplete.
-                  </p>
+                  <span className={styles.noticeIcon} data-tone="ok">
+                    <Icon name="scan" size={18} />
+                  </span>
+                  <div>
+                    <p className={styles.noticeTitle}>Draft extracted</p>
+                    <p className={styles.noticeBody}>
+                      Review every field on the next step — AI extraction may be incomplete.
+                    </p>
+                  </div>
                 </div>
               )}
 
-              <p className={styles.warnBanner}>
-                ⚠ Review label information before saving. AI extraction may be incomplete.
-              </p>
+              {!extracting && (
+                <p className={styles.warnBanner}>
+                  <span className={styles.warnDot}>!</span>
+                  Review label information before saving. AI extraction may be incomplete.
+                </p>
+              )}
 
               <div className={styles.actions}>
-                <button className={styles.btnGhost} onClick={handleClose}>Cancel</button>
+                <button type="button" className={styles.btnGhost} onClick={handleClose}>
+                  Cancel
+                </button>
                 <button
+                  type="button"
                   className={styles.btnPrimary}
                   disabled={extracting || (!extractResult && !extractError)}
                   onClick={goToReview}
@@ -397,13 +469,12 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
           {step === 2 && (
             <div className={styles.stepPane}>
               <p className={styles.warnBanner}>
-                ⚠ Review label information before saving. AI extraction may be incomplete —
+                <span className={styles.warnDot}>!</span>
+                Review label information before saving. AI extraction may be incomplete —
                 nothing is saved until you click Save.
               </p>
 
-              {/* Required */}
-              <p className={styles.groupTitle}>Required</p>
-              <div className={styles.grid}>
+              <Section icon="chemical" title="Product Information">
                 <Field label="Product Name *" wide>
                   <input
                     className={styles.input}
@@ -422,55 +493,78 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
                     <option value="fertilizer">Fertilizer</option>
                   </select>
                 </Field>
-                <Field label="Category">
+                <Field
+                  label="Category"
+                  hint={form.kind === 'fertilizer' ? 'e.g. Granular, Liquid' : 'Fungicide, Herbicide, Insecticide, PGR'}
+                >
                   <input
                     className={styles.input}
                     list="chem-category-list"
                     value={form.category}
                     onChange={e => setField('category', e.target.value)}
-                    placeholder={form.kind === 'fertilizer' ? 'e.g. Granular' : 'Fungicide / Herbicide…'}
+                    placeholder={form.kind === 'fertilizer' ? 'e.g. Granular' : 'e.g. Fungicide'}
                   />
                   <datalist id="chem-category-list">
                     {CHEM_CATEGORIES.map(c => <option key={c} value={c} />)}
                   </datalist>
-                </Field>
-                <Field label="Unit">
-                  <input
-                    className={styles.input}
-                    value={form.unit}
-                    onChange={e => setField('unit', e.target.value)}
-                    placeholder="gal / lb / oz"
-                  />
-                </Field>
-                <Field label="Quantity">
-                  <input
-                    className={styles.input}
-                    type="number"
-                    min="0"
-                    value={form.quantity}
-                    onChange={e => setField('quantity', e.target.value)}
-                    placeholder="0"
-                  />
                 </Field>
                 <Field label="Manufacturer">
                   <input
                     className={styles.input}
                     value={form.manufacturer}
                     onChange={e => setField('manufacturer', e.target.value)}
+                    placeholder="e.g. Syngenta"
                   />
                 </Field>
+                <Field
+                  label="Active Ingredients"
+                  wide
+                  hint="As listed on the label, e.g. Chlorothalonil 54%"
+                >
+                  <input
+                    className={styles.input}
+                    value={form.activeIngredients}
+                    onChange={e => setField('activeIngredients', e.target.value)}
+                    placeholder="e.g. Chlorothalonil 54%, Acibenzolar-S-methyl 0.5%"
+                  />
+                </Field>
+                <Field label="Chemical Class">
+                  <input
+                    className={styles.input}
+                    value={form.chemicalClass}
+                    onChange={e => setField('chemicalClass', e.target.value)}
+                    placeholder="e.g. Chloronitrile"
+                  />
+                </Field>
+                {form.kind === 'fertilizer' && (
+                  <>
+                    <Field label="Analysis (N-P-K)">
+                      <input
+                        className={styles.input}
+                        value={form.analysis}
+                        onChange={e => setField('analysis', e.target.value)}
+                        placeholder="e.g. 18-3-6"
+                      />
+                    </Field>
+                    <Field label="Nitrogen Source">
+                      <input
+                        className={styles.input}
+                        value={form.nitrogenSource}
+                        onChange={e => setField('nitrogenSource', e.target.value)}
+                        placeholder="e.g. Urea, SCU"
+                      />
+                    </Field>
+                  </>
+                )}
+              </Section>
+
+              <Section icon="disease" title="Regulatory Information">
                 <Field label="EPA Registration #">
                   <input
                     className={styles.input}
                     value={form.epaNumber}
                     onChange={e => setField('epaNumber', e.target.value)}
-                  />
-                </Field>
-                <Field label="Active Ingredients" wide>
-                  <input
-                    className={styles.input}
-                    value={form.activeIngredients}
-                    onChange={e => setField('activeIngredients', e.target.value)}
+                    placeholder="e.g. 100-1364"
                   />
                 </Field>
                 <Field label="Signal Word">
@@ -484,7 +578,10 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
                     ))}
                   </select>
                 </Field>
-                <Field label="Re-Entry Interval (REI)">
+                <Field
+                  label="Re-Entry Interval (REI)"
+                  hint="Hours before re-entry is allowed"
+                >
                   <input
                     className={styles.input}
                     value={form.reiHours}
@@ -492,23 +589,110 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
                     placeholder="e.g. 12 hours"
                   />
                 </Field>
-                <Field label="Restricted Use">
+                <Field label="PHI" hint="Pre-harvest interval, if listed">
+                  <input
+                    className={styles.input}
+                    value={form.phi}
+                    onChange={e => setField('phi', e.target.value)}
+                    placeholder="e.g. 0 days"
+                  />
+                </Field>
+                <Field label="Restricted Use" wide>
                   <label className={styles.checkRow}>
                     <input
                       type="checkbox"
+                      className={styles.checkbox}
                       checked={form.restrictedUse}
                       onChange={e => setField('restrictedUse', e.target.checked)}
                     />
-                    Restricted-use pesticide
+                    <span>Restricted-use pesticide (RUP)</span>
                   </label>
                 </Field>
-                <Field label="Application / Rate Notes" wide>
+              </Section>
+
+              <Section icon="spray" title="Application Information">
+                <Field
+                  label="Application / Rate Notes"
+                  wide
+                  hint="One rate per line"
+                >
                   <textarea
                     className={styles.textarea}
                     rows={3}
                     value={form.applicationRatesText}
                     onChange={e => setField('applicationRatesText', e.target.value)}
-                    placeholder="One rate per line — e.g. 1.4 oz / 1000 sq ft"
+                    placeholder={'e.g. 1.4 oz / 1000 sq ft\n3.6 oz / 1000 sq ft (curative)'}
+                  />
+                </Field>
+                <Field
+                  label="Target Pests / Diseases / Weeds"
+                  wide
+                  hint="One target per line"
+                >
+                  <textarea
+                    className={styles.textarea}
+                    rows={2}
+                    value={form.targetsText}
+                    onChange={e => setField('targetsText', e.target.value)}
+                    placeholder={'e.g. Dollar spot\nBrown patch\nPythium blight'}
+                  />
+                </Field>
+                <Field label="Turf Sites" wide hint="Where the product is registered for use">
+                  <input
+                    className={styles.input}
+                    value={form.turfSites}
+                    onChange={e => setField('turfSites', e.target.value)}
+                    placeholder="e.g. Greens, Tees, Fairways"
+                  />
+                </Field>
+              </Section>
+
+              <Section icon="inventory" title="Inventory Information">
+                <Field label="Unit">
+                  <input
+                    className={styles.input}
+                    value={form.unit}
+                    onChange={e => setField('unit', e.target.value)}
+                    placeholder="e.g. gal, lb, oz"
+                  />
+                </Field>
+                <Field label="Quantity">
+                  <input
+                    className={styles.input}
+                    type="number"
+                    min="0"
+                    value={form.quantity}
+                    onChange={e => setField('quantity', e.target.value)}
+                    placeholder="0"
+                  />
+                </Field>
+                <Field label="Reorder Level">
+                  <input
+                    className={styles.input}
+                    type="number"
+                    min="0"
+                    value={form.reorderLevel}
+                    onChange={e => setField('reorderLevel', e.target.value)}
+                    placeholder="e.g. 2"
+                  />
+                </Field>
+                <Field label="Cost / Unit">
+                  <input
+                    className={styles.input}
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={form.costPerUnit}
+                    onChange={e => setField('costPerUnit', e.target.value)}
+                    placeholder="e.g. 89.50"
+                  />
+                </Field>
+                <Field label="Expiry Date">
+                  <input
+                    className={styles.input}
+                    value={form.expiryDate}
+                    onChange={e => setField('expiryDate', e.target.value)}
+                    placeholder="YYYY-MM-DD"
                   />
                 </Field>
                 <Field label="Notes" wide>
@@ -517,99 +701,105 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
                     rows={2}
                     value={form.notes}
                     onChange={e => setField('notes', e.target.value)}
+                    placeholder="Operational notes — storage location, handling reminders…"
                   />
                 </Field>
-              </div>
+              </Section>
 
-              {/* Optional */}
-              <p className={styles.groupTitle}>Optional label details</p>
-              <div className={styles.grid}>
-                <Field label="FRAC Group">
-                  <input className={styles.input} value={form.fracGroup}
-                    onChange={e => setField('fracGroup', e.target.value)} />
+              <Section icon="settings" title="Optional Advanced Details">
+                <Field label="FRAC Group" hint="Fungicide resistance code">
+                  <input
+                    className={styles.input}
+                    value={form.fracGroup}
+                    onChange={e => setField('fracGroup', e.target.value)}
+                    placeholder="e.g. 3, 11, M5"
+                  />
                 </Field>
-                <Field label="HRAC Group">
-                  <input className={styles.input} value={form.hracGroup}
-                    onChange={e => setField('hracGroup', e.target.value)} />
+                <Field label="HRAC Group" hint="Herbicide resistance code">
+                  <input
+                    className={styles.input}
+                    value={form.hracGroup}
+                    onChange={e => setField('hracGroup', e.target.value)}
+                    placeholder="e.g. 2, 4, 9"
+                  />
                 </Field>
-                <Field label="IRAC Group">
-                  <input className={styles.input} value={form.iracGroup}
-                    onChange={e => setField('iracGroup', e.target.value)} />
-                </Field>
-                <Field label="Chemical Class">
-                  <input className={styles.input} value={form.chemicalClass}
-                    onChange={e => setField('chemicalClass', e.target.value)} />
-                </Field>
-                <Field label="PHI (if listed)">
-                  <input className={styles.input} value={form.phi}
-                    onChange={e => setField('phi', e.target.value)} />
-                </Field>
-                <Field label="Cost / Unit">
-                  <input className={styles.input} type="number" min="0" step="0.01"
-                    value={form.costPerUnit}
-                    onChange={e => setField('costPerUnit', e.target.value)} />
-                </Field>
-                <Field label="Reorder Level">
-                  <input className={styles.input} type="number" min="0"
-                    value={form.reorderLevel}
-                    onChange={e => setField('reorderLevel', e.target.value)} />
-                </Field>
-                <Field label="Expiry Date">
-                  <input className={styles.input} value={form.expiryDate}
-                    onChange={e => setField('expiryDate', e.target.value)}
-                    placeholder="YYYY-MM-DD" />
-                </Field>
-                {form.kind === 'fertilizer' && (
-                  <>
-                    <Field label="Analysis (N-P-K)">
-                      <input className={styles.input} value={form.analysis}
-                        onChange={e => setField('analysis', e.target.value)}
-                        placeholder="e.g. 18-3-6" />
-                    </Field>
-                    <Field label="Nitrogen Source">
-                      <input className={styles.input} value={form.nitrogenSource}
-                        onChange={e => setField('nitrogenSource', e.target.value)}
-                        placeholder="e.g. Urea, SCU" />
-                    </Field>
-                  </>
-                )}
-                <Field label="Turf Sites" wide>
-                  <input className={styles.input} value={form.turfSites}
-                    onChange={e => setField('turfSites', e.target.value)}
-                    placeholder="e.g. Greens, Tees, Fairways" />
-                </Field>
-                <Field label="Target Pests / Diseases / Weeds" wide>
-                  <textarea className={styles.textarea} rows={2}
-                    value={form.targetsText}
-                    onChange={e => setField('targetsText', e.target.value)}
-                    placeholder="One target per line" />
+                <Field label="IRAC Group" hint="Insecticide resistance code">
+                  <input
+                    className={styles.input}
+                    value={form.iracGroup}
+                    onChange={e => setField('iracGroup', e.target.value)}
+                    placeholder="e.g. 1A, 4A"
+                  />
                 </Field>
                 <Field label="Safety Notes" wide>
-                  <textarea className={styles.textarea} rows={2}
+                  <textarea
+                    className={styles.textarea}
+                    rows={2}
                     value={form.safetyNotes}
-                    onChange={e => setField('safetyNotes', e.target.value)} />
+                    onChange={e => setField('safetyNotes', e.target.value)}
+                    placeholder="PPE, handling precautions…"
+                  />
                 </Field>
                 <Field label="Storage / Disposal Notes" wide>
-                  <textarea className={styles.textarea} rows={2}
+                  <textarea
+                    className={styles.textarea}
+                    rows={2}
                     value={form.storageNotes}
-                    onChange={e => setField('storageNotes', e.target.value)} />
+                    onChange={e => setField('storageNotes', e.target.value)}
+                    placeholder="Temperature limits, container disposal…"
+                  />
                 </Field>
                 <Field label="Label URL / Source" wide>
-                  <input className={styles.input} value={form.labelUrl}
+                  <input
+                    className={styles.input}
+                    value={form.labelUrl}
                     onChange={e => setField('labelUrl', e.target.value)}
-                    placeholder="https://…" />
+                    placeholder="https://…"
+                  />
                 </Field>
-              </div>
+              </Section>
 
               {saveError && <p className={styles.errorBanner}>{saveError}</p>}
 
               {/* Duplicate handling */}
               {duplicate && (
-                <div className={styles.notice} data-tone="warn">
-                  <p className={styles.noticeTitle}>Possible duplicate</p>
+                <div className={styles.dupNotice}>
+                  <div className={styles.dupHead}>
+                    <span className={styles.dupBadge}>Possible duplicate</span>
+                  </div>
                   <p className={styles.noticeBody}>{duplicate.message}</p>
+
+                  <div className={styles.dupCard}>
+                    <p className={styles.dupCardTitle}>
+                      Existing item · {duplicate.existing?.name}
+                    </p>
+                    <div className={styles.dupRows}>
+                      {DUP_FIELDS.map(([label, exKey, formKey]) => {
+                        const exVal = duplicate.existing?.[exKey]
+                        const newVal = form[formKey]
+                        const exStr  = exVal == null || exVal === '' ? '—' : String(exVal)
+                        const newStr = newVal == null || String(newVal).trim() === ''
+                          ? '—' : String(newVal).trim()
+                        const changed = exStr !== newStr
+                        return (
+                          <div key={label} className={styles.dupRow} data-changed={changed ? 'yes' : 'no'}>
+                            <span className={styles.dupRowLabel}>{label}</span>
+                            <span className={styles.dupRowOld}>{exStr}</span>
+                            {changed && (
+                              <>
+                                <span className={styles.dupRowArrow}>→</span>
+                                <span className={styles.dupRowNew}>{newStr}</span>
+                              </>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+
                   <div className={styles.dupActions}>
                     <button
+                      type="button"
                       className={styles.btnGhost}
                       disabled={saving}
                       onClick={() => setDuplicate(null)}
@@ -617,6 +807,7 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
                       Cancel
                     </button>
                     <button
+                      type="button"
                       className={styles.btnSecondary}
                       disabled={saving}
                       onClick={() => doSave('create')}
@@ -624,6 +815,7 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
                       Save as Duplicate
                     </button>
                     <button
+                      type="button"
                       className={styles.btnPrimary}
                       disabled={saving}
                       onClick={() => doSave('update')}
@@ -636,8 +828,11 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
 
               {!duplicate && (
                 <div className={styles.actions}>
-                  <button className={styles.btnGhost} onClick={handleClose}>Cancel</button>
+                  <button type="button" className={styles.btnGhost} onClick={handleClose}>
+                    Cancel
+                  </button>
                   <button
+                    type="button"
                     className={styles.btnPrimary}
                     disabled={saving || !form.name.trim()}
                     onClick={() => doSave('check')}
@@ -649,17 +844,40 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
             </div>
           )}
         </div>
+
+        {/* Saving overlay */}
+        {saving && (
+          <div className={styles.savingOverlay}>
+            <span className={styles.spinner} />
+            <span className={styles.savingText}>Saving to inventory…</span>
+          </div>
+        )}
       </div>
     </div>,
     document.body,
   )
 }
 
-function Field({ label, wide, children }) {
+function Section({ icon, title, children }) {
+  return (
+    <section className={styles.section}>
+      <div className={styles.sectionHead}>
+        <span className={styles.sectionIcon}>
+          <Icon name={icon} size={14} />
+        </span>
+        <span className={styles.sectionTitle}>{title}</span>
+      </div>
+      <div className={styles.grid}>{children}</div>
+    </section>
+  )
+}
+
+function Field({ label, wide, hint, children }) {
   return (
     <div className={wide ? styles.fieldWide : styles.field}>
       <span className={styles.fieldLabel}>{label}</span>
       {children}
+      {hint && <span className={styles.fieldHint}>{hint}</span>}
     </div>
   )
 }

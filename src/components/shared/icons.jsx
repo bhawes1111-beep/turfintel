@@ -106,6 +106,17 @@ const iconPaths = {
     />
   ),
 
+  scan: (
+    // Corner-bracket frame + horizontal scan line (AI/extract)
+    <>
+      <path
+        d="M2 6V3.5A1.5 1.5 0 013.5 2H6M14 2h2.5A1.5 1.5 0 0118 3.5V6M18 14v2.5a1.5 1.5 0 01-1.5 1.5H14M6 18H3.5A1.5 1.5 0 012 16.5V14"
+        stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" fill="none"
+      />
+      <rect x="5" y="9.25" width="10" height="1.5" rx=".75" />
+    </>
+  ),
+
   chevronLeft: (
     <path
       stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
