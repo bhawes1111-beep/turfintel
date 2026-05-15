@@ -93,6 +93,28 @@ function fmtTime(d) {
   }
 }
 
+// Accept either a Date or an ISO string (the worker returns ISO).
+function fmtTimeAny(v) {
+  if (!v) return ''
+  const d = v instanceof Date ? v : new Date(v)
+  return Number.isNaN(d.getTime()) ? '' : fmtTime(d)
+}
+
+// Human labels for the fields the extract heuristics may prefill.
+// Keys match the `hints.fieldsFound` codes from the worker.
+const FIELD_LABELS = {
+  epaNumber:         'EPA #',
+  signalWord:        'Signal Word',
+  restrictedUse:     'Restricted Use',
+  reiHours:          'REI',
+  phi:               'PHI',
+  fracGroup:         'FRAC',
+  hracGroup:         'HRAC',
+  iracGroup:         'IRAC',
+  activeIngredients: 'Active Ingredients',
+  manufacturer:      'Manufacturer',
+}
+
 // Fields surfaced in the duplicate comparison card.
 const DUP_FIELDS = [
   ['Category',     'category',     'category'],
@@ -121,6 +143,7 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
   const [extracting, setExtracting]       = useState(false)
   const [extractResult, setExtractResult] = useState(null)
   const [extractError, setExtractError]   = useState(null)
+  const [showRawText, setShowRawText]     = useState(false)
 
   // Step 3 — review / save
   const [form, setForm]           = useState(emptyForm)
@@ -413,31 +436,89 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
                 <p className={styles.errorBanner}>Extraction request failed: {extractError}</p>
               )}
 
+              {/* Extraction failed at the worker layer (D1/R2 not configured, etc). */}
               {!extracting && extractResult && !extractResult.configured && (
                 <div className={styles.notice}>
                   <span className={styles.noticeIcon}>
                     <Icon name="scan" size={18} />
                   </span>
                   <div>
-                    <p className={styles.noticeTitle}>AI extraction not configured yet</p>
+                    <p className={styles.noticeTitle}>Extraction unavailable</p>
                     <p className={styles.noticeBody}>
                       {extractResult.message ||
-                        'Automatic label reading is not available. You can enter the label details manually in the next step.'}
+                        'Label reading is not available right now. You can enter the label details manually in the next step.'}
                     </p>
                   </div>
                 </div>
               )}
 
-              {!extracting && extractResult?.configured && (
-                <div className={styles.notice} data-tone="ok">
-                  <span className={styles.noticeIcon} data-tone="ok">
+              {/* Scanned/image-only PDF — text extraction can't see anything. */}
+              {!extracting && extractResult?.configured && extractResult.scanned && (
+                <div className={styles.notice} data-tone="warn">
+                  <span className={styles.noticeIcon} data-tone="warn">
                     <Icon name="scan" size={18} />
                   </span>
                   <div>
-                    <p className={styles.noticeTitle}>Draft extracted</p>
+                    <p className={styles.noticeTitle}>Scanned PDF detected</p>
                     <p className={styles.noticeBody}>
-                      Review every field on the next step — AI extraction may be incomplete.
+                      {extractResult.message ||
+                        'Scanned/image-only PDF extraction is not yet supported. Enter the label details manually.'}
                     </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Selectable text was parsed — show summary + prefill confidence note. */}
+              {!extracting && extractResult?.configured && !extractResult.scanned && (
+                <div
+                  className={styles.notice}
+                  data-tone={extractResult.hints?.fieldsFound?.length ? 'ok' : 'info'}
+                >
+                  <span
+                    className={styles.noticeIcon}
+                    data-tone={extractResult.hints?.fieldsFound?.length ? 'ok' : null}
+                  >
+                    <Icon name="scan" size={18} />
+                  </span>
+                  <div className={styles.noticeBlock}>
+                    <p className={styles.noticeTitle}>
+                      {extractResult.hints?.fieldsFound?.length
+                        ? 'Text extracted — fields prefilled'
+                        : 'Text extracted — no fields matched'}
+                    </p>
+                    <p className={styles.noticeBody}>{extractResult.message}</p>
+
+                    {extractResult.hints?.fieldsFound?.length > 0 && (
+                      <div className={styles.summaryChips}>
+                        {extractResult.hints.fieldsFound.map(k => (
+                          <span key={k} className={styles.summaryChip}>
+                            ✓ {FIELD_LABELS[k] ?? k}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className={styles.extractMeta}>
+                      {extractResult.extractedAt && (
+                        <span>Extracted {fmtTimeAny(extractResult.extractedAt)}</span>
+                      )}
+                      {extractResult.totalPages > 0 && (
+                        <span>{extractResult.totalPages} page{extractResult.totalPages === 1 ? '' : 's'}</span>
+                      )}
+                      {typeof extractResult.rawText === 'string' && extractResult.rawText.length > 0 && (
+                        <button
+                          type="button"
+                          className={styles.linkBtn}
+                          onClick={() => setShowRawText(v => !v)}
+                        >
+                          {showRawText ? 'Hide extracted text' : 'View extracted text'}
+                        </button>
+                      )}
+                    </div>
+
+                    {showRawText && typeof extractResult.rawText === 'string' && (
+                      <pre className={styles.rawTextPre}>{extractResult.rawText}</pre>
+                    )}
                   </div>
                 </div>
               )}
@@ -445,7 +526,8 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
               {!extracting && (
                 <p className={styles.warnBanner}>
                   <span className={styles.warnDot}>!</span>
-                  Review label information before saving. AI extraction may be incomplete.
+                  Heuristic text parse — review every field before saving. Extraction
+                  may miss or misread values.
                 </p>
               )}
 

@@ -20,6 +20,7 @@
 // inventory_product_labels row holds the richer regulatory metadata that
 // doesn't belong in the lean inventory_items schema.
 
+import { extractText, getDocumentProxy } from 'unpdf'
 import { json, badRequest, readJson } from '../lib/json.js'
 import { generateId } from '../lib/id.js'
 import { buildCourseFilter, resolveCourseId } from '../lib/scope.js'
@@ -104,23 +105,233 @@ function emptyDraft() {
 }
 
 // ── Extract ────────────────────────────────────────────────────────────────
+//
+// Phase 20 — real server-side PDF text extraction.
+//
+// Flow: fetch the uploaded PDF from R2 → run unpdf (pdfjs-dist under the
+// hood) to get selectable text → apply regex heuristics on top of an empty
+// draft skeleton. Fields that don't match heuristics stay null — the
+// wizard requires manual review before saving regardless.
+//
+// Limits: scanned/image-only PDFs return ~empty text; we detect that and
+// surface a clear "scanned" state. OCR is intentionally NOT implemented
+// in this phase.
+
+const RAW_TEXT_CAP_BYTES = 50_000
+
+/**
+ * Regex heuristics for the common chemical-label fields. Conservative —
+ * uncertain matches are left blank rather than guessed.
+ */
+function applyHeuristics(text) {
+  const draft = emptyDraft()
+
+  // EPA registration number — reliable.
+  // "EPA Reg. No.: 100-1364" / "EPA Reg # 100-1364-50"
+  const epa = text.match(
+    /EPA\s+Reg(?:istration)?\.?\s*(?:No|Number|#)?\.?\s*:?\s*([\d]{2,6}-[\d]{1,6}(?:-[\d]{1,6})?)/i,
+  )
+  if (epa) draft.epaNumber = epa[1]
+
+  // Restricted-use pesticide flag.
+  if (/RESTRICTED\s+USE\s+PESTICIDE/i.test(text)) draft.restrictedUse = true
+
+  // Signal word — anchor near "KEEP OUT OF REACH" when available, since
+  // the words DANGER/WARNING/CAUTION can appear elsewhere as plain prose.
+  const koor = text.search(/KEEP\s+OUT\s+OF\s+REACH/i)
+  const window = koor !== -1
+    ? text.slice(Math.max(0, koor - 240), koor + 240)
+    : text
+  const sig = window.match(/\b(DANGER\s*[—-]?\s*POISON|DANGER|WARNING|CAUTION)\b/)
+  if (sig) {
+    const word = sig[1].replace(/\s*[—-]\s*POISON/i, '').trim()
+    draft.signalWord = word.charAt(0) + word.slice(1).toLowerCase()
+  }
+
+  // Re-Entry Interval — "Restricted-Entry Interval (REI) of 12 hours".
+  // (hours?|hrs?|h) — singular OR plural; \b at the end of "hour" alone
+  // fails against "hours" because s is a word char.
+  const rei = text.match(
+    /(?:Restricted[- ]Entry Interval|REI)[^.\n]{0,80}?(\d+)\s*(?:hours?|hrs?|h)\b/i,
+  )
+  if (rei) draft.reiHours = `${rei[1]} hours`
+
+  // Pre-Harvest Interval — rarely on turf labels but worth attempting.
+  const phi = text.match(/Pre-?Harvest\s+Interval[^.\n]{0,80}?(\d+)\s*(?:days?|d)\b/i)
+  if (phi) draft.phi = `${phi[1]} days`
+
+  // FRAC / HRAC / IRAC group codes.
+  const frac = text.match(/FRAC\s+(?:Code|Group)?[:\s]+([\w\d]{1,8}(?:[,/][\w\d]{1,8})*)/i)
+  if (frac) draft.fracGroup = frac[1].trim()
+  const hrac = text.match(/HRAC\s+(?:Code|Group)?[:\s]+([\w\d]{1,8}(?:[,/][\w\d]{1,8})*)/i)
+  if (hrac) draft.hracGroup = hrac[1].trim()
+  const irac = text.match(/IRAC\s+(?:Code|Group)?[:\s]+([\w\d]{1,8}(?:[,/][\w\d]{1,8})*)/i)
+  if (irac) draft.iracGroup = irac[1].trim()
+
+  // Active Ingredients — capture between "Active Ingredient(s)" and a
+  // sentinel like "Other Ingredients", "Total", or "KEEP OUT".
+  const ai = text.match(
+    /Active\s+Ingredient[s]?\s*[:.]?\s*([\s\S]{1,500}?)(?:Other\s+Ingredient|Inert\s+Ingredient|Inert:|TOTAL:|Total\s*:|KEEP\s+OUT|EPA\s+Reg)/i,
+  )
+  if (ai) {
+    const cleaned = ai[1]
+      .replace(/\.{2,}/g, ' ')           // dot leaders
+      .replace(/\s+/g, ' ')
+      .replace(/^[:.\s*]+/, '')
+      .trim()
+      .slice(0, 280)
+    if (cleaned.length > 5) draft.activeIngredients = cleaned
+  }
+
+  // Manufacturer / Marketer.
+  const mfr = text.match(
+    /(?:Manufactured|Marketed|Distributed|Produced)\s+(?:by|for)\s*[:\s]+([A-Z][^,\n]{2,80})/i,
+  )
+  if (mfr) {
+    const name = mfr[1].split(/[,.]/)[0].trim().slice(0, 80)
+    if (name.length > 2) draft.manufacturer = name
+  }
+
+  // Product name — intentionally NOT extracted from text. PDF text alone
+  // can't reliably distinguish the product title from surrounding marketing
+  // and registration text. The wizard requires manual entry of the name.
+
+  return draft
+}
 
 /**
  * POST /api/inventory/import-label/extract
+ *
  * Body: { attachmentId } — the uploaded PDF's attachment id.
  *
- * No AI provider is configured. This returns the contract the frontend
- * branches on: `configured: false` → show the "not configured" state and
- * fall through to manual entry. When a Workers AI / LLM binding is added,
- * branch on it here and populate `draft` from the extraction result.
+ * Fetches the PDF from R2, extracts text via unpdf, applies the regex
+ * heuristics, and returns:
+ *   {
+ *     configured, source, scanned, message, extractedAt, totalPages,
+ *     rawText,             // for the wizard's "view extracted text" panel
+ *     draft,               // shape matches the empty draft, prefilled
+ *     hints: { fieldsFound: [...] }
+ *   }
+ *
+ * If text extraction returns near-empty content, the PDF is treated as
+ * scanned/image-only and the wizard falls back to manual entry.
  */
 export async function extractLabelDraft(env, request) {
-  const body = await readJson(request)
+  const body         = await readJson(request)
+  const attachmentId = body?.attachmentId
+
+  if (!attachmentId) {
+    return json({
+      configured:  true,
+      source:      'pdf-text',
+      scanned:     false,
+      message:     'No attachmentId provided — manual entry only.',
+      extractedAt: new Date().toISOString(),
+      draft:       emptyDraft(),
+      hints:       { fieldsFound: [] },
+    })
+  }
+  if (!env.DB)     return json({ configured: false, message: 'D1 not configured',     draft: emptyDraft() }, 503)
+  if (!env.PHOTOS) return json({ configured: false, message: 'R2 (PHOTOS) not configured', draft: emptyDraft() }, 503)
+
+  // Find the uploaded PDF.
+  const row = await env.DB.prepare(
+    'SELECT * FROM operational_attachments WHERE id = ? AND status = ?',
+  ).bind(attachmentId, 'active').first()
+  if (!row) {
+    return json({ configured: false, message: 'Attachment not found', draft: emptyDraft() }, 404)
+  }
+  if (row.content_type !== 'application/pdf') {
+    return json({
+      configured: false,
+      message:    `Attachment is not a PDF (${row.content_type})`,
+      draft:      emptyDraft(),
+    }, 400)
+  }
+
+  // Pull PDF bytes from R2.
+  const obj = await env.PHOTOS.get(row.r2_key)
+  if (!obj) {
+    return json({ configured: false, message: 'PDF object missing in R2', draft: emptyDraft() }, 410)
+  }
+  const buffer = await obj.arrayBuffer()
+
+  // Extract text. unpdf wraps pdfjs-dist and runs in the Workers runtime.
+  let text = ''
+  let totalPages = 0
+  try {
+    const pdf = await getDocumentProxy(new Uint8Array(buffer))
+    totalPages = pdf.numPages
+    const result = await extractText(pdf, { mergePages: true })
+    text = typeof result?.text === 'string'
+      ? result.text
+      : Array.isArray(result?.text)
+        ? result.text.join('\n')
+        : ''
+  } catch (err) {
+    console.warn('[Label Extract] unpdf failed:', err?.message)
+    return json({
+      configured:  true,
+      source:      'pdf-text',
+      scanned:     false,
+      message:     `PDF parsing failed: ${err?.message ?? 'unknown error'}`,
+      extractedAt: new Date().toISOString(),
+      totalPages,
+      rawText:     '',
+      draft:       emptyDraft(),
+      hints:       { fieldsFound: [], error: true },
+    })
+  }
+
+  // Strip nulls, normalize, and check for image-only PDFs (which extract
+  // to essentially nothing because the content is rasterized).
+  const clean = text.replace(/ /g, '').trim()
+  if (clean.length < 80) {
+    return json({
+      configured:  true,
+      source:      'pdf-text',
+      scanned:     true,
+      message:     'Scanned/image-only PDF extraction not yet supported. Enter the label details manually.',
+      extractedAt: new Date().toISOString(),
+      totalPages,
+      rawText:     clean,
+      draft:       emptyDraft(),
+      hints:       { fieldsFound: [] },
+    })
+  }
+
+  // Apply heuristics on top of the empty skeleton.
+  const draft = applyHeuristics(clean)
+  const fieldsFound = []
+  if (draft.epaNumber)         fieldsFound.push('epaNumber')
+  if (draft.signalWord)        fieldsFound.push('signalWord')
+  if (draft.restrictedUse)     fieldsFound.push('restrictedUse')
+  if (draft.reiHours)          fieldsFound.push('reiHours')
+  if (draft.phi)               fieldsFound.push('phi')
+  if (draft.fracGroup)         fieldsFound.push('fracGroup')
+  if (draft.hracGroup)         fieldsFound.push('hracGroup')
+  if (draft.iracGroup)         fieldsFound.push('iracGroup')
+  if (draft.activeIngredients) fieldsFound.push('activeIngredients')
+  if (draft.manufacturer)      fieldsFound.push('manufacturer')
+
+  // Cap raw text in the response — labels are typically a few KB but the
+  // multi-page master label PDFs can be larger.
+  const rawText = clean.length > RAW_TEXT_CAP_BYTES
+    ? clean.slice(0, RAW_TEXT_CAP_BYTES) + '\n…[truncated]'
+    : clean
+
   return json({
-    configured:   false,
-    message:      'AI extraction is not configured yet. Enter the label details manually below.',
-    attachmentId: body?.attachmentId ?? null,
-    draft:        emptyDraft(),
+    configured:  true,
+    source:      'pdf-text',
+    scanned:     false,
+    message: fieldsFound.length > 0
+      ? `Extracted ${fieldsFound.length} field${fieldsFound.length === 1 ? '' : 's'} heuristically. Review every value before saving.`
+      : 'Text was extracted but no fields matched the heuristics. Enter the details manually.',
+    extractedAt: new Date().toISOString(),
+    totalPages,
+    rawText,
+    draft,
+    hints:       { fieldsFound },
   })
 }
 

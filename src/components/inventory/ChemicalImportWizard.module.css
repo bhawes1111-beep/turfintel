@@ -384,6 +384,14 @@
   border-color: rgba(74, 222, 128, 0.35);
   background: rgba(74, 222, 128, 0.04);
 }
+.notice[data-tone="info"] {
+  border-color: rgba(56, 189, 248, 0.35);
+  background: rgba(56, 189, 248, 0.04);
+}
+.notice[data-tone="warn"] {
+  border-color: rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.06);
+}
 
 .noticeIcon {
   display: inline-flex;
@@ -400,6 +408,10 @@
   background: rgba(74, 222, 128, 0.14);
   color: #4ade80;
 }
+.noticeIcon[data-tone="warn"] {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+}
 
 .noticeTitle {
   margin: 0 0 3px;
@@ -413,6 +425,58 @@
   font-size: 0.78rem;
   color: var(--color-text-muted);
   line-height: 1.5;
+}
+
+.noticeBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  flex: 1;
+  min-width: 0;
+}
+
+.summaryChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.summaryChip {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.12);
+  border: 1px solid rgba(74, 222, 128, 0.3);
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.extractMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.rawTextPre {
+  margin: 4px 0 0;
+  max-height: 220px;
+  overflow: auto;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-family: 'Consolas', 'Menlo', monospace;
+  font-size: 0.72rem;
+  color: var(--color-text);
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 /* ── Review sections ── */

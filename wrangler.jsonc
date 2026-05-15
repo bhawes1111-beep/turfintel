@@ -1,6 +1,10 @@
 {
   "name": "turfintel",
   "compatibility_date": "2025-05-06",
+  // Phase 20 — server-side PDF text extraction via unpdf (pdfjs-dist).
+  // unpdf works without this flag, but the flag enables Node.js polyfills
+  // that some pdfjs paths reference (Buffer, process). Safety net.
+  "compatibility_flags": ["nodejs_compat"],
   "main": "worker/index.js",
   "assets": {
     "directory": "./dist",

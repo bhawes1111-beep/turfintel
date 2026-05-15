@@ -8,15 +8,16 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "db:migrate:local":   "node scripts/applyMigrations.js --local",
-    "db:migrate:remote":  "node scripts/applyMigrations.js --remote",
-    "db:status:local":    "node scripts/applyMigrations.js --local --status",
-    "db:status:remote":   "node scripts/applyMigrations.js --remote --status"
+    "db:migrate:local": "node scripts/applyMigrations.js --local",
+    "db:migrate:remote": "node scripts/applyMigrations.js --remote",
+    "db:status:local": "node scripts/applyMigrations.js --local --status",
+    "db:status:remote": "node scripts/applyMigrations.js --remote --status"
   },
   "dependencies": {
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
-    "react-router-dom": "^7.15.0"
+    "react-router-dom": "^7.15.0",
+    "unpdf": "^1.6.2"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
