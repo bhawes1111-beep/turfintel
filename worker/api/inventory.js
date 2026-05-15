@@ -7,7 +7,7 @@ import { buildCourseFilter, resolveCourseId } from '../lib/scope.js'
 
 // ── Mappers ────────────────────────────────────────────────────────────────
 
-function rowToItem(row) {
+export function rowToItem(row) {
   if (!row) return null
   let relatedUsage = []
   if (row.related_usage) {

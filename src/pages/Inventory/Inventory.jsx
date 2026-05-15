@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import PageShell from '../../components/layout/PageShell'
 import WorkspaceActions from '../../components/shared/WorkspaceActions'
+import ChemicalImportWizard from '../../components/inventory/ChemicalImportWizard'
 import InventoryOverview        from './tabs/InventoryOverview'
 import InventoryProducts        from './tabs/InventoryProducts'
 import InventoryChemicals       from './tabs/InventoryChemicals'
@@ -26,6 +27,7 @@ export default function Inventory() {
   const seedTab     = TABS.includes(location.state?.activeTab) ? location.state.activeTab : 'Overview'
   const seedProduct = location.state?.productId ?? null
   const [activeTab, setActiveTab] = useState(seedTab)
+  const [wizardOpen, setWizardOpen] = useState(false)
 
   return (
     <PageShell
@@ -39,6 +41,13 @@ export default function Inventory() {
           <button
             type="button"
             className={workspace.workspaceActionBtn}
+            onClick={() => setWizardOpen(true)}
+          >
+            + Add Chemical from PDF
+          </button>
+          <button
+            type="button"
+            className={`${workspace.workspaceActionBtn} ${workspace.workspaceActionBtnSecondary}`}
             onClick={() => setActiveTab('Low Stock')}
           >
             Low Stock
@@ -53,6 +62,13 @@ export default function Inventory() {
         </WorkspaceActions>
       }
     >
+      {wizardOpen && (
+        <ChemicalImportWizard
+          onClose={() => setWizardOpen(false)}
+          onSaved={() => setActiveTab('Chemicals')}
+        />
+      )}
+
       {activeTab === 'Overview'         && <InventoryOverview />}
       {activeTab === 'Products'         && <InventoryProducts initialSelectedId={seedProduct} />}
       {activeTab === 'Chemicals'        && <InventoryChemicals />}

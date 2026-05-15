@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useInventoryData } from '../../../utils/inventory/inventoryStore'
+import { useImportedLabels } from '../../../utils/inventory/labelImportStore'
 import { EmptyState } from '../../../components/shared/EmptyState'
 import WorkspaceSection from '../../../components/shared/WorkspaceSection'
 import styles from '../Inventory.module.css'
@@ -17,7 +18,16 @@ const STATUS_CLASS = { ok: styles.stockOk, low: styles.stockLow, critical: style
 
 export default function InventoryChemicals() {
   const { items } = useInventoryData()
+  const { labels } = useImportedLabels()
   const chemicals = useMemo(() => items.filter(i => i.kind === 'chemical'), [items])
+  // inventoryItemId → label, so cards imported via the wizard show a PDF link.
+  const labelByItem = useMemo(() => {
+    const m = {}
+    for (const l of labels) {
+      if (l.inventoryItemId && l.pdfUrl) m[l.inventoryItemId] = l
+    }
+    return m
+  }, [labels])
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('All')
 
@@ -75,6 +85,7 @@ export default function InventoryChemicals() {
         <div className={styles.cardGrid}>
           {visible.map(c => {
             const status = stockStatus(c.quantity, c.reorderLevel)
+            const label = labelByItem[c.id]
             return (
               <div key={c.id} className={styles.card}>
                 <div className={styles.cardTop}>
@@ -102,6 +113,16 @@ export default function InventoryChemicals() {
                   <span className={styles.cardQtyUnit}>{c.unit}</span>
                   <span className={styles.cardReorder}>· reorder at {c.reorderLevel}</span>
                 </div>
+                {label && (
+                  <a
+                    className={styles.cardLabelLink}
+                    href={label.pdfUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    📄 Label PDF
+                  </a>
+                )}
               </div>
             )
           })}

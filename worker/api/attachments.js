@@ -20,26 +20,32 @@ import { buildCourseFilter, resolveCourseId } from '../lib/scope.js'
 const ALLOWED_PARENT_TYPES = new Set([
   'daily_briefing',
   'operations_task',
+  // Phase 19 — Chemical Import Wizard stores the source label PDF here,
+  // keyed to the inventory item id it will be saved against.
+  'inventory_label',
 ])
 
 // Whitelist mirrors what mobile crews are likely to upload. HEIC covers
-// modern iPhones; webp covers Android photo apps.
+// modern iPhones; webp covers Android photo apps. Phase 19 adds PDF for
+// the Chemical Import Wizard's label uploads.
 const ALLOWED_CONTENT_TYPES = new Set([
   'image/jpeg',
   'image/png',
   'image/webp',
   'image/heic',
   'image/heif',
+  'application/pdf',
 ])
 
 const MAX_FILE_BYTES = 8 * 1024 * 1024  // 8 MB
 
 const EXT_FOR_CONTENT_TYPE = {
-  'image/jpeg': 'jpg',
-  'image/png':  'png',
-  'image/webp': 'webp',
-  'image/heic': 'heic',
-  'image/heif': 'heif',
+  'image/jpeg':      'jpg',
+  'image/png':       'png',
+  'image/webp':      'webp',
+  'image/heic':      'heic',
+  'image/heif':      'heif',
+  'application/pdf': 'pdf',
 }
 
 function rowToAttachment(row, baseUrl = '') {

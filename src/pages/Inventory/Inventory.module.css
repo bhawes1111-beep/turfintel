@@ -148,6 +148,18 @@
   color: var(--color-text-muted);
 }
 
+/* Label PDF link — shown on chemicals imported via the Chemical Import Wizard. */
+.cardLabelLink {
+  align-self: flex-start;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  text-decoration: none;
+}
+.cardLabelLink:hover {
+  text-decoration: underline;
+}
+
 /* ── Stock status badges ────────────────────────────────────────────────── */
 
 .stockBadge {

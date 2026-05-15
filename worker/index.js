@@ -36,6 +36,11 @@ import {
   recordInventoryUsage,
 } from './api/inventory.js'
 import {
+  extractLabelDraft,
+  saveImportedLabel,
+  listImportedLabels,
+} from './api/inventoryLabels.js'
+import {
   listSprays,
   getSpray,
   createSpray,
@@ -258,6 +263,18 @@ async function handleApi(request, env, url) {
   if (pathname === '/api/inventory/usage') {
     if (method === 'GET')  return listInventoryUsage(env, courseId)
     if (method === 'POST') return recordInventoryUsage(env, request)
+  }
+
+  // ── /api/inventory/import-label/* (Phase 19 — Chemical Import Wizard) ──
+  // Must precede /api/inventory/:id. POSTs are mutation-gated above.
+  if (pathname === '/api/inventory/import-label/extract') {
+    if (method === 'POST') return extractLabelDraft(env, request)
+  }
+  if (pathname === '/api/inventory/import-label/save') {
+    if (method === 'POST') return saveImportedLabel(env, request)
+  }
+  if (pathname === '/api/inventory/import-label/labels') {
+    if (method === 'GET')  return listImportedLabels(env, courseId)
   }
 
   // ── /api/inventory/:id ────────────────────────────────────────────────
