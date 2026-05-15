@@ -548,7 +548,11 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
           )}
 
           {/* ── Step 3 — Review & Save ── */}
-          {step === 2 && (
+          {step === 2 && (() => {
+            // Phase 21: per-field { raw, normalized, ok } from the extractor.
+            const extFields = extractResult?.draft?.fields ?? {}
+            const ext = (key) => extFields[key] ?? null
+            return (
             <div className={styles.stepPane}>
               <p className={styles.warnBanner}>
                 <span className={styles.warnDot}>!</span>
@@ -590,7 +594,7 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
                     {CHEM_CATEGORIES.map(c => <option key={c} value={c} />)}
                   </datalist>
                 </Field>
-                <Field label="Manufacturer">
+                <Field label="Manufacturer" extract={ext('manufacturer')}>
                   <input
                     className={styles.input}
                     value={form.manufacturer}
@@ -602,6 +606,7 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
                   label="Active Ingredients"
                   wide
                   hint="As listed on the label, e.g. Chlorothalonil 54%"
+                  extract={ext('activeIngredients')}
                 >
                   <input
                     className={styles.input}
@@ -641,7 +646,7 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
               </Section>
 
               <Section icon="disease" title="Regulatory Information">
-                <Field label="EPA Registration #">
+                <Field label="EPA Registration #" extract={ext('epaNumber')}>
                   <input
                     className={styles.input}
                     value={form.epaNumber}
@@ -649,7 +654,7 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
                     placeholder="e.g. 100-1364"
                   />
                 </Field>
-                <Field label="Signal Word">
+                <Field label="Signal Word" extract={ext('signalWord')}>
                   <select
                     className={styles.input}
                     value={form.signalWord}
@@ -789,7 +794,7 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
               </Section>
 
               <Section icon="settings" title="Optional Advanced Details">
-                <Field label="FRAC Group" hint="Fungicide resistance code">
+                <Field label="FRAC Group" hint="Fungicide resistance code" extract={ext('fracGroup')}>
                   <input
                     className={styles.input}
                     value={form.fracGroup}
@@ -797,7 +802,7 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
                     placeholder="e.g. 3, 11, M5"
                   />
                 </Field>
-                <Field label="HRAC Group" hint="Herbicide resistance code">
+                <Field label="HRAC Group" hint="Herbicide resistance code" extract={ext('hracGroup')}>
                   <input
                     className={styles.input}
                     value={form.hracGroup}
@@ -805,7 +810,7 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
                     placeholder="e.g. 2, 4, 9"
                   />
                 </Field>
-                <Field label="IRAC Group" hint="Insecticide resistance code">
+                <Field label="IRAC Group" hint="Insecticide resistance code" extract={ext('iracGroup')}>
                   <input
                     className={styles.input}
                     value={form.iracGroup}
@@ -924,7 +929,8 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
                 </div>
               )}
             </div>
-          )}
+            )
+          })()}
         </div>
 
         {/* Saving overlay */}
@@ -954,12 +960,51 @@ function Section({ icon, title, children }) {
   )
 }
 
-function Field({ label, wide, hint, children }) {
+function Field({ label, wide, hint, extract, children }) {
   return (
     <div className={wide ? styles.fieldWide : styles.field}>
       <span className={styles.fieldLabel}>{label}</span>
       {children}
+      {extract && <ExtractOrigin field={extract} />}
       {hint && <span className={styles.fieldHint}>{hint}</span>}
+    </div>
+  )
+}
+
+// Phase 21 — render the normalization layer for a single field below its
+// input. `field` is the worker's `{ raw, normalized, ok }` shape (or null
+// when nothing was extracted for that field). When raw == normalized, the
+// row collapses to a single "From label" line.
+function formatNormalized(v) {
+  if (v == null) return '—'
+  if (Array.isArray(v)) {
+    if (v.length === 0) return '—'
+    if (typeof v[0] === 'object' && v[0] != null && 'name' in v[0]) {
+      return v.map(x => `${x.name} (${x.percent}%)`).join(', ')
+    }
+    return v.join(', ')
+  }
+  return String(v)
+}
+
+function ExtractOrigin({ field }) {
+  if (!field || field.raw == null) return null
+  const rawStr  = String(field.raw).trim()
+  const normStr = formatNormalized(field.normalized)
+  const same    = normStr === rawStr
+  return (
+    <div className={styles.extractOrigin}>
+      <span className={styles.eoLabel}>From label</span>
+      <span className={styles.eoRaw} title={rawStr}>{rawStr}</span>
+      {!same && (
+        <>
+          <span className={styles.eoArrow}>→</span>
+          <span className={styles.eoNorm} title={normStr}>{normStr}</span>
+        </>
+      )}
+      {!field.ok && (
+        <span className={styles.eoWarn}>could not normalize — review and edit</span>
+      )}
     </div>
   )
 }

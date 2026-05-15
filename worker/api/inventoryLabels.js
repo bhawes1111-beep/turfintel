@@ -25,6 +25,15 @@ import { json, badRequest, readJson } from '../lib/json.js'
 import { generateId } from '../lib/id.js'
 import { buildCourseFilter, resolveCourseId } from '../lib/scope.js'
 import { rowToItem } from './inventory.js'
+import {
+  normalizeManufacturer,
+  normalizeSignalWord,
+  normalizeEpaNumber,
+  normalizeGroupCodes,
+  normalizeActiveIngredients,
+  formatGroupCodes,
+  formatActiveIngredients,
+} from '../lib/labelNormalize.js'
 
 // ── Mappers ────────────────────────────────────────────────────────────────
 
@@ -120,37 +129,37 @@ function emptyDraft() {
 const RAW_TEXT_CAP_BYTES = 50_000
 
 /**
- * Regex heuristics for the common chemical-label fields. Conservative —
- * uncertain matches are left blank rather than guessed.
+ * Phase 20/21 — regex heuristics for the common chemical-label fields.
+ *
+ * Returns RAW captured strings (with minimal whitespace cleanup) so the
+ * normalization layer can produce canonical/structured values separately
+ * while the wizard's UI still has access to "what the extractor actually
+ * saw". Conservative — fields with no confident match stay null.
  */
 function applyHeuristics(text) {
   const draft = emptyDraft()
 
-  // EPA registration number — reliable.
-  // "EPA Reg. No.: 100-1364" / "EPA Reg # 100-1364-50"
+  // EPA registration number — "EPA Reg. No.: 100-1364" / "EPA Reg # 100-1364-50"
   const epa = text.match(
     /EPA\s+Reg(?:istration)?\.?\s*(?:No|Number|#)?\.?\s*:?\s*([\d]{2,6}-[\d]{1,6}(?:-[\d]{1,6})?)/i,
   )
   if (epa) draft.epaNumber = epa[1]
 
-  // Restricted-use pesticide flag.
+  // Restricted-use pesticide flag (boolean — no normalization needed).
   if (/RESTRICTED\s+USE\s+PESTICIDE/i.test(text)) draft.restrictedUse = true
 
-  // Signal word — anchor near "KEEP OUT OF REACH" when available, since
-  // the words DANGER/WARNING/CAUTION can appear elsewhere as plain prose.
+  // Signal word — anchored near "KEEP OUT OF REACH" when available, since
+  // the words DANGER/WARNING/CAUTION can also appear as plain prose. Stores
+  // the literal match (e.g. "CAUTION", "DANGER — POISON"); the normalizer
+  // strips POISON suffixes and title-cases.
   const koor = text.search(/KEEP\s+OUT\s+OF\s+REACH/i)
   const window = koor !== -1
     ? text.slice(Math.max(0, koor - 240), koor + 240)
     : text
   const sig = window.match(/\b(DANGER\s*[—-]?\s*POISON|DANGER|WARNING|CAUTION)\b/)
-  if (sig) {
-    const word = sig[1].replace(/\s*[—-]\s*POISON/i, '').trim()
-    draft.signalWord = word.charAt(0) + word.slice(1).toLowerCase()
-  }
+  if (sig) draft.signalWord = sig[1].trim()
 
   // Re-Entry Interval — "Restricted-Entry Interval (REI) of 12 hours".
-  // (hours?|hrs?|h) — singular OR plural; \b at the end of "hour" alone
-  // fails against "hours" because s is a word char.
   const rei = text.match(
     /(?:Restricted[- ]Entry Interval|REI)[^.\n]{0,80}?(\d+)\s*(?:hours?|hrs?|h)\b/i,
   )
@@ -160,7 +169,8 @@ function applyHeuristics(text) {
   const phi = text.match(/Pre-?Harvest\s+Interval[^.\n]{0,80}?(\d+)\s*(?:days?|d)\b/i)
   if (phi) draft.phi = `${phi[1]} days`
 
-  // FRAC / HRAC / IRAC group codes.
+  // FRAC / HRAC / IRAC group codes — capture the raw group string; the
+  // normalizer splits "M5/P1" / "3, 11" / "1A or 4A" into a clean array.
   const frac = text.match(/FRAC\s+(?:Code|Group)?[:\s]+([\w\d]{1,8}(?:[,/][\w\d]{1,8})*)/i)
   if (frac) draft.fracGroup = frac[1].trim()
   const hrac = text.match(/HRAC\s+(?:Code|Group)?[:\s]+([\w\d]{1,8}(?:[,/][\w\d]{1,8})*)/i)
@@ -169,13 +179,14 @@ function applyHeuristics(text) {
   if (irac) draft.iracGroup = irac[1].trim()
 
   // Active Ingredients — capture between "Active Ingredient(s)" and a
-  // sentinel like "Other Ingredients", "Total", or "KEEP OUT".
+  // sentinel. Whitespace + dot-leader cleanup only; the normalizer parses
+  // the "Name X.Y%" pairs into a structured array.
   const ai = text.match(
     /Active\s+Ingredient[s]?\s*[:.]?\s*([\s\S]{1,500}?)(?:Other\s+Ingredient|Inert\s+Ingredient|Inert:|TOTAL:|Total\s*:|KEEP\s+OUT|EPA\s+Reg)/i,
   )
   if (ai) {
     const cleaned = ai[1]
-      .replace(/\.{2,}/g, ' ')           // dot leaders
+      .replace(/\.{2,}/g, ' ')
       .replace(/\s+/g, ' ')
       .replace(/^[:.\s*]+/, '')
       .trim()
@@ -183,12 +194,13 @@ function applyHeuristics(text) {
     if (cleaned.length > 5) draft.activeIngredients = cleaned
   }
 
-  // Manufacturer / Marketer.
+  // Manufacturer / Marketer — stores the full captured tail (with any
+  // ", LLC" / ", Inc." legal suffixes intact). The normalizer trims those.
   const mfr = text.match(
-    /(?:Manufactured|Marketed|Distributed|Produced)\s+(?:by|for)\s*[:\s]+([A-Z][^,\n]{2,80})/i,
+    /(?:Manufactured|Marketed|Distributed|Produced)\s+(?:by|for)\s*[:\s]+([A-Z][^,\n]{2,80}(?:,\s*(?:L\.?L\.?C\.?|Inc\.?|Corp\.?|Corporation|Co\.?|Company|Ltd\.?))?)/i,
   )
   if (mfr) {
-    const name = mfr[1].split(/[,.]/)[0].trim().slice(0, 80)
+    const name = mfr[1].trim().slice(0, 100)
     if (name.length > 2) draft.manufacturer = name
   }
 
@@ -196,6 +208,64 @@ function applyHeuristics(text) {
   // can't reliably distinguish the product title from surrounding marketing
   // and registration text. The wizard requires manual entry of the name.
 
+  return draft
+}
+
+/**
+ * Phase 21 — apply the normalization layer on top of the raw heuristic
+ * draft.
+ *
+ *   - Top-level `draft.X` fields become the form-ready normalized values
+ *     (display strings) so the existing wizard form pre-fill keeps working.
+ *   - `draft.fields` carries `{ raw, normalized, ok }` per normalizable
+ *     field so the wizard can render raw-vs-normalized side-by-side.
+ *
+ * Fields that aren't normalizable (REI, PHI, restrictedUse, etc.) keep
+ * their raw value as-is and are absent from `fields`.
+ */
+function normalizeDraft(rawDraft) {
+  const fields = {}
+  const draft  = { ...rawDraft }
+
+  // EPA registration number — string in, string out.
+  if (rawDraft.epaNumber != null) {
+    const r = normalizeEpaNumber(rawDraft.epaNumber)
+    fields.epaNumber = r
+    draft.epaNumber  = r.normalized ?? rawDraft.epaNumber
+  }
+
+  // Manufacturer — trim legal suffixes.
+  if (rawDraft.manufacturer != null) {
+    const r = normalizeManufacturer(rawDraft.manufacturer)
+    fields.manufacturer = r
+    draft.manufacturer  = r.normalized ?? rawDraft.manufacturer
+  }
+
+  // Signal word — map to whitelist {Caution, Warning, Danger}.
+  if (rawDraft.signalWord != null) {
+    const r = normalizeSignalWord(rawDraft.signalWord)
+    fields.signalWord = r
+    draft.signalWord  = r.normalized ?? rawDraft.signalWord
+  }
+
+  // Active ingredients — parse into [{ name, percent }]; form-ready as
+  // "Name X%, Name X%" joined string.
+  if (rawDraft.activeIngredients != null) {
+    const r = normalizeActiveIngredients(rawDraft.activeIngredients)
+    fields.activeIngredients = r
+    draft.activeIngredients  = formatActiveIngredients(r.normalized) ?? rawDraft.activeIngredients
+  }
+
+  // FRAC / HRAC / IRAC — parse to arrays; form-ready as comma-joined.
+  for (const key of /** @type {const} */ (['fracGroup', 'hracGroup', 'iracGroup'])) {
+    if (rawDraft[key] != null) {
+      const r = normalizeGroupCodes(rawDraft[key])
+      fields[key] = r
+      draft[key]  = formatGroupCodes(r.normalized) ?? rawDraft[key]
+    }
+  }
+
+  draft.fields = fields
   return draft
 }
 
@@ -300,8 +370,12 @@ export async function extractLabelDraft(env, request) {
     })
   }
 
-  // Apply heuristics on top of the empty skeleton.
-  const draft = applyHeuristics(clean)
+  // Apply heuristics, then run the Phase 21 normalization layer on top.
+  // `draft` carries normalized top-level values for the form pre-fill, and
+  // `draft.fields` holds per-field { raw, normalized, ok } for the
+  // wizard's raw-vs-normalized display.
+  const rawDraft = applyHeuristics(clean)
+  const draft    = normalizeDraft(rawDraft)
   const fieldsFound = []
   if (draft.epaNumber)         fieldsFound.push('epaNumber')
   if (draft.signalWord)        fieldsFound.push('signalWord')
