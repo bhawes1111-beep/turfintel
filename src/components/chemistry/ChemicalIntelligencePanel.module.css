@@ -178,3 +178,55 @@
   color: var(--color-text-muted, #8a929a);
   font-style: italic;
 }
+
+/* ── Sequence timeline (Phase 22C) ────────────────────────────────────── */
+
+.sequenceBlock {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sequenceLine {
+  font-size: 10.5px;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color: var(--color-text, #e4e8ec);
+  letter-spacing: 0.3px;
+}
+
+.sequenceList {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.sequenceEntry {
+  font-size: 10.5px;
+  color: var(--color-text-muted, #a8b0b8);
+  line-height: 1.4;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.sequenceDate {
+  color: var(--color-text-muted, #8a929a);
+  font-variant-numeric: tabular-nums;
+  min-width: 44px;
+}
+
+.sequenceProducts {
+  color: var(--color-text, #e4e8ec);
+}
+
+.sequenceEntry[data-current="true"] {
+  color: #4ecb4e;
+  font-weight: 600;
+}
+
+.sequenceEntry[data-current="true"] .sequenceDate {
+  color: #4ecb4e;
+}

@@ -14,15 +14,29 @@ import {
   parseActiveIngredients,
   normalizeActiveName,
   findDuplicateActives,
+  findDuplicateActiveFamilies,
   aggregateTankCodes,
   filterByLookback,
   filterByArea,
   countApplicationsByGroup,
   detectRepeatedMOA,
+  detectRepeatedFamily,
   daysSinceLastUse,
+  indexRecordsById,
   analyzeSprayDraft,
   highestSeverity,
   SEVERITY,
+  // Phase 22C
+  AI_FAMILIES,
+  lookupActiveFamily,
+  familyCodeOf,
+  AREA_FAMILIES,
+  areaFamilyOf,
+  areaSurfaceTypeOf,
+  areasMatch,
+  buildMOATimeline,
+  formatSequence,
+  buildMixSequence,
 } from '../src/utils/chemistry/index.js'
 
 let passed = 0
@@ -248,6 +262,182 @@ section('Empty-input safety')
 const empty = analyzeSprayDraft({})
 assert(Array.isArray(empty.warnings) && empty.warnings.length === 0, 'Empty input → no warnings')
 assert(empty.summary.tankCodes.FRAC.length === 0, 'Empty input → empty FRAC bucket')
+
+// ── Phase 22C — AI family lookup ─────────────────────────────────────────
+section('AI family lookup (Phase 22C)')
+
+assert(lookupActiveFamily('Azoxystrobin')?.code === 'QOI', 'Azoxystrobin → QOI')
+assert(lookupActiveFamily('pyraclostrobin')?.code === 'QOI', 'pyraclostrobin (lc) → QOI')
+assert(lookupActiveFamily('Fluoxastrobin')?.code === 'QOI', 'Fluoxastrobin → QOI')
+assert(lookupActiveFamily('Chlorothalonil (technical)')?.code === 'MULTI', 'Chlorothalonil (technical) → MULTI')
+assert(lookupActiveFamily('Mefenoxam')?.code === 'PA', 'Mefenoxam → PA')
+assert(lookupActiveFamily('Imidacloprid')?.code === 'NEONIC', 'Imidacloprid → NEONIC')
+assert(lookupActiveFamily('Mystery Molecule') === null, 'Unknown active → null (no auto-bucketing)')
+assert(familyCodeOf('Tebuconazole') === 'DMI', 'familyCodeOf string helper')
+assert(AI_FAMILIES.QOI?.fracGroup === '11', 'QOI family lines up with FRAC 11')
+
+// ── Phase 22C — Area hierarchy ───────────────────────────────────────────
+section('Area hierarchy (Phase 22C)')
+
+assert(areaFamilyOf('Greens A')         === 'GREENS',   'Greens A → GREENS')
+assert(areaFamilyOf('greens')           === 'GREENS',   'greens → GREENS')
+assert(areaFamilyOf('Practice Greens')  === 'PRACTICE', 'Practice Greens → PRACTICE (not GREENS)')
+assert(areaFamilyOf('Putting Green')    === 'GREENS',   'Putting Green → GREENS')
+assert(areaFamilyOf('Tee #4')           === 'TEES',     'Tee #4 → TEES')
+assert(areaFamilyOf('Fairways')         === 'FAIRWAYS', 'Fairways')
+assert(areaFamilyOf('Native Areas')     === 'NATIVE',   'Native Areas → NATIVE')
+assert(areaFamilyOf('Cart path')        === null,       'Cart path → null (no family rule)')
+
+assert(areaSurfaceTypeOf('Greens A')    === 'greens',   'areaSurfaceTypeOf("Greens A") → greens')
+assert(areaSurfaceTypeOf('Cart path')   === null,       'areaSurfaceTypeOf unknown → null')
+
+assert(areasMatch('Greens', 'Greens', 'exact') === true,           'exact: same string')
+assert(areasMatch('Greens A', 'Greens B', 'exact') === false,      'exact: different strings')
+assert(areasMatch('Greens A', 'Greens B', 'family') === true,      'family: both GREENS')
+assert(areasMatch('Greens', 'Practice Greens', 'family') === false, 'family: Greens vs Practice Greens')
+assert(areasMatch('Cart path', 'Foo', 'family') === false,         'family with unknown areas falls back to exact')
+
+// filterByArea with family mode
+const familyHistory = [
+  { id: 'h1', date: '2026-05-10', area: 'Greens A',  products: [] },
+  { id: 'h2', date: '2026-05-12', area: 'Greens B',  products: [] },
+  { id: 'h3', date: '2026-05-13', area: 'Fairways',  products: [] },
+]
+const familyFiltered = filterByArea(familyHistory, 'Greens', 'family')
+assert(familyFiltered.length === 2, `family-mode filter returns 2 Greens records (got ${familyFiltered.length})`)
+const exactFiltered = filterByArea(familyHistory, 'Greens A', 'exact')
+assert(exactFiltered.length === 1, 'exact-mode filter unchanged')
+
+// ── Phase 22C — Duplicate family detection ──────────────────────────────
+section('Duplicate active families (Phase 22C)')
+
+const qoiTank = [
+  { id: 'a', name: 'Heritage TL', actives: [{ name: 'Azoxystrobin',    percent: 22.9 }] },
+  { id: 'b', name: 'Insignia',    actives: [{ name: 'Pyraclostrobin', percent: 23.6 }] },
+  { id: 'c', name: 'Daconil',     actives: [{ name: 'Chlorothalonil',  percent: 54   }] },
+]
+const famDupes = findDuplicateActiveFamilies(qoiTank, lookupActiveFamily)
+assert(famDupes.length === 1, 'One family duplicate group (QoI)')
+assert(famDupes[0].familyCode === 'QOI', 'Family code is QOI')
+assert(famDupes[0].products.length === 2, 'Two products in QoI family group')
+assert(famDupes[0].products[0].activeName !== famDupes[0].products[1].activeName, 'Different actives, same family')
+
+// ── Phase 22C — Family-level repeat detection ───────────────────────────
+section('Family-level repeat detection (Phase 22C)')
+
+const familyLabels = {
+  'inv-heritage': { fracGroup: '11', activeIngredients: 'Azoxystrobin 22.9%' },
+  'inv-insignia': { fracGroup: '11', activeIngredients: 'Pyraclostrobin 23.6%' },
+  'inv-daconil':  { fracGroup: 'M5', activeIngredients: 'Chlorothalonil 54%' },
+}
+const familyRecords = [
+  { id: 'f1', date: '2026-05-04', area: 'Greens', products: [{ inventoryItemId: 'inv-heritage', name: 'Heritage' }] },
+  { id: 'f2', date: '2026-05-11', area: 'Greens', products: [{ inventoryItemId: 'inv-insignia', name: 'Insignia' }] },
+]
+const famRepeat = detectRepeatedFamily(
+  [{ familyCode: 'QOI' }],
+  familyRecords,
+  familyLabels,
+  lookupActiveFamily,
+)
+assert(famRepeat[0].applications === 2, 'QOI family seen in 2 prior apps (azoxy + pyraclo)')
+assert(famRepeat[0].consecutivePrior === 2, 'QOI family 2 consecutive')
+
+// ── Phase 22C — Sequence formatters ──────────────────────────────────────
+section('Sequence formatters (Phase 22C)')
+
+const recordsForTimeline = [
+  { id: 'r1', date: '2026-05-04', area: 'Greens', products: [{ inventoryItemId: 'inv-heritage', name: 'Heritage TL' }] },
+  { id: 'r2', date: '2026-05-11', area: 'Greens', products: [{ inventoryItemId: 'inv-insignia', name: 'Insignia' }] },
+]
+const idx = indexRecordsById(recordsForTimeline)
+const timeline = buildMOATimeline({
+  code: '11',
+  type: 'FRAC',
+  records: [
+    { id: 'r1', date: '2026-05-04', area: 'Greens' },
+    { id: 'r2', date: '2026-05-11', area: 'Greens' },
+  ],
+  historyByRecordId: idx,
+  labelsByItemId: familyLabels,
+  referenceDate: '2026-05-15',
+  draftArea: 'Greens',
+})
+assert(timeline.length === 3, 'Timeline has 3 entries (2 prior + Current)')
+assert(timeline[0].dateLabel === 'May 4', 'First entry → May 4')
+assert(timeline[0].productNames[0] === 'Heritage TL', 'First entry resolves product name')
+assert(timeline[1].productNames[0] === 'Insignia', 'Second entry resolves Insignia')
+assert(timeline[2].isCurrent === true, 'Last entry is current')
+assert(timeline[2].dateLabel === 'Current', 'Current label')
+
+assert(formatSequence(timeline) === '11 → 11 → Current', `formatSequence: ${formatSequence(timeline)}`)
+assert(formatSequence([]) === '', 'Empty timeline → empty string')
+
+const mix = buildMixSequence(
+  [{ date: '2026-05-04', codes: ['M5'] }, { date: '2026-05-11', codes: ['11'] }],
+  { plannedCodes: ['11', 'M5'] },
+)
+assert(mix === 'M5 → 11 → 11+M5 (Current)', `buildMixSequence: ${mix}`)
+
+// ── Phase 22C — Full draft analysis with sequence + family ──────────────
+section('Full draft analysis includes sequence + family warnings (Phase 22C)')
+
+const fullHistory = [
+  { id: 'r1', date: '2026-05-04', area: 'Greens', products: [{ inventoryItemId: 'inv-heritage', name: 'Heritage TL' }] },
+  { id: 'r2', date: '2026-05-11', area: 'Greens', products: [{ inventoryItemId: 'inv-insignia', name: 'Insignia' }] },
+]
+const fullLabels = {
+  'inv-heritage': { fracGroup: '11', activeIngredients: 'Azoxystrobin 22.9%' },
+  'inv-insignia': { fracGroup: '11', activeIngredients: 'Pyraclostrobin 23.6%' },
+}
+const draftTank = [
+  { id: 'inv-tartan', name: 'Tartan', label: { fracGroup: '3, 11', activeIngredients: 'Trifloxystrobin 11.3%, Triadimefon 22.6%' } },
+]
+const fullResult = analyzeSprayDraft({
+  tankProducts:    draftTank,
+  sprayHistory:    fullHistory,
+  labelsByItemId:  fullLabels,
+  draftArea:       'Greens',
+  referenceDate:   '2026-05-15',
+  lookbackDays:    21,
+  areaMatchMode:   'exact',
+  areaType:        'greens',
+})
+
+const repeatedMOAWarning = fullResult.warnings.find(w => w.code === 'repeated-moa' && w.evidence.code === '11')
+assert(repeatedMOAWarning, 'FRAC 11 repeated-moa warning present')
+assert(Array.isArray(repeatedMOAWarning.evidence.sequence), 'Sequence attached to evidence')
+assert(repeatedMOAWarning.evidence.sequenceLabel?.includes(' → Current'), `Sequence label ends with Current (got "${repeatedMOAWarning.evidence.sequenceLabel}")`)
+assert(repeatedMOAWarning.evidence.sequence.length === 3, '3-entry sequence (2 prior + Current)')
+
+// Family warning for QOI should NOT appear when the direct FRAC 11 warning
+// already covers the same chain (suppression rule).
+const qoiFamilyWarning = fullResult.warnings.find(w => w.code === 'repeated-family' && w.evidence.familyCode === 'QOI')
+assert(!qoiFamilyWarning, 'QOI family warning suppressed when FRAC 11 already flagged')
+
+assert(fullResult.summary.areaType === 'greens', 'Summary carries areaType')
+assert(fullResult.summary.areaMatchMode === 'exact', 'Summary carries areaMatchMode')
+assert(fullResult.summary.repeatedFamily.length >= 1, 'repeatedFamily present in summary')
+
+// ── Phase 22C — Family duplicate triggers when codes don't (different
+//                molecules, no shared label group code present)
+section('Duplicate-active-family warning (no direct MOA warning)')
+
+const famDupTank = [
+  { id: 'p1', name: 'Product A', label: { activeIngredients: 'Azoxystrobin 22%' } },
+  { id: 'p2', name: 'Product B', label: { activeIngredients: 'Pyraclostrobin 23%' } },
+]
+const famDupResult = analyzeSprayDraft({
+  tankProducts:   famDupTank,
+  sprayHistory:   [],
+  labelsByItemId: {},
+  draftArea:      'Tees',
+  referenceDate:  '2026-05-15',
+})
+const dupFamW = famDupResult.warnings.find(w => w.code === 'duplicate-active-family')
+assert(dupFamW, 'duplicate-active-family warning detected')
+assert(dupFamW.evidence.familyCode === 'QOI', 'duplicate family is QOI')
+assert(dupFamW.severity === SEVERITY.WARN, 'duplicate-active-family is warn severity')
 
 // ── Summary ───────────────────────────────────────────────────────────────
 console.log(`\n${failed === 0 ? '✅' : '❌'}  ${passed} passed, ${failed} failed`)

@@ -16,7 +16,8 @@
 //
 // No React, no fetch. Inputs in, plain objects out.
 
-import { parseGroupCodes } from './chemistryStructures.js'
+import { parseGroupCodes, parseActiveIngredients } from './chemistryStructures.js'
+import { areasMatch } from './areaHierarchy.js'
 
 // ── Date helpers ──────────────────────────────────────────────────────────
 //
@@ -76,12 +77,20 @@ export function filterByLookback(records, referenceDate, lookbackDays) {
  * Filter (already-lookback-trimmed) records to those whose area matches the
  * draft area after normalization. When `area` is empty/null, the full
  * input is returned — "no area specified" means "everything counts".
+ *
+ * Phase 22C — accepts an optional `areaMatchMode`:
+ *   'exact'  (default) — case-insensitive exact match (Phase 22B behavior)
+ *   'family'           — resolve both sides to a surface family via
+ *                        areaHierarchy.areaFamilyOf and match on family.
+ *                        Family-side resolves only when BOTH areas have a
+ *                        known family; otherwise falls back to exact match
+ *                        for that comparison (no silent merging of unknowns).
  */
-export function filterByArea(records, area) {
+export function filterByArea(records, area, areaMatchMode = 'exact') {
   if (!Array.isArray(records)) return []
   const norm = normalizeAreaName(area)
   if (!norm) return records.slice()
-  return records.filter(r => normalizeAreaName(r.area) === norm)
+  return records.filter(r => areasMatch(r.area, area, areaMatchMode))
 }
 
 // ── Label resolution ──────────────────────────────────────────────────────
@@ -247,4 +256,95 @@ export function daysSinceLastUse(type, code, records, labelsByItemId, referenceD
     }
   }
   return null
+}
+
+// ── Family-level history analysis (Phase 22C) ───────────────────────────
+//
+// Resolve which active-ingredient families appear in a single spray
+// record. Mirrors recordCodes() but at the family level so the warning
+// layer can ask "did this past application apply ANY QoI molecule?"
+// instead of having to know which specific molecule.
+//
+// Requires a familyResolver function so this module doesn't directly
+// import aiFamilies.js — keeps the dependency graph one-way (warnings →
+// families → structures + history) and lets tests inject their own
+// resolver if they want.
+
+/**
+ * @param {Object} record - spray record with a `products` array
+ * @param {Record<string, Object>} labelsByItemId
+ * @param {(name: string) => {code: string}|null} familyResolver
+ * @returns {{ families: Set<string>, unresolvedCount: number }}
+ */
+export function recordFamilies(record, labelsByItemId, familyResolver) {
+  const out = { families: new Set(), unresolvedCount: 0 }
+  if (!record || !Array.isArray(record.products)) return out
+  if (typeof familyResolver !== 'function')        return out
+  for (const p of record.products) {
+    const id = p?.inventoryItemId
+    const label = id ? labelsByItemId?.[id] : null
+    if (!label) {
+      out.unresolvedCount += 1
+      continue
+    }
+    const actives = parseActiveIngredients(label.activeIngredients)
+    for (const a of actives) {
+      const fam = familyResolver(a.name)
+      if (fam?.code) out.families.add(fam.code)
+    }
+  }
+  return out
+}
+
+/**
+ * Family-level analogue of detectRepeatedMOA. Returns one entry per
+ * planned family code with: applications count, consecutivePrior count
+ * (most-recent consecutive applications that included this family), the
+ * last date, and the matching record references.
+ *
+ * @param {Array<{familyCode: string}>} plannedFamilies
+ * @param {Array<Object>} records          sorted oldest → newest
+ * @param {Record<string, Object>} labelsByItemId
+ * @param {(name: string) => {code: string}|null} familyResolver
+ */
+export function detectRepeatedFamily(plannedFamilies, records, labelsByItemId, familyResolver) {
+  if (!Array.isArray(plannedFamilies) || plannedFamilies.length === 0) return []
+  const sorted = Array.isArray(records) ? records.slice() : []
+  const codedRecords = sorted.map(r => ({
+    rec: r,
+    fams: recordFamilies(r, labelsByItemId, familyResolver),
+  }))
+
+  return plannedFamilies.map(({ familyCode }) => {
+    let applications = 0
+    let lastDate = null
+    const matched = []
+    for (const { rec, fams } of codedRecords) {
+      if (fams.families.has(familyCode)) {
+        applications += 1
+        matched.push({ id: rec.id ?? null, date: rec.date ?? null, area: rec.area ?? null })
+        if (!lastDate || (rec.date && rec.date > lastDate)) lastDate = rec.date
+      }
+    }
+    let consecutivePrior = 0
+    for (let i = codedRecords.length - 1; i >= 0; i--) {
+      if (codedRecords[i].fams.families.has(familyCode)) consecutivePrior += 1
+      else break
+    }
+    return { familyCode, applications, consecutivePrior, lastDate, records: matched }
+  })
+}
+
+// ── Record-index helper ─────────────────────────────────────────────────
+//
+// Build a lookup of records keyed by id so the sequence formatter can
+// resolve productNames for each timeline entry without re-scanning the
+// full history array. Pure helper, no side effects.
+
+export function indexRecordsById(records) {
+  const out = {}
+  for (const r of records ?? []) {
+    if (r?.id) out[r.id] = r
+  }
+  return out
 }

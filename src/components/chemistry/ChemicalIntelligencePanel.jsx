@@ -185,6 +185,39 @@ export default function ChemicalIntelligencePanel({
             <div key={`${w.code}-${i}`} className={styles.warning} data-severity={w.severity}>
               <span className={styles.warningTitle}>{w.title}</span>
               <span className={styles.warningDetail}>{w.detail}</span>
+              {/* Phase 22C — chronological application chain for repeated
+                  MOA warnings. Renders compact "M5 → 11 → 11 → Current"
+                  line plus a per-application detail list. */}
+              {Array.isArray(w.evidence?.sequence) && w.evidence.sequence.length > 1 && (
+                <div className={styles.sequenceBlock}>
+                  {w.evidence.sequenceLabel && (
+                    <span className={styles.sequenceLine}>{w.evidence.sequenceLabel}</span>
+                  )}
+                  <div className={styles.sequenceList}>
+                    {w.evidence.sequence.map((entry, idx) => (
+                      <span
+                        key={`${entry.dateLabel}-${idx}`}
+                        className={styles.sequenceEntry}
+                        data-current={entry.isCurrent ? 'true' : 'false'}
+                      >
+                        <span className={styles.sequenceDate}>{entry.dateLabel}</span>
+                        {entry.isCurrent ? (
+                          <span>Current tank{entry.area ? ` — ${entry.area}` : ''}</span>
+                        ) : (
+                          <>
+                            <span className={styles.sequenceProducts}>
+                              {entry.productNames.length > 0
+                                ? entry.productNames.join(', ')
+                                : '(product unresolved)'}
+                            </span>
+                            {entry.area && <span>· {entry.area}</span>}
+                          </>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -215,6 +248,7 @@ export default function ChemicalIntelligencePanel({
         {analysis?.summary?.area
           ? ` · history scoped to ${analysis.summary.area}, last ${analysis.summary.lookbackDays}d`
           : ` · history across all areas, last ${analysis?.summary?.lookbackDays ?? 21}d`}
+        {analysis?.summary?.areaType ? ` · surface: ${analysis.summary.areaType}` : ''}
       </span>
     </div>
   )

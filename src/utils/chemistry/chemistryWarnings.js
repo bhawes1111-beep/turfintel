@@ -35,6 +35,7 @@ import { lookupGroup, RESISTANCE_RISK } from './chemistryMetadata.js'
 import {
   aggregateTankCodes,
   findDuplicateActives,
+  findDuplicateActiveFamilies,
   parseActiveIngredients,
   parseGroupCodes,
 } from './chemistryStructures.js'
@@ -43,8 +44,12 @@ import {
   filterByArea,
   countApplicationsByGroup,
   detectRepeatedMOA,
+  detectRepeatedFamily,
   daysSinceLastUse,
+  indexRecordsById,
 } from './sprayHistoryAnalysis.js'
+import { lookupActiveFamily, AI_FAMILIES } from './aiFamilies.js'
+import { buildMOATimeline, formatSequence } from './sequenceFormat.js'
 
 export const SEVERITY = {
   INFO: 'info',
@@ -123,7 +128,7 @@ function buildSameTankSameCodeWarning(type, code, products, meta) {
   }
 }
 
-function buildRepeatedMOAWarning(repeat, meta, daysSince) {
+function buildRepeatedMOAWarning(repeat, meta, daysSince, sequence) {
   const { type, code, applications, consecutivePrior, lastDate } = repeat
   const recognized = meta.recognized
   const riskLevel = meta.riskLevel
@@ -146,7 +151,74 @@ function buildRepeatedMOAWarning(repeat, meta, daysSince) {
     code: 'repeated-moa',
     title: headline,
     detail,
-    evidence: { type, code, meta, applications, consecutivePrior, lastDate, daysSince },
+    evidence: {
+      type, code, meta, applications, consecutivePrior, lastDate, daysSince,
+      // Phase 22C — chronological chain of prior applications that hit
+      // this MOA, capped with a synthetic { isCurrent: true } entry for
+      // the planned tank. UI renders this as a compact timeline.
+      sequence:      sequence ?? null,
+      sequenceLabel: sequence ? formatSequence(sequence) : null,
+    },
+  }
+}
+
+// ── Family-level repeated-MOA warning (Phase 22C) ───────────────────────
+//
+// Same severity ladder as buildRepeatedMOAWarning, but keyed off the
+// active-ingredient family (QoI / DMI / SDHI / ...). Risk level is read
+// off the family's representative FRAC group when available — that
+// keeps the severity math consistent: a QoI-family repeat is high-risk
+// because FRAC 11 is high-risk.
+
+function familyRiskLevel(familyCode) {
+  const fam = AI_FAMILIES[familyCode]
+  if (!fam) return RESISTANCE_RISK.UNKNOWN
+  if (fam.fracGroup) {
+    const m = lookupGroup('FRAC', fam.fracGroup)
+    if (m.recognized) return m.riskLevel
+  }
+  if (fam.hracGroup) {
+    const m = lookupGroup('HRAC', fam.hracGroup)
+    if (m.recognized) return m.riskLevel
+  }
+  if (fam.iracGroup) {
+    const m = lookupGroup('IRAC', fam.iracGroup)
+    if (m.recognized) return m.riskLevel
+  }
+  return RESISTANCE_RISK.UNKNOWN
+}
+
+function buildRepeatedFamilyWarning(repeat) {
+  const { familyCode, applications, consecutivePrior, lastDate } = repeat
+  const fam = AI_FAMILIES[familyCode]
+  const riskLevel = familyRiskLevel(familyCode)
+  const sev = severityForRepeat(riskLevel, consecutivePrior, applications) ?? SEVERITY.INFO
+
+  const familyLabel = fam?.name ?? familyCode
+  const headline =
+    consecutivePrior >= 2
+      ? `${familyLabel} would be ${consecutivePrior + 1} in a row`
+      : `${familyLabel} family recently applied`
+
+  const detail = `${applications} prior application${applications === 1 ? '' : 's'} in the lookback window included a ${familyLabel} active${consecutivePrior >= 2 ? `, ${consecutivePrior} consecutively.` : '.'}${fam?.notes ? ` ${fam.notes}` : ''}`
+
+  return {
+    severity: sev,
+    code: 'repeated-family',
+    title: headline,
+    detail,
+    evidence: { familyCode, riskLevel, applications, consecutivePrior, lastDate, family: fam ?? null },
+  }
+}
+
+function buildDuplicateActiveFamilyWarning(dup) {
+  const productList = dup.products.map(p => `${p.productName} (${p.activeName})`).join(' + ')
+  return {
+    severity: SEVERITY.WARN,
+    code: 'duplicate-active-family',
+    title: `${dup.displayName} stacked in tank`,
+    detail: `${productList} share the ${dup.displayName} family. Multiple same-family actives in one application compress the rotation window even when each molecule is distinct.`,
+    evidence: { familyCode: dup.familyCode, displayName: dup.displayName, products: dup.products },
   }
 }
 
@@ -179,13 +251,28 @@ function buildRepeatedMOAWarning(repeat, meta, daysSince) {
 
 const DEFAULT_LOOKBACK_DAYS = 21
 
+/**
+ * @param {Object} opts
+ * @param {Array<{id: string, name: string, label: Object|null}>} opts.tankProducts
+ * @param {Array<Object>} opts.sprayHistory
+ * @param {Record<string, Object>} opts.labelsByItemId
+ * @param {string} opts.draftArea
+ * @param {string} opts.referenceDate            'YYYY-MM-DD'
+ * @param {number} [opts.lookbackDays]           default 21
+ * @param {'exact'|'family'} [opts.areaMatchMode] Phase 22C — default 'exact'
+ * @param {string|null} [opts.areaType]          Phase 22C — surface-type
+ *                                                slug (greens/tees/...);
+ *                                                informational only
+ */
 export function analyzeSprayDraft({
   tankProducts,
   sprayHistory,
   labelsByItemId,
   draftArea,
   referenceDate,
-  lookbackDays = DEFAULT_LOOKBACK_DAYS,
+  lookbackDays    = DEFAULT_LOOKBACK_DAYS,
+  areaMatchMode   = 'exact',
+  areaType        = null,
 } = {}) {
   const products = Array.isArray(tankProducts) ? tankProducts : []
   const labels = labelsByItemId ?? {}
@@ -199,11 +286,15 @@ export function analyzeSprayDraft({
     actives: parseActiveIngredients(p.label?.activeIngredients ?? p.activeIngredients ?? null),
   }))
   const duplicateActives = findDuplicateActives(tankForDupes)
+  // Phase 22C — family-level duplicate detection. Reuses the same active-
+  // hydrated tank shape; family resolution comes from aiFamilies.
+  const duplicateFamilies = findDuplicateActiveFamilies(tankForDupes, lookupActiveFamily)
 
   // 2. History — filter to the operative window + area.
   const inWindow = filterByLookback(sprayHistory, referenceDate, lookbackDays)
-  const inArea   = filterByArea(inWindow, draftArea)
+  const inArea   = filterByArea(inWindow, draftArea, areaMatchMode)
   const applicationsByGroup = countApplicationsByGroup(inArea, labels)
+  const historyByRecordId   = indexRecordsById(inArea)
 
   // 3. Repeated MOA — only check codes the draft actually plans to apply.
   const planned = []
@@ -214,12 +305,42 @@ export function analyzeSprayDraft({
   }
   const repeatedMOA = detectRepeatedMOA(planned, inArea, labels)
 
+  // 4. Phase 22C — repeated FAMILY analysis. Plan the families implied by
+  // the tank's actives so we can flag "QoI applied 2× recently + planned
+  // again here" even when the specific molecules differ.
+  const plannedFamilies = []
+  const seenFamily = new Set()
+  for (const tp of tankForDupes) {
+    for (const a of tp.actives) {
+      const fam = lookupActiveFamily(a.name)
+      if (fam?.code && !seenFamily.has(fam.code)) {
+        seenFamily.add(fam.code)
+        plannedFamilies.push({ familyCode: fam.code })
+      }
+    }
+  }
+  const repeatedFamily = detectRepeatedFamily(plannedFamilies, inArea, labels, lookupActiveFamily)
+
   // ── Compose warnings ───────────────────────────────────────────────────
   const warnings = []
 
   // (a) Duplicate active ingredients across tank products.
   for (const dup of duplicateActives) {
     warnings.push(buildDuplicateActiveWarning(dup))
+  }
+
+  // (a.2) Phase 22C — duplicate active FAMILIES. Suppressed when the same
+  // pair is already covered by the per-active duplicate detector (same
+  // products, same family) — avoids double-flagging "chlorothalonil x2"
+  // as both a duplicate-active AND a duplicate-active-family warning.
+  const duplicateActiveProductSets = new Set(
+    duplicateActives.map(d => d.products.map(p => p.productId ?? p.productName).sort().join('|')),
+  )
+  for (const dup of duplicateFamilies) {
+    const key = dup.products.map(p => p.productId ?? p.productName).sort().join('|')
+    if (!duplicateActiveProductSets.has(key)) {
+      warnings.push(buildDuplicateActiveFamilyWarning(dup))
+    }
   }
 
   // (b) Same-tank shared MOA. Only flag when 2+ products share a code.
@@ -232,12 +353,40 @@ export function analyzeSprayDraft({
     }
   }
 
-  // (c) Repeated MOA in the lookback window for this area.
+  // (c) Repeated MOA in the lookback window for this area. Phase 22C —
+  // attach the per-warning timeline / compact sequence to evidence.
   for (const r of repeatedMOA) {
     if (r.applications === 0) continue
     const meta = lookupGroup(r.type, r.code)
     const days = daysSinceLastUse(r.type, r.code, inArea, labels, referenceDate)
-    warnings.push(buildRepeatedMOAWarning(r, meta, days))
+    const sequence = buildMOATimeline({
+      code:              r.code,
+      type:              r.type,
+      records:           r.records,
+      historyByRecordId,
+      labelsByItemId:    labels,
+      referenceDate,
+      draftArea,
+    })
+    warnings.push(buildRepeatedMOAWarning(r, meta, days, sequence))
+  }
+
+  // (d) Phase 22C — repeated FAMILY warnings. Skip when (i) the family
+  // has no prior applications in the window, or (ii) every prior app
+  // that contributed to the family is already covered by a more-specific
+  // repeated-moa warning (same code(s)). The second rule prevents the
+  // family warning from duplicating an MOA-code warning that says the
+  // same thing.
+  const repeatedMoaCodes = new Set(repeatedMOA.filter(r => r.applications > 0).map(r => r.code))
+  for (const r of repeatedFamily) {
+    if (r.applications === 0) continue
+    const fam = AI_FAMILIES[r.familyCode]
+    // Suppression: if the family maps directly to a FRAC/HRAC/IRAC code
+    // that already produced a repeated-moa warning, the family info is
+    // redundant.
+    const directGroupCode = fam?.fracGroup ?? fam?.hracGroup ?? fam?.iracGroup ?? null
+    if (directGroupCode && repeatedMoaCodes.has(directGroupCode)) continue
+    warnings.push(buildRepeatedFamilyWarning(r))
   }
 
   // Stable sort: highest severity first; then by code so output is stable
@@ -253,11 +402,15 @@ export function analyzeSprayDraft({
     summary: {
       tankCodes,
       duplicateActives,
+      duplicateFamilies,
       applicationsByGroup,
       repeatedMOA,
+      repeatedFamily,
       resolvedHistoryCount: inArea.length,
       lookbackDays,
-      area: draftArea ?? null,
+      area:           draftArea ?? null,
+      areaType:       areaType ?? null,
+      areaMatchMode,
     },
   }
 }

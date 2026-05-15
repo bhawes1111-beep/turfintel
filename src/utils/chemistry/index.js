@@ -1,10 +1,8 @@
-// Phase 22A — Chemistry Intelligence: public barrel.
+// Phase 22A/C — Chemistry Intelligence: public barrel.
 //
-// Aggregates the chemistry utility layer's public surface so the upcoming
-// Spray Builder integration (Phase 22B) can import everything from
-// '@/utils/chemistry' without reaching into individual modules.
-//
-// Pure re-exports — no side effects, no React, no I/O.
+// Aggregates the chemistry utility layer's public surface so callers can
+// import everything from '@/utils/chemistry' without reaching into the
+// individual modules. Pure re-exports — no side effects.
 
 export {
   // Metadata
@@ -22,6 +20,7 @@ export {
   parseActiveIngredients,
   normalizeActiveName,
   findDuplicateActives,
+  findDuplicateActiveFamilies,
   aggregateTankCodes,
 } from './chemistryStructures.js'
 
@@ -31,10 +30,36 @@ export {
   filterByLookback,
   filterByArea,
   recordCodes,
+  recordFamilies,
   countApplicationsByGroup,
   detectRepeatedMOA,
+  detectRepeatedFamily,
   daysSinceLastUse,
+  indexRecordsById,
 } from './sprayHistoryAnalysis.js'
+
+export {
+  // Active-ingredient families (Phase 22C)
+  AI_FAMILIES,
+  lookupActiveFamily,
+  familyCodeOf,
+} from './aiFamilies.js'
+
+export {
+  // Area hierarchy (Phase 22C)
+  AREA_FAMILIES,
+  areaFamilyOf,
+  areaSurfaceTypeOf,
+  areasMatch,
+} from './areaHierarchy.js'
+
+export {
+  // Sequence formatters (Phase 22C)
+  buildMOATimeline,
+  formatSequence,
+  buildMixSequence,
+  fmtShortDate,
+} from './sequenceFormat.js'
 
 export {
   // Warning model

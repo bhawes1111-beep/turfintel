@@ -238,3 +238,66 @@ export function aggregateTankCodes(products) {
     IRAC: flatten(buckets.IRAC),
   }
 }
+
+// ── Family-level duplicate detection (Phase 22C) ─────────────────────────
+//
+// Active-ingredient FAMILY duplicate detection — the family-level analogue
+// of findDuplicateActives. Where the per-active version flags two
+// products with literal "chlorothalonil", this one flags two products
+// whose actives both resolve to the QoI family (azoxystrobin + pyraclostrobin).
+//
+// Imports the family lookup lazily to keep the structural-parser layer
+// usable without the aiFamilies metadata loaded (e.g. in tests that
+// don't care about families). When the lookup returns null, the active
+// is silently skipped from family grouping — uncategorized actives can
+// still trip the per-active duplicate detector.
+//
+// Output shape mirrors findDuplicateActives() so the warning layer can
+// process both arrays uniformly:
+//   { familyCode, displayName, products: [{ productId, productName,
+//                                            activeName, percent }] }
+// Note: `products` entries here can carry DIFFERENT actives — that's
+// the whole point of family-level grouping.
+
+/**
+ * @param {TankProduct[]} products
+ * @param {(name: string) => string|null} familyResolver - lookupActiveFamily-like
+ */
+export function findDuplicateActiveFamilies(products, familyResolver) {
+  if (!Array.isArray(products) || products.length < 2) return []
+  if (typeof familyResolver !== 'function') return []
+  /** @type {Map<string, {displayName: string, products: any[], seenProductIds: Set<any>}>} */
+  const groups = new Map()
+  for (const p of products) {
+    if (!p || !Array.isArray(p.actives)) continue
+    for (const a of p.actives) {
+      const fam = familyResolver(a.name)
+      if (!fam || !fam.code) continue
+      if (!groups.has(fam.code)) {
+        groups.set(fam.code, { displayName: fam.name ?? fam.code, products: [], seenProductIds: new Set() })
+      }
+      const slot = groups.get(fam.code)
+      // De-dupe within product: one entry per (product, family) pair.
+      const key = `${p.id ?? p.name}|${fam.code}`
+      if (slot.seenProductIds.has(key)) continue
+      slot.seenProductIds.add(key)
+      slot.products.push({
+        productId:   p.id ?? null,
+        productName: p.name ?? '(unnamed product)',
+        activeName:  a.name,
+        percent:     Number.isFinite(a.percent) ? a.percent : null,
+      })
+    }
+  }
+  const out = []
+  for (const [familyCode, g] of groups) {
+    if (g.products.length >= 2) {
+      out.push({
+        familyCode,
+        displayName: g.displayName,
+        products:    g.products,
+      })
+    }
+  }
+  return out
+}

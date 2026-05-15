@@ -31,7 +31,7 @@ import { createCalendarEvent } from '../../../utils/calendar/calendarStore'
 import { createAlert } from '../../../utils/alerts/alertsStore'
 import { useToast } from '../../../utils/feedback/toastContext'
 import { useSelectedCourse } from '../../../utils/courses/courseStore'
-import { analyzeSprayDraft } from '../../../utils/chemistry'
+import { analyzeSprayDraft, areaSurfaceTypeOf } from '../../../utils/chemistry'
 import ChemicalIntelligencePanel from '../../../components/chemistry/ChemicalIntelligencePanel'
 import WorkspaceSection from '../../../components/shared/WorkspaceSection'
 import styles from '../Spray.module.css'
@@ -440,6 +440,8 @@ export default function BuildSpraySheet() {
 
   const chemAnalysis = useMemo(() => {
     if (tankProducts.length === 0) return null
+    // Phase 22C — pass areaType so warnings can carry surface-type
+    // context; areaMatchMode stays 'exact' to preserve Phase 22B math.
     return analyzeSprayDraft({
       tankProducts,
       sprayHistory:    sprayHistory ?? [],
@@ -447,6 +449,8 @@ export default function BuildSpraySheet() {
       draftArea:       draft.area,
       referenceDate:   draft.date,
       lookbackDays:    21,
+      areaMatchMode:   'exact',
+      areaType:        areaSurfaceTypeOf(draft.area),
     })
   }, [tankProducts, sprayHistory, labelsByItemId, draft.area, draft.date])
 
