@@ -5,7 +5,8 @@ import { TASKS, HOURS_LOG } from '../../data/crew'
 // Schedule, Employees, and Hours tabs moved to the Employee Management
 // workspace in Phase 4 — Operations now focuses on daily field execution.
 import CrewAssignments    from '../Crew/tabs/CrewAssignments'
-import DailyBriefingPanel from './DailyBriefingPanel'
+import DailyBriefingPanel        from './DailyBriefingPanel'
+import DailyOperationsCenter    from './DailyOperationsCenter'
 import { EmptyState } from '../../components/shared/EmptyState'
 import PageShell from '../../components/layout/PageShell'
 import WorkspaceActions from '../../components/shared/WorkspaceActions'
@@ -79,6 +80,7 @@ const TASK_GROUPS = [
 const DENSITY_OPTIONS = ['Compact', 'Comfortable', 'Expanded']
 
 const TABS = [
+  { id: 'center',      label: 'Daily Operations Center' },
   { id: 'board',       label: 'Operations Board' },
   { id: 'assignments', label: 'Assignments' },
   { id: 'notes',       label: 'Daily Briefing' },
@@ -137,7 +139,7 @@ export default function OperationsBoard() {
   const { employees: EMPLOYEES }    = useCrewData()
 
   // ── Tab / layout ─────────────────────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState('board')
+  const [activeTab, setActiveTab] = useState('center')
   const [routing,   setRouting]   = useState('Press & Roll')
   const [panelOpen, setPanelOpen] = useState(false)
 
@@ -587,6 +589,7 @@ export default function OperationsBoard() {
       {/* ── Operations sub-tabs ───────────────────────────────────────────── */}
       {activeTab !== 'board' && (
         <div className={styles.obSecondary}>
+          {activeTab === 'center'      && <DailyOperationsCenter />}
           {activeTab === 'assignments' && <CrewAssignments />}
           {activeTab === 'notes'       && <DailyBriefingPanel />}
         </div>

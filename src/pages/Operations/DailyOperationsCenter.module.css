@@ -1,0 +1,401 @@
+/* Phase 24A — Daily Operations Center.
+ *
+ * Compact operational morning view. Two-column responsive grid, plain
+ * CSS cards, dark-green theme. No analytics charts — this is a "what
+ * needs my attention right now" layout, not a dashboard.
+ */
+
+.shell {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.headerRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.headerMeta {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 10.5px;
+  color: var(--color-text-muted, #8a929a);
+}
+
+.actionGroup {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.actionBtn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--color-text, #e4e8ec);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.actionBtn:hover {
+  background: rgba(74, 158, 74, 0.10);
+  border-color: rgba(74, 158, 74, 0.40);
+}
+
+.actionBtn[data-tone="primary"] {
+  background: rgba(74, 158, 74, 0.16);
+  border-color: rgba(74, 158, 74, 0.45);
+}
+
+/* ── Grid ──────────────────────────────────────────────────────────── */
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.gridWide {
+  grid-column: span 2;
+}
+
+@media (max-width: 1000px) {
+  .grid { grid-template-columns: 1fr; }
+  .gridWide { grid-column: auto; }
+}
+
+/* ── Card primitives ──────────────────────────────────────────────── */
+
+.card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cardTitle {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--color-text-muted, #a8b0b8);
+  margin: 0;
+}
+
+.cardSub {
+  font-size: 10.5px;
+  color: var(--color-text-muted, #8a929a);
+  font-style: italic;
+}
+
+.cardLink {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #4ecb4e;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.cardLink:hover { text-decoration: underline; }
+
+/* ── Weather + status ─────────────────────────────────────────────── */
+
+.weatherStats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.weatherStat {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 4px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.weatherStatLabel {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted, #8a929a);
+}
+
+.weatherStatValue {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text, #e4e8ec);
+  font-variant-numeric: tabular-nums;
+}
+
+.indicatorRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.indicator {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--color-text, #e4e8ec);
+}
+
+.indicator[data-tone="info"]    { color: #4a9e4a; border-color: rgba(74, 158, 74, 0.40); background: rgba(74, 158, 74, 0.08); }
+.indicator[data-tone="warn"]    { color: #d4883a; border-color: rgba(210, 130, 40, 0.40); background: rgba(210, 130, 40, 0.08); }
+.indicator[data-tone="high"]    { color: #e07070; border-color: rgba(220, 80, 80, 0.40); background: rgba(220, 80, 80, 0.08); }
+
+.cartRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.cartLabel {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted, #8a929a);
+  margin-right: 4px;
+}
+
+.cartPill {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 9px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--color-text-muted, #a8b0b8);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.cartPill:hover { background: rgba(255, 255, 255, 0.06); }
+
+.cartPill[aria-pressed="true"] {
+  background: rgba(74, 158, 74, 0.20);
+  border-color: rgba(74, 158, 74, 0.55);
+  color: #e4e8ec;
+}
+
+.cartPill[aria-pressed="true"][data-tone="warn"] {
+  background: rgba(210, 130, 40, 0.20);
+  border-color: rgba(210, 130, 40, 0.55);
+  color: #fdf3e1;
+}
+
+.cartPill[aria-pressed="true"][data-tone="high"] {
+  background: rgba(220, 80, 80, 0.20);
+  border-color: rgba(220, 80, 80, 0.55);
+  color: #fde1e1;
+}
+
+.noteInput {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 11.5px;
+  color: var(--color-text, #e4e8ec);
+  font-family: inherit;
+  resize: vertical;
+  min-height: 50px;
+}
+
+.noteInput:focus {
+  outline: 1px solid rgba(74, 158, 74, 0.55);
+  outline-offset: -1px;
+  border-color: rgba(74, 158, 74, 0.55);
+}
+
+/* ── Stat triplet (crew / spray / equipment) ──────────────────────── */
+
+.miniStats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.miniStat {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 4px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.miniStatLabel {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted, #8a929a);
+}
+
+.miniStatValue {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-text, #e4e8ec);
+  font-variant-numeric: tabular-nums;
+}
+
+.miniStatValue[data-tone="warn"] { color: #d4883a; }
+.miniStatValue[data-tone="high"] { color: #e07070; }
+
+/* ── List rows (sprays / alerts) ──────────────────────────────────── */
+
+.listRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 11.5px;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
+}
+
+.listRow:last-child { border-bottom: none; }
+
+.listRowLabel {
+  color: var(--color-text, #e4e8ec);
+  font-weight: 600;
+}
+
+.listRowMeta {
+  color: var(--color-text-muted, #a8b0b8);
+  font-variant-numeric: tabular-nums;
+  font-size: 10.5px;
+}
+
+.empty {
+  font-size: 11px;
+  font-style: italic;
+  color: var(--color-text-muted, #8a929a);
+}
+
+/* ── Priorities list ─────────────────────────────────────────────── */
+
+.priorityList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.priorityRow {
+  display: grid;
+  grid-template-columns: 24px 1fr auto;
+  gap: 6px;
+  align-items: center;
+  padding: 4px 6px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+  font-size: 11.5px;
+}
+
+.priorityRow[data-done="true"] {
+  opacity: 0.55;
+}
+
+.priorityRow[data-done="true"] .priorityText {
+  text-decoration: line-through;
+}
+
+.priorityIndex {
+  font-variant-numeric: tabular-nums;
+  font-size: 10.5px;
+  color: var(--color-text-muted, #8a929a);
+  text-align: right;
+}
+
+.priorityText {
+  color: var(--color-text, #e4e8ec);
+  word-break: break-word;
+}
+
+.priorityActions {
+  display: flex;
+  gap: 2px;
+}
+
+.iconBtn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--color-text-muted, #a8b0b8);
+  cursor: pointer;
+  font-family: inherit;
+  line-height: 1;
+}
+
+.iconBtn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-text, #e4e8ec);
+  border-color: rgba(255, 255, 255, 0.10);
+}
+
+.iconBtn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.addPriorityRow {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.addPriorityInput {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-size: 11.5px;
+  color: var(--color-text, #e4e8ec);
+  font-family: inherit;
+}
+
+.addPriorityInput:focus {
+  outline: 1px solid rgba(74, 158, 74, 0.55);
+  outline-offset: -1px;
+  border-color: rgba(74, 158, 74, 0.55);
+}
