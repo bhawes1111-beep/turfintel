@@ -16,7 +16,7 @@
 //
 // No DB migration, no worker change, no AI.
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useWeather } from '../../utils/weather/useWeather'
 import { useCrewData } from '../../utils/crew/crewStore'
@@ -106,7 +106,17 @@ export default function DailyOperationsCenter() {
   const { records: sprayRecords }        = useSpraysData()
 
   // ── Local-only state (course-scoped) ──────────────────────────────────
+  const priorityInputRef = useRef(null)
   const [cartStatus, setCartStatus] = useLocalState(`turfintel:ops:cart:${courseId}`, 'open')
+  // Phase 26B — collapsed card preferences. Course-scoped. High-severity
+  // cards force-expand regardless of saved preference (computed below).
+  const [collapsedCards, setCollapsedCards] = useLocalState(
+    `turfintel:ops:collapsed:${courseId}`,
+    {}, // shape: { crew?: true, spray?: true, equipment?: true }
+  )
+  function toggleCollapsed(key) {
+    setCollapsedCards(prev => ({ ...prev, [key]: !prev[key] }))
+  }
   const [todayNote,  setTodayNote]  = useLocalState(`turfintel:ops:note:${courseId}`, '')
   const [priorities, setPriorities] = useLocalState(`turfintel:ops:priorities:${courseId}`, [])
   const [newPriority, setNewPriority] = useState('')
@@ -204,6 +214,21 @@ export default function DailyOperationsCenter() {
       conflicts,
     }
   }, [equipment, reservations, today])
+
+  // ── Card-collapse decisions (Phase 26B) ───────────────────────────────
+  // A card stays expanded if its data has any high-severity tell, even
+  // when the user has saved a collapsed preference — so a frost morning
+  // never hides under a fold.
+  const forceExpand = {
+    crew:      crewSnapshot.unassigned >= Math.max(1, Math.ceil(crewSnapshot.activeTotal / 3)),
+    spray:     spraySchedule.pending > 0,
+    equipment: equipmentAlerts.outOfService > 0,
+  }
+  const isCollapsed = {
+    crew:      !forceExpand.crew      && !!collapsedCards.crew,
+    spray:     !forceExpand.spray     && !!collapsedCards.spray,
+    equipment: !forceExpand.equipment && !!collapsedCards.equipment,
+  }
 
   // ── Attention rollup (Phase 24B) ──────────────────────────────────────
   // Pure transform over the snapshots above. Re-runs only when one of its
@@ -347,6 +372,17 @@ export default function DailyOperationsCenter() {
     downloadBlob(filename, 'text/csv;charset=utf-8', text)
   }
 
+  // ── Quick Actions handlers (Phase 26B) ───────────────────────────────
+  // "Add Priority" focuses the existing priority input — reduces tap
+  // count from "scroll → tap input → type → enter" to "tap chip → type
+  // → enter".
+  function handleQuickAddPriority() {
+    if (priorityInputRef.current) {
+      priorityInputRef.current.focus()
+      priorityInputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }
+
   // ── Priority handlers ─────────────────────────────────────────────────
   function addPriority() {
     const text = newPriority.trim()
@@ -404,6 +440,28 @@ export default function DailyOperationsCenter() {
             ))}
           </div>
         )}
+
+        {/* ── Quick Actions strip (Phase 26B — mobile only) ── */}
+        <div className={styles.quickActions} aria-label="Quick actions">
+          <button type="button" className={styles.quickAction} onClick={handleQuickAddPriority}>
+            <span className={styles.quickActionLabel}>Add Priority</span>
+          </button>
+          <button type="button" className={styles.quickAction} onClick={() => navigate('/crew/assignments')}>
+            <span className={styles.quickActionLabel}>Open Assignments</span>
+          </button>
+          <button type="button" className={styles.quickAction} onClick={() => navigate('/spray')}>
+            <span className={styles.quickActionLabel}>Open Sprays</span>
+          </button>
+          <button type="button" className={styles.quickAction} onClick={() => navigate('/equipment')}>
+            <span className={styles.quickActionLabel}>Open Equipment</span>
+          </button>
+          <button type="button" className={styles.quickAction} onClick={handlePrintBrief}>
+            <span className={styles.quickActionLabel}>Generate Brief</span>
+          </button>
+          <button type="button" className={styles.quickAction} data-tone="primary" onClick={() => navigate('/display-board')}>
+            <span className={styles.quickActionLabel}>Display Board</span>
+          </button>
+        </div>
 
         {/* ── Header row ── */}
         <div className={styles.headerRow}>
@@ -631,15 +689,25 @@ export default function DailyOperationsCenter() {
           </div>
 
           {/* B. Crew snapshot */}
-          <div className={styles.card}>
+          <div className={styles.card} data-collapsed={isCollapsed.crew ? 'true' : 'false'}>
             <div className={styles.cardHeader}>
-              <h3 className={styles.cardTitle}>Crew Snapshot</h3>
+              <button
+                type="button"
+                className={styles.collapseToggle}
+                onClick={() => toggleCollapsed('crew')}
+                aria-expanded={!isCollapsed.crew}
+                aria-label="Toggle Crew Snapshot"
+              >
+                <span className={styles.collapseGlyph}>{isCollapsed.crew ? '+' : '−'}</span>
+                <h3 className={styles.cardTitle}>Crew Snapshot</h3>
+              </button>
               <button
                 type="button"
                 className={styles.cardLink}
                 onClick={() => navigate('/crew/assignments')}
               >Open Assignments →</button>
             </div>
+            {!isCollapsed.crew && (<>
             <div className={styles.miniStats}>
               <div className={styles.miniStat}>
                 <span className={styles.miniStatLabel}>Scheduled</span>
@@ -662,18 +730,29 @@ export default function DailyOperationsCenter() {
                 ? 'No active crew configured yet.'
                 : `${crewSnapshot.activeTotal} active total`}
             </span>
+            </>)}
           </div>
 
           {/* C. Spray operations */}
-          <div className={styles.card}>
+          <div className={styles.card} data-collapsed={isCollapsed.spray ? 'true' : 'false'}>
             <div className={styles.cardHeader}>
-              <h3 className={styles.cardTitle}>Spray Operations</h3>
+              <button
+                type="button"
+                className={styles.collapseToggle}
+                onClick={() => toggleCollapsed('spray')}
+                aria-expanded={!isCollapsed.spray}
+                aria-label="Toggle Spray Operations"
+              >
+                <span className={styles.collapseGlyph}>{isCollapsed.spray ? '+' : '−'}</span>
+                <h3 className={styles.cardTitle}>Spray Operations</h3>
+              </button>
               <button
                 type="button"
                 className={styles.cardLink}
                 onClick={() => navigate('/spray')}
               >Open Sprays →</button>
             </div>
+            {!isCollapsed.spray && (<>
             <div className={styles.miniStats}>
               <div className={styles.miniStat}>
                 <span className={styles.miniStatLabel}>Today</span>
@@ -707,18 +786,29 @@ export default function DailyOperationsCenter() {
                 ))}
               </div>
             )}
+            </>)}
           </div>
 
           {/* D. Equipment alerts */}
-          <div className={styles.card}>
+          <div className={styles.card} data-collapsed={isCollapsed.equipment ? 'true' : 'false'}>
             <div className={styles.cardHeader}>
-              <h3 className={styles.cardTitle}>Equipment Alerts</h3>
+              <button
+                type="button"
+                className={styles.collapseToggle}
+                onClick={() => toggleCollapsed('equipment')}
+                aria-expanded={!isCollapsed.equipment}
+                aria-label="Toggle Equipment Alerts"
+              >
+                <span className={styles.collapseGlyph}>{isCollapsed.equipment ? '+' : '−'}</span>
+                <h3 className={styles.cardTitle}>Equipment Alerts</h3>
+              </button>
               <button
                 type="button"
                 className={styles.cardLink}
                 onClick={() => navigate('/equipment')}
               >Open Equipment →</button>
             </div>
+            {!isCollapsed.equipment && (<>
             <div className={styles.miniStats}>
               <div className={styles.miniStat}>
                 <span className={styles.miniStatLabel}>Out of service</span>
@@ -747,6 +837,7 @@ export default function DailyOperationsCenter() {
                 ? 'No operational equipment conflicts.'
                 : 'Review flagged items before crew dispatch.'}
             </span>
+            </>)}
           </div>
 
           {/* E. Operational priorities (wide) */}
@@ -799,6 +890,7 @@ export default function DailyOperationsCenter() {
 
             <div className={styles.addPriorityRow}>
               <input
+                ref={priorityInputRef}
                 type="text"
                 className={styles.addPriorityInput}
                 value={newPriority}

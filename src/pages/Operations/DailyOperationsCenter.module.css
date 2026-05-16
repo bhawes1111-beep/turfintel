@@ -63,6 +63,83 @@
   border-color: rgba(74, 158, 74, 0.45);
 }
 
+/* ── Quick Actions strip (Phase 26B — mobile only) ────────────────── */
+/* Hidden on desktop. On ≤ 760px renders as a 2-column grid of large
+ * tap targets. Reduces tap count for the six most common morning
+ * workflows. */
+
+.quickActions {
+  display: none;
+}
+
+.quickAction {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 6px;
+  padding: 12px;
+  min-height: 48px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-text, #e4e8ec);
+  cursor: pointer;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  transition: background 120ms ease, border-color 120ms ease, transform 80ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.quickAction:active {
+  transform: scale(0.97);
+  background: rgba(74, 158, 74, 0.18);
+  border-color: rgba(74, 158, 74, 0.45);
+}
+
+.quickAction[data-tone="primary"] {
+  background: rgba(74, 158, 74, 0.16);
+  border-color: rgba(74, 158, 74, 0.45);
+}
+
+.quickActionLabel { line-height: 1.2; }
+
+/* ── Collapse toggle (Phase 26B) ──────────────────────────────────── */
+/* Wraps the card title so the whole left side of the header is one
+ * tap target — easier than aiming at a small chevron. */
+
+.collapseToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  padding: 4px 2px;
+  min-height: 32px;
+  cursor: pointer;
+  font-family: inherit;
+  color: inherit;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  border-radius: 3px;
+}
+
+.collapseToggle:active { background: rgba(255, 255, 255, 0.04); }
+
+.collapseGlyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-text-muted, #a8b0b8);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+
 /* ── Today's Flow strip (Phase 25B-Lite) ──────────────────────────── */
 /* Compact chronological pill chain. Sits above the header row.
  * Severity-tinted via data-severity. Non-interactive. */
@@ -367,6 +444,13 @@
 
 @media (max-width: 760px) {
   .shell { gap: 10px; }
+
+  /* Reveal mobile Quick Actions as a 2-column tap grid. */
+  .quickActions {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
 
   /* Header — meta line stacks; buttons wrap to full width. */
   .headerRow { flex-direction: column; align-items: stretch; gap: 8px; }
@@ -882,6 +966,7 @@
 
   .headerRow,
   .flowStrip,
+  .quickActions,
   .attentionCard,
   .routingCard,
   .timelineCard,
