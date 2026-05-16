@@ -33,3 +33,17 @@ export {
 export {
   buildProgramSummary,
 } from './programSummaries.js'
+
+export {
+  // Filters (Phase 23B)
+  DATE_PRESETS,
+  SURFACE_OPTS,
+  CHEMISTRY_TYPE_OPTS,
+  PRESSURE_OPTS,
+  resolveDateRange,
+  filterRecordsByDateRange,
+  filterRecordsBySurface,
+  filterRecordsByPressure,
+  filterProgramSummary,
+  describeActiveFilters,
+} from './programFilters.js'

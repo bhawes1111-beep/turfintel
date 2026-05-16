@@ -12,10 +12,21 @@
 //   4. Streaks + gaps + surface usage (right column compactly).
 //   5. Chronological chain + drift findings.
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useSpraysData } from '../../../utils/sprays/spraysStore'
 import { useImportedLabels } from '../../../utils/inventory/labelImportStore'
-import { buildProgramSummary } from '../../../utils/programIntelligence'
+import {
+  buildProgramSummary,
+  filterRecordsByDateRange,
+  filterRecordsBySurface,
+  filterRecordsByPressure,
+  filterProgramSummary,
+  describeActiveFilters,
+  DATE_PRESETS,
+  SURFACE_OPTS,
+  CHEMISTRY_TYPE_OPTS,
+  PRESSURE_OPTS,
+} from '../../../utils/programIntelligence'
 import WorkspaceSection from '../../../components/shared/WorkspaceSection'
 import sprayStyles from '../Spray.module.css'
 import styles from './ProgramIntelligence.module.css'
@@ -43,6 +54,8 @@ function fmtScore(x) {
   return x.toFixed(2)
 }
 
+const TODAY_ISO = () => new Date().toISOString().slice(0, 10)
+
 export default function ProgramIntelligence() {
   const { records: sprayHistory, loading: sprayLoading } = useSpraysData()
   const { labels: importedLabels }                       = useImportedLabels()
@@ -57,15 +70,50 @@ export default function ProgramIntelligence() {
     return out
   }, [importedLabels])
 
-  const summary = useMemo(() => {
-    return buildProgramSummary(sprayHistory ?? [], labelsByItemId)
-  }, [sprayHistory, labelsByItemId])
+  // ── Filter state (Phase 23B) ───────────────────────────────────────────
+  // Page-local — no URL/localStorage persistence yet. Default to current
+  // season + everything else "all" so the page boots to the same view
+  // Phase 23A shipped.
+  const [filters, setFilters] = useState({
+    dateRange:     'currentSeason',
+    surface:       'all',
+    chemistryType: 'all',
+    pressure:      'all',
+    customStart:   '',
+    customEnd:     '',
+  })
+  function patchFilters(patch) {
+    setFilters(prev => ({ ...prev, ...patch }))
+  }
 
-  // Coverage hint — how many records had at least one label-resolved
-  // FRAC/HRAC/IRAC code. Helps the user judge whether the analytics
-  // reflect the whole season or a slice of it.
+  // Filter the input records before building the summary. Order matters
+  // for cost (date → surface → pressure) — date is the cheapest cut and
+  // typically slices the deepest, pressure needs label lookups per row.
+  const filteredRecords = useMemo(() => {
+    const inDate    = filterRecordsByDateRange(sprayHistory ?? [], filters.dateRange, {
+      referenceDate: TODAY_ISO(),
+      customStart:   filters.customStart || null,
+      customEnd:     filters.customEnd   || null,
+    })
+    const onSurface = filterRecordsBySurface(inDate, filters.surface)
+    const byPress   = filterRecordsByPressure(onSurface, labelsByItemId, filters.pressure)
+    return byPress
+  }, [sprayHistory, labelsByItemId, filters.dateRange, filters.surface, filters.pressure, filters.customStart, filters.customEnd])
+
+  // Two-stage summary pipeline: aggregate filtered records, then apply
+  // the chemistry-type VIEW filter on top.
+  const summary = useMemo(() => {
+    const built = buildProgramSummary(filteredRecords, labelsByItemId)
+    return filterProgramSummary(built, { chemistryType: filters.chemistryType })
+  }, [filteredRecords, labelsByItemId, filters.chemistryType])
+
+  const activeFilterLabel = useMemo(() => describeActiveFilters(filters), [filters])
+
+  // Coverage hint — how many of the FILTERED records had at least one
+  // label-resolved FRAC/HRAC/IRAC code. Lets the user judge whether the
+  // current view's analytics are well-attributed.
   const labeledFraction = useMemo(() => {
-    const total = sprayHistory?.length ?? 0
+    const total = filteredRecords.length
     if (total === 0) return { total: 0, resolved: 0, share: 0 }
     let resolved = 0
     for (const entry of summary.chain) {
@@ -76,10 +124,18 @@ export default function ProgramIntelligence() {
       if (hasCode) resolved += 1
     }
     return { total, resolved, share: total > 0 ? resolved / total : 0 }
-  }, [sprayHistory, summary])
+  }, [filteredRecords, summary])
+
+  // Is there ANY chemistry resolved under the current filters? Drives the
+  // "no label-resolved chemistry" empty state.
+  const hasResolvedChemistry =
+    summary.fracUsage.length > 0 ||
+    summary.hracUsage.length > 0 ||
+    summary.iracUsage.length > 0
 
   const total = summary.totalApplications
   const fracTopApps = summary.fracUsage[0]?.applications ?? 0
+  const hasAnyRecords = (sprayHistory?.length ?? 0) > 0
 
   return (
     <div className={sprayStyles.tabContent}>
@@ -89,12 +145,36 @@ export default function ProgramIntelligence() {
       >
         {sprayLoading ? (
           <p className={styles.empty}>Loading spray history…</p>
-        ) : total === 0 ? (
+        ) : !hasAnyRecords ? (
           <p className={styles.empty}>
             No spray applications logged yet. Commit applications from the New Application tab to populate program analytics.
           </p>
         ) : (
           <>
+            {/* ── Filter strip (Phase 23B) ── */}
+            <FilterStrip filters={filters} patchFilters={patchFilters} />
+            {activeFilterLabel && (
+              <div className={styles.activeFilterLine}>{activeFilterLabel}</div>
+            )}
+
+            {total === 0 ? (
+              <p className={styles.empty}>
+                No applications fall within the selected filters. Widen the date range or surface to see analytics.
+              </p>
+            ) : !hasResolvedChemistry ? (
+              <>
+                <div className={styles.statsRow}>
+                  <Stat label="Total applications" value={total} sub="in range" />
+                  <Stat label="With label data" value={labeledFraction.resolved} sub={fmtPct(labeledFraction.share)} />
+                  <Stat label="FRAC diversity" value="—" sub="no chemistry" />
+                  <Stat label="Multi-site rate" value="—" sub="no chemistry" />
+                </div>
+                <p className={styles.empty}>
+                  No label-resolved chemistry under the current filters. Import labels via Inventory → Add Chemical to unlock FRAC/family analytics for these applications.
+                </p>
+              </>
+            ) : (
+            <>
             {/* ── Headline stats ── */}
             <div className={styles.statsRow}>
               <Stat
@@ -270,6 +350,8 @@ export default function ProgramIntelligence() {
                 </div>
               </div>
             </div>
+            </>
+            )}
           </>
         )}
       </WorkspaceSection>
@@ -278,6 +360,82 @@ export default function ProgramIntelligence() {
 }
 
 // ── Small subcomponents ───────────────────────────────────────────────
+
+function FilterStrip({ filters, patchFilters }) {
+  return (
+    <div className={styles.filterStrip}>
+      <FilterSelect
+        label="Date range"
+        value={filters.dateRange}
+        options={DATE_PRESETS}
+        onChange={v => patchFilters({ dateRange: v })}
+      />
+      {filters.dateRange === 'custom' && (
+        <>
+          <FilterDate
+            label="From"
+            value={filters.customStart}
+            onChange={v => patchFilters({ customStart: v })}
+          />
+          <FilterDate
+            label="To"
+            value={filters.customEnd}
+            onChange={v => patchFilters({ customEnd: v })}
+          />
+        </>
+      )}
+      <FilterSelect
+        label="Surface"
+        value={filters.surface}
+        options={SURFACE_OPTS}
+        onChange={v => patchFilters({ surface: v })}
+      />
+      <FilterSelect
+        label="Chemistry"
+        value={filters.chemistryType}
+        options={CHEMISTRY_TYPE_OPTS}
+        onChange={v => patchFilters({ chemistryType: v })}
+      />
+      <FilterSelect
+        label="Pressure"
+        value={filters.pressure}
+        options={PRESSURE_OPTS}
+        onChange={v => patchFilters({ pressure: v })}
+      />
+    </div>
+  )
+}
+
+function FilterSelect({ label, value, options, onChange }) {
+  return (
+    <label className={styles.filterField}>
+      <span className={styles.filterLabel}>{label}</span>
+      <select
+        className={styles.filterControl}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+      >
+        {options.map(o => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
+function FilterDate({ label, value, onChange }) {
+  return (
+    <label className={styles.filterField}>
+      <span className={styles.filterLabel}>{label}</span>
+      <input
+        type="date"
+        className={styles.filterControl}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+      />
+    </label>
+  )
+}
 
 function Stat({ label, value, sub }) {
   return (
