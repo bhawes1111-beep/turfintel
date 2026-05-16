@@ -47,3 +47,14 @@ export {
   filterProgramSummary,
   describeActiveFilters,
 } from './programFilters.js'
+
+export {
+  // Export + report (Phase 23C)
+  CSV_HEADERS,
+  buildCsvRows,
+  serializeCsv,
+  buildSummaryText,
+  downloadBlob,
+  copyToClipboard,
+  defaultCsvFilename,
+} from './programExport.js'

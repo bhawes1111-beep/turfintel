@@ -114,6 +114,140 @@
   padding-left: 2px;
 }
 
+/* ── Action row + buttons (Phase 23C) ──────────────────────────────── */
+
+.actionRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.actionBtn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--color-text, #e4e8ec);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.actionBtn:hover {
+  background: rgba(74, 158, 74, 0.10);
+  border-color: rgba(74, 158, 74, 0.40);
+}
+
+.actionBtn:focus {
+  outline: 1px solid rgba(74, 158, 74, 0.55);
+  outline-offset: 1px;
+}
+
+/* ── Print-only header — hidden on screen, revealed in print ───────── */
+
+.printHeader {
+  display: none;
+}
+
+.printTitle {
+  font-size: 18px;
+  margin: 0 0 6px 0;
+  font-weight: 700;
+}
+
+.printMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 11px;
+  color: #444;
+}
+
+/* ── Print rules ───────────────────────────────────────────────────── */
+
+@media print {
+  /* Hide every element not inside the print region. Standard
+   * visibility-then-reveal pattern: child of the print region keep
+   * their visibility, everything else is hidden. */
+  :global(body) > * { visibility: hidden; }
+  :global([data-print-region="program-intel"]),
+  :global([data-print-region="program-intel"]) * { visibility: visible; }
+  :global([data-print-region="program-intel"]) {
+    position: absolute;
+    inset: 0;
+    background: white;
+    color: #1a2030;
+    padding: 16px;
+  }
+
+  /* Reveal the print-only header. */
+  .printHeader { display: block; margin-bottom: 12px; border-bottom: 1px solid #ccc; padding-bottom: 8px; }
+  .printTitle  { color: #1a2030; }
+
+  /* Hide screen-only chrome that doesn't belong on paper. */
+  .actionRow,
+  .filterStrip { display: none !important; }
+
+  /* Force a single-column layout so the report breaks across pages cleanly. */
+  .layout      { grid-template-columns: 1fr !important; gap: 12px !important; }
+  .statsRow    { grid-template-columns: repeat(4, 1fr) !important; }
+
+  /* Re-skin cards for print: white background, dark text, subtle border. */
+  .card,
+  .stat,
+  .finding {
+    background: #fdfdfb !important;
+    border: 1px solid #c9c5b9 !important;
+    color: #1a2030 !important;
+  }
+  .statLabel,
+  .cardTitle,
+  .cardSub,
+  .metaLine,
+  .activeFilterLine,
+  .findingDetail,
+  .chainMeta,
+  .barValue,
+  .streakDetail {
+    color: #555 !important;
+  }
+  .statValue,
+  .barLabel,
+  .streakLabel,
+  .diversityValue,
+  .chainBody,
+  .findingTitle {
+    color: #1a2030 !important;
+  }
+
+  /* Bar fills need to stay visible on white paper — use a darker hue. */
+  .barFill {
+    background: #1a2030 !important;
+  }
+  .barFill[data-risk="high"]    { background: #a02828 !important; }
+  .barFill[data-risk="medium"]  { background: #b86a18 !important; }
+  .barFill[data-risk="low"]     { background: #2f7d2f !important; }
+  .barFill[data-risk="unknown"] { background: #6e6e6e !important; }
+
+  .barTrack          { background: #ece9df !important; }
+  .diversityBar      { background: #ece9df !important; }
+  .diversityBarFill  { background: linear-gradient(to right, #a02828, #b86a18 50%, #2f7d2f) !important; }
+
+  /* Chain monospace color contrasts cleanly on white. */
+  .chainCodes { color: #2f7d2f !important; }
+
+  /* Drift severity stripes stay obvious on paper. */
+  .finding[data-severity="info"] { border-left: 3px solid #2f7d2f !important; background: #f4f8f4 !important; }
+  .finding[data-severity="warn"] { border-left: 3px solid #b86a18 !important; background: #fbf5ed !important; }
+  .finding[data-severity="high"] { border-left: 3px solid #a02828 !important; background: #faecec !important; }
+
+  /* Cap the scrollable chain so it prints in full instead of being cut. */
+  .chainList { max-height: none !important; overflow: visible !important; }
+}
+
 /* ── Headline stats strip ────────────────────────────────────────────── */
 
 .statsRow {

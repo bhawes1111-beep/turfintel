@@ -15,6 +15,8 @@
 import { useMemo, useState } from 'react'
 import { useSpraysData } from '../../../utils/sprays/spraysStore'
 import { useImportedLabels } from '../../../utils/inventory/labelImportStore'
+import { useSelectedCourse } from '../../../utils/courses/courseStore'
+import { useToast } from '../../../utils/feedback/toastContext'
 import {
   buildProgramSummary,
   filterRecordsByDateRange,
@@ -26,6 +28,12 @@ import {
   SURFACE_OPTS,
   CHEMISTRY_TYPE_OPTS,
   PRESSURE_OPTS,
+  buildCsvRows,
+  serializeCsv,
+  buildSummaryText,
+  downloadBlob,
+  copyToClipboard,
+  defaultCsvFilename,
 } from '../../../utils/programIntelligence'
 import WorkspaceSection from '../../../components/shared/WorkspaceSection'
 import sprayStyles from '../Spray.module.css'
@@ -59,6 +67,8 @@ const TODAY_ISO = () => new Date().toISOString().slice(0, 10)
 export default function ProgramIntelligence() {
   const { records: sprayHistory, loading: sprayLoading } = useSpraysData()
   const { labels: importedLabels }                       = useImportedLabels()
+  const selectedCourse                                   = useSelectedCourse()
+  const toast                                            = useToast()
 
   // Build the inventory-item-id → label lookup once; identical to the
   // memo BuildSpraySheet uses so the analytics see the same data.
@@ -137,8 +147,35 @@ export default function ProgramIntelligence() {
   const fracTopApps = summary.fracUsage[0]?.applications ?? 0
   const hasAnyRecords = (sprayHistory?.length ?? 0) > 0
 
+  // ── Export handlers (Phase 23C) ────────────────────────────────────
+  // Exports always reflect WHAT THE USER SEES — they consume the same
+  // filteredRecords + summary that drive the rendered page.
+  const courseName = selectedCourse?.shortName ?? selectedCourse?.name ?? null
+
+  function handlePrint() {
+    if (typeof window !== 'undefined') window.print()
+  }
+
+  function handleExportCsv() {
+    const { headers, rows } = buildCsvRows({ records: filteredRecords, labelsByItemId })
+    if (rows.length === 0) {
+      toast?.info?.('No applications in the current view to export.')
+      return
+    }
+    const text = serializeCsv({ headers, rows })
+    const filename = defaultCsvFilename({ courseName, generatedAt: TODAY_ISO() })
+    downloadBlob(filename, 'text/csv;charset=utf-8', text)
+  }
+
+  async function handleCopySummary() {
+    const text = buildSummaryText(summary, filters, { courseName, generatedAt: TODAY_ISO() })
+    const ok = await copyToClipboard(text)
+    if (ok) toast?.success?.('Summary copied to clipboard')
+    else    toast?.error?.('Copy failed — your browser blocked clipboard access')
+  }
+
   return (
-    <div className={sprayStyles.tabContent}>
+    <div className={sprayStyles.tabContent} data-print-region="program-intel">
       <WorkspaceSection
         title="Program Intelligence"
         subtitle="Seasonal chemistry analytics from logged spray applications. Read-only — no recommendations or scheduling."
@@ -151,6 +188,44 @@ export default function ProgramIntelligence() {
           </p>
         ) : (
           <>
+            {/* ── Print-only header (visible only when printing) ── */}
+            <header className={styles.printHeader}>
+              <h2 className={styles.printTitle}>Program Intelligence Report</h2>
+              <div className={styles.printMeta}>
+                {courseName && <span>Course: <strong>{courseName}</strong></span>}
+                <span>Generated: <strong>{TODAY_ISO()}</strong></span>
+                {activeFilterLabel && <span>{activeFilterLabel}</span>}
+              </div>
+            </header>
+
+            {/* ── Action row (Print / CSV / Copy) ── */}
+            <div className={styles.actionRow}>
+              <button
+                type="button"
+                className={styles.actionBtn}
+                onClick={handlePrint}
+                title="Open browser print dialog (print-friendly layout)"
+              >
+                Print report
+              </button>
+              <button
+                type="button"
+                className={styles.actionBtn}
+                onClick={handleExportCsv}
+                title="Download the current view as a CSV file"
+              >
+                Export CSV
+              </button>
+              <button
+                type="button"
+                className={styles.actionBtn}
+                onClick={handleCopySummary}
+                title="Copy a plain-text summary of the current view to the clipboard"
+              >
+                Copy summary
+              </button>
+            </div>
+
             {/* ── Filter strip (Phase 23B) ── */}
             <FilterStrip filters={filters} patchFilters={patchFilters} />
             {activeFilterLabel && (
