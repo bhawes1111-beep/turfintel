@@ -178,6 +178,94 @@
 .routingCard[data-severity="high"]  { border-left-color: #e07070; }
 .routingCard[data-severity="clear"] { border-left-color: rgba(91, 168, 160, 0.40); }
 
+/* ── Operational Timeline card (Phase 25B) ────────────────────────── */
+/* Compact, scrollable timeline. Uses the same row stripe palette as
+ * Needs Attention so the visual vocabulary stays consistent. */
+
+.timelineCard {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.timelineList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.timelineRow {
+  display: grid;
+  grid-template-columns: 50px 78px 1fr;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 6px 9px;
+  border-radius: 4px;
+  border-left: 3px solid transparent;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.timelineRow[data-severity="info"] {
+  border-left-color: #4a9e4a;
+  background: rgba(74, 158, 74, 0.05);
+}
+.timelineRow[data-severity="warn"] {
+  border-left-color: #d4883a;
+  background: rgba(210, 130, 40, 0.06);
+}
+.timelineRow[data-severity="high"] {
+  border-left-color: #e07070;
+  background: rgba(220, 80, 80, 0.07);
+}
+
+.timelineTime {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text, #e4e8ec);
+  white-space: nowrap;
+  padding-top: 1px;
+}
+
+.timelineCategory {
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  color: var(--color-text-muted, #a8b0b8);
+  white-space: nowrap;
+  width: max-content;
+  justify-self: start;
+  align-self: flex-start;
+}
+
+.timelineCategory[data-category="weather"]   { color: #5ba8a0; border-color: rgba(91, 168, 160, 0.40);   background: rgba(91, 168, 160, 0.08); }
+.timelineCategory[data-category="crew"]      { color: #c0a448; border-color: rgba(192, 164, 72, 0.40);   background: rgba(192, 164, 72, 0.08); }
+.timelineCategory[data-category="spray"]     { color: #4a9e4a; border-color: rgba(74, 158, 74, 0.40);    background: rgba(74, 158, 74, 0.08); }
+.timelineCategory[data-category="equipment"] { color: #d4883a; border-color: rgba(210, 130, 40, 0.40);   background: rgba(210, 130, 40, 0.08); }
+.timelineCategory[data-category="priority"]  { color: #a48ad4; border-color: rgba(164, 138, 212, 0.40);  background: rgba(164, 138, 212, 0.08); }
+.timelineCategory[data-category="routing"]   { color: #88a0e0; border-color: rgba(136, 160, 224, 0.40);  background: rgba(136, 160, 224, 0.08); }
+
+.timelineBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
 /* ── Grid ──────────────────────────────────────────────────────────── */
 
 .grid {
@@ -617,6 +705,7 @@
   .headerRow,
   .attentionCard,
   .routingCard,
+  .timelineCard,
   .grid {
     display: none !important;
   }

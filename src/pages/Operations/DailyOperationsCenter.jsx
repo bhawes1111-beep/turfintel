@@ -28,6 +28,7 @@ import { useSelectedCourse } from '../../utils/courses/courseStore'
 import { useToast } from '../../utils/feedback/toastContext'
 import { buildAttentionItems, highestAttentionSeverity } from '../../utils/operations/attentionEngine'
 import { buildRoutingItems, highestRoutingSeverity } from '../../utils/operations/routingAwareness'
+import { buildOperationalTimeline } from '../../utils/operations/operationalTimeline'
 import {
   buildMorningBrief,
   buildBriefCsvRows,
@@ -264,6 +265,19 @@ export default function DailyOperationsCenter() {
   const attentionSeverity = highestAttentionSeverity(mergedAttentionItems)
   const routingSeverity   = highestRoutingSeverity(routingItems)
 
+  // ── Operational Timeline (Phase 25B) ──────────────────────────────────
+  // Deterministic, chronologically-sorted view of how the day is expected
+  // to unfold. Pure transform — feeds in the same data the rollups above
+  // already render so the visual matches.
+  const timelineItems = useMemo(() => buildOperationalTimeline({
+    weatherCurrent:      weather.current,
+    calendarEventsToday,
+    equipmentAlerts,
+    priorities,
+    attentionItems,
+    routingItems,
+  }), [weather.current, calendarEventsToday, equipmentAlerts, priorities, attentionItems, routingItems])
+
   // ── Morning Brief (Phase 24C) ─────────────────────────────────────────
   // Pure transform over the snapshots above. Reuses the same data the
   // page renders, so what the superintendent sees on screen matches the
@@ -475,6 +489,42 @@ export default function DailyOperationsCenter() {
             </div>
           </div>
         )}
+
+        {/* ── Operational Timeline (Phase 25B) ── */}
+        <div className={styles.timelineCard}>
+          <div className={styles.attentionHeader}>
+            <h3 className={styles.cardTitle}>Operational Timeline</h3>
+            <span className={styles.cardSub}>
+              {timelineItems.length === 0
+                ? 'Quiet day · no anchored events'
+                : `${timelineItems.length} entr${timelineItems.length === 1 ? 'y' : 'ies'} · informational`}
+            </span>
+          </div>
+          {timelineItems.length === 0 ? (
+            <span className={styles.attentionClear}>
+              Nothing to anchor to the day yet. Schedule applications or add priorities to populate the timeline.
+            </span>
+          ) : (
+            <div className={styles.timelineList}>
+              {timelineItems.map((it, i) => (
+                <div
+                  key={`${it.sourceCode}-${i}`}
+                  className={styles.timelineRow}
+                  data-severity={it.severity}
+                >
+                  <span className={styles.timelineTime}>{it.time}</span>
+                  <span className={styles.timelineCategory} data-category={it.category}>
+                    {it.category}
+                  </span>
+                  <span className={styles.timelineBody}>
+                    <span className={styles.attentionTitle}>{it.title}</span>
+                    <span className={styles.attentionDetail}>{it.detail}</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* ── Grid ── */}
         <div className={styles.grid}>
