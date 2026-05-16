@@ -25,7 +25,18 @@ import { useEquipmentData } from '../../utils/equipment/equipmentStore'
 import { useCalendarData } from '../../utils/calendar/calendarStore'
 import { useSpraysData } from '../../utils/sprays/spraysStore'
 import { useSelectedCourse } from '../../utils/courses/courseStore'
+import { useToast } from '../../utils/feedback/toastContext'
 import { buildAttentionItems, highestAttentionSeverity } from '../../utils/operations/attentionEngine'
+import {
+  buildMorningBrief,
+  buildBriefCsvRows,
+  defaultBriefFilename,
+} from '../../utils/operations/morningBrief'
+import {
+  serializeCsv,
+  downloadBlob,
+  copyToClipboard,
+} from '../../utils/programIntelligence'
 import WorkspaceSection from '../../components/shared/WorkspaceSection'
 import styles from './DailyOperationsCenter.module.css'
 
@@ -81,6 +92,7 @@ function useLocalState(key, initial) {
 export default function DailyOperationsCenter() {
   const navigate = useNavigate()
   const selectedCourse = useSelectedCourse()
+  const toast = useToast()
   const courseId = selectedCourse?.id ?? 'default'
 
   // ── Data sources ──────────────────────────────────────────────────────
@@ -205,6 +217,51 @@ export default function DailyOperationsCenter() {
 
   const attentionSeverity = highestAttentionSeverity(attentionItems)
 
+  // ── Morning Brief (Phase 24C) ─────────────────────────────────────────
+  // Pure transform over the snapshots above. Reuses the same data the
+  // page renders, so what the superintendent sees on screen matches the
+  // brief they print / copy / export.
+  const brief = useMemo(() => buildMorningBrief({
+    weatherCurrent:  weather.current,
+    cartStatus,
+    todayNote,
+    crewSnapshot,
+    spraySchedule,
+    equipmentAlerts,
+    priorities,
+    attentionItems,
+  }, {
+    courseName:  selectedCourse?.shortName ?? selectedCourse?.name ?? null,
+    generatedAt: today,
+  }), [
+    weather.current, cartStatus, todayNote, crewSnapshot, spraySchedule,
+    equipmentAlerts, priorities, attentionItems, selectedCourse, today,
+  ])
+
+  function handlePrintBrief() {
+    if (typeof window !== 'undefined') window.print()
+  }
+
+  async function handleCopyBrief() {
+    const ok = await copyToClipboard(brief.textVersion)
+    if (ok) toast?.success?.('Morning Brief copied to clipboard')
+    else    toast?.error?.('Copy failed — your browser blocked clipboard access')
+  }
+
+  function handleExportBriefCsv() {
+    const { headers, rows } = buildBriefCsvRows(brief)
+    if (rows.length === 0) {
+      toast?.info?.('Nothing to export — the brief is empty.')
+      return
+    }
+    const text = serializeCsv({ headers, rows })
+    const filename = defaultBriefFilename({
+      courseName:  brief.courseName,
+      generatedAt: brief.generatedAt,
+    })
+    downloadBlob(filename, 'text/csv;charset=utf-8', text)
+  }
+
   // ── Priority handlers ─────────────────────────────────────────────────
   function addPriority() {
     const text = newPriority.trim()
@@ -242,7 +299,10 @@ export default function DailyOperationsCenter() {
       title="Daily Operations Center"
       subtitle="Morning command view — weather, crew, sprays, equipment, and today's priorities at a glance."
     >
-      <div className={styles.shell}>
+      <div className={styles.shell} data-print-region="ops-brief">
+
+        {/* ── Print-only Morning Brief block (Phase 24C) ── */}
+        <PrintableBrief brief={brief} />
 
         {/* ── Header row ── */}
         <div className={styles.headerRow}>
@@ -251,6 +311,30 @@ export default function DailyOperationsCenter() {
             {selectedCourse?.name && <span>· {selectedCourse.shortName ?? selectedCourse.name}</span>}
           </div>
           <div className={styles.actionGroup}>
+            <button
+              type="button"
+              className={styles.actionBtn}
+              onClick={handlePrintBrief}
+              title="Open browser print dialog (print-friendly Morning Brief layout)"
+            >
+              Print Brief
+            </button>
+            <button
+              type="button"
+              className={styles.actionBtn}
+              onClick={handleCopyBrief}
+              title="Copy the plain-text Morning Brief to clipboard"
+            >
+              Copy Brief
+            </button>
+            <button
+              type="button"
+              className={styles.actionBtn}
+              onClick={handleExportBriefCsv}
+              title="Download the Morning Brief as a CSV file"
+            >
+              Export CSV
+            </button>
             <button
               type="button"
               className={styles.actionBtn}
@@ -556,5 +640,63 @@ export default function DailyOperationsCenter() {
         </div>
       </div>
     </WorkspaceSection>
+  )
+}
+
+// ── Printable Morning Brief (Phase 24C) ───────────────────────────────
+//
+// Rendered inside the print region but `display:none` on screen — print
+// CSS reveals it and isolates it from the rest of the app. Severity-
+// tinted attention rows are preserved.
+
+function PrintableBrief({ brief }) {
+  if (!brief) return null
+  return (
+    <section className={styles.printBrief} aria-hidden="true">
+      <header className={styles.printBriefHeader}>
+        {brief.courseName && <h1 className={styles.printBriefCourse}>{brief.courseName}</h1>}
+        <h2 className={styles.printBriefTitle}>
+          Morning Operations Brief — {brief.generatedAt}
+        </h2>
+      </header>
+
+      <BriefSection title="Conditions"      section={brief.weatherSummary} />
+      <BriefSection title="Operations"      section={brief.operationsSummary} />
+      <BriefSection title="Crew"            section={brief.crewSummary} />
+      <BriefSection title="Sprays"          section={brief.spraySummary} />
+      <BriefSection title="Equipment"       section={brief.equipmentSummary} />
+      <BriefSection title="Priorities"      section={brief.priorities} />
+
+      {brief.attentionItems?.bullets?.length > 0 && (
+        <div className={styles.printBriefSection}>
+          <h3 className={styles.printBriefSectionTitle}>Needs Attention</h3>
+          <ul className={styles.printBriefAttention}>
+            {brief.attentionItems.bullets.map((b, i) => {
+              // Strip the leading "[SEV] " tag to derive a tint class.
+              const m = b.match(/^\[(INFO|WARN|HIGH)\]\s+(.*)$/i)
+              const severity = m ? m[1].toLowerCase() : 'info'
+              const text     = m ? m[2] : b
+              return (
+                <li key={i} className={styles.printBriefAttentionRow} data-severity={severity}>
+                  {text}
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
+    </section>
+  )
+}
+
+function BriefSection({ title, section }) {
+  if (!section || !Array.isArray(section.bullets) || section.bullets.length === 0) return null
+  return (
+    <div className={styles.printBriefSection}>
+      <h3 className={styles.printBriefSectionTitle}>{title}</h3>
+      <ul className={styles.printBriefList}>
+        {section.bullets.map((b, i) => <li key={i}>{b}</li>)}
+      </ul>
+    </div>
   )
 }

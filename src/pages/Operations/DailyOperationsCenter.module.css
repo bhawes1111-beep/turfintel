@@ -499,3 +499,102 @@
   outline-offset: -1px;
   border-color: rgba(74, 158, 74, 0.55);
 }
+
+/* ── Printable Morning Brief (Phase 24C) ──────────────────────────── */
+
+.printBrief {
+  display: none;  /* hidden on screen; revealed in print */
+}
+
+.printBriefHeader {
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #ccc;
+}
+
+.printBriefCourse {
+  font-size: 18px;
+  margin: 0 0 4px 0;
+  font-weight: 700;
+}
+
+.printBriefTitle {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+  color: #555;
+}
+
+.printBriefSection {
+  margin-bottom: 10px;
+}
+
+.printBriefSectionTitle {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #555;
+  margin: 0 0 4px 0;
+}
+
+.printBriefList,
+.printBriefAttention {
+  list-style: disc inside;
+  margin: 0;
+  padding: 0 0 0 4px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: #1a2030;
+}
+
+.printBriefAttention {
+  list-style: none;
+  padding: 0;
+}
+
+.printBriefAttentionRow {
+  padding: 3px 8px;
+  margin: 2px 0;
+  border-left: 3px solid transparent;
+  background: #f4f8f4;
+}
+
+.printBriefAttentionRow[data-severity="info"] {
+  border-left-color: #2f7d2f;
+  background: #f4f8f4;
+}
+.printBriefAttentionRow[data-severity="warn"] {
+  border-left-color: #b86a18;
+  background: #fbf5ed;
+}
+.printBriefAttentionRow[data-severity="high"] {
+  border-left-color: #a02828;
+  background: #faecec;
+}
+
+/* ── Print rules — isolate the brief region ───────────────────────── */
+
+@media print {
+  /* Hide every element not inside the print region. Standard
+   * visibility-then-reveal pattern. */
+  :global(body) > * { visibility: hidden; }
+  :global([data-print-region="ops-brief"]),
+  :global([data-print-region="ops-brief"]) * { visibility: visible; }
+  :global([data-print-region="ops-brief"]) {
+    position: absolute;
+    inset: 0;
+    background: white;
+    color: #1a2030;
+    padding: 16px;
+  }
+
+  /* Reveal the printable brief; hide the screen-only Daily Ops chrome. */
+  .printBrief { display: block; }
+
+  .headerRow,
+  .attentionCard,
+  .grid {
+    display: none !important;
+  }
+}
