@@ -61,9 +61,9 @@
   grid-column: span 2;
 }
 
-/* Full: spans all 3 columns for calendar and other full-width widgets */
+/* Full: spans all columns (responsive — works with 3-col, 2-col, or 1-col grids) */
 .full {
-  grid-column: span 3;
+  grid-column: 1 / -1;
 }
 
 /* Tall: deeper card for priority content — charts, summaries, task lists */
