@@ -278,6 +278,30 @@ export default function DailyOperationsCenter() {
     routingItems,
   }), [weather.current, calendarEventsToday, equipmentAlerts, priorities, attentionItems, routingItems])
 
+  // ── Today's Flow strip (Phase 25B-Lite) ───────────────────────────────
+  // Compact chronological pill chain — derived inline, no new utility.
+  // Each item carries severity for tint; chips connected by → in the UI.
+  const todaysFlow = useMemo(() => {
+    const out = []
+    const c = weather.current
+    if (Number.isFinite(c?.currentTemp) && c.currentTemp <= 33) {
+      out.push({ key: 'frost',    label: '5:30 · Frost watch',     severity: 'high' })
+    }
+    out.push({   key: 'dispatch', label: '6:00 · Crew dispatch',    severity: 'info' })
+    if (spraySchedule.todayCount > 0) {
+      const sprayHigh = routingItems.some(r => r.code === 'routing-wind-spray')
+                     || attentionItems.some(a => a.code === 'wind-spray-conflict')
+      out.push({ key: 'spray',    label: 'Spray check',             severity: sprayHigh ? 'high' : 'info' })
+    }
+    if (routingItems.some(r => r.code === 'routing-rain-bunker')) {
+      out.push({ key: 'bunker',   label: 'Bunker cleanup',          severity: 'warn' })
+    }
+    if (routingItems.length > 0) {
+      out.push({ key: 'routing',  label: '14:00 · Routing review',  severity: 'info' })
+    }
+    return out
+  }, [weather.current, spraySchedule.todayCount, attentionItems, routingItems])
+
   // ── Morning Brief (Phase 24C) ─────────────────────────────────────────
   // Pure transform over the snapshots above. Reuses the same data the
   // page renders, so what the superintendent sees on screen matches the
@@ -365,6 +389,22 @@ export default function DailyOperationsCenter() {
         {/* ── Print-only Morning Brief block (Phase 24C) ── */}
         <PrintableBrief brief={brief} />
 
+        {/* ── Today's Flow (Phase 25B-Lite) ── */}
+        {todaysFlow.length > 0 && (
+          <div className={styles.flowStrip} aria-label="Today's flow">
+            {todaysFlow.map((step, i) => (
+              <span key={step.key} className={styles.flowItem}>
+                <span className={styles.flowChip} data-severity={step.severity}>
+                  {step.label}
+                </span>
+                {i < todaysFlow.length - 1 && (
+                  <span className={styles.flowArrow} aria-hidden="true">→</span>
+                )}
+              </span>
+            ))}
+          </div>
+        )}
+
         {/* ── Header row ── */}
         <div className={styles.headerRow}>
           <div className={styles.headerMeta}>
@@ -414,13 +454,13 @@ export default function DailyOperationsCenter() {
             <h3 className={styles.cardTitle}>Needs Attention</h3>
             <span className={styles.cardSub}>
               {mergedAttentionItems.length === 0
-                ? 'All clear · informational only'
-                : `${mergedAttentionItems.length} item${mergedAttentionItems.length === 1 ? '' : 's'} · informational only`}
+                ? 'All clear'
+                : `${mergedAttentionItems.length} item${mergedAttentionItems.length === 1 ? '' : 's'}`}
             </span>
           </div>
           {mergedAttentionItems.length === 0 ? (
             <span className={styles.attentionClear}>
-              Nothing requires attention right now. Weather, crew, sprays, equipment, routing, and priorities all look operational.
+              No operational conflicts detected.
             </span>
           ) : (
             <div className={styles.attentionList}>
@@ -458,7 +498,7 @@ export default function DailyOperationsCenter() {
             <div className={styles.attentionHeader}>
               <h3 className={styles.cardTitle}>Operational Routing</h3>
               <span className={styles.cardSub}>
-                {routingItems.length} routing impact{routingItems.length === 1 ? '' : 's'} · informational
+                {routingItems.length} routing impact{routingItems.length === 1 ? '' : 's'}
               </span>
             </div>
             <div className={styles.attentionList}>
@@ -496,8 +536,8 @@ export default function DailyOperationsCenter() {
             <h3 className={styles.cardTitle}>Operational Timeline</h3>
             <span className={styles.cardSub}>
               {timelineItems.length === 0
-                ? 'Quiet day · no anchored events'
-                : `${timelineItems.length} entr${timelineItems.length === 1 ? 'y' : 'ies'} · informational`}
+                ? 'Quiet day'
+                : `${timelineItems.length} entr${timelineItems.length === 1 ? 'y' : 'ies'}`}
             </span>
           </div>
           {timelineItems.length === 0 ? (
@@ -619,8 +659,8 @@ export default function DailyOperationsCenter() {
             </div>
             <span className={styles.cardSub}>
               {crewSnapshot.activeTotal === 0
-                ? 'No active crew members configured yet.'
-                : `${crewSnapshot.activeTotal} active crew member${crewSnapshot.activeTotal === 1 ? '' : 's'} total.`}
+                ? 'No active crew configured yet.'
+                : `${crewSnapshot.activeTotal} active total`}
             </span>
           </div>
 
@@ -652,7 +692,7 @@ export default function DailyOperationsCenter() {
               </div>
             </div>
             {spraySchedule.upcoming.length === 0 ? (
-              <span className={styles.empty}>No spray events in the next 3 days.</span>
+              <span className={styles.empty}>No spray conflicts this morning.</span>
             ) : (
               <div>
                 {spraySchedule.upcoming.map(ev => (
@@ -704,7 +744,7 @@ export default function DailyOperationsCenter() {
             </div>
             <span className={styles.cardSub}>
               {(equipmentAlerts.outOfService + equipmentAlerts.overdue + equipmentAlerts.conflicts) === 0
-                ? 'No equipment alerts.'
+                ? 'No operational equipment conflicts.'
                 : 'Review flagged items before crew dispatch.'}
             </span>
           </div>
@@ -717,7 +757,7 @@ export default function DailyOperationsCenter() {
             </div>
 
             {priorities.length === 0 ? (
-              <span className={styles.empty}>No priorities yet — add the first item below.</span>
+              <span className={styles.empty}>No priorities set yet.</span>
             ) : (
               <div className={styles.priorityList}>
                 {priorities.map((p, i) => (
