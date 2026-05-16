@@ -56,6 +56,106 @@
   border-color: rgba(74, 158, 74, 0.45);
 }
 
+/* ── Needs Attention rollup (Phase 24B) ────────────────────────────── */
+
+.attentionCard {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-left: 4px solid transparent;
+  border-radius: 6px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.attentionCard[data-severity="info"]  { border-left-color: #4a9e4a; }
+.attentionCard[data-severity="warn"]  { border-left-color: #d4883a; }
+.attentionCard[data-severity="high"]  { border-left-color: #e07070; }
+.attentionCard[data-severity="clear"] { border-left-color: rgba(74, 158, 74, 0.40); }
+
+.attentionHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.attentionClear {
+  font-size: 11.5px;
+  color: var(--color-text-muted, #a8b0b8);
+  font-style: italic;
+}
+
+.attentionList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.attentionRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 6px 9px;
+  border-radius: 4px;
+  border-left: 3px solid transparent;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.attentionRow[data-severity="info"] {
+  border-left-color: #4a9e4a;
+  background: rgba(74, 158, 74, 0.05);
+}
+.attentionRow[data-severity="warn"] {
+  border-left-color: #d4883a;
+  background: rgba(210, 130, 40, 0.06);
+}
+.attentionRow[data-severity="high"] {
+  border-left-color: #e07070;
+  background: rgba(220, 80, 80, 0.07);
+}
+
+.attentionBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.attentionTitle {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--color-text, #e4e8ec);
+  line-height: 1.3;
+}
+
+.attentionDetail {
+  font-size: 10.5px;
+  color: var(--color-text-muted, #a8b0b8);
+  line-height: 1.4;
+}
+
+.attentionAction {
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 4px;
+  padding: 4px 9px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--color-text, #e4e8ec);
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.attentionAction:hover {
+  background: rgba(74, 158, 74, 0.10);
+  border-color: rgba(74, 158, 74, 0.40);
+}
+
 /* ── Grid ──────────────────────────────────────────────────────────── */
 
 .grid {

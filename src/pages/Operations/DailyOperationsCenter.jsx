@@ -25,6 +25,7 @@ import { useEquipmentData } from '../../utils/equipment/equipmentStore'
 import { useCalendarData } from '../../utils/calendar/calendarStore'
 import { useSpraysData } from '../../utils/sprays/spraysStore'
 import { useSelectedCourse } from '../../utils/courses/courseStore'
+import { buildAttentionItems, highestAttentionSeverity } from '../../utils/operations/attentionEngine'
 import WorkspaceSection from '../../components/shared/WorkspaceSection'
 import styles from './DailyOperationsCenter.module.css'
 
@@ -190,6 +191,20 @@ export default function DailyOperationsCenter() {
     }
   }, [equipment, reservations, today])
 
+  // ── Attention rollup (Phase 24B) ──────────────────────────────────────
+  // Pure transform over the snapshots above. Re-runs only when one of its
+  // inputs changes; the engine itself never reads stores or React state.
+  const attentionItems = useMemo(() => buildAttentionItems({
+    weather:         { current: weather.current },
+    crewSnapshot,
+    spraySchedule,
+    equipmentAlerts,
+    cartStatus,
+    priorityCount:   priorities.length,
+  }), [weather.current, crewSnapshot, spraySchedule, equipmentAlerts, cartStatus, priorities.length])
+
+  const attentionSeverity = highestAttentionSeverity(attentionItems)
+
   // ── Priority handlers ─────────────────────────────────────────────────
   function addPriority() {
     const text = newPriority.trim()
@@ -246,6 +261,47 @@ export default function DailyOperationsCenter() {
               Generate Display Board
             </button>
           </div>
+        </div>
+
+        {/* ── Needs Attention rollup (Phase 24B) ── */}
+        <div className={styles.attentionCard} data-severity={attentionSeverity ?? 'clear'}>
+          <div className={styles.attentionHeader}>
+            <h3 className={styles.cardTitle}>Needs Attention</h3>
+            <span className={styles.cardSub}>
+              {attentionItems.length === 0
+                ? 'All clear · informational only'
+                : `${attentionItems.length} item${attentionItems.length === 1 ? '' : 's'} · informational only`}
+            </span>
+          </div>
+          {attentionItems.length === 0 ? (
+            <span className={styles.attentionClear}>
+              Nothing requires attention right now. Weather, crew, sprays, equipment, and priorities all look operational.
+            </span>
+          ) : (
+            <div className={styles.attentionList}>
+              {attentionItems.map((it, i) => (
+                <div
+                  key={`${it.code}-${i}`}
+                  className={styles.attentionRow}
+                  data-severity={it.severity}
+                >
+                  <div className={styles.attentionBody}>
+                    <span className={styles.attentionTitle}>{it.title}</span>
+                    <span className={styles.attentionDetail}>{it.detail}</span>
+                  </div>
+                  {it.action && (
+                    <button
+                      type="button"
+                      className={styles.attentionAction}
+                      onClick={() => navigate(it.action.route)}
+                    >
+                      {it.action.label} →
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* ── Grid ── */}
