@@ -156,6 +156,28 @@
   border-color: rgba(74, 158, 74, 0.40);
 }
 
+/* ── Operational Routing card (Phase 25A) ─────────────────────────── */
+/* Slight visual variation from .attentionCard so the two cards read as
+ * related but distinct: routing card uses a subtle blue-grey accent on
+ * the left border to keep the green/amber/red severity stripes inside
+ * the rows as the dominant signal. */
+
+.routingCard {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-left: 4px solid transparent;
+  border-radius: 6px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.routingCard[data-severity="info"]  { border-left-color: #5ba8a0; }
+.routingCard[data-severity="warn"]  { border-left-color: #d4883a; }
+.routingCard[data-severity="high"]  { border-left-color: #e07070; }
+.routingCard[data-severity="clear"] { border-left-color: rgba(91, 168, 160, 0.40); }
+
 /* ── Grid ──────────────────────────────────────────────────────────── */
 
 .grid {
@@ -594,6 +616,7 @@
 
   .headerRow,
   .attentionCard,
+  .routingCard,
   .grid {
     display: none !important;
   }

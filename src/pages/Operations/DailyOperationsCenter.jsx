@@ -27,6 +27,7 @@ import { useSpraysData } from '../../utils/sprays/spraysStore'
 import { useSelectedCourse } from '../../utils/courses/courseStore'
 import { useToast } from '../../utils/feedback/toastContext'
 import { buildAttentionItems, highestAttentionSeverity } from '../../utils/operations/attentionEngine'
+import { buildRoutingItems, highestRoutingSeverity } from '../../utils/operations/routingAwareness'
 import {
   buildMorningBrief,
   buildBriefCsvRows,
@@ -215,7 +216,53 @@ export default function DailyOperationsCenter() {
     priorityCount:   priorities.length,
   }), [weather.current, crewSnapshot, spraySchedule, equipmentAlerts, cartStatus, priorities.length])
 
-  const attentionSeverity = highestAttentionSeverity(attentionItems)
+  // ── Routing context (Phase 25A) ───────────────────────────────────────
+  // Today's calendar events drive the routing detectors: they carry
+  // priority, location/tags, assignedStaff[], and equipment[] — all the
+  // structure needed for the eight routing signals.
+  const calendarEventsToday = useMemo(() => {
+    return (calendarEvents ?? []).filter(ev => ev?.date === today)
+  }, [calendarEvents, today])
+
+  const oosEquipmentNames = useMemo(() => {
+    return (equipment ?? [])
+      .filter(eq => {
+        const s = String(eq?.status ?? '').toLowerCase()
+        return s === 'out-of-service' || s === 'oos' || s === 'down'
+      })
+      .map(eq => eq?.name)
+      .filter(Boolean)
+  }, [equipment])
+
+  const routingItems = useMemo(() => buildRoutingItems({
+    weatherCurrent:     weather.current,
+    calendarEventsToday,
+    oosEquipmentNames,
+  }), [weather.current, calendarEventsToday, oosEquipmentNames])
+
+  // Merge routing items into the Needs Attention rollup. De-dupe by code
+  // (routing-* codes are distinct from attention-* codes by design, so
+  // both lenses get to appear — but a future overlap won't double-render).
+  const mergedAttentionItems = useMemo(() => {
+    const seen = new Set()
+    const out = []
+    for (const it of attentionItems) {
+      if (seen.has(it.code)) continue
+      seen.add(it.code)
+      out.push(it)
+    }
+    for (const it of routingItems) {
+      if (seen.has(it.code)) continue
+      seen.add(it.code)
+      out.push(it)
+    }
+    const SEV_ORDER = { high: 2, warn: 1, info: 0 }
+    out.sort((a, b) => (SEV_ORDER[b.severity] ?? -1) - (SEV_ORDER[a.severity] ?? -1))
+    return out
+  }, [attentionItems, routingItems])
+
+  const attentionSeverity = highestAttentionSeverity(mergedAttentionItems)
+  const routingSeverity   = highestRoutingSeverity(routingItems)
 
   // ── Morning Brief (Phase 24C) ─────────────────────────────────────────
   // Pure transform over the snapshots above. Reuses the same data the
@@ -347,46 +394,87 @@ export default function DailyOperationsCenter() {
           </div>
         </div>
 
-        {/* ── Needs Attention rollup (Phase 24B) ── */}
+        {/* ── Needs Attention rollup (Phase 24B + 25A routing) ── */}
         <div className={styles.attentionCard} data-severity={attentionSeverity ?? 'clear'}>
           <div className={styles.attentionHeader}>
             <h3 className={styles.cardTitle}>Needs Attention</h3>
             <span className={styles.cardSub}>
-              {attentionItems.length === 0
+              {mergedAttentionItems.length === 0
                 ? 'All clear · informational only'
-                : `${attentionItems.length} item${attentionItems.length === 1 ? '' : 's'} · informational only`}
+                : `${mergedAttentionItems.length} item${mergedAttentionItems.length === 1 ? '' : 's'} · informational only`}
             </span>
           </div>
-          {attentionItems.length === 0 ? (
+          {mergedAttentionItems.length === 0 ? (
             <span className={styles.attentionClear}>
-              Nothing requires attention right now. Weather, crew, sprays, equipment, and priorities all look operational.
+              Nothing requires attention right now. Weather, crew, sprays, equipment, routing, and priorities all look operational.
             </span>
           ) : (
             <div className={styles.attentionList}>
-              {attentionItems.map((it, i) => (
-                <div
-                  key={`${it.code}-${i}`}
-                  className={styles.attentionRow}
-                  data-severity={it.severity}
-                >
-                  <div className={styles.attentionBody}>
-                    <span className={styles.attentionTitle}>{it.title}</span>
-                    <span className={styles.attentionDetail}>{it.detail}</span>
+              {mergedAttentionItems.map((it, i) => {
+                const act = it.action ?? it.quickAction ?? null
+                return (
+                  <div
+                    key={`${it.code}-${i}`}
+                    className={styles.attentionRow}
+                    data-severity={it.severity}
+                  >
+                    <div className={styles.attentionBody}>
+                      <span className={styles.attentionTitle}>{it.title}</span>
+                      <span className={styles.attentionDetail}>{it.detail}</span>
+                    </div>
+                    {act && (
+                      <button
+                        type="button"
+                        className={styles.attentionAction}
+                        onClick={() => navigate(act.route)}
+                      >
+                        {act.label} →
+                      </button>
+                    )}
                   </div>
-                  {it.action && (
-                    <button
-                      type="button"
-                      className={styles.attentionAction}
-                      onClick={() => navigate(it.action.route)}
-                    >
-                      {it.action.label} →
-                    </button>
-                  )}
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
+
+        {/* ── Operational Routing (Phase 25A) ── */}
+        {routingItems.length > 0 && (
+          <div className={styles.routingCard} data-severity={routingSeverity ?? 'clear'}>
+            <div className={styles.attentionHeader}>
+              <h3 className={styles.cardTitle}>Operational Routing</h3>
+              <span className={styles.cardSub}>
+                {routingItems.length} routing impact{routingItems.length === 1 ? '' : 's'} · informational
+              </span>
+            </div>
+            <div className={styles.attentionList}>
+              {routingItems.map((it, i) => {
+                const act = it.quickAction ?? it.action ?? null
+                return (
+                  <div
+                    key={`${it.code}-${i}`}
+                    className={styles.attentionRow}
+                    data-severity={it.severity}
+                  >
+                    <div className={styles.attentionBody}>
+                      <span className={styles.attentionTitle}>{it.title}</span>
+                      <span className={styles.attentionDetail}>{it.detail}</span>
+                    </div>
+                    {act && (
+                      <button
+                        type="button"
+                        className={styles.attentionAction}
+                        onClick={() => navigate(act.route)}
+                      >
+                        {act.label} →
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* ── Grid ── */}
         <div className={styles.grid}>
