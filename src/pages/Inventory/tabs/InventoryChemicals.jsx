@@ -3,6 +3,12 @@ import { useInventoryData } from '../../../utils/inventory/inventoryStore'
 import { useImportedLabels } from '../../../utils/inventory/labelImportStore'
 import { EmptyState } from '../../../components/shared/EmptyState'
 import WorkspaceSection from '../../../components/shared/WorkspaceSection'
+import {
+  SignalBadge,
+  ReiBadge,
+  PhiBadge,
+  GroupBadge,
+} from '../../../components/shared/LabelBadges'
 import styles from '../Inventory.module.css'
 
 const TYPES = ['All', 'Fungicide', 'Herbicide', 'Insecticide', 'PGR']
@@ -114,14 +120,34 @@ export default function InventoryChemicals() {
                   <span className={styles.cardReorder}>· reorder at {c.reorderLevel}</span>
                 </div>
                 {label && (
-                  <a
-                    className={styles.cardLabelLink}
-                    href={label.pdfUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    📄 Label PDF
-                  </a>
+                  <>
+                    {/* Phase 27C — quick safety + group badges derived from
+                        the saved label row. Each renders to null when its
+                        input is missing, so cards with partial labels show
+                        only the badges that are real. */}
+                    <div className={styles.cardLabelBadges}>
+                      <SignalBadge word={label.signalWord} />
+                      <ReiBadge   text={label.reiHours} />
+                      <PhiBadge   text={label.phi} />
+                      {label.fracGroup?.split(',').map(c => (
+                        <GroupBadge key={`F-${c}`} type="FRAC" code={c.trim()} />
+                      ))}
+                      {label.hracGroup?.split(',').map(c => (
+                        <GroupBadge key={`H-${c}`} type="HRAC" code={c.trim()} />
+                      ))}
+                      {label.iracGroup?.split(',').map(c => (
+                        <GroupBadge key={`I-${c}`} type="IRAC" code={c.trim()} />
+                      ))}
+                    </div>
+                    <a
+                      className={styles.cardLabelLink}
+                      href={label.pdfUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Open Label PDF ↗
+                    </a>
+                  </>
                 )}
               </div>
             )

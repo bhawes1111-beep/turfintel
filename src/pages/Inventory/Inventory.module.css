@@ -148,16 +148,34 @@
   color: var(--color-text-muted);
 }
 
-/* Label PDF link — shown on chemicals imported via the Chemical Import Wizard. */
+/* Phase 27C — row of label-derived safety/group badges shown above the
+   Open Label PDF link on imported chemicals. */
+.cardLabelBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+/* Label PDF link — Phase 27C upgrades the visual to a chip-style button
+   so it reads as an action rather than a footer link. Kept compact so
+   it doesn't dominate the card. */
 .cardLabelLink {
   align-self: flex-start;
+  margin-top: 8px;
   font-size: 0.72rem;
   font-weight: 600;
   color: var(--color-accent);
   text-decoration: none;
+  padding: 4px 10px;
+  border: 1px solid rgba(74, 158, 74, 0.4);
+  border-radius: 999px;
+  transition: border-color 120ms ease, background 120ms ease;
 }
 .cardLabelLink:hover {
-  text-decoration: underline;
+  text-decoration: none;
+  border-color: var(--color-accent);
+  background: rgba(74, 158, 74, 0.1);
 }
 
 /* ── Stock status badges ────────────────────────────────────────────────── */
