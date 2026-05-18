@@ -1,0 +1,205 @@
+/* Phase 28A — Agronomic Intelligence dashboard card.
+   Compact, five-section layout following the GDD/AppEffectiveness card
+   density. Dark-green palette, no new color tokens. */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+/* ── Section ────────────────────────────────────────────────────────────── */
+
+.section {
+  padding: 6px 0;
+  border-top: 1px solid var(--color-border);
+}
+.section:first-child { border-top: none; padding-top: 0; }
+
+.sectionHead {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.sectionTitle {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.sectionCount {
+  font-size: 0.66rem;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(74, 158, 74, 0.16);
+  color: var(--color-accent);
+  border: 1px solid rgba(74, 158, 74, 0.4);
+}
+
+.sectionBody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.emptyHint {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  opacity: 0.75;
+  font-style: italic;
+  margin: 2px 0 0;
+}
+
+/* ── Row ────────────────────────────────────────────────────────────────── */
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 0.76rem;
+  cursor: help;       /* signals the title= tooltip */
+}
+
+.rowPrimary {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.rowMeta {
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+}
+
+.rowSub {
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+  opacity: 0.8;
+}
+
+.moreNote {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  opacity: 0.75;
+  margin: 2px 0 0;
+}
+
+/* ── Badges ─────────────────────────────────────────────────────────────── */
+
+.rowBadge,
+.rowBadgeMuted {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.rowBadgeMuted {
+  color: var(--color-text-muted);
+  background: rgba(255, 255, 255, 0.03);
+  border-color: var(--color-border);
+}
+
+/* REI — neutral green */
+.badgeRei {
+  color: var(--color-accent);
+  background: rgba(74, 158, 74, 0.14);
+  border-color: rgba(74, 158, 74, 0.4);
+}
+
+/* Reapp states */
+.badgeOverdue {
+  color: #ec7878;
+  background: rgba(224, 80, 80, 0.14);
+  border-color: rgba(224, 80, 80, 0.55);
+}
+.badgeOpen {
+  color: var(--color-accent);
+  background: rgba(74, 158, 74, 0.14);
+  border-color: rgba(74, 158, 74, 0.4);
+}
+.badgeApproaching {
+  color: #f3d574;
+  background: rgba(212, 184, 74, 0.12);
+  border-color: rgba(212, 184, 74, 0.45);
+}
+.badgeScheduled {
+  color: var(--color-text-muted);
+  background: rgba(255, 255, 255, 0.03);
+  border-color: var(--color-border);
+}
+
+/* Rainfast */
+.badgeRain {
+  color: #f0a060;
+  background: rgba(224, 122, 48, 0.14);
+  border-color: rgba(224, 122, 48, 0.5);
+}
+
+/* Group rotation severity */
+.badgeWarn {
+  color: #f3d574;
+  background: rgba(212, 184, 74, 0.12);
+  border-color: rgba(212, 184, 74, 0.45);
+}
+.badgeHigh {
+  color: #ec7878;
+  background: rgba(224, 80, 80, 0.14);
+  border-color: rgba(224, 80, 80, 0.55);
+}
+
+/* ── Nutrient row ───────────────────────────────────────────────────────── */
+
+.npkRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  padding: 2px 0;
+}
+
+.npkCell {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.npkLabel {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.npkValue {
+  color: var(--color-text);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.86rem;
+}
+
+.npkMeta {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  opacity: 0.85;
+}
+
+.npkUnknownNote {
+  font-size: 0.68rem;
+  color: var(--color-text-muted);
+  opacity: 0.7;
+  margin-top: 4px;
+  font-style: italic;
+}

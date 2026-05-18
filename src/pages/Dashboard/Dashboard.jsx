@@ -8,6 +8,7 @@ import WeatherIntelligence from './WeatherIntelligence'
 import IrrigationIntelligence from './IrrigationIntelligence'
 import GDDCard from './GDDCard'
 import AppEffectivenessCard from './AppEffectivenessCard'
+import AgronomicIntelligence from './AgronomicIntelligence'
 import { useAlertsData, acknowledgeAlert, dismissAlert } from '../../utils/alerts/alertsStore'
 import RecentActivity from './RecentActivity'
 import QuickActions from './QuickActions'
@@ -56,6 +57,12 @@ export default function Dashboard() {
           </DashboardCard>
           <DashboardCard title="Application Effectiveness">
             <AppEffectivenessCard />
+          </DashboardCard>
+          {/* Phase 28A — Agronomic Intelligence Foundation. Decision-support
+              only: REI, reapplication windows, rainfast vs forecast,
+              FRAC/HRAC/IRAC rotation, weekly N-P-K totals. */}
+          <DashboardCard title="Agronomic Intelligence">
+            <AgronomicIntelligence />
           </DashboardCard>
         </div>
       </div>
