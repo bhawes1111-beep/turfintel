@@ -1,0 +1,100 @@
+/* Phase 27B — label badge primitives.
+   Compact, low-chrome chips that work on the dark-green TurfIntel palette.
+   Colors borrow the signal-word tokens already used in ChemicalCard. */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: inherit;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  user-select: none;
+  vertical-align: middle;
+}
+
+.size_sm {
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  line-height: 1.4;
+}
+
+.size_md {
+  font-size: 0.78rem;
+  padding: 3px 10px;
+  line-height: 1.5;
+}
+
+/* ── Signal word tones ──────────────────────────────────────────────────── */
+/* Colors match the existing ChemicalCard.module.css palette (yellow / orange / red)
+   tuned for the dark-green background. Background is a translucent tint so
+   the badge stays readable on cards AND on the wizard's modal surface. */
+
+.signal_caution {
+  color: #f3d574;
+  background: rgba(212, 184, 74, 0.12);
+  border-color: rgba(212, 184, 74, 0.45);
+}
+
+.signal_warning {
+  color: #f0a060;
+  background: rgba(224, 122, 48, 0.14);
+  border-color: rgba(224, 122, 48, 0.5);
+}
+
+.signal_danger {
+  color: #ec7878;
+  background: rgba(224, 80, 80, 0.14);
+  border-color: rgba(224, 80, 80, 0.55);
+}
+
+/* ── REI / PHI ──────────────────────────────────────────────────────────── */
+/* Neutral, informational tone — uses the accent green at low intensity so
+   it reads as "label-derived metadata" rather than an alert. */
+
+.rei,
+.phi {
+  color: var(--color-text);
+  background: rgba(74, 158, 74, 0.12);
+  border-color: rgba(74, 158, 74, 0.4);
+}
+
+.phi {
+  /* Slight differentiation so two badges in a row don't look identical. */
+  background: rgba(74, 158, 74, 0.08);
+}
+
+/* ── FRAC / HRAC / IRAC group ───────────────────────────────────────────── */
+/* Tone tracks resistance risk from chemistryMetadata.js — same vocabulary
+   as the Chemistry Intelligence panel uses elsewhere. */
+
+.group {
+  font-variant-numeric: tabular-nums;
+}
+
+.group_low {
+  color: #98d59c;
+  background: rgba(74, 158, 74, 0.16);
+  border-color: rgba(74, 158, 74, 0.5);
+}
+
+.group_medium {
+  color: #f3d574;
+  background: rgba(212, 184, 74, 0.12);
+  border-color: rgba(212, 184, 74, 0.45);
+}
+
+.group_high {
+  color: #ec7878;
+  background: rgba(224, 80, 80, 0.14);
+  border-color: rgba(224, 80, 80, 0.55);
+}
+
+.group_neutral {
+  color: var(--color-text-muted);
+  background: transparent;
+  border-color: var(--color-border);
+}
