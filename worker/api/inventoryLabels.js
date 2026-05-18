@@ -116,6 +116,269 @@ function emptyDraft() {
     guaranteedAnalysis: [],
     analysis:          null,
     nitrogenSource:    null,
+    // Phase 27A-2 — product-name suggestion derived from filename. Never
+    // confirmed; the wizard renders it as a hint under the input, never as
+    // a prefill. ok=false until the user types it in themselves.
+    productNameSuggestion: null,
+  }
+}
+
+// ── Section extractors (Phase 27A-2) ──────────────────────────────────────
+//
+// Each helper returns null OR { raw, normalized, ok, source } so the
+// extract endpoint can include them in draft.fields with full provenance
+// for the wizard's FROM-LABEL display.
+
+const TURF_SITE_TOKENS = [
+  // Turf-specific
+  'golf courses', 'greens', 'tees', 'fairways', 'roughs', 'sod farms',
+  'sports fields', 'cemeteries', 'residential lawns', 'commercial lawns',
+  'industrial turf', 'ornamental turf', 'commercial turf',
+  'institutional turf',
+  // Broadened (Phase 27A-2 — non-turf labels also surface)
+  'row crops', 'vegetables', 'fruits', 'tree nuts', 'vineyards',
+  'citrus', 'orchards', 'nurseries', 'greenhouses', 'ornamentals',
+  'landscape plantings', 'christmas tree farms', 'rights-of-way',
+  'non-cropland',
+]
+
+function extractTurfSites(text) {
+  // Find a sentence that contains 2+ whitelisted site tokens — that's the
+  // strongest signal we have a real "registered sites" line and not just
+  // a passing reference like "for use on greens" alone.
+  const sentences = text.split(/[.\n]/)
+  let bestSentence = null
+  let bestHits = []
+  for (const s of sentences) {
+    if (s.length > 400) continue
+    const hits = TURF_SITE_TOKENS.filter(tok =>
+      new RegExp(`\\b${tok.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}\\b`, 'i').test(s),
+    )
+    if (hits.length >= 2 && hits.length > bestHits.length) {
+      bestHits = hits
+      bestSentence = s.replace(/\s+/g, ' ').trim()
+    }
+  }
+  if (!bestSentence) return null
+  return {
+    raw: bestSentence.slice(0, 260),
+    normalized: bestHits.slice().sort(),
+    ok: true,
+    source: 'site-list sentence (≥2 whitelisted tokens)',
+  }
+}
+
+function extractApplicationRates(text) {
+  const RATE_RE = /\b(\d+(?:\.\d+)?(?:\s*[–\-]\s*\d+(?:\.\d+)?)?)\s*(fl\s*oz|oz|lbs?|pints?|pt|qts?|qt|gal|gallons?)\s*\/\s*(1,?000\s*(?:sq\s*ft|square\s*feet)|acre|a\b)\b/gi
+  const seen = new Set()
+  const rates = []
+  let m
+  while ((m = RATE_RE.exec(text)) !== null) {
+    const value = m[1].replace(/\s*[–\-]\s*/, '-').replace(/\s+/g, '')
+    const unit  = m[2].replace(/\s+/g, ' ').toLowerCase()
+      .replace(/^lbs?$/, 'lb').replace(/^pints?$/, 'pt')
+      .replace(/^qts?$/,  'qt').replace(/^gallons?$/, 'gal')
+    const per   = /1,?000\s*(?:sq\s*ft|square\s*feet)/i.test(m[3])
+      ? '1000 sq ft'
+      : 'acre'
+    const norm  = `${value} ${unit}/${per}`
+    if (!seen.has(norm)) { seen.add(norm); rates.push(norm) }
+  }
+  const PPM_RE = /\b(\d+(?:\.\d+)?(?:\s*[–\-]\s*\d+(?:\.\d+)?)?)\s*ppm\b/gi
+  while ((m = PPM_RE.exec(text)) !== null) {
+    const v = m[1].replace(/\s*[–\-]\s*/, '-').replace(/\s+/g, '')
+    const norm = `${v} ppm`
+    if (!seen.has(norm)) { seen.add(norm); rates.push(norm) }
+  }
+  if (rates.length === 0) return null
+  return {
+    raw: rates.join('\n'),
+    normalized: rates,
+    ok: true,
+    source: 'rate-table scan',
+  }
+}
+
+// Whitelisted disease / weed / insect / PGR target terms. Conservative —
+// only terms common enough on turf labels to extract without false
+// positives. NOTE: bermudagrass is intentionally omitted because on turf
+// labels it is normally the crop, not a target weed.
+const TARGET_TERMS = {
+  disease: [
+    'dollar spot', 'brown patch', 'pythium', 'anthracnose', 'leaf spot',
+    'fairy ring', 'gray leaf spot', 'rust', 'snow mold', 'red thread',
+    'take-all', 'brown ring patch', 'summer patch', 'bermudagrass decline',
+    'fusarium', 'yellow tuft', 'mini ring',
+  ],
+  weed: [
+    'crabgrass', 'goosegrass', 'poa annua', 'annual bluegrass', 'dandelion',
+    'clover', 'nutsedge', 'kikuyu', 'yellow nutsedge', 'purple nutsedge',
+    'kyllinga', 'oxalis', 'henbit', 'chickweed', 'spurge', 'plantain',
+  ],
+  insect: [
+    'white grub', 'chinch bug', 'cutworm', 'sod webworm', 'fire ant',
+    'billbug', 'nematode', 'mole cricket', 'aphid', 'armyworm', 'spittlebug',
+    'scale insect',
+  ],
+  pgr: [
+    'seedhead suppression', 'growth suppression', 'poa annua suppression',
+    'growth regulation', 'stem elongation', 'gibberellin',
+  ],
+}
+
+function extractTargets(text) {
+  const seen = new Map()  // term → category
+  for (const [category, terms] of Object.entries(TARGET_TERMS)) {
+    for (const term of terms) {
+      const re = new RegExp(`\\b${term.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}\\b`, 'i')
+      if (re.test(text)) seen.set(term, category)
+    }
+  }
+  if (seen.size === 0) return null
+  const sorted = [...seen.entries()].sort()
+  return {
+    raw: sorted.map(([t]) => t).join(', '),
+    normalized: sorted.map(([term, category]) => ({ term, category })),
+    ok: true,
+    source: 'term whitelist scan',
+  }
+}
+
+const PPE_TERMS = [
+  'Long-sleeved shirt',
+  'Long pants',
+  'Chemical-resistant gloves',
+  'Chemical resistant gloves',  // PROHEX-style (no hyphen)
+  'Shoes plus socks',
+  'Protective eyewear',
+  'Respirator',
+]
+
+function extractPPE(text) {
+  const found = new Set()
+  for (const t of PPE_TERMS) {
+    const re = new RegExp(`\\b${t.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}\\b`, 'i')
+    if (re.test(text)) {
+      // Canonicalize variants.
+      const canon = t.replace(/Chemical resistant gloves/i, 'Chemical-resistant gloves')
+      found.add(canon)
+    }
+  }
+  if (found.size === 0) return null
+  const arr = [...found]
+  return {
+    raw: arr.join('\n'),
+    normalized: arr,
+    ok: true,
+    source: 'PPE whitelist',
+  }
+}
+
+function extractStorageNotes(text) {
+  const PATTERNS = [
+    // Standalone "PESTICIDE STORAGE:" heading (PROHEX style).
+    [/\bPESTICIDE\s+STORAGE\s*[:]\s*([\s\S]{20,600}?)(?:\s*PESTICIDE\s+DISPOSAL|\s*CONTAINER\s+HANDLING|\s*DIRECTIONS\s+FOR\s+USE|\s*GENERAL\s+INFORMATION|$)/i,
+     'PESTICIDE STORAGE section'],
+    // Combined heading (Primo style).
+    [/\b(?:Pesticide\s+Storage\s+and\s+Disposal|STORAGE\s+AND\s+DISPOSAL)\b\s*[:.]?\s*([\s\S]{20,600}?)(?:\s*Container\s+Handling|\s*DIRECTIONS\s+FOR\s+USE|\s*GENERAL\s+INFORMATION|$)/i,
+     'STORAGE AND DISPOSAL section'],
+  ]
+  for (const [re, src] of PATTERNS) {
+    const m = text.match(re)
+    if (!m) continue
+    const clean = m[1].replace(/\s+/g, ' ').trim().slice(0, 480)
+    if (clean.length < 20) continue
+    return { raw: clean, normalized: clean, ok: true, source: src }
+  }
+  return null
+}
+
+function extractRainfast(text) {
+  const kwIdx = text.search(/\b(?:rainfast|water[- ]?in|watering[- ]?in|do not water|irrigate after)\b/i)
+  if (kwIdx < 0) return null
+  // Window: up to 200 chars before and 200 chars after, then trim at real
+  // sentence boundaries. Don't split on bare periods because PDF text
+  // includes decimal numbers ("27.5 WDG").
+  const start = Math.max(0, kwIdx - 200)
+  const end   = Math.min(text.length, kwIdx + 200)
+  const window = text.slice(start, end)
+  const beforeKw = window.slice(0, kwIdx - start)
+  let bestBoundary = -1
+  const re = /[.!?]\s+(?=[A-Z])/g
+  let mm
+  while ((mm = re.exec(beforeKw)) !== null) bestBoundary = mm.index + mm[0].length
+  const sentenceStart = bestBoundary > 0 ? bestBoundary : 0
+  const afterStart = window.slice(sentenceStart)
+  // Greedy minimal to a period NOT followed by a digit (decimal).
+  const endMatch = afterStart.match(/.*?[.!?](?!\d)/s)
+  let snippet = (endMatch ? endMatch[0] : afterStart.slice(0, 300))
+    .replace(/\s+/g, ' ')
+    .trim()
+  // If the snippet still starts with a digit fragment ("5 WDG is..."),
+  // re-anchor at the first capital letter within the first 60 chars.
+  const capStart = snippet.search(/[A-Z][a-zA-Z]/)
+  if (capStart > 0 && capStart < 60) snippet = snippet.slice(capStart).trim()
+  if (snippet.length < 10) return null
+  return {
+    raw: snippet.slice(0, 280),
+    normalized: snippet.slice(0, 280),
+    ok: true,
+    source: 'rainfast/irrigation clause',
+  }
+}
+
+function extractTurfRestrictions(text) {
+  const restrictions = []
+  function add(s) {
+    const norm = s.replace(/\s+/g, ' ').trim()
+    if (!norm) return
+    // Trim trailing all-caps section bleed.
+    const cut = norm
+      .replace(/\s+\d?\s*(?:PRECAUTIONARY|HAZARDS|CAUTION|WARNING|DANGER|GENERAL|DIRECTIONS|STORAGE|FIRST AID)\b.*$/i, '')
+      .trim()
+    if (cut.length < 4) return
+    if (!restrictions.find(x => x.toLowerCase() === cut.toLowerCase())) {
+      restrictions.push(cut)
+    }
+  }
+  for (const m of text.matchAll(/Not for use (?:on|in)\s+([^.\n]{3,120})/gi)) {
+    add('Not for use in ' + m[1])
+  }
+  if (/Not for use in California|California restriction|California, do not/i.test(text)) {
+    if (!restrictions.find(r => /^California restriction$/i.test(r)) &&
+        !restrictions.find(r => /not for use in california\b/i.test(r))) {
+      restrictions.push('California restriction')
+    }
+  }
+  for (const m of text.matchAll(/DO NOT apply to\s+([^.\n]{3,120})/gi)) {
+    add('Do not apply to ' + m[1])
+  }
+  if (restrictions.length === 0) return null
+  return {
+    raw: restrictions.join('\n'),
+    normalized: restrictions,
+    ok: true,
+    source: 'restriction clauses (Not for use / DO NOT apply)',
+  }
+}
+
+// Filename-based product name suggestion. Returns ok=false on purpose:
+// the wizard never auto-prefills the product name field — the user must
+// confirm it from the label themselves. This is a hint only.
+function extractFilenameProductName(filename) {
+  if (typeof filename !== 'string' || filename.length < 4) return null
+  const stripped = filename
+    .replace(/\.[A-Za-z0-9]+$/, '')
+    .replace(/[_\-]+/g, ' ')
+    .replace(/\b(label|specimen|specimen[- ]?label|spec|sds|msds|datasheet|brochure)\b/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (stripped.length < 3) return null
+  return {
+    raw: filename,
+    normalized: stripped,
+    ok: false,
+    source: 'filename (suggestion only — verify before saving)',
   }
 }
 
@@ -197,8 +460,12 @@ const RAW_TEXT_CAP_BYTES = 50_000
  * while the wizard's UI still has access to "what the extractor actually
  * saw". Conservative — fields with no confident match stay null.
  */
-function applyHeuristics(text) {
+function applyHeuristics(text, fileName = null) {
   const draft = emptyDraft()
+  // Phase 27A-2 — section-extraction results are stored here as
+  // { raw, normalized, ok, source } so normalizeDraft can merge them into
+  // draft.fields for the wizard's FROM-LABEL display.
+  const sectionFields = {}
 
   // EPA registration number — "EPA Reg. No.: 100-1364" / "EPA Reg # 100-1364-50"
   const epa = text.match(
@@ -304,9 +571,85 @@ function applyHeuristics(text) {
     if (ga.npk) draft.kind = 'fertilizer'
   }
 
-  // Product name — intentionally NOT extracted from text. PDF text alone
-  // can't reliably distinguish the product title from surrounding marketing
-  // and registration text. The wizard requires manual entry of the name.
+  // Product name — Phase 27A-2: not extracted from PDF text (still
+  // unreliable across vendor layouts), but we surface a filename-derived
+  // SUGGESTION with ok=false so the wizard can show it as a hint under
+  // the empty input. The user still types the real product name from
+  // the label. We never auto-prefill.
+  const nameSuggestion = extractFilenameProductName(fileName)
+  if (nameSuggestion) {
+    draft.productNameSuggestion = nameSuggestion.normalized
+    sectionFields.productName = nameSuggestion
+  }
+
+  // ── Section-level extraction (Phase 27A-2) ───────────────────────────
+  // Each helper returns null OR { raw, normalized, ok, source }. When
+  // ok=true we also populate the top-level draft field that the wizard's
+  // form input binds to (form-ready display string or array).
+
+  const sites = extractTurfSites(text)
+  if (sites) {
+    sectionFields.turfSites = sites
+    draft.turfSites = Array.isArray(sites.normalized)
+      ? sites.normalized.join(', ')
+      : sites.raw
+  }
+
+  const rates = extractApplicationRates(text)
+  if (rates) {
+    sectionFields.applicationRates = rates
+    draft.applicationRates = rates.normalized
+  }
+
+  const targets = extractTargets(text)
+  if (targets) {
+    sectionFields.targets = targets
+    // Form-ready: one term per line, no category prefix (keeps the existing
+    // targetsText textarea behavior). Categories live in fields.targets.normalized
+    // for the FROM-LABEL display.
+    draft.targets = targets.normalized.map(t => t.term)
+  }
+
+  const ppe = extractPPE(text)
+  if (ppe) {
+    sectionFields.ppe = ppe
+    draft.safetyNotes = `PPE: ${ppe.normalized.join(', ')}`
+  }
+
+  const storage = extractStorageNotes(text)
+  if (storage) {
+    sectionFields.storageNotes = storage
+    draft.storageNotes = storage.normalized
+  }
+
+  const rainfast = extractRainfast(text)
+  if (rainfast) {
+    sectionFields.rainfast = rainfast
+    // No dedicated rainfast field on inventory_product_labels; land it
+    // in notes so the operator sees it. Existing notes are preserved
+    // by the wizard form (we only set if blank).
+    draft.notes = rainfast.normalized
+  }
+
+  const restrictions = extractTurfRestrictions(text)
+  if (restrictions) {
+    sectionFields.turfRestrictions = restrictions
+    // No dedicated turf-restrictions field; combine into safetyNotes
+    // alongside PPE if PPE was also extracted.
+    const lines = []
+    if (ppe) lines.push(`PPE: ${ppe.normalized.join(', ')}`)
+    lines.push(...restrictions.normalized)
+    draft.safetyNotes = lines.join('\n')
+  }
+
+  // Attach the section results to a non-enumerable holder we read in
+  // normalizeDraft. Using a regular property because the worker JSON-
+  // serializes the draft and we want section data discarded before that
+  // pass merges it into draft.fields.
+  Object.defineProperty(draft, '__sectionFields', {
+    value: sectionFields,
+    enumerable: false,
+  })
 
   return draft
 }
@@ -362,6 +705,17 @@ function normalizeDraft(rawDraft) {
       const r = normalizeGroupCodes(rawDraft[key])
       fields[key] = r
       draft[key]  = formatGroupCodes(r.normalized) ?? rawDraft[key]
+    }
+  }
+
+  // Phase 27A-2 — merge in the section-level extraction results
+  // (turfSites, applicationRates, targets, ppe, storageNotes, rainfast,
+  // turfRestrictions, productName-suggestion) so the wizard's FROM-LABEL
+  // provenance display has full per-field { raw, normalized, ok, source }.
+  // These come pre-shaped; no further normalization needed.
+  if (rawDraft.__sectionFields) {
+    for (const [k, v] of Object.entries(rawDraft.__sectionFields)) {
+      fields[k] = v
     }
   }
 
@@ -474,7 +828,7 @@ export async function extractLabelDraft(env, request) {
   // `draft` carries normalized top-level values for the form pre-fill, and
   // `draft.fields` holds per-field { raw, normalized, ok } for the
   // wizard's raw-vs-normalized display.
-  const rawDraft = applyHeuristics(clean)
+  const rawDraft = applyHeuristics(clean, row.file_name)
   const draft    = normalizeDraft(rawDraft)
   const fieldsFound = []
   if (draft.epaNumber)         fieldsFound.push('epaNumber')
@@ -490,6 +844,19 @@ export async function extractLabelDraft(env, request) {
   // Phase 27A — fertilizer signals.
   if (draft.analysis)          fieldsFound.push('analysis')
   if (draft.nitrogenSource)    fieldsFound.push('nitrogenSource')
+  // Phase 27A-2 — section-level signals. Each appears in fieldsFound only
+  // when the corresponding section extractor confidently matched.
+  if (draft.fields?.turfSites?.ok)        fieldsFound.push('turfSites')
+  if (draft.fields?.applicationRates?.ok) fieldsFound.push('applicationRates')
+  if (draft.fields?.targets?.ok)          fieldsFound.push('targets')
+  if (draft.fields?.ppe?.ok)              fieldsFound.push('ppe')
+  if (draft.fields?.storageNotes?.ok)     fieldsFound.push('storageNotes')
+  if (draft.fields?.rainfast?.ok)         fieldsFound.push('rainfast')
+  if (draft.fields?.turfRestrictions?.ok) fieldsFound.push('turfRestrictions')
+  // productName is reported only as a SUGGESTION (ok:false) — surface it
+  // separately so the wizard can show the filename hint without putting
+  // a green-confidence chip on it.
+  if (draft.fields?.productName)          fieldsFound.push('productNameSuggestion')
 
   // Cap raw text in the response — labels are typically a few KB but the
   // multi-page master label PDFs can be larger.

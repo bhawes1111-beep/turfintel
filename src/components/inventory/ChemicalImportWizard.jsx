@@ -119,6 +119,15 @@ const FIELD_LABELS = {
   // Phase 27A — fertilizer signals.
   analysis:          'N-P-K',
   nitrogenSource:    'Derived From',
+  // Phase 27A-2 — section-level signals.
+  turfSites:         'Use Sites',
+  applicationRates:  'Application Rates',
+  targets:           'Targets',
+  ppe:               'PPE',
+  storageNotes:      'Storage',
+  rainfast:          'Rainfast',
+  turfRestrictions:  'Restrictions',
+  productNameSuggestion: 'Filename Hint',
 }
 
 // Fields surfaced in the duplicate comparison card.
@@ -574,6 +583,24 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
                     onChange={e => setField('name', e.target.value)}
                     placeholder="e.g. Daconil Action"
                   />
+                  {/* Phase 27A-2 — filename-derived suggestion. ok=false in
+                      the worker so it never auto-prefills; we render it as a
+                      clickable hint instead. The user must confirm by
+                      clicking, preserving the no-hallucination rule. */}
+                  {!form.name.trim() && extractResult?.draft?.productNameSuggestion && (
+                    <div className={styles.filenameHint}>
+                      <span className={styles.filenameHintLabel}>From filename:</span>
+                      <button
+                        type="button"
+                        className={styles.filenameHintBtn}
+                        onClick={() => setField('name', extractResult.draft.productNameSuggestion)}
+                        title="Click to use this as the product name (verify against the label first)"
+                      >
+                        {extractResult.draft.productNameSuggestion}
+                      </button>
+                      <span className={styles.filenameHintNote}>verify against the label</span>
+                    </div>
+                  )}
                 </Field>
                 <Field label="Kind">
                   <select
@@ -708,6 +735,7 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
                   label="Application / Rate Notes"
                   wide
                   hint="One rate per line"
+                  extract={ext('applicationRates')}
                 >
                   <textarea
                     className={styles.textarea}
@@ -721,6 +749,7 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
                   label="Target Pests / Diseases / Weeds"
                   wide
                   hint="One target per line"
+                  extract={ext('targets')}
                 >
                   <textarea
                     className={styles.textarea}
@@ -730,7 +759,12 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
                     placeholder={'e.g. Dollar spot\nBrown patch\nPythium blight'}
                   />
                 </Field>
-                <Field label="Turf Sites" wide hint="Where the product is registered for use">
+                <Field
+                  label="Turf Sites"
+                  wide
+                  hint="Where the product is registered for use"
+                  extract={ext('turfSites')}
+                >
                   <input
                     className={styles.input}
                     value={form.turfSites}
@@ -788,7 +822,7 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
                     placeholder="YYYY-MM-DD"
                   />
                 </Field>
-                <Field label="Notes" wide>
+                <Field label="Notes" wide extract={ext('rainfast')}>
                   <textarea
                     className={styles.textarea}
                     rows={2}
@@ -824,7 +858,11 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
                     placeholder="e.g. 1A, 4A"
                   />
                 </Field>
-                <Field label="Safety Notes" wide>
+                <Field
+                  label="Safety Notes"
+                  wide
+                  extract={ext('ppe') || ext('turfRestrictions')}
+                >
                   <textarea
                     className={styles.textarea}
                     rows={2}
@@ -833,7 +871,11 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
                     placeholder="PPE, handling precautions…"
                   />
                 </Field>
-                <Field label="Storage / Disposal Notes" wide>
+                <Field
+                  label="Storage / Disposal Notes"
+                  wide
+                  extract={ext('storageNotes')}
+                >
                   <textarea
                     className={styles.textarea}
                     rows={2}
@@ -985,8 +1027,15 @@ function formatNormalized(v) {
   if (v == null) return '—'
   if (Array.isArray(v)) {
     if (v.length === 0) return '—'
-    if (typeof v[0] === 'object' && v[0] != null && 'name' in v[0]) {
-      return v.map(x => `${x.name} (${x.percent}%)`).join(', ')
+    if (typeof v[0] === 'object' && v[0] != null) {
+      // Active-ingredient shape: { name, percent }
+      if ('name' in v[0] && 'percent' in v[0]) {
+        return v.map(x => `${x.name} (${x.percent}%)`).join(', ')
+      }
+      // Phase 27A-2 target shape: { term, category }
+      if ('term' in v[0]) {
+        return v.map(x => `${x.term} (${x.category})`).join(', ')
+      }
     }
     return v.join(', ')
   }

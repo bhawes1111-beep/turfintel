@@ -560,6 +560,48 @@
   line-height: 1.35;
 }
 
+/* Phase 27A-2 — filename-derived product-name suggestion. Rendered only
+   when the wizard could not confidently extract a name from the PDF.
+   Click-to-fill so the user has to confirm; preserves no-hallucination
+   rule by never auto-prefilling. */
+.filenameHint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+.filenameHintLabel {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  opacity: 0.85;
+}
+.filenameHintBtn {
+  background: rgba(74, 158, 74, 0.08);
+  border: 1px solid rgba(74, 158, 74, 0.4);
+  color: var(--color-accent);
+  padding: 2px 10px;
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.filenameHintBtn:hover {
+  background: rgba(74, 158, 74, 0.16);
+  border-color: var(--color-accent);
+}
+.filenameHintNote {
+  color: var(--color-text-muted);
+  font-style: italic;
+  font-size: 0.66rem;
+}
+
 /* ── ExtractOrigin: per-field raw → normalized provenance ── */
 /* Phase 27C — visually associate the provenance line with the input
    above it via a thin accent rule on the left, and reserve a touch of
