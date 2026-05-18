@@ -105,8 +105,11 @@ export function normalizeGroupCodes(raw) {
 // pair must have a clear name (starts with a letter) and a numeric percent.
 
 // Name class tolerates `.` so qualifiers like "(CAS No. 95266-40-3)" don't
-// truncate the ingredient name mid-match.
-const AI_PAIR_RE = /([A-Z][A-Za-z0-9 .()\-,]*?)\s+(\d+(?:\.\d+)?)\s*%/g
+// truncate the ingredient name mid-match. Phase 27A follow-up — also
+// tolerate `[]` and `*` for labels that print IUPAC names in square
+// brackets and footnote asterisks (e.g. "Prohexadione-calcium** [calcium
+// 3-oxido-5-oxo-4-propionylcyclohex-3-enecarboxylate] 27.5%").
+const AI_PAIR_RE = /([A-Z][A-Za-z0-9 .()[\]\-,*]*?)\s+(\d+(?:\.\d+)?)\s*%/g
 
 export function normalizeActiveIngredients(raw) {
   if (typeof raw !== 'string' || !raw.trim()) {
