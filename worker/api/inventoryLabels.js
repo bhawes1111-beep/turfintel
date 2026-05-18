@@ -110,7 +110,68 @@ function emptyDraft() {
     storageNotes:      null,
     labelUrl:          null,
     notes:             null,
+    // Phase 27A — fertilizer-specific draft fields. `guaranteedAnalysis`
+    // is the structured nutrient breakdown; `analysis` (e.g. "46-0-0") and
+    // `nitrogenSource` (the "Derived from" string) live on inventory_items.
+    guaranteedAnalysis: [],
+    analysis:          null,
+    nitrogenSource:    null,
   }
+}
+
+// ── Fertilizer "Guaranteed Analysis" parser (Phase 27A) ───────────────────
+//
+// Looks for the GUARANTEED ANALYSIS block and parses nutrient/percent
+// pairs in the standard label format:
+//
+//     Total Nitrogen (N) ........... 46.0%
+//     Available Phosphate (P2O5) ... 18.0%
+//     Soluble Potash (K2O) ......... 12.0%
+//     Derived from: Urea, ...
+//
+// Returns { nutrients: [{name, symbol, percent}], derivedFrom, npk } or
+// null if the GA block is absent. `npk` is the conventional "N-P-K"
+// string derived from the N, P2O5, and K2O entries (when present).
+function parseGuaranteedAnalysis(text) {
+  const ga = text.match(/GUARANTEED\s+ANALYSIS([\s\S]{0,1500})/i)
+  if (!ga) return null
+
+  let block = ga[1]
+    .replace(/(?:\s*\.\s*){2,}/g, ' ')   // collapse dot leaders
+    .replace(/\s+/g, ' ')
+  // Stop at the end-of-block markers that commonly follow GA on real labels.
+  block = block.split(
+    /Directions\s+for\s+use|This\s+product\s+is|NET\s+WEIGHT|Distributed\s+(?:by|for)|Manufactured\s+(?:by|for)|Guaranteed\s+by/i,
+  )[0]
+
+  // Nutrient rows: "Total Nitrogen (N) 46.0%" / "Iron (Fe) 1.5%"
+  const nutrients = []
+  const NUT_RE = /([A-Z][A-Za-z][A-Za-z .\-]{2,40}?)\s*\(([A-Za-z0-9]{1,6})\)\s+(\d+(?:\.\d+)?)\s*%/g
+  let m
+  while ((m = NUT_RE.exec(block)) !== null) {
+    nutrients.push({
+      name:    m[1].trim(),
+      symbol:  m[2].trim(),
+      percent: parseFloat(m[3]),
+    })
+  }
+
+  const derived = block.match(/Derived\s+from\s*:?\s*([^.\n]{2,200}?)(?:\s+Directions|\s+This\s+product|$)/i)
+  const derivedFrom = derived ? derived[1].trim().replace(/[,;]\s*$/, '') : null
+
+  // Standard fertilizer NPK uses Total Nitrogen, Available Phosphate
+  // (P2O5), and Soluble Potash (K2O). Build "N-P-K" only if at least one
+  // primary is present so we don't fabricate "0-0-0".
+  const find = (sym) => nutrients.find(n => n.symbol.toUpperCase() === sym)
+  const nN = find('N')
+  const nP = find('P2O5')
+  const nK = find('K2O')
+  let npk = null
+  if (nN || nP || nK) {
+    npk = `${nN ? nN.percent : 0}-${nP ? nP.percent : 0}-${nK ? nK.percent : 0}`
+  }
+
+  return { nutrients, derivedFrom, npk }
 }
 
 // ── Extract ────────────────────────────────────────────────────────────────
@@ -159,24 +220,40 @@ function applyHeuristics(text) {
   const sig = window.match(/\b(DANGER\s*[—-]?\s*POISON|DANGER|WARNING|CAUTION)\b/)
   if (sig) draft.signalWord = sig[1].trim()
 
-  // Re-Entry Interval — "Restricted-Entry Interval (REI) of 12 hours".
+  // Re-Entry Interval — Phase 27A: accept hours OR days, and multiple
+  // keyword variants. Labels phrase this as "Restricted-Entry Interval
+  // (REI) for this product is 0 days" / "Reentry interval of 12 hours".
   const rei = text.match(
-    /(?:Restricted[- ]Entry Interval|REI)[^.\n]{0,80}?(\d+)\s*(?:hours?|hrs?|h)\b/i,
+    /(?:Restricted[- ]Entry Interval|Re-?Entry Interval|Reentry Interval|REI)[^.\n]{0,140}?(\d+)\s*(hours?|hrs?|h\b|days?|d\b)/i,
   )
-  if (rei) draft.reiHours = `${rei[1]} hours`
+  if (rei) {
+    const unit = rei[2].toLowerCase().startsWith('d') ? 'days' : 'hours'
+    draft.reiHours = `${rei[1]} ${unit}`
+  }
 
-  // Pre-Harvest Interval — rarely on turf labels but worth attempting.
-  const phi = text.match(/Pre-?Harvest\s+Interval[^.\n]{0,80}?(\d+)\s*(?:days?|d)\b/i)
-  if (phi) draft.phi = `${phi[1]} days`
+  // Pre-Harvest Interval — Phase 27A: accept "PHI", "Pre-harvest" and
+  // "Preharvest" variants. Days OR hours.
+  const phi = text.match(
+    /(?:Pre-?Harvest Interval|Preharvest Interval|PHI)[^.\n]{0,140}?(\d+)\s*(days?|d\b|hours?|hrs?|h\b)/i,
+  )
+  if (phi) {
+    const unit = phi[2].toLowerCase().startsWith('d') ? 'days' : 'hours'
+    draft.phi = `${phi[1]} ${unit}`
+  }
 
   // FRAC / HRAC / IRAC group codes — capture the raw group string; the
   // normalizer splits "M5/P1" / "3, 11" / "1A or 4A" into a clean array.
+  // Phase 27A: also accept the "Group N <Fungicide|Herbicide|Insecticide>"
+  // phrasing many labels use instead of the FRAC/HRAC/IRAC acronym.
   const frac = text.match(/FRAC\s+(?:Code|Group)?[:\s]+([\w\d]{1,8}(?:[,/][\w\d]{1,8})*)/i)
-  if (frac) draft.fracGroup = frac[1].trim()
+    || text.match(/Group\s+([A-Z0-9]{1,4}(?:\s*[,/]\s*[A-Z0-9]{1,4})*)\s+Fungicide/i)
+  if (frac) draft.fracGroup = frac[1].replace(/\s+/g, '').trim()
   const hrac = text.match(/HRAC\s+(?:Code|Group)?[:\s]+([\w\d]{1,8}(?:[,/][\w\d]{1,8})*)/i)
-  if (hrac) draft.hracGroup = hrac[1].trim()
+    || text.match(/Group\s+([A-Z0-9]{1,4}(?:\s*[,/]\s*[A-Z0-9]{1,4})*)\s+Herbicide/i)
+  if (hrac) draft.hracGroup = hrac[1].replace(/\s+/g, '').trim()
   const irac = text.match(/IRAC\s+(?:Code|Group)?[:\s]+([\w\d]{1,8}(?:[,/][\w\d]{1,8})*)/i)
-  if (irac) draft.iracGroup = irac[1].trim()
+    || text.match(/Group\s+([A-Z0-9]{1,4}(?:\s*[,/]\s*[A-Z0-9]{1,4})*)\s+Insecticide/i)
+  if (irac) draft.iracGroup = irac[1].replace(/\s+/g, '').trim()
 
   // Active Ingredients — capture between "Active Ingredient(s)" and a
   // sentinel. Whitespace + dot-leader cleanup only; the normalizer parses
@@ -196,14 +273,35 @@ function applyHeuristics(text) {
     if (cleaned.length > 5) draft.activeIngredients = cleaned
   }
 
-  // Manufacturer / Marketer — stores the full captured tail (with any
-  // ", LLC" / ", Inc." legal suffixes intact). The normalizer trims those.
+  // Manufacturer / Marketer — Phase 27A: stop the tail capture before any
+  // digit (street numbers immediately follow the company name on most
+  // labels) and accept "Guaranteed by:" (fertilizer convention) in
+  // addition to the four pesticide-label lead-ins. The normalizer still
+  // strips the legal suffix afterward.
   const mfr = text.match(
-    /(?:Manufactured|Marketed|Distributed|Produced)\s+(?:by|for)\s*[:\s]+([A-Z][^,\n]{2,80}(?:,\s*(?:L\.?L\.?C\.?|Inc\.?|Corp\.?|Corporation|Co\.?|Company|Ltd\.?))?)/i,
+    /(?:Manufactured|Marketed|Distributed|Produced|Guaranteed)\s+(?:by|for)\s*[:\s]+([A-Z][^,\n\d]{2,80}(?:,\s*(?:L\.?L\.?C\.?|Inc\.?|Corp\.?|Corporation|Co\.?|Company|Ltd\.?))?)/i,
   )
   if (mfr) {
-    const name = mfr[1].trim().slice(0, 100)
+    let name = mfr[1].trim().slice(0, 100)
+    // Drop an unmatched trailing "(..." fragment if the close paren got
+    // cut off by the digit/newline stop.
+    name = name.replace(/\s*\([^)]*$/, '').trim()
     if (name.length > 2) draft.manufacturer = name
+  }
+
+  // Fertilizer "Guaranteed Analysis" block — Phase 27A.
+  // Parses "Total Nitrogen (N) 46.0%" rows into a structured array, plus
+  // the trailing "Derived from: ..." line. Used to prefill the fertilizer
+  // form fields (analysis = "N-P-K", nitrogenSource = derived-from text).
+  const ga = parseGuaranteedAnalysis(text)
+  if (ga && ga.nutrients.length > 0) {
+    draft.guaranteedAnalysis = ga.nutrients
+    if (ga.npk) draft.analysis = ga.npk
+    if (ga.derivedFrom) draft.nitrogenSource = ga.derivedFrom
+    // Strong signal this is a fertilizer label — flip the kind default so
+    // the wizard opens the fertilizer-specific fields. User can override
+    // in the review step if wrong.
+    if (ga.npk) draft.kind = 'fertilizer'
   }
 
   // Product name — intentionally NOT extracted from text. PDF text alone
@@ -389,6 +487,9 @@ export async function extractLabelDraft(env, request) {
   if (draft.iracGroup)         fieldsFound.push('iracGroup')
   if (draft.activeIngredients) fieldsFound.push('activeIngredients')
   if (draft.manufacturer)      fieldsFound.push('manufacturer')
+  // Phase 27A — fertilizer signals.
+  if (draft.analysis)          fieldsFound.push('analysis')
+  if (draft.nitrogenSource)    fieldsFound.push('nitrogenSource')
 
   // Cap raw text in the response — labels are typically a few KB but the
   // multi-page master label PDFs can be larger.

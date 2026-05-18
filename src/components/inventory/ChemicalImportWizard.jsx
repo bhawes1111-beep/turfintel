@@ -66,6 +66,9 @@ function formFromDraft(draft) {
     storageNotes:      draft.storageNotes ?? '',
     labelUrl:          draft.labelUrl ?? '',
     notes:             draft.notes ?? '',
+    // Phase 27A — fertilizer analysis prefill.
+    analysis:          draft.analysis ?? '',
+    nitrogenSource:    draft.nitrogenSource ?? '',
   }
 }
 
@@ -113,6 +116,9 @@ const FIELD_LABELS = {
   iracGroup:         'IRAC',
   activeIngredients: 'Active Ingredients',
   manufacturer:      'Manufacturer',
+  // Phase 27A — fertilizer signals.
+  analysis:          'N-P-K',
+  nitrogenSource:    'Derived From',
 }
 
 // Fields surfaced in the duplicate comparison card.
