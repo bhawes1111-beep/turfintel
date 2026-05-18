@@ -186,7 +186,9 @@ function applyHeuristics(text) {
   )
   if (ai) {
     const cleaned = ai[1]
-      .replace(/\.{2,}/g, ' ')
+      // Collapse dot leaders. PDFs render leaders both as runs (......) and
+      // space-separated (. . . . .) depending on the typesetter — handle both.
+      .replace(/(?:\s*\.\s*){2,}/g, ' ')
       .replace(/\s+/g, ' ')
       .replace(/^[:.\s*]+/, '')
       .trim()

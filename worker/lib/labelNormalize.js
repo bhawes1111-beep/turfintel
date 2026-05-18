@@ -104,7 +104,9 @@ export function normalizeGroupCodes(raw) {
 // Parse `Name X.Y%` pairs into `[{ name, percent }]`. Conservative: each
 // pair must have a clear name (starts with a letter) and a numeric percent.
 
-const AI_PAIR_RE = /([A-Z][A-Za-z0-9 ()\-,]*?)\s+(\d+(?:\.\d+)?)\s*%/g
+// Name class tolerates `.` so qualifiers like "(CAS No. 95266-40-3)" don't
+// truncate the ingredient name mid-match.
+const AI_PAIR_RE = /([A-Z][A-Za-z0-9 .()\-,]*?)\s+(\d+(?:\.\d+)?)\s*%/g
 
 export function normalizeActiveIngredients(raw) {
   if (typeof raw !== 'string' || !raw.trim()) {
