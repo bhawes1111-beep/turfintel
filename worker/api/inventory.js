@@ -172,12 +172,78 @@ export async function updateInventory(env, id, request) {
   return getInventory(env, id)
 }
 
+// Phase 27D — cascade cleanup on delete.
+//
+// inventory_product_labels and operational_attachments don't have FK
+// constraints back to inventory_items (D1 schema kept lean), so a plain
+// DELETE used to leave both an orphan label row and an orphan R2 PDF
+// behind. We now clean both up in the same handler:
+//
+//   1. Collect any label rows for this item, capture their pdf_attachment_id.
+//   2. Delete the label rows.
+//   3. For each captured PDF attachment id, soft-delete the metadata row
+//      and hard-delete the R2 object (matching the soft-delete pattern
+//      already used by /api/attachments/:id DELETE).
+//   4. Delete the inventory item itself.
+//
+// Failures past step 1 are logged but don't abort — leaving an extra
+// R2 object is preferable to leaving the inventory item alive when the
+// caller asked to delete it. Returns the cleanup summary so the caller
+// can surface "deleted X with N attachments" if useful.
+
 export async function deleteInventory(env, id) {
+  // 1+2: gather + delete label rows; capture pdf_attachment_id values.
+  let labelAttachmentIds = []
+  let labelRowsDeleted   = 0
+  try {
+    const { results } = await env.DB.prepare(
+      'SELECT pdf_attachment_id FROM inventory_product_labels WHERE inventory_item_id = ?',
+    ).bind(id).all()
+    labelAttachmentIds = (results ?? [])
+      .map(r => r.pdf_attachment_id)
+      .filter(v => typeof v === 'string' && v.length > 0)
+
+    const labelDel = await env.DB.prepare(
+      'DELETE FROM inventory_product_labels WHERE inventory_item_id = ?',
+    ).bind(id).run()
+    labelRowsDeleted = labelDel.meta?.changes ?? 0
+  } catch (err) {
+    console.warn('[deleteInventory] label-row cleanup failed:', err?.message)
+  }
+
+  // 3: soft-delete each PDF attachment + best-effort R2 object delete.
+  let attachmentsCleaned = 0
+  for (const attId of labelAttachmentIds) {
+    try {
+      const row = await env.DB.prepare(
+        'SELECT r2_key FROM operational_attachments WHERE id = ? AND status = ?',
+      ).bind(attId, 'active').first()
+      if (row?.r2_key && env.PHOTOS) {
+        try { await env.PHOTOS.delete(row.r2_key) } catch {}
+      }
+      await env.DB.prepare(
+        `UPDATE operational_attachments SET status = 'deleted' WHERE id = ?`,
+      ).bind(attId).run()
+      attachmentsCleaned++
+    } catch (err) {
+      console.warn(`[deleteInventory] attachment ${attId} cleanup failed:`, err?.message)
+    }
+  }
+
+  // 4: delete the inventory item.
   const result = await env.DB.prepare(
     'DELETE FROM inventory_items WHERE id = ?',
   ).bind(id).run()
   if (!result.success || result.meta.changes === 0) return notFound('Inventory item not found')
-  return json({ ok: true, id })
+
+  return json({
+    ok: true,
+    id,
+    cleanup: {
+      labelRowsDeleted,
+      attachmentsCleaned,
+    },
+  })
 }
 
 // ── Usage: list + atomic record ────────────────────────────────────────────
