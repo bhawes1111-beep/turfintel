@@ -34,6 +34,9 @@ function emptyForm() {
     safetyNotes: '', storageNotes: '', labelUrl: '',
     analysis: '', nitrogenSource: '',
     notes: '',
+    // Phase 27A-2.1 — reapplication interval (min/max days). Editable.
+    reapplicationDaysMin: '',
+    reapplicationDaysMax: '',
   }
 }
 
@@ -69,6 +72,9 @@ function formFromDraft(draft) {
     // Phase 27A — fertilizer analysis prefill.
     analysis:          draft.analysis ?? '',
     nitrogenSource:    draft.nitrogenSource ?? '',
+    // Phase 27A-2.1 — reapplication interval prefill (number → string for input).
+    reapplicationDaysMin: draft.reapplicationDaysMin != null ? String(draft.reapplicationDaysMin) : '',
+    reapplicationDaysMax: draft.reapplicationDaysMax != null ? String(draft.reapplicationDaysMax) : '',
   }
 }
 
@@ -127,6 +133,7 @@ const FIELD_LABELS = {
   storageNotes:      'Storage',
   rainfast:          'Rainfast',
   turfRestrictions:  'Restrictions',
+  reapplication:     'Reapplication',
   productNameSuggestion: 'Filename Hint',
 }
 
@@ -270,6 +277,12 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
       safetyNotes:       form.safetyNotes.trim() || null,
       storageNotes:      form.storageNotes.trim() || null,
       labelUrl:          form.labelUrl.trim() || null,
+      // Phase 27A-2.1 — reapplication interval. Strings → integers; blanks
+      // become null. If only one number is filled in, the worker treats
+      // min === max (handled there to keep this UI simple).
+      reapplicationDaysMin:     form.reapplicationDaysMin === '' ? null : Number(form.reapplicationDaysMin),
+      reapplicationDaysMax:     form.reapplicationDaysMax === '' ? null : Number(form.reapplicationDaysMax),
+      reapplicationIntervalRaw: extractResult?.draft?.reapplicationIntervalRaw ?? null,
       rawExtraction:     { source: 'manual', extractResult, form },
     }
     return { item, label, pdfAttachmentId: attachment?.id ?? null, dedupeMode }
@@ -772,6 +785,39 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
                     placeholder="e.g. Greens, Tees, Fairways"
                   />
                 </Field>
+                {/* Phase 27A-2.1 — reapplication interval (min / max days).
+                    Side-by-side number inputs. The FROM-LABEL provenance
+                    row attaches to the min input and shows the raw label
+                    phrase the extractor matched. */}
+                <Field
+                  label="Reapply min (days)"
+                  hint="Earliest day a reapplication is allowed"
+                  extract={ext('reapplication')}
+                >
+                  <input
+                    className={styles.input}
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={form.reapplicationDaysMin}
+                    onChange={e => setField('reapplicationDaysMin', e.target.value)}
+                    placeholder="e.g. 7"
+                  />
+                </Field>
+                <Field
+                  label="Reapply max (days)"
+                  hint="Upper end of the label's range (leave blank if single value)"
+                >
+                  <input
+                    className={styles.input}
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={form.reapplicationDaysMax}
+                    onChange={e => setField('reapplicationDaysMax', e.target.value)}
+                    placeholder="e.g. 14"
+                  />
+                </Field>
               </Section>
 
               <Section icon="inventory" title="Inventory Information">
@@ -1038,6 +1084,11 @@ function formatNormalized(v) {
       }
     }
     return v.join(', ')
+  }
+  // Phase 27A-2.1 reapplication shape: { min, max }
+  if (typeof v === 'object' && 'min' in v) {
+    if (v.max == null || v.max === v.min) return `${v.min} days`
+    return `${v.min}–${v.max} days`
   }
   return String(v)
 }

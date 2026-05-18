@@ -72,6 +72,16 @@ function rowToLabel(row) {
     safetyNotes:       row.safety_notes,
     storageNotes:      row.storage_notes,
     labelUrl:          row.label_url,
+    // Phase 27A-2.1 — reapplication interval columns (added in 0028).
+    // Returned as a single { min, max, raw } object so the agronomic
+    // dashboard can read `label.reapplicationDays.{min|max}` cleanly.
+    // Each column is nullable; the object is always present (with the
+    // nulls) so callers don't need to optional-chain twice.
+    reapplicationDays: {
+      min: row.reapplication_days_min != null ? Number(row.reapplication_days_min) : null,
+      max: row.reapplication_days_max != null ? Number(row.reapplication_days_max) : null,
+      raw: row.reapplication_interval_raw ?? null,
+    },
     pdfUrl:            row.pdf_attachment_id
       ? `/api/attachments/${encodeURIComponent(row.pdf_attachment_id)}/file`
       : null,
@@ -120,6 +130,11 @@ function emptyDraft() {
     // confirmed; the wizard renders it as a hint under the input, never as
     // a prefill. ok=false until the user types it in themselves.
     productNameSuggestion: null,
+    // Phase 27A-2.1 — reapplication interval (normalized to DAYS).
+    // min/max nullable, raw is the original label phrase for provenance.
+    reapplicationDaysMin: null,
+    reapplicationDaysMax: null,
+    reapplicationIntervalRaw: null,
   }
 }
 
@@ -360,6 +375,112 @@ function extractTurfRestrictions(text) {
     ok: true,
     source: 'restriction clauses (Not for use / DO NOT apply)',
   }
+}
+
+// ── Reapplication / retreatment interval (Phase 27A-2.1) ─────────────────
+//
+// Extract numeric reapplication windows from label text. Conservative —
+// only matches stated numeric phrasings; if the label says "as soon as
+// the turf resumes growth" (Primo) the extractor returns null and the
+// user fills it in manually. Day/week conversion is applied so the
+// stored value is always normalized to DAYS; the original wording is
+// preserved as reapplicationIntervalRaw for the wizard's FROM-LABEL row.
+//
+// Range phrasings ("7-14 days", "3-4 week intervals") return distinct
+// min and max. Single-value phrasings return min === max. Restriction
+// phrasings ("do not reapply within N days") return min only, max=null.
+
+const REAPP_PATTERNS = [
+  // Most specific first — explicit "reapply...at N to M [unit] intervals"
+  [/\brea?pply\b[^\n]{0,60}?\bat\s+(\d+(?:\.\d+)?)\s*(?:to|[-–])\s*(\d+(?:\.\d+)?)\s*[- ]?(day|week|month)s?\s+intervals?/i,
+   '"reapply at N to M [unit] intervals"', 'positive'],
+  [/\brea?pply\b[^\n]{0,60}?\bat\s+(\d+(?:\.\d+)?)\s*[- ]?(day|week|month)s?\s+intervals?/i,
+   '"reapply at N [unit] intervals"', 'positive'],
+
+  // "reapply every N to M [unit]" / "reapply every N [unit]"
+  [/\brea?pply\b[^\n]{0,60}?\bevery\s+(\d+(?:\.\d+)?)\s*(?:to|[-–])\s*(\d+(?:\.\d+)?)\s+(day|week|month)s?\b/i,
+   '"reapply every N to M [unit]"', 'positive'],
+  [/\brea?pply\b[^\n]{0,60}?\bevery\s+(\d+(?:\.\d+)?)\s+(day|week|month)s?\b/i,
+   '"reapply every N [unit]"', 'positive'],
+
+  // "repeat applications at/every N (to M) [unit]"
+  [/\brepeat\s+applications?\b[^\n]{0,40}?(?:at|every)\s+(\d+(?:\.\d+)?)\s*(?:to|[-–])\s*(\d+(?:\.\d+)?)\s*[- ]?(day|week|month)s?\b/i,
+   '"repeat applications at N to M [unit]"', 'positive'],
+  [/\brepeat\s+applications?\b[^\n]{0,40}?(?:at|every)\s+(\d+(?:\.\d+)?)\s*[- ]?(day|week|month)s?\b/i,
+   '"repeat applications at N [unit]"', 'positive'],
+
+  // "apply at N (to M) [unit] intervals" — no leading reapply/repeat
+  [/\bapply\b[^\n]{0,40}?\bat\s+(\d+(?:\.\d+)?)\s*(?:to|[-–])\s*(\d+(?:\.\d+)?)\s*[- ]?(day|week|month)s?\s+intervals?/i,
+   '"apply at N to M [unit] intervals"', 'positive'],
+  [/\bapply\b[^\n]{0,40}?\bat\s+(\d+(?:\.\d+)?)\s*[- ]?(day|week|month)s?\s+intervals?/i,
+   '"apply at N [unit] intervals"', 'positive'],
+
+  // "applications on a N-[unit] schedule"
+  [/\bapplications?\s+on\s+a\s+(\d+(?:\.\d+)?)\s*[- ]?(day|week|month)\s+schedule\b/i,
+   '"applications on a N-[unit] schedule"', 'positive'],
+
+  // "interval of N (to M) [unit]"
+  [/\binterval\s+of\s+(\d+(?:\.\d+)?)\s*(?:to|[-–])\s*(\d+(?:\.\d+)?)\s+(day|week|month)s?\b/i,
+   '"interval of N to M [unit]"', 'positive'],
+  [/\binterval\s+of\s+(\d+(?:\.\d+)?)\s+(day|week|month)s?\b/i,
+   '"interval of N [unit]"', 'positive'],
+
+  // "minimum retreatment interval is N [unit]"
+  [/\bminimum\s+retreatment\s+interval\s+(?:is|of)\s+(\d+(?:\.\d+)?)\s+(day|week|month)s?\b/i,
+   '"minimum retreatment interval is N [unit]"', 'positive'],
+
+  // Broad fallbacks — "every N to M [unit]" anywhere in the text.
+  // Comes AFTER the more-specific reapply/repeat phrasings.
+  [/\bevery\s+(\d+(?:\.\d+)?)\s*(?:to|[-–])\s*(\d+(?:\.\d+)?)\s+(day|week|month)s?\b/i,
+   '"every N to M [unit]"', 'positive'],
+  [/\bevery\s+(\d+(?:\.\d+)?)\s+(day|week|month)s?\b/i,
+   '"every N [unit]"', 'positive'],
+
+  // Restriction forms — value N is the MINIMUM allowed interval.
+  [/\bdo\s+not\s+rea?pply\s+within\s+(\d+(?:\.\d+)?)\s+(day|week|month)s?\b/i,
+   '"do not reapply within N [unit]"', 'restriction'],
+  [/\bwait\s+at\s+least\s+(\d+(?:\.\d+)?)\s+(day|week|month)s?\b[^\n]{0,80}?(?:before\s+rea?pply|between\s+applications)/i,
+   '"wait at least N [unit] between applications"', 'restriction'],
+]
+
+function unitToDays(unit) {
+  const u = String(unit).toLowerCase()
+  if (u.startsWith('day'))   return 1
+  if (u.startsWith('week'))  return 7
+  if (u.startsWith('month')) return 30
+  return null
+}
+
+function extractReapplicationInterval(text) {
+  if (typeof text !== 'string' || text.length === 0) return null
+  for (const [re, label, kind] of REAPP_PATTERNS) {
+    const m = text.match(re)
+    if (!m) continue
+    // Group composition: positive=[n1,n2,unit] or [n1,unit] ; restriction=[n,unit]
+    let n1, n2, unit
+    if (m.length === 4) { n1 = parseFloat(m[1]); n2 = parseFloat(m[2]); unit = m[3] }
+    else                { n1 = parseFloat(m[1]); n2 = null;             unit = m[2] }
+    const days = unitToDays(unit)
+    if (days == null || !Number.isFinite(n1)) continue
+    const min = Math.round(n1 * days)
+    const max = (n2 != null && Number.isFinite(n2)) ? Math.round(n2 * days) : min
+    // Bound check — anything outside [1, 365] days is almost certainly a
+    // false positive matching some other table value. Discard.
+    if (min < 1 || min > 365) continue
+    if (max != null && (max < 1 || max > 365)) continue
+    if (max != null && max < min) continue
+
+    const outMin = min
+    const outMax = (kind === 'restriction') ? null : max
+
+    return {
+      raw: m[0].replace(/\s+/g, ' ').trim(),
+      normalized: { min: outMin, max: outMax },
+      ok: true,
+      source: `${label}${kind === 'restriction' ? ' (restriction)' : ''}`,
+    }
+  }
+  return null
 }
 
 // Filename-based product name suggestion. Returns ok=false on purpose:
@@ -642,6 +763,15 @@ function applyHeuristics(text, fileName = null) {
     draft.safetyNotes = lines.join('\n')
   }
 
+  // Phase 27A-2.1 — reapplication / retreatment interval.
+  const reapp = extractReapplicationInterval(text)
+  if (reapp) {
+    sectionFields.reapplication = reapp
+    draft.reapplicationDaysMin     = reapp.normalized.min
+    draft.reapplicationDaysMax     = reapp.normalized.max
+    draft.reapplicationIntervalRaw = reapp.raw
+  }
+
   // Attach the section results to a non-enumerable holder we read in
   // normalizeDraft. Using a regular property because the worker JSON-
   // serializes the draft and we want section data discarded before that
@@ -853,6 +983,8 @@ export async function extractLabelDraft(env, request) {
   if (draft.fields?.storageNotes?.ok)     fieldsFound.push('storageNotes')
   if (draft.fields?.rainfast?.ok)         fieldsFound.push('rainfast')
   if (draft.fields?.turfRestrictions?.ok) fieldsFound.push('turfRestrictions')
+  // Phase 27A-2.1 — reapplication interval.
+  if (draft.fields?.reapplication?.ok)    fieldsFound.push('reapplication')
   // productName is reported only as a SUGGESTION (ok:false) — surface it
   // separately so the wizard can show the filename hint without putting
   // a green-confidence chip on it.
@@ -993,6 +1125,17 @@ export async function saveImportedLabel(env, request) {
   ).bind(itemId).run()
 
   const labelId = generateId('lbl')
+  // Phase 27A-2.1 — coerce reapp values to integers for the new TEXT
+  // columns. The wizard sends min/max as strings (from <input type=number>),
+  // and the extractor sends them as numbers. Both pass through Number()
+  // safely; non-numeric / non-finite values land as NULL.
+  const reappMin = (label.reapplicationDaysMin != null && Number.isFinite(Number(label.reapplicationDaysMin)))
+    ? Number(label.reapplicationDaysMin) : null
+  const reappMax = (label.reapplicationDaysMax != null && Number.isFinite(Number(label.reapplicationDaysMax)))
+    ? Number(label.reapplicationDaysMax) : null
+  const reappRaw = (typeof label.reapplicationIntervalRaw === 'string' && label.reapplicationIntervalRaw.trim())
+    ? label.reapplicationIntervalRaw.trim() : null
+
   await env.DB.prepare(`
     INSERT INTO inventory_product_labels (
       id, course_id, inventory_item_id, pdf_attachment_id,
@@ -1000,8 +1143,9 @@ export async function saveImportedLabel(env, request) {
       signal_word, restricted_use, rei_hours, phi,
       frac_group, hrac_group, irac_group, chemical_class,
       application_rates_json, targets_json, turf_sites,
-      safety_notes, storage_notes, label_url, raw_extraction_json
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      safety_notes, storage_notes, label_url, raw_extraction_json,
+      reapplication_days_min, reapplication_days_max, reapplication_interval_raw
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     labelId,
     courseId,
@@ -1028,6 +1172,9 @@ export async function saveImportedLabel(env, request) {
     label.storageNotes ?? null,
     label.labelUrl     ?? null,
     label.rawExtraction != null ? JSON.stringify(label.rawExtraction) : null,
+    reappMin,
+    reappMax,
+    reappRaw,
   ).run()
 
   const savedItem  = await env.DB.prepare(

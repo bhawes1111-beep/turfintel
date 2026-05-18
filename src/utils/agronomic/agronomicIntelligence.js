@@ -101,14 +101,13 @@ export function computeActiveREI(sprays, now) {
 // ── 2. Reapplication windows ──────────────────────────────────────────────
 //
 // For each spray-product applied in the last `lookbackDays` days, if the
-// linked label exposes a `reapplicationDays` value, compute the
-// next-eligible date. Otherwise emit `kind: 'unknown'` with the reason —
-// the UI shows it as "interval unknown — add to label" rather than
+// linked label exposes a `reapplicationDays.{min, max}` shape, compute
+// the next-eligible date. Per user preference (Phase 27A-2.1) we use
+// MAX as the cautious eligibility threshold — for a label that says
+// "every 7-14 days", the next safe reapplication is treated as 14 days
+// after the last spray. Otherwise emit `kind: 'unknown'` with the reason
+// — the UI shows it as "interval unknown — add to label" rather than
 // hiding the product.
-//
-// NOTE: `reapplicationDays` is not yet populated by the worker (see
-// Phase 27A-2 limitations). The plumbing is here so a future extractor
-// pass can light this up without touching the dashboard.
 
 export function computeReapplicationWindows({
   sprays,
@@ -142,8 +141,25 @@ export function computeReapplicationWindows({
   const out = []
   for (const entry of latest.values()) {
     const label = labelsByItemId?.[entry.inventoryItemId]
-    const intervalDays = label?.reapplicationDays
-    if (intervalDays == null || !Number.isFinite(intervalDays)) {
+    // Phase 27A-2.1 — read the new { min, max, raw } shape from the
+    // labels API. Use max (cautious) for eligibility; fall back to min
+    // when max is null (restriction phrasing — "do not reapply within N
+    // days" stores only min). Older agronomic plumbing read a scalar
+    // `reapplicationDays`; we still tolerate that for forward-compat
+    // (e.g. if a future API ever returns a single number).
+    const reapp = label?.reapplicationDays
+    let intervalDays = null
+    let intervalLabel = null
+    if (reapp && typeof reapp === 'object') {
+      const max = Number(reapp.max)
+      const min = Number(reapp.min)
+      if (Number.isFinite(max))      { intervalDays = max; intervalLabel = `max ${max}` }
+      else if (Number.isFinite(min)) { intervalDays = min; intervalLabel = `min ${min}` }
+    } else if (Number.isFinite(reapp)) {
+      intervalDays = Number(reapp)
+      intervalLabel = `${intervalDays}`
+    }
+    if (intervalDays == null) {
       out.push({
         kind: 'unknown',
         productName: entry.productName,
@@ -171,7 +187,7 @@ export function computeReapplicationWindows({
       appliedAt: entry.appliedAt,
       nextEligibleAt: nextEligible,
       daysUntil,
-      why: `Last applied ${fmtDate(entry.appliedAt)} · label interval ${intervalDays} days`,
+      why: `Last applied ${fmtDate(entry.appliedAt)} · label interval ${intervalLabel} days${reapp?.raw ? ` ("${reapp.raw}")` : ''}`,
     })
   }
   // Sort: overdue first, then approaching, then scheduled, then unknowns.
