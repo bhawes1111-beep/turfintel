@@ -1,0 +1,282 @@
+/* Phase 29 — Operational Command top-of-dashboard panel.
+   Dense, command-center layout. Sits ABOVE the intelligence row.
+   Uses canonical SEVERITY_TOKENS colors via inline styles on the
+   pill (avoid duplicating the palette here). */
+
+.wrap {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--card-radius);
+  padding: 16px var(--card-padding);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.empty {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  opacity: 0.85;
+  font-style: italic;
+  margin: 0;
+}
+
+/* ── Morning Readiness strip ─────────────────────────────────────────── */
+
+.readinessStrip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.readinessHead {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.readinessChip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: rgba(255, 255, 255, 0.02);
+  white-space: nowrap;
+}
+
+.readinessLabel {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.readinessValue {
+  font-weight: 700;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+  text-transform: capitalize;
+}
+
+.toneGood {
+  color: #98d59c;
+  background: rgba(74, 158, 74, 0.12);
+  border-color: rgba(74, 158, 74, 0.4);
+}
+.toneCaution {
+  color: #f3d574;
+  background: rgba(212, 184, 74, 0.12);
+  border-color: rgba(212, 184, 74, 0.45);
+}
+.toneWarn {
+  color: #f0a060;
+  background: rgba(224, 122, 48, 0.14);
+  border-color: rgba(224, 122, 48, 0.5);
+}
+.toneNeutral {
+  /* default chip styling */
+}
+.toneUnknown {
+  color: var(--color-text-muted);
+  opacity: 0.75;
+}
+.toneGood .readinessValue,
+.toneCaution .readinessValue,
+.toneWarn .readinessValue {
+  color: inherit;
+}
+
+/* ── Priorities ──────────────────────────────────────────────────────── */
+
+.prioritiesHead,
+.timelineHead {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding-top: 4px;
+  border-top: 1px solid var(--color-border);
+}
+
+.prioritiesTitle {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.prioritiesCount {
+  font-size: 0.66rem;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(74, 158, 74, 0.16);
+  color: var(--color-accent);
+  border: 1px solid rgba(74, 158, 74, 0.4);
+}
+
+.priorityList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.priorityItem {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: baseline;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid var(--color-border);
+  text-align: left;
+  font: inherit;
+  color: var(--color-text);
+}
+
+.priorityItemClickable {
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.priorityItemClickable:hover {
+  background: rgba(74, 158, 74, 0.06);
+  border-color: rgba(74, 158, 74, 0.35);
+}
+
+.severityPill {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.priorityBody {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.priorityTitle {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.priorityWhy {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  opacity: 0.85;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prioritySource {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  opacity: 0.7;
+  white-space: nowrap;
+}
+
+.moreNote {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  opacity: 0.75;
+  font-style: italic;
+  padding: 2px 10px;
+}
+
+/* ── Next 12 hours timeline ──────────────────────────────────────────── */
+
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.timelineItem {
+  display: grid;
+  grid-template-columns: 50px 8px 1fr auto;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 0.75rem;
+  padding: 2px 0;
+}
+
+.timelineWhen {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.timelineKindDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-text-muted);
+}
+.timelineKindDot[data-kind="spray"]    { background: #4a9e4a; }
+.timelineKindDot[data-kind="weather"]  { background: #3a8ad4; }
+.timelineKindDot[data-kind="calendar"] { background: #d4883a; }
+
+.timelineLabel {
+  color: var(--color-text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.timelineSub {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+/* ── Mobile ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 600px) {
+  .wrap {
+    padding: 12px var(--card-padding-mobile);
+  }
+  .readinessChip {
+    font-size: 0.68rem;
+  }
+  .priorityItem {
+    grid-template-columns: auto 1fr;
+    gap: 8px;
+  }
+  .prioritySource {
+    display: none;
+  }
+  .priorityWhy {
+    white-space: normal;
+  }
+}

@@ -45,6 +45,13 @@
   gap: var(--grid-gap);
 }
 
+/* ── Phase 29 — Operational Command row (above intelligence row) ────────── */
+/* Full-width container; the inner panel supplies its own padding. */
+
+.opsCommandRow {
+  padding: var(--grid-padding) var(--grid-padding) 0;
+}
+
 /* ── Intelligence row — weather (2fr) + agronomy cards (1fr) ────────────── */
 
 .intelligenceRow {

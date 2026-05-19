@@ -11,6 +11,7 @@ import AppEffectivenessCard from './AppEffectivenessCard'
 import AgronomicIntelligence from './AgronomicIntelligence'
 import SprayWindowCard from './SprayWindowCard'
 import IrrigationIntelCard from './IrrigationIntelCard'
+import OperationalCommand from './OperationalCommand'
 import { useAlertsData, acknowledgeAlert, dismissAlert } from '../../utils/alerts/alertsStore'
 import RecentActivity from './RecentActivity'
 import QuickActions from './QuickActions'
@@ -43,6 +44,15 @@ export default function Dashboard() {
       {/* Page header */}
       <div className={styles.header}>
         <h1 className={styles.title}>Dashboard</h1>
+      </div>
+
+      {/* Phase 29 — Operational Command top-of-dashboard panel.
+          Composes intelligence outputs from Phases 28A/B/C plus calendar,
+          crew, equipment, weather into one prioritized command surface.
+          Lives above the intelligence row so superintendent gets the
+          command-center view before any individual widget. */}
+      <div className={styles.opsCommandRow}>
+        <OperationalCommand />
       </div>
 
       {/* Intelligence row — unified weather card + agronomy intelligence */}
