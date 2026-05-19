@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react'
 import { TYPE_COLORS } from '../../../data/spray'
 import { useSpraysData } from '../../../utils/sprays/spraysStore'
+import { useWeather } from '../../../utils/weather/useWeather'
+import { rateSprayDate } from '../../../utils/sprayWindow/sprayWindowIntel'
 import { CalendarGrid, MonthNavigation } from '../../../components/shared/calendar'
 import WorkspaceSection from '../../../components/shared/WorkspaceSection'
 import styles from '../Spray.module.css'
@@ -8,8 +10,12 @@ import styles from '../Spray.module.css'
 // One calendar event per spray record. Title is the joined product names;
 // category/color is keyed on the first product's type so the spray-type
 // palette renders correctly when a record has a single dominant type.
-function recordToCalendarEvent(r) {
+// Phase 28B: also attach a `windowRating` (green/yellow/red) when the
+// forecast covers the spray date; `windowReasons` carries the why-strings
+// the calendar's tooltip shows on hover.
+function recordToCalendarEvent(r, forecast, now) {
   const firstType = r.products[0]?.type
+  const rating = rateSprayDate(r.date, forecast, now)
   return {
     id:       r.id,
     title:    r.products.map(p => p.name).join(' + ') || r.applicationName || '(unnamed)',
@@ -19,15 +25,21 @@ function recordToCalendarEvent(r) {
     status:   r.status,
     course:   r.area,
     color:    TYPE_COLORS[firstType]?.text,
+    // Phase 28B — only set when rateSprayDate returned a non-null result.
+    windowRating:  rating?.color ?? null,
+    windowReasons: rating?.reasons ?? null,
   }
 }
 
 export default function SprayCalendar() {
   const { records } = useSpraysData()
-  const CALENDAR_EVENTS = useMemo(
-    () => records.filter(r => r.date).map(recordToCalendarEvent),
-    [records],
-  )
+  const { forecast } = useWeather()
+  const CALENDAR_EVENTS = useMemo(() => {
+    const now = Date.now()
+    return records
+      .filter(r => r.date)
+      .map(r => recordToCalendarEvent(r, forecast, now))
+  }, [records, forecast])
   const [year, setYear]   = useState(2026)
   const [month, setMonth] = useState(4) // May = 4
 

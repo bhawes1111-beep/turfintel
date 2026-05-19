@@ -9,6 +9,7 @@ import IrrigationIntelligence from './IrrigationIntelligence'
 import GDDCard from './GDDCard'
 import AppEffectivenessCard from './AppEffectivenessCard'
 import AgronomicIntelligence from './AgronomicIntelligence'
+import SprayWindowCard from './SprayWindowCard'
 import { useAlertsData, acknowledgeAlert, dismissAlert } from '../../utils/alerts/alertsStore'
 import RecentActivity from './RecentActivity'
 import QuickActions from './QuickActions'
@@ -63,6 +64,11 @@ export default function Dashboard() {
               FRAC/HRAC/IRAC rotation, weekly N-P-K totals. */}
           <DashboardCard title="Agronomic Intelligence">
             <AgronomicIntelligence />
+          </DashboardCard>
+          {/* Phase 28B — Spray Window Intelligence. Active spray planning:
+              current rating, next ideal window, top risk, rain countdown. */}
+          <DashboardCard title="Spray Window Intelligence">
+            <SprayWindowCard />
           </DashboardCard>
         </div>
       </div>

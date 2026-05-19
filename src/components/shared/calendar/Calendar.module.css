@@ -165,6 +165,22 @@
   text-decoration: line-through;
 }
 
+/* Phase 28B — spray-window rating dot.
+   Small status dot inside the compact pill; color encodes the rating
+   (green/yellow/red). Renders only when the event carries a
+   windowRating; otherwise absent. Hover tooltip on the pill carries
+   the reasoning. */
+.windowDot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 4px;
+  vertical-align: middle;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3);
+  flex-shrink: 0;
+}
+
 /* ── Agenda view ─────────────────────────────────────────────────────────── */
 .agendaList {
   display: flex;

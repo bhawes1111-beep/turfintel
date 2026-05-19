@@ -7,6 +7,14 @@ const SEVERITY_CLASS = {
   low:    styles.severityLow,
 }
 
+// Phase 28B — small color-coded dot rendered when a calendar event carries
+// a spray-window rating (green/yellow/red). Used in the compact pill view.
+const WINDOW_DOT_COLOR = {
+  green:  '#7bc97c',
+  yellow: '#e8c14a',
+  red:    '#e26464',
+}
+
 /**
  * Renders one calendar event in two modes:
  *
@@ -36,13 +44,28 @@ export default function CalendarEvent({ event, compact = false, onClick }) {
       event.status === 'cancelled' ? styles.pillCancelled : '',
     ].filter(Boolean).join(' ')
 
+    // Phase 28B — compose the title= so hovering shows the spray-window
+    // reasoning beside the event name.
+    const titleParts = [event.title]
+    if (event.status) titleParts[0] += ` (${event.status})`
+    if (event.windowRating && event.windowReasons?.length) {
+      titleParts.push(`Spray window: ${event.windowReasons.map(r => r.why).join(' · ')}`)
+    }
+
     return (
       <div
         className={pillCls}
         style={{ background: color }}
-        title={`${event.title}${event.status ? ` (${event.status})` : ''}`}
+        title={titleParts.join('\n')}
         {...interactProps}
       >
+        {event.windowRating && WINDOW_DOT_COLOR[event.windowRating] && (
+          <span
+            className={styles.windowDot}
+            style={{ background: WINDOW_DOT_COLOR[event.windowRating] }}
+            aria-hidden="true"
+          />
+        )}
         {event.title}
       </div>
     )
