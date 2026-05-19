@@ -1,0 +1,132 @@
+/* Phase 28C — Irrigation & Moisture Intelligence dashboard card.
+   Compact 5-row layout matching Spray Window + Agronomic card density.
+   Dark-green palette, reuses tokens from index.css. */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.empty {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  opacity: 0.75;
+  font-style: italic;
+}
+
+/* ── Row ────────────────────────────────────────────────────────────────── */
+
+.row {
+  display: grid;
+  grid-template-columns: 70px 1fr;
+  gap: 6px;
+  align-items: baseline;
+  padding: 4px 0;
+  border-top: 1px solid var(--color-border);
+}
+.row:first-child { border-top: none; padding-top: 0; }
+
+.rowLabel {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.rowBody {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.rowMeta {
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.metricPrimary {
+  color: var(--color-text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ── Pills ─────────────────────────────────────────────────────────────── */
+
+.rainPill,
+.tonightPill,
+.riskPill,
+.wiltPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Rain category tones */
+.rainNone       { color: var(--color-text-muted); background: rgba(255,255,255,0.03); border-color: var(--color-border); }
+.rainTrace      { color: var(--color-text-muted); background: rgba(255,255,255,0.04); border-color: var(--color-border); }
+.rainLight      { color: #b8d4f0; background: rgba(58,138,212,0.14); border-color: rgba(58,138,212,0.45); }
+.rainEffective  { color: #98d59c; background: rgba(74,158,74,0.16); border-color: rgba(74,158,74,0.5); }
+.rainSoaking    { color: #f0a060; background: rgba(224,122,48,0.14); border-color: rgba(224,122,48,0.5); }
+.rainRunoff     { color: #ec7878; background: rgba(224,80,80,0.16); border-color: rgba(224,80,80,0.55); }
+
+/* Tonight recommendation */
+.tonightSkip {
+  color: var(--color-text-muted);
+  background: rgba(255,255,255,0.04);
+  border-color: var(--color-border);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.tonightApply {
+  color: #98d59c;
+  background: rgba(74,158,74,0.16);
+  border-color: rgba(74,158,74,0.5);
+}
+
+/* Top risk severity */
+.riskCaution {
+  color: #f3d574;
+  background: rgba(212,184,74,0.14);
+  border-color: rgba(212,184,74,0.45);
+  text-transform: capitalize;
+}
+.riskHigh {
+  color: #ec7878;
+  background: rgba(224,80,80,0.16);
+  border-color: rgba(224,80,80,0.55);
+  text-transform: capitalize;
+}
+
+/* Wilt severity */
+.wiltNone {
+  color: #98d59c;
+  background: rgba(74,158,74,0.14);
+  border-color: rgba(74,158,74,0.4);
+}
+.wiltElevated {
+  color: #f3d574;
+  background: rgba(212,184,74,0.14);
+  border-color: rgba(212,184,74,0.45);
+}
+.wiltHigh {
+  color: #ec7878;
+  background: rgba(224,80,80,0.16);
+  border-color: rgba(224,80,80,0.55);
+}

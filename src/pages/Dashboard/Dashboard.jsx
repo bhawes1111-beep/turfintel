@@ -10,6 +10,7 @@ import GDDCard from './GDDCard'
 import AppEffectivenessCard from './AppEffectivenessCard'
 import AgronomicIntelligence from './AgronomicIntelligence'
 import SprayWindowCard from './SprayWindowCard'
+import IrrigationIntelCard from './IrrigationIntelCard'
 import { useAlertsData, acknowledgeAlert, dismissAlert } from '../../utils/alerts/alertsStore'
 import RecentActivity from './RecentActivity'
 import QuickActions from './QuickActions'
@@ -70,6 +71,12 @@ export default function Dashboard() {
           <DashboardCard title="Spray Window Intelligence">
             <SprayWindowCard />
           </DashboardCard>
+          {/* Phase 28C — Irrigation & Moisture Intelligence (compact).
+              Decision-support only: ET/rain class, rolling deficit, tonight
+              rec, top irrigation risk, wilt indicator. */}
+          <DashboardCard title="Irrigation Intelligence">
+            <IrrigationIntelCard />
+          </DashboardCard>
         </div>
       </div>
 
@@ -118,7 +125,11 @@ export default function Dashboard() {
           <WeatherIntelligence />
         </DashboardCard>
 
-        <DashboardCard title="Irrigation Intelligence" wide>
+        {/* Phase 28C renamed: the compact "Irrigation Intelligence" card
+            now lives in the intelligence row beside Spray Window/Agronomic.
+            This wide card keeps the full advisory list under a clearer
+            name so the two surfaces don't share a title. */}
+        <DashboardCard title="Irrigation Detail" wide>
           <IrrigationIntelligence />
         </DashboardCard>
 
