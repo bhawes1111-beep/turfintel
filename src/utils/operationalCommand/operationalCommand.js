@@ -60,6 +60,36 @@ function sprayEndMs(spray) {
   return Number.isFinite(ms) ? ms : null
 }
 
+// Area normalization for cross-system routing matches.
+// Worker exposes sprays with both `area` (string — first area's name, legacy)
+// and `areas: [{name, acreage}]` (full list). Calendar events use `location`.
+// Normalize: lowercase, collapse whitespace, strip punctuation, strip trailing
+// 's' so "greens"/"green"/"GREENS " all collide.
+function normalizeAreaKey(s) {
+  if (s == null) return null
+  const t = String(s).toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim()
+  if (!t) return null
+  return t.endsWith('s') ? t.slice(0, -1) : t
+}
+
+// Pull every area name a spray touches, normalized + deduped.
+function sprayAreaKeys(spray) {
+  const out = new Set()
+  const k1 = normalizeAreaKey(spray?.area)
+  if (k1) out.add(k1)
+  for (const a of spray?.areas ?? []) {
+    const k = normalizeAreaKey(a?.name ?? a?.area_name ?? a)
+    if (k) out.add(k)
+  }
+  return out
+}
+
+// Same for a calendar event — location is the primary field, but title
+// sometimes carries the area when location is blank ("Mow greens 1-9").
+function calendarEventAreaKey(ev) {
+  return normalizeAreaKey(ev?.location) ?? normalizeAreaKey(ev?.area)
+}
+
 // ── Priority shape + helpers ──────────────────────────────────────────────
 //
 // Each priority is { id, severity, sourceSystem, title, why,
@@ -266,7 +296,7 @@ function buildIrrigationPriorities({ irrigation }) {
 }
 
 // 4. Weather/operations — frost, soaking rainfall, runoff-risk.
-function buildWeatherPriorities({ weather, irrigation }) {
+function buildWeatherPriorities({ weather, irrigation, calendarEvents, now }) {
   const out = []
   if (!weather) return out
   const todayDay = weather.forecast?.[0]
@@ -296,14 +326,28 @@ function buildWeatherPriorities({ weather, irrigation }) {
     }))
   }
 
-  // Forecast rain >0.5" today/tonight → ops impact.
+  // Forecast rain >0.5" today/tonight → ops impact. Enriched in Phase 29.1
+  // to name the actual rain-sensitive calendar events today, falling back
+  // to the generic phrasing when the calendar isn't loaded.
   if (todayDay?.rainfall != null && todayDay.rainfall >= 0.5) {
+    const today = isoDate(now ?? Date.now())
+    const sensitive = /mow|bunker|topdress|aer|verticut|sand|roll/i
+    const named = (calendarEvents ?? [])
+      .filter(ev => ev?.date && ev.date.slice(0, 10) === today &&
+        ev.status !== 'cancelled' && ev.status !== 'completed' &&
+        sensitive.test(`${ev.title || ''} ${ev.category || ''} ${ev.type || ''}`))
+      .map(ev => ev.title || ev.category)
+      .filter(Boolean)
+      .slice(0, 3)
+    const why = named.length > 0
+      ? `Rainfall likely impacts: ${named.join(', ')}`
+      : `Rainfall likely impacts bunker prep, fairway mowing, and routing`
     out.push(makePriority({
       id: 'weather-rain-ops',
       severity: SEVERITY.CAUTION,
       sourceSystem: 'weather',
       title: `Heavy rainfall forecast — ${todayDay.rainfall.toFixed(2)}"`,
-      why: `Rainfall likely impacts bunker prep, fairway mowing, and routing`,
+      why,
       recommendedAction: 'Reprioritize indoor tasks; pre-stage drainage equipment',
       route: '/dashboard',
     }))
@@ -462,6 +506,161 @@ function buildCrewPriorities({ crewAssignments, eventDateById, now }) {
   return out
 }
 
+// 9. Routing conflicts — same area touched by two operations today.
+// Cross-checks today's planned sprays against today's calendar events
+// (mow / handwater / topdress / aerate / verticut / bunker) when they
+// land on the same normalized area name. Honest by design: with no
+// calendar events loaded, builder emits nothing.
+function buildRoutingConflicts({ sprays, calendarEvents, now }) {
+  const out = []
+  if (!Array.isArray(sprays) || !Array.isArray(calendarEvents)) return out
+  const today = isoDate(now)
+  const plannedSprays = sprays.filter(s =>
+    sprayDate(s) === today && s.status !== 'cancelled' && s.status !== 'completed',
+  )
+  if (plannedSprays.length === 0) return out
+
+  const opRegex = /mow|handwater|hand water|topdress|aer|verticut|verti cut|bunker|rake|roll/i
+  const todayOps = calendarEvents.filter(ev => {
+    if (!ev?.date) return false
+    if (ev.date.slice(0, 10) !== today) return false
+    if (ev.status === 'cancelled' || ev.status === 'completed') return false
+    const blob = `${ev.title || ''} ${ev.category || ''} ${ev.type || ''}`
+    return opRegex.test(blob) && calendarEventAreaKey(ev) != null
+  })
+  if (todayOps.length === 0) return out
+
+  const seen = new Set()  // de-dup per (spray, areaKey) pair
+  for (const s of plannedSprays) {
+    const sprayKeys = sprayAreaKeys(s)
+    if (sprayKeys.size === 0) continue
+    for (const ev of todayOps) {
+      const evKey = calendarEventAreaKey(ev)
+      if (!evKey || !sprayKeys.has(evKey)) continue
+      const dedup = `${s.id}|${evKey}`
+      if (seen.has(dedup)) continue
+      seen.add(dedup)
+      const name = s.applicationName || s.products?.[0]?.name || 'planned spray'
+      const opLabel = ev.title || ev.category || 'planned task'
+      out.push(makePriority({
+        id: `routing-${s.id}-${ev.id}`,
+        severity: SEVERITY.CAUTION,
+        sourceSystem: 'routing',
+        title: `Routing conflict on ${ev.location || evKey} — ${name} vs ${opLabel}`,
+        why: `Spray "${name}" and calendar event "${opLabel}" both target ${ev.location || evKey} today`,
+        recommendedAction: 'Sequence the operations or move one to a different day',
+        route: '/spray',
+      }))
+    }
+  }
+  return out
+}
+
+// 10. REI × routing — active REI window covers an area that has work
+// scheduled there in today's calendar.
+function buildREIRoutingConflicts({ agronomic, calendarEvents, now }) {
+  const out = []
+  if (!agronomic || !Array.isArray(calendarEvents)) return out
+  const today = isoDate(now)
+  const reis = (agronomic.activeREI ?? []).filter(r => r.endsAt > now)
+  if (reis.length === 0) return out
+  const todayCalendarOps = calendarEvents.filter(ev => {
+    if (!ev?.date) return false
+    if (ev.date.slice(0, 10) !== today) return false
+    if (ev.status === 'cancelled' || ev.status === 'completed') return false
+    return calendarEventAreaKey(ev) != null
+  })
+  if (todayCalendarOps.length === 0) return out
+
+  for (const r of reis) {
+    const reiKey = normalizeAreaKey(r.area)
+    if (!reiKey) continue
+    for (const ev of todayCalendarOps) {
+      const evKey = calendarEventAreaKey(ev)
+      if (evKey !== reiKey) continue
+      const hoursLeft = Math.max(0, Math.round(r.hoursRemaining))
+      out.push(makePriority({
+        id: `rei-routing-${r.sprayId}-${ev.id}`,
+        severity: SEVERITY.WARNING,
+        sourceSystem: 'cross',
+        title: `REI on ${ev.location || reiKey} conflicts with "${ev.title || ev.category || 'planned task'}"`,
+        why: `Active REI (${hoursLeft}h remaining) blocks early entry on ${ev.location || reiKey} where work is scheduled today`,
+        recommendedAction: 'Delay the operation until REI expires or assign a different area',
+        route: '/spray',
+      }))
+    }
+  }
+  return out
+}
+
+// 11. Equipment maintenance — reserved unit is out-of-service or has
+// an overdue service-log row. Augments buildEquipmentPriorities, which
+// only handled same-day double-booking.
+function buildEquipmentMaintenancePriorities({ equipmentReservations, eventDateById, equipment, serviceLog, now }) {
+  const out = []
+  if (!Array.isArray(equipmentReservations) || equipmentReservations.length === 0) return out
+  const today = isoDate(now)
+
+  const todayRes = equipmentReservations.filter(r => {
+    if (!r) return false
+    const linkedDate = r.calendarEventId ? eventDateById.get(r.calendarEventId) : null
+    const fallbackDate = r.date || r.start_date || r.startDate
+    const dateStr = linkedDate || fallbackDate
+    return typeof dateStr === 'string' && dateStr.slice(0, 10) === today
+  })
+  if (todayRes.length === 0) return out
+
+  const equipmentById = new Map()
+  for (const eq of equipment ?? []) {
+    const id = eq?.id ?? eq?.equipmentId
+    if (id != null) equipmentById.set(String(id), eq)
+  }
+
+  // Service-log rows that flag a unit as currently unavailable: status
+  // 'overdue' OR open + critical priority OR explicit out-of-service.
+  const blockersByEquip = new Map()
+  for (const log of serviceLog ?? []) {
+    if (!log) continue
+    const eqId = log.equipmentId || log.equipment_id
+    if (eqId == null) continue
+    const blocking = log.status === 'overdue'
+      || (log.status === 'open' && log.priority === 'critical')
+      || log.status === 'out-of-service'
+      || log.status === 'out_of_service'
+    if (!blocking) continue
+    if (!blockersByEquip.has(String(eqId))) blockersByEquip.set(String(eqId), [])
+    blockersByEquip.get(String(eqId)).push(log)
+  }
+
+  const seen = new Set()
+  for (const r of todayRes) {
+    const eqId = String(r.equipmentId || r.equipment_id || '')
+    if (!eqId) continue
+    const eq = equipmentById.get(eqId)
+    const explicitOut = eq && (eq.status === 'out-of-service' || eq.status === 'out_of_service' || eq.status === 'maintenance')
+    const blockers = blockersByEquip.get(eqId)
+    if (!explicitOut && !blockers) continue
+    const dedup = `equip-maint-${eqId}`
+    if (seen.has(dedup)) continue
+    seen.add(dedup)
+
+    const eqName = eq?.name || r.equipmentName || `unit ${eqId}`
+    const whyParts = []
+    if (explicitOut) whyParts.push(`marked ${eq.status}`)
+    if (blockers?.length) whyParts.push(`${blockers.length} blocking service-log row${blockers.length === 1 ? '' : 's'}`)
+    out.push(makePriority({
+      id: dedup,
+      severity: SEVERITY.WARNING,
+      sourceSystem: 'equipment',
+      title: `Reserved equipment unavailable — ${eqName}`,
+      why: `${eqName} is reserved today but ${whyParts.join(' and ')}`,
+      recommendedAction: 'Swap to a different unit or clear the maintenance flag',
+      route: '/equipment',
+    }))
+  }
+  return out
+}
+
 // ── Morning Readiness summary ─────────────────────────────────────────────
 // Compact capsule for the panel header. Each field is null when its
 // inputs are missing.
@@ -611,6 +810,8 @@ export function composeOperationalPriorities({
   sprayWindow,
   irrigation,
   equipmentReservations,
+  equipment,
+  serviceLog,
   crewAssignments,
   calendarEvents,
   now,
@@ -627,11 +828,16 @@ export function composeOperationalPriorities({
     ...buildSprayWindowPriorities({ sprayWindow, sprays, now: clock }),
     ...buildAgronomicPriorities({ agronomic, sprays, labelsByItemId, now: clock }),
     ...buildIrrigationPriorities({ irrigation }),
-    ...buildWeatherPriorities({ weather, irrigation }),
+    ...buildWeatherPriorities({ weather, irrigation, calendarEvents, now: clock }),
     ...buildSprayRainConflict({ sprays, weather, now: clock }),
     ...buildCalendarWeatherConflict({ calendarEvents, weather, now: clock }),
     ...buildEquipmentPriorities({ equipmentReservations, eventDateById, now: clock }),
+    ...buildEquipmentMaintenancePriorities({
+      equipmentReservations, eventDateById, equipment, serviceLog, now: clock,
+    }),
     ...buildCrewPriorities({ crewAssignments, eventDateById, now: clock }),
+    ...buildRoutingConflicts({ sprays, calendarEvents, now: clock }),
+    ...buildREIRoutingConflicts({ agronomic, calendarEvents, now: clock }),
   ]
 
   // De-duplicate by id (cross-builders may produce the same id) and
@@ -653,15 +859,17 @@ export function composeOperationalPriorities({
 
   // Source coverage — which subsystems have data, which don't.
   const sourceCoverage = {
-    weather:    !!weather?.current || (weather?.forecast?.length ?? 0) > 0,
-    sprays:     (sprays?.length ?? 0) > 0,
-    labels:     (labels?.length ?? 0) > 0,
-    agronomic:  !!agronomic,
-    sprayWindow:!!sprayWindow,
-    irrigation: !!irrigation,
-    equipment:  (equipmentReservations?.length ?? 0) > 0,
-    crew:       (crewAssignments?.length ?? 0) > 0,
-    calendar:   (calendarEvents?.length ?? 0) > 0,
+    weather:     !!weather?.current || (weather?.forecast?.length ?? 0) > 0,
+    sprays:      (sprays?.length ?? 0) > 0,
+    labels:      (labels?.length ?? 0) > 0,
+    agronomic:   !!agronomic,
+    sprayWindow: !!sprayWindow,
+    irrigation:  !!irrigation,
+    equipment:   (equipmentReservations?.length ?? 0) > 0,
+    equipmentFleet: (equipment?.length ?? 0) > 0,
+    serviceLog:  (serviceLog?.length ?? 0) > 0,
+    crew:        (crewAssignments?.length ?? 0) > 0,
+    calendar:    (calendarEvents?.length ?? 0) > 0,
   }
 
   return { priorities, readiness, timeline, sourceCoverage }

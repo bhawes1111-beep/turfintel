@@ -22,6 +22,7 @@ import { useImportedLabels }     from '../../utils/inventory/labelImportStore'
 import { useAssignmentsData }    from '../../utils/assignments/assignmentsStore'
 import { useCalendarData }       from '../../utils/calendar/calendarStore'
 import { useWeatherHistoryData } from '../../utils/weather/weatherHistoryStore'
+import { useEquipmentData }      from '../../utils/equipment/equipmentStore'
 import { computeAgronomicIntelligence } from '../../utils/agronomic/agronomicIntelligence'
 import { computeSprayWindowIntel }      from '../../utils/sprayWindow/sprayWindowIntel'
 import { computeIrrigationIntel }       from '../../utils/irrigation/irrigationIntel'
@@ -86,6 +87,8 @@ export default function OperationalCommand() {
           equipmentReservations = [] }      = useAssignmentsData()
   const { events: calendarEvents = [] }     = useCalendarData()
   const { history }                         = useWeatherHistoryData()
+  const { equipment = [],
+          serviceLog = [] }                 = useEquipmentData()
 
   // Re-run the Phase 28 layers locally so we don't have to lift state.
   // All three are pure functions; cheap to recompute on render.
@@ -107,11 +110,13 @@ export default function OperationalCommand() {
     sprays, labels,
     agronomic, sprayWindow, irrigation,
     equipmentReservations,
+    equipment,
+    serviceLog,
     crewAssignments,
     calendarEvents,
   }), [
     current, forecast, sprays, labels, agronomic, sprayWindow, irrigation,
-    equipmentReservations, crewAssignments, calendarEvents,
+    equipmentReservations, equipment, serviceLog, crewAssignments, calendarEvents,
   ])
 
   if (weatherLoading) {
