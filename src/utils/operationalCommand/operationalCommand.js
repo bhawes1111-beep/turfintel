@@ -578,13 +578,30 @@ function buildREIRoutingConflicts({ agronomic, calendarEvents, now }) {
     for (const ev of todayCalendarOps) {
       const evKey = calendarEventAreaKey(ev)
       if (evKey !== reiKey) continue
+
+      // Time gate: only warn when the scheduled time actually overlaps the
+      // REI window. Calendar events are usually date-only in this schema,
+      // so when startTime is absent we treat the time as UNKNOWN — we still
+      // surface the warning (most real conflicts are timeless here) but say
+      // so honestly rather than implying a hard overlap.
+      const hasTime = typeof ev.startTime === 'string' && /^\d{1,2}:\d{2}/.test(ev.startTime)
+      let timingNote
+      if (hasTime) {
+        const startMs = Date.parse(`${ev.date.slice(0, 10)}T${ev.startTime}:00`)
+        // Skip cleanly when the event starts after the REI has already lifted.
+        if (Number.isFinite(startMs) && startMs >= r.endsAt) continue
+        timingNote = `scheduled ${ev.startTime}, within the REI window`
+      } else {
+        timingNote = 'scheduled time unconfirmed — verify it clears the REI window'
+      }
+
       const hoursLeft = Math.max(0, Math.round(r.hoursRemaining))
       out.push(makePriority({
         id: `rei-routing-${r.sprayId}-${ev.id}`,
         severity: SEVERITY.WARNING,
         sourceSystem: 'cross',
         title: `REI on ${ev.location || reiKey} conflicts with "${ev.title || ev.category || 'planned task'}"`,
-        why: `Active REI (${hoursLeft}h remaining) blocks early entry on ${ev.location || reiKey} where work is scheduled today`,
+        why: `Active REI (${hoursLeft}h remaining) blocks early entry on ${ev.location || reiKey} where work is scheduled today — ${timingNote}`,
         recommendedAction: 'Delay the operation until REI expires or assign a different area',
         route: '/spray',
       }))

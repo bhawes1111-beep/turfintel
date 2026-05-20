@@ -240,6 +240,44 @@ section('REI × routing conflict')
   })
   assert(has('rei-routing-s5-cfwy')(out), 'active REI + work scheduled in same area fires cross priority')
   assert(p('rei-routing-s5-cfwy')(out).severity === 'warning', 'REI × routing is WARNING')
+  assert(/time unconfirmed/.test(p('rei-routing-s5-cfwy')(out).why),
+    'timeless event warns but flags timing as unconfirmed', { why: p('rei-routing-s5-cfwy')(out).why })
+}
+
+// ────────────────────────────────────────────────────────────────────────
+section('REI × routing — time gate (suppress after REI lifts, warn in-window)')
+{
+  // REI ends 4h from NOW (08:00) → expires 12:00.
+  const reiEndMs = NOW + 4 * 60 * 60 * 1000
+  const reiAgronomic = {
+    activeREI: [{
+      sprayId: 's6', area: 'Greens',
+      endsAt: reiEndMs, hoursRemaining: 4,
+      why: 'REI 12h, ends 12:00',
+    }],
+  }
+
+  // Event at 14:00 — starts after the REI has lifted → must NOT warn.
+  const afterOut = composeOperationalPriorities({
+    now: NOW,
+    agronomic: reiAgronomic,
+    calendarEvents: [
+      { id: 'pm', date: TODAY, title: 'Mow greens', location: 'Greens', startTime: '14:00', status: 'planned' },
+    ],
+  })
+  assert(!has('rei-routing-s6-pm')(afterOut), 'event after REI lifts does NOT warn (no false positive)')
+
+  // Event at 09:00 — inside the REI window → must warn, timing confirmed.
+  const inOut = composeOperationalPriorities({
+    now: NOW,
+    agronomic: reiAgronomic,
+    calendarEvents: [
+      { id: 'am', date: TODAY, title: 'Mow greens', location: 'Greens', startTime: '09:00', status: 'planned' },
+    ],
+  })
+  assert(has('rei-routing-s6-am')(inOut), 'event inside REI window warns')
+  assert(/09:00, within the REI window/.test(p('rei-routing-s6-am')(inOut).why),
+    'in-window why-string confirms the scheduled time', { why: p('rei-routing-s6-am')(inOut)?.why })
 }
 
 // ────────────────────────────────────────────────────────────────────────
