@@ -137,13 +137,6 @@
   align-items: center;
 }
 
-/* ── Placeholder text inside empty cards ─────────────────────────────────── */
-
-.empty {
-  font-size: 13px;
-  color: var(--color-text-muted);
-  margin-top: 4px;
-}
 
 /* ── Tablet: 2 columns ───────────────────────────────────────────────────── */
 
@@ -208,9 +201,5 @@
   .opsSection {
     grid-column: span 1;
     padding: 12px;
-  }
-
-  .placeholderCard {
-    display: none;
   }
 }

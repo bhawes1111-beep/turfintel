@@ -19,6 +19,12 @@ import QuickActions from './QuickActions'
 import OperationalSummary from './OperationalSummary'
 import ActionQueue from './ActionQueue'
 import SchedulingAwareness from './SchedulingAwareness'
+import {
+  CrewStatusCard,
+  EquipmentAlertsCard,
+  UpcomingApplicationsCard,
+  RecentNotesCard,
+} from './SnapshotCards'
 import styles from './Dashboard.module.css'
 
 export default function Dashboard() {
@@ -152,13 +158,13 @@ export default function Dashboard() {
           <IrrigationIntelligence />
         </DashboardCard>
 
-        {/* ── Placeholder cards — hidden on mobile ── */}
-        <DashboardCard title="Crew Status" className={styles.placeholderCard}>
-          <p className={styles.empty}>No crew data.</p>
+        {/* ── Live snapshot cards (audit R2 — were static placeholders) ── */}
+        <DashboardCard title="Crew Status">
+          <CrewStatusCard />
         </DashboardCard>
 
-        <DashboardCard title="Equipment Alerts" className={styles.placeholderCard}>
-          <p className={styles.empty}>No alerts.</p>
+        <DashboardCard title="Equipment Alerts">
+          <EquipmentAlertsCard />
         </DashboardCard>
 
         {/* ── Operations ── */}
@@ -166,12 +172,12 @@ export default function Dashboard() {
           <RecentActivity />
         </DashboardCard>
 
-        <DashboardCard title="Upcoming Applications" wide className={styles.placeholderCard}>
-          <p className={styles.empty}>No applications scheduled.</p>
+        <DashboardCard title="Upcoming Applications" wide>
+          <UpcomingApplicationsCard />
         </DashboardCard>
 
-        <DashboardCard title="Recent Notes" className={styles.placeholderCard}>
-          <p className={styles.empty}>No recent activity.</p>
+        <DashboardCard title="Recent Notes">
+          <RecentNotesCard />
         </DashboardCard>
 
       </div>

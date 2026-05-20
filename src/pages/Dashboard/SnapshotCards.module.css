@@ -1,0 +1,103 @@
+/* Audit R2 — live dashboard snapshot cards. Indoor dashboard theme. */
+
+.empty {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+}
+
+.clickable {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.bigStat {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--color-accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.bigStat.warn { color: #d4883a; }
+
+.statLabel {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.subList {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--color-text);
+  line-height: 1.4;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.row { margin: 0; }
+
+.rowBtn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.row:last-child .rowBtn { border-bottom: none; }
+
+.rowName {
+  font-size: 13px;
+  color: var(--color-text);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowMeta {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.rowTag {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  flex: 0 0 auto;
+  color: #d4883a;
+  background: rgba(212, 136, 58, 0.12);
+}
+
+.rowTag[data-priority="urgent"],
+.rowTag[data-priority="safety"] {
+  color: #e07070;
+  background: rgba(224, 112, 112, 0.12);
+}
