@@ -1,0 +1,130 @@
+/* Phase 31 — Feedback Review section. */
+
+.filterRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 0;
+}
+
+.filterChip {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 4px 11px;
+  cursor: pointer;
+  text-transform: capitalize;
+}
+
+.filterChip:hover { color: var(--color-text); border-color: var(--color-text-muted); }
+
+.filterChipActive {
+  color: #0d1a0d;
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  font-weight: 600;
+}
+
+.filterCount {
+  opacity: 0.7;
+  font-variant-numeric: tabular-nums;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.item {
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: var(--color-bg);
+}
+
+.item[data-status="new"]      { border-left-color: var(--color-accent); }
+.item[data-status="reviewed"] { border-left-color: #d4883a; }
+.item[data-status="fixed"]    { border-left-color: #4a9e4a; opacity: 0.75; }
+.item[data-status="ignored"]  { border-left-color: var(--color-text-muted); opacity: 0.6; }
+
+.itemHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.category {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: capitalize;
+  letter-spacing: 0.3px;
+  color: var(--color-accent);
+}
+
+.date {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.note {
+  font-size: 13px;
+  color: var(--color-text);
+  margin: 0 0 4px;
+  line-height: 1.4;
+}
+
+.context {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin: 0 0 6px;
+  font-style: italic;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.statusSelect {
+  font-size: 12px;
+  color: var(--color-text);
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  text-transform: capitalize;
+}
+
+.deleteBtn {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px 6px;
+}
+
+.deleteBtn:hover { color: #e07070; }
+
+.muted {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.error {
+  font-size: 12px;
+  color: #e07070;
+  margin: 8px 0;
+}

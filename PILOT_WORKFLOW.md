@@ -6,6 +6,43 @@ feature validation._
 
 ---
 
+## Phase 31 update — in-app feedback capture
+
+Friction notes no longer need a paper table. A **Log Feedback** button now
+lives in the Dashboard → Operational Command panel (top-right of the Morning
+Readiness strip). One tap → pick a category → type a note → Save. It
+auto-captures the page context and timestamp, and is scoped to the active
+course.
+
+Triage what you captured in **Settings → Pilot Feedback**: filter by status
+and move each item through `new → reviewed → fixed / ignored`.
+
+The four-column paper table further down still works if you prefer it, but the
+in-app capture is faster on mobile and feeds the review screen directly.
+
+### Pilot day checklist
+
+**Morning**
+- [ ] Check Operational Command (readiness → priorities → next 12h).
+- [ ] Verify weather + intelligence cards show live data (not placeholder).
+- [ ] Build crew assignments.
+- [ ] Assign equipment.
+- [ ] Review the display board on the shop screen.
+- [ ] Log any friction as you go (don't wait until you forget).
+
+**Midday**
+- [ ] Note irrigation / wilt issues vs. what you see on the course.
+- [ ] Check spray + weather intelligence if a spray is planned.
+- [ ] Log friction.
+
+**End of day**
+- [ ] Review what helped (which priorities caught something real?).
+- [ ] Review what you ignored (and why — that's signal too).
+- [ ] Log follow-up notes.
+- [ ] Skim Settings → Pilot Feedback; mark anything already addressed as `fixed`.
+
+---
+
 ## The daily loop
 
 ### 1. Morning command review (5 min, before crew arrives)

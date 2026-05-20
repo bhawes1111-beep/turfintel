@@ -30,6 +30,12 @@
   gap: 8px;
 }
 
+/* Phase 31 — push the Log Feedback button to the right edge of the strip. */
+.feedbackSlot {
+  margin-left: auto;
+  order: 99;
+}
+
 .readinessHead {
   font-size: 0.66rem;
   font-weight: 700;

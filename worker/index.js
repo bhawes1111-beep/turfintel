@@ -95,6 +95,13 @@ import {
   deleteOperationsNote,
 } from './api/operationsNotes.js'
 import {
+  listPilotFeedback,
+  getPilotFeedback,
+  createPilotFeedback,
+  updatePilotFeedback,
+  deletePilotFeedback,
+} from './api/pilotFeedback.js'
+import {
   listAttachments,
   getAttachment,
   streamAttachment,
@@ -455,6 +462,25 @@ async function handleApi(request, env, url) {
     if (method === 'GET')    return getOperationsNote(env, id)
     if (method === 'PATCH')  return updateOperationsNote(env, id, request)
     if (method === 'DELETE') return deleteOperationsNote(env, id)
+  }
+
+  // ── /api/pilot-feedback ────────────────────────────────────────────────
+  if (pathname === '/api/pilot-feedback') {
+    if (method === 'GET') {
+      const status   = url.searchParams.get('status')   || null
+      const category = url.searchParams.get('category') || null
+      return listPilotFeedback(env, courseId, { status, category })
+    }
+    if (method === 'POST') return createPilotFeedback(env, request)
+  }
+
+  // ── /api/pilot-feedback/:id ────────────────────────────────────────────
+  const feedbackMatch = pathname.match(/^\/api\/pilot-feedback\/([^/]+)$/)
+  if (feedbackMatch) {
+    const id = decodeURIComponent(feedbackMatch[1])
+    if (method === 'GET')    return getPilotFeedback(env, id)
+    if (method === 'PATCH')  return updatePilotFeedback(env, id, request)
+    if (method === 'DELETE') return deletePilotFeedback(env, id)
   }
 
   // ── /api/courses ──────────────────────────────────────────────────────

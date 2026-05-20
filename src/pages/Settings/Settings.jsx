@@ -40,6 +40,7 @@ import WeatherDataSection     from './sections/WeatherDataSection'
 import TeamSection            from './sections/TeamSection'
 import DataManagementSection  from './sections/DataManagementSection'
 import IntegrationsSection    from './sections/IntegrationsSection'
+import FeedbackReviewSection  from './sections/FeedbackReviewSection'
 import SystemInfoSection      from './sections/SystemInfoSection'
 
 import styles from './Settings.module.css'
@@ -166,6 +167,16 @@ const SECTIONS = [
       'emlid', 'reach', 'rs2', 'gps',
       'mapping tools', 'qgis', 'geojson',
       'connected', 'stub', 'not configured', 'status',
+    ],
+  },
+  {
+    key: 'feedback',
+    label: 'Pilot Feedback',
+    component: FeedbackReviewSection,
+    keywords: [
+      'feedback', 'pilot feedback', 'pilot', 'friction',
+      'bug', 'workflow', 'confusing', 'mobile', 'display board',
+      'review', 'notes', 'log feedback', 'crosswinds',
     ],
   },
   {

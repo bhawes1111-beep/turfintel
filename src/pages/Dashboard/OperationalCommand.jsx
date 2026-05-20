@@ -28,6 +28,7 @@ import { computeSprayWindowIntel }      from '../../utils/sprayWindow/sprayWindo
 import { computeIrrigationIntel }       from '../../utils/irrigation/irrigationIntel'
 import { composeOperationalPriorities } from '../../utils/operationalCommand/operationalCommand'
 import { SEVERITY_TOKENS } from '../../utils/intelligence/severity'
+import LogFeedbackButton from '../../components/feedback/LogFeedbackButton'
 import styles from './OperationalCommand.module.css'
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -137,6 +138,9 @@ export default function OperationalCommand() {
       {/* ── Morning Readiness ──────────────────────────────────────────── */}
       <div className={styles.readinessStrip}>
         <span className={styles.readinessHead}>Morning Readiness</span>
+        <span className={styles.feedbackSlot}>
+          <LogFeedbackButton compact />
+        </span>
         <ReadinessChip label="frost"      value={readiness.frostRisk ?? 'normal'} />
         <ReadinessChip label="mowing"     value={readiness.mowing} />
         <ReadinessChip label="spray"      value={readiness.spray} />
