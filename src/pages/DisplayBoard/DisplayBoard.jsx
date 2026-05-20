@@ -23,15 +23,28 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useCalendarData,    refreshCalendarData }    from '../../utils/calendar/calendarStore'
 import { useSpraysData,      refreshSpraysData }      from '../../utils/sprays/spraysStore'
-import { useAssignmentsData, refreshAssignmentsData } from '../../utils/assignments/assignmentsStore'
+import { useAssignmentsData, refreshAssignmentsData, patchCrewAssignment } from '../../utils/assignments/assignmentsStore'
 import { useAlertsData,      refreshAlertsData }      from '../../utils/alerts/alertsStore'
 import { useCrewData,        refreshCrewData }        from '../../utils/crew/crewStore'
 import { useWeather }         from '../../utils/weather/useWeather'
 import { useSelectedCourse }  from '../../utils/courses/courseStore'
 import { useOperationsNotesData, refreshOperationsNotesData } from '../../utils/operations/notesStore'
 import { useAttachmentsForParent } from '../../utils/attachments/attachmentsStore'
+import { useToast } from '../../utils/feedback/toastContext'
 import OperationalIntelligencePanel from '../../components/shared/OperationalIntelligencePanel'
 import styles from './DisplayBoard.module.css'
+
+// Phase 33 — crew progress vocabulary. Schema-free: rides the existing
+// crew_assignments.status column (default 'assigned'). 'cancelled' is
+// reserved for the clear/unassign flow and isn't a progress state here.
+const PROGRESS_STATUSES = [
+  { key: 'assigned',  label: 'Assigned',  short: '○' },
+  { key: 'completed', label: 'Complete',  short: '✓' },
+  { key: 'delayed',   label: 'Delayed',   short: '◷' },
+  { key: 'blocked',   label: 'Blocked',   short: '⚠' },
+]
+const PROGRESS_SHORT = Object.fromEntries(PROGRESS_STATUSES.map(s => [s.key, s.short]))
+const PROGRESS_LABEL = Object.fromEntries(PROGRESS_STATUSES.map(s => [s.key, s.label]))
 
 // The board is meant to live on a TV all morning — re-pull the
 // operational verticals every few minutes so a task added at 6 AM
@@ -519,12 +532,15 @@ function TaskCard({ event, equipment, crew, resolveName }) {
     name:     a.employeeId ? (resolveName(a.employeeId) ?? a.employeeName) : a.employeeName,
     role:     a.role,
     chips:    linkedByAssign.get(a.id) ?? [],
+    status:   a.status ?? 'assigned',
+    notes:    a.notes ?? '',
+    real:     true,   // backed by a crew_assignment row → status is patchable
   }))
   // Fallback to event.assignedStaff[] only when no crew_assignments rows
   // exist for the event. These fallback rows can't carry linked chips
-  // (no row id to match on).
+  // (no row id to match on) and aren't status-patchable.
   const fallbackNames = crewRows.length === 0
-    ? (event.assignedStaff ?? []).map((name, i) => ({ id: `fb-${i}`, name, role: null, chips: [] }))
+    ? (event.assignedStaff ?? []).map((name, i) => ({ id: `fb-${i}`, name, role: null, chips: [], status: 'assigned', notes: '', real: false }))
     : crewRows
 
   return (
@@ -565,7 +581,7 @@ function TaskCard({ event, equipment, crew, resolveName }) {
       {fallbackNames.length > 0 && (
         <ul className={styles.crewList}>
           {fallbackNames.map(c => (
-            <li key={c.id} className={styles.crewRow}>
+            <li key={c.id} className={styles.crewRow} data-progress={c.status}>
               <span className={styles.crewName}>{c.name}</span>
               {c.role && <span className={styles.crewRole}>· {c.role}</span>}
               {c.chips.length > 0 && (
@@ -582,11 +598,102 @@ function TaskCard({ event, equipment, crew, resolveName }) {
                   ))}
                 </span>
               )}
+              {c.real && (
+                <CrewStatusControl
+                  assignmentId={c.id}
+                  status={c.status}
+                  notes={c.notes}
+                />
+              )}
             </li>
           ))}
         </ul>
       )}
     </article>
+  )
+}
+
+/* ── Crew progress control (Phase 33) ───────────────────────────────────
+ *
+ * Two-tap status update: tap the chip to open the picker, tap a status to
+ * set it (optimistic via patchCrewAssignment). An optional quick note is
+ * saved alongside. Schema-free — rides crew_assignments.status + .notes.
+ */
+function CrewStatusControl({ assignmentId, status, notes }) {
+  const [open, setOpen]   = useState(false)
+  const [busy, setBusy]   = useState(false)
+  const [note, setNote]   = useState(notes ?? '')
+  const toast = useToast()
+
+  async function applyStatus(next) {
+    setBusy(true)
+    try {
+      await patchCrewAssignment(assignmentId, { status: next })
+      toast?.success?.(`Marked ${PROGRESS_LABEL[next] ?? next}`)
+      setOpen(false)
+    } catch (err) {
+      toast?.error?.(`Update failed: ${err.message}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function saveNote() {
+    const trimmed = note.trim()
+    if (trimmed === (notes ?? '').trim()) { setOpen(false); return }
+    setBusy(true)
+    try {
+      await patchCrewAssignment(assignmentId, { notes: trimmed })
+      toast?.success?.('Note saved')
+      setOpen(false)
+    } catch (err) {
+      toast?.error?.(`Note failed: ${err.message}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <span className={styles.progressWrap}>
+      <button
+        type="button"
+        className={styles.progressChip}
+        data-progress={status}
+        onClick={() => setOpen(o => !o)}
+        title={`Status: ${PROGRESS_LABEL[status] ?? status} — tap to change`}
+        aria-label={`Crew status ${PROGRESS_LABEL[status] ?? status}`}
+      >
+        {PROGRESS_SHORT[status] ?? '○'}
+      </button>
+      {open && (
+        <div className={styles.progressPicker} role="menu">
+          <div className={styles.progressBtns}>
+            {PROGRESS_STATUSES.map(s => (
+              <button
+                key={s.key}
+                type="button"
+                className={styles.progressOption}
+                data-progress={s.key}
+                data-active={s.key === status ? 'true' : undefined}
+                disabled={busy}
+                onClick={() => applyStatus(s.key)}
+              >
+                <span aria-hidden="true">{s.short}</span> {s.label}
+              </button>
+            ))}
+          </div>
+          <input
+            type="text"
+            className={styles.progressNote}
+            value={note}
+            onChange={e => setNote(e.target.value)}
+            onBlur={saveNote}
+            placeholder="Quick note (optional)"
+            disabled={busy}
+          />
+        </div>
+      )}
+    </span>
   )
 }
 
