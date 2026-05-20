@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Inventory Validation Report</title>
+<style>
+body {
+  font-family: Calibri, Arial, sans-serif;
+  line-height: 1.6;
+  max-width: 800px;
+  margin: 40px auto;
+  padding: 20px;
+}
+h1 {
+  color: #2c3e50;
+  border-bottom: 3px solid #3498db;
+  padding-bottom: 10px;
+}
+h2 {
+  color: #34495e;
+  margin-top: 30px;
+  border-bottom: 1px solid #bdc3c7;
+  padding-bottom: 5px;
+}
+.pass { color: #27ae60; font-weight: bold; }
+.fail { color: #e74c3c; font-weight: bold; }
+.warn { color: #f39c12; font-weight: bold; }
+ul {
+  margin: 10px 0;
+}
+li {
+  margin: 8px 0;
+}
+strong {
+  color: #2c3e50;
+}
+.verdict {
+  background: #ecf0f1;
+  padding: 15px;
+  border-left: 4px solid #27ae60;
+  margin-top: 30px;
+}
+</style>
+</head>
+<body>
+
+<h1>Inventory Validation — Concise Report</h1>
+
+<h2>1. Passed Checks <span class="pass">✅</span></h2>
+
+<p><strong>Schema & Persistence:</strong></p>
+<ul>
+<li>D1 tables <code>inventory_items</code> + <code>inventory_usage</code> with proper indexes</li>
+<li>Course scoping via <code>course_id</code> column (migration 0015)</li>
+<li>Seed data: 23 realistic items across chemicals/fertilizers/parts/fuel</li>
+</ul>
+
+<p><strong>Worker API:</strong></p>
+<ul>
+<li>Full CRUD at <code>/api/inventory</code> with mutation auth (<code>x-admin-key</code>)</li>
+<li>Atomic <code>recordInventoryUsage()</code>: finds item by name (case-insensitive), decrements quantity (floors at 0), inserts usage log, returns both</li>
+<li>Gracefully handles missing items (inserts usage record, returns <code>item: null</code>)</li>
+</ul>
+
+<p><strong>Frontend Store:</strong></p>
+<ul>
+<li><code>useInventoryData()</code> hook follows useSyncExternalStore pattern</li>
+<li>Optimistic mutations with error rollback (on failure → full refresh)</li>
+<li>Course-scope aware (refetches on course switch)</li>
+</ul>
+
+<p><strong>Consumer Migration:</strong></p>
+<ul>
+<li>All Inventory tabs migrated (Products, Chemicals, Fertilizer, Low Stock)</li>
+<li>BuildSpraySheet reads live stock, shows color-coded chips, calls <code>recordInventoryUsage()</code> per product on commit</li>
+<li>Dashboard surfaces reflect live D1 state</li>
+<li>Cross-module stock synchronization working (chips click through to detail drawer)</li>
+</ul>
+
+<p><strong>Data Lifecycle:</strong></p>
+<ul>
+<li>Single fetch on first mount, cache shared across components</li>
+<li>Mutations persist to D1, survive page reload</li>
+<li>Spray deduction flow: <code>createSpray</code> → <code>recordInventoryUsage</code> (per product) → immediate UI update</li>
+</ul>
+
+<p><strong>Error Handling:</strong></p>
+<ul>
+<li>Missing items gracefully handled</li>
+<li>Zero quantities floored at 0</li>
+<li>API failures trigger optimistic rollback</li>
+</ul>
+
+<h2>2. Failed Checks <span class="fail">❌</span></h2>
+
+<p><strong>None.</strong> All core persistence contracts validated.</p>
+
+<h2>3. Warnings <span class="warn">⚠️</span></h2>
+
+<p><strong>Partial Transaction Safety:</strong></p>
+<ul>
+<li>BuildSpraySheet calls <code>recordInventoryUsage()</code> once per product via <code>Promise.allSettled()</code></li>
+<li>Each call is atomic, but no outer transaction wraps all deductions</li>
+<li><strong>Risk:</strong> If product #3 of 5 fails, products #1 and #2 have already committed</li>
+<li><strong>Mitigation:</strong> <code>allSettled()</code> allows successes to commit; failures show toast warnings</li>
+<li><strong>Acceptable</strong> for current feature set (spray sheet has "skipped" mechanism for unit mismatches)</li>
+</ul>
+
+<p><strong>No Usage Dedup:</strong></p>
+<ul>
+<li><code>inventory_usage</code> has <code>source_id</code> column but no UNIQUE constraint</li>
+<li><strong>Risk:</strong> Double-deduction if spray record editing lands without dedup logic</li>
+<li><strong>Safe for now:</strong> BuildSpraySheet creates new spray_record on every commit (no edit flow exists)</li>
+</ul>
+
+<p><strong>String-Based Product Matching:</strong></p>
+<ul>
+<li><code>recordInventoryUsage()</code> matches by product name (exact or case-insensitive)</li>
+<li><strong>Risk:</strong> Silent mismatch if freeform text entry ever added</li>
+<li><strong>Safe for now:</strong> UI is dropdown-only; mismatches show "unknown" stock status</li>
+</ul>
+
+<p><strong>Course ID Backfill Assumption:</strong></p>
+<ul>
+<li>Migration 0015 backfilled all rows to <code>'crossroads-gc'</code></li>
+<li><strong>Risk:</strong> Multi-course operator data lands in default course</li>
+<li><strong>Safe for now:</strong> Single-course deployment</li>
+</ul>
+
+<h2>4. Remaining Technical Debt</h2>
+
+<p><strong>InventoryPurchaseHistory still static:</strong></p>
+<ul>
+<li>Imports <code>PURCHASE_HISTORY</code> from <code>data/inventory.js</code></li>
+<li>Intentional backlog (comment in data file confirms this)</li>
+<li>Future Phase 5.2.7: migrate to <code>purchase_orders</code> table</li>
+</ul>
+
+<p><strong>related_usage column denormalized:</strong></p>
+<ul>
+<li>JSON array stored as TEXT, not indexed or queryable</li>
+<li>Could be computed on-the-fly via JOIN when detail drawer opens</li>
+<li>Low priority cleanup</li>
+</ul>
+
+<p><strong>No soft delete:</strong></p>
+<ul>
+<li>Hard DELETE orphans <code>inventory_usage</code> records (no FK constraint)</li>
+<li>Recommend adding <code>deleted_at</code> column for audit trail</li>
+</ul>
+
+<p><strong>No unit normalization:</strong></p>
+<ul>
+<li><code>unit</code> is free-text (oz, lbs, gal, ea, set, etc.)</li>
+<li>BuildSpraySheet has conversion map, but nothing prevents typos</li>
+<li>Recommend enum or reference table</li>
+</ul>
+
+<p><strong>No inventory adjustment log:</strong></p>
+<ul>
+<li>Only <code>inventory_usage</code> tracks decrements (tied to spray records)</li>
+<li>No log for manual adjustments (receiving shipments, spoilage, transfers)</li>
+<li>Recommend <code>inventory_adjustments</code> table</li>
+</ul>
+
+<h2>5. Remaining OperationsContext Dependencies</h2>
+
+<p><strong>Zero.</strong> Grep confirmed:</p>
+<ul>
+<li>No <code>inventoryProducts</code> references outside <code>data/inventory.js</code></li>
+<li>No <code>inventoryUsage</code> references outside <code>data/inventory.js</code></li>
+<li>No <code>useOperations</code> / <code>OperationsContext</code> imports in Inventory or Spray consumers</li>
+</ul>
+
+<p>Legacy inventory arrays in <code>data/inventory.js</code> are empty except <code>PURCHASE_HISTORY</code> (intentional).</p>
+
+<h2>6. Recommended Next Actions</h2>
+
+<p><strong>Priority 1 (15 min):</strong></p>
+<ol>
+<li>Add UNIQUE constraint: <code>CREATE UNIQUE INDEX idx_usage_dedupe ON inventory_usage(source_id, product_name) WHERE source_id IS NOT NULL;</code></li>
+<li>Add unit validation on Worker API (reject unknown units on INSERT/UPDATE)</li>
+</ol>
+
+<p><strong>Priority 2 (1 hour):</strong></p>
+<ol start="3">
+<li>Remove <code>related_usage</code> column or compute on-the-fly</li>
+<li>Add <code>deleted_at</code> soft-delete column</li>
+</ol>
+
+<p><strong>Priority 3 (Future phases, 4+ hours):</strong></p>
+<ol start="5">
+<li>Migrate Purchase History tab to D1 (<code>purchase_orders</code> table)</li>
+<li>Add <code>inventory_adjustments</code> audit log</li>
+<li>Add batch deduction endpoint (<code>POST /api/inventory/usage/batch</code>) with D1 transaction wrapper for transactional atomicity</li>
+</ol>
+
+<p><strong>Or — move to Phase 5.3:</strong></p>
+<ul>
+<li>Sprays vertical migration (next big domain per <code>SESSION_REPORT.md</code>)</li>
+</ul>
+
+<h2>7. Files Needing Cleanup</h2>
+
+<p><strong>Immediate (no edits needed):</strong></p>
+<ul>
+<li>None. All files are correctly migrated.</li>
+</ul>
+
+<p><strong>Future cleanup (when Purchase History phase lands):</strong></p>
+<ul>
+<li><code>src/pages/Inventory/tabs/InventoryPurchaseHistory.jsx</code> — replace static import with <code>usePurchaseOrdersData()</code></li>
+<li><code>src/data/inventory.js</code> — delete <code>PURCHASE_HISTORY</code> array</li>
+</ul>
+
+<p><strong>Optional hygiene (low priority):</strong></p>
+<ul>
+<li><code>worker/api/inventory.js</code> — add unit validation</li>
+<li><code>worker/migrations/0004_inventory.sql</code> — future migration to add UNIQUE constraint on <code>inventory_usage</code></li>
+</ul>
+
+<div class="verdict">
+<h2>Verdict</h2>
+<p><strong>Phase 5.2 is COMPLETE and PRODUCTION-READY.</strong> All persistence contracts met, all consumers migrated, no critical bugs. Fragile areas are understood and mitigated. Technical debt is cataloged and low-priority. Ready for Phase 5.3 or Priority 1 cleanup tasks. 🌱</p>
+</div>
+
+<p style="margin-top: 40px; color: #7f8c8d; font-size: 0.9em;"><em>Generated: 2026-05-16 | TurfIntel Phase 5.2 Validation</em></p>
+
+</body>
+</html>
