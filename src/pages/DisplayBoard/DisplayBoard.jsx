@@ -31,6 +31,7 @@ import { useSelectedCourse }  from '../../utils/courses/courseStore'
 import { useOperationsNotesData, refreshOperationsNotesData } from '../../utils/operations/notesStore'
 import { useAttachmentsForParent } from '../../utils/attachments/attachmentsStore'
 import { useToast } from '../../utils/feedback/toastContext'
+import { routingChipsFromTags } from '../../utils/routing/routingTags'
 import OperationalIntelligencePanel from '../../components/shared/OperationalIntelligencePanel'
 import styles from './DisplayBoard.module.css'
 
@@ -543,6 +544,9 @@ function TaskCard({ event, equipment, crew, resolveName }) {
     ? (event.assignedStaff ?? []).map((name, i) => ({ id: `fb-${i}`, name, role: null, chips: [], status: 'assigned', notes: '', real: false }))
     : crewRows
 
+  // Phase 34 — routing/mowing visual chips from existing event.tags[].
+  const { chips: routingChips, extra: routingExtra } = routingChipsFromTags(event.tags)
+
   return (
     <article className={styles.taskCard} data-priority={event.priority}>
       <header className={styles.taskCardHeader}>
@@ -558,6 +562,25 @@ function TaskCard({ event, equipment, crew, resolveName }) {
           {PRIORITY_LABEL[event.priority] ?? 'TASK'}
         </span>
       </header>
+
+      {routingChips.length > 0 && (
+        <div className={styles.routingRow}>
+          {routingChips.map(c => (
+            <span
+              key={c.key}
+              className={styles.routingChip}
+              data-tone={c.tone}
+              title={c.label}
+            >
+              <span className={styles.routingIcon} aria-hidden="true">{c.icon}</span>
+              <span className={styles.routingLabel}>{c.label}</span>
+            </span>
+          ))}
+          {routingExtra > 0 && (
+            <span className={styles.routingMore}>+{routingExtra}</span>
+          )}
+        </div>
+      )}
 
       {headerChips.length > 0 && (
         <div className={styles.chipRow}>
