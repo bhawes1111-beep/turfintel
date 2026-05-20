@@ -335,10 +335,8 @@ export function irrigationRuntimeOverlap(/* runtime */) {
  * @param {Object} input.current   — normalized current weather (or null)
  * @param {Array}  input.forecast  — normalized forecast days
  * @param {Array}  [input.history] — weather_observations rows (oldest or newest order; we sort)
- * @param {number} [input.now]     — clock override (tests)
  */
-export function computeIrrigationIntel({ current, forecast, history, now }) {
-  const clock = now ?? Date.now()
+export function computeIrrigationIntel({ current, forecast, history }) {
   const safeForecast = Array.isArray(forecast) ? forecast : []
 
   // Existing engine — reuse its summary + recommendations rather than
