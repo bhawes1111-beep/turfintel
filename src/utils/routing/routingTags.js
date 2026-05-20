@@ -32,6 +32,32 @@ const TAG_DEFS = [
 // rest in definition order. We key by the index of the matched def.
 const TONE_ORDER = { critical: 0, caution: 1, weather: 2, neutral: 3 }
 
+// ── Authoring exports (Phase 35) ─────────────────────────────────────────
+// The canonical value written to event.tags[] is the FIRST entry in each
+// def's `match` list (that's what the parser recognizes first and what the
+// picker stores). Deriving the picker options from TAG_DEFS keeps authoring
+// and rendering in lock-step — add a tag once, here.
+export const ROUTING_TAG_OPTIONS = TAG_DEFS.map(def => ({
+  value: def.match[0],   // canonical stored value, e.g. 'mow-ns'
+  label: def.label,      // display label, e.g. 'N–S'
+  icon:  def.icon,
+  tone:  def.tone,
+}))
+
+// Preset groups (P3). Each preset applies a small, sensible set of tags.
+// Direction-bearing presets default to N–S; the user can toggle to E–W
+// after applying. Kept deliberately tiny — not a template engine.
+export const ROUTING_PRESETS = [
+  { key: 'greens-mow', label: 'Greens Mow',   tags: ['mow-ns', 'cleanup'] },
+  { key: 'no-cleanup', label: 'No Cleanup',   tags: ['mow-ns', 'no-cleanup'] },
+  { key: 'rolling',    label: 'Rolling',      tags: ['roll'] },
+  { key: 'double-cut', label: 'Double-Cut',   tags: ['double-cut'] },
+  { key: 'frost',      label: 'Frost Delay',  tags: ['frost'] },
+  { key: 'closed',     label: 'Closed Area',  tags: ['closed'] },
+  { key: 'handwater',  label: 'Handwater',    tags: ['handwater'] },
+  { key: 'irrigation', label: 'Irrigation',   tags: ['irrigation'] },
+]
+
 function normalize(tag) {
   return String(tag ?? '')
     .toLowerCase()

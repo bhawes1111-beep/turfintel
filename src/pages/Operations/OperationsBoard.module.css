@@ -1634,6 +1634,12 @@
   flex-wrap: wrap;
 }
 
+/* Phase 35 — routing tag picker row in the Add Task form. */
+.obAddTaskTagRow {
+  padding-top: 8px;
+  border-top: 1px dashed var(--color-border);
+}
+
 .obAddTaskEqLabel {
   font-size: 11px;
   font-weight: 600;

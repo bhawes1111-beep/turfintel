@@ -76,6 +76,54 @@ Rules:
   as `+N`).
 - Direction arrows are the highest-value glance signal — they render first.
 
+## 4b. Tag authoring (Phase 35)
+
+Tags are added through the **TagPicker** (`src/components/routing/TagPicker.jsx`)
+on the **Operations Board → Add Task** form. The picker writes canonical
+values into the task's `tags[]`, which flow to the calendar event via
+`ensureEventForTask` → Worker → Display Board. No schema change, no tag table.
+
+**Single source of truth:** the picker options and presets are derived from
+`TAG_DEFS` in `routingTags.js` (exported as `ROUTING_TAG_OPTIONS` and
+`ROUTING_PRESETS`). Add a tag once in `TAG_DEFS` and it appears in both the
+authoring picker and the board renderer automatically. The smoke test
+(`scripts/smoke-routing-tags.mjs`) asserts every option round-trips through
+the parser and every preset references a valid option.
+
+### Allowed stored values (canonical)
+The value written to `tags[]` is the first match alias of each def:
+`mow-ns`, `mow-ew`, `mow-diagonal`, `double-cut`, `cleanup`, `no-cleanup`,
+`roll`, `skip`, `closed`, `frost`, `handwater`, `irrigation`.
+The parser also accepts case/separator variants on read (e.g. `Mow_NS`,
+`MOW-EW`), but the picker always stores the canonical form.
+
+### Presets (additive, never destructive)
+Applying a preset **merges** its tags into the current selection (deduped);
+it never clears existing tags. Direction-bearing presets default to N–S — the
+user toggles to E–W after applying.
+
+| Preset | Tags applied |
+|---|---|
+| Greens Mow | `mow-ns` + `cleanup` |
+| No Cleanup | `mow-ns` + `no-cleanup` |
+| Rolling | `roll` |
+| Double-Cut | `double-cut` |
+| Frost Delay | `frost` |
+| Closed Area | `closed` |
+| Handwater | `handwater` |
+| Irrigation | `irrigation` |
+
+### Preview
+The picker shows a **live Board preview** rendered with the *same*
+`routingChipsFromTags()` the Display Board uses — what the author sees is
+exactly what the crew sees. No separate preview renderer to drift.
+
+### Where tags appear
+Authored on the Operations Board → persisted on the calendar event →
+rendered as chips on **Display Board** task cards (Phase 34). Other event
+views read the same `event.tags[]`; any future surface should reuse
+`routingChipsFromTags()` rather than re-implement.
+
 ## 5. Chip patterns
 
 - **Equipment chips**: machine name, status-tinted (reserved = amber, in-use =

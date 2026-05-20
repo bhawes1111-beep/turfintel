@@ -1,0 +1,163 @@
+/* Phase 35 — TagPicker. Indoor (dashboard/authoring) theme. */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.headRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted);
+}
+
+.clearBtn {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+
+.clearBtn:hover { color: var(--color-text); }
+
+/* Presets */
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.presetBtn {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-accent);
+  background: rgba(74, 158, 74, 0.08);
+  border: 1px dashed rgba(74, 158, 74, 0.4);
+  border-radius: 999px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.presetBtn:hover { background: rgba(74, 158, 74, 0.16); }
+
+/* Toggle option chips */
+.options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.optionChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 5px 11px;
+  cursor: pointer;
+  min-height: 34px;
+}
+
+.optionChip:hover { color: var(--color-text); border-color: var(--color-text-muted); }
+
+.optionIcon { font-size: 13px; line-height: 1; }
+
+/* Active state — tinted by tone (mirrors VISUAL_LANGUAGE meanings). */
+.optionChip[data-active="true"] {
+  color: var(--color-text);
+  background: rgba(74, 158, 74, 0.18);
+  border-color: var(--color-accent);
+}
+.optionChip[data-active="true"][data-tone="critical"] {
+  background: rgba(224, 112, 112, 0.18);
+  border-color: #e07070;
+}
+.optionChip[data-active="true"][data-tone="caution"] {
+  background: rgba(212, 136, 58, 0.18);
+  border-color: #d4883a;
+}
+.optionChip[data-active="true"][data-tone="weather"] {
+  background: rgba(56, 189, 248, 0.16);
+  border-color: #38bdf8;
+}
+
+/* Preview */
+.previewRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--color-border);
+}
+
+.previewLabel {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted);
+}
+
+.previewEmpty {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.previewChips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.previewChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-text);
+}
+
+.previewChip[data-tone="critical"] {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: #ef4444;
+  color: #fca5a5;
+}
+.previewChip[data-tone="caution"] {
+  background: rgba(251, 191, 36, 0.16);
+  border-color: #fbbf24;
+  color: #fcd34d;
+}
+.previewChip[data-tone="weather"] {
+  background: rgba(56, 189, 248, 0.16);
+  border-color: #38bdf8;
+  color: #7dd3fc;
+}
+
+.previewMore {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}

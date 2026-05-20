@@ -21,6 +21,7 @@ import {
   createEquipmentReservation,
   deleteCrewAssignment,
 } from '../../utils/assignments/assignmentsStore'
+import TagPicker from '../../components/routing/TagPicker'
 import workspace from '../../styles/workspace.module.css'
 import styles from './OperationsBoard.module.css'
 
@@ -48,6 +49,7 @@ const BLANK_TASK = {
   status:         'pending',
   notes:          '',
   equipment:      [],
+  tags:           [],
 }
 
 const INITIAL_NOTES = {
@@ -408,7 +410,7 @@ export default function OperationsBoard() {
       priority:     TASK_PRIORITY_TO_EVENT[task.priority] ?? 'medium',
       status:       TASK_STATUS_TO_EVENT[task.status] ?? 'scheduled',
       location:     task.assignedArea || '',
-      tags:         [],
+      tags:         Array.isArray(task.tags) ? task.tags : [],
       notes:        task.notes || '',
       sourceModule: 'operations-board',
       sourceId:     task.id,
@@ -430,6 +432,7 @@ export default function OperationsBoard() {
       completedHours: 0,
       assignedTo:     [],
       equipment:      [...newTask.equipment],
+      tags:           [...(newTask.tags ?? [])],
       notes:          newTask.notes,
     }
     setCreatedTasks(prev => [...prev, task])
@@ -887,7 +890,15 @@ export default function OperationsBoard() {
                       </div>
                     </div>
 
-                    {/* Row 3: notes */}
+                    {/* Row 3: routing/mowing tags (Phase 35) */}
+                    <div className={styles.obAddTaskTagRow}>
+                      <TagPicker
+                        value={newTask.tags ?? []}
+                        onChange={tags => setNewTaskField('tags', tags)}
+                      />
+                    </div>
+
+                    {/* Row 4: notes */}
                     <textarea
                       className={styles.obAddTaskNotes}
                       value={newTask.notes}

@@ -2,7 +2,11 @@
 //
 //   node scripts/smoke-routing-tags.mjs
 
-import { routingChipsFromTags } from '../src/utils/routing/routingTags.js'
+import {
+  routingChipsFromTags,
+  ROUTING_TAG_OPTIONS,
+  ROUTING_PRESETS,
+} from '../src/utils/routing/routingTags.js'
 
 let passed = 0, failed = 0
 function assert(cond, label, ctx) {
@@ -47,6 +51,36 @@ r = routingChipsFromTags(
   { max: 6 },
 )
 assert(r.chips.length === 6 && r.extra === 2, 'caps at 6 with extra=2', { len: r.chips.length, extra: r.extra })
+
+// ── Phase 35 authoring exports ───────────────────────────────────────────
+
+// Every picker option's canonical value must be recognized by the parser
+// (authoring/rendering stay in lock-step).
+let allOptionsRender = true
+for (const opt of ROUTING_TAG_OPTIONS) {
+  const { chips } = routingChipsFromTags([opt.value])
+  if (chips.length !== 1 || chips[0].label !== opt.label) { allOptionsRender = false; break }
+}
+assert(ROUTING_TAG_OPTIONS.length >= 12, 'at least 12 tag options exposed', { n: ROUTING_TAG_OPTIONS.length })
+assert(allOptionsRender, 'every option value round-trips through the parser to its label')
+
+// Every preset tag must be a recognized option value.
+const optionValues = new Set(ROUTING_TAG_OPTIONS.map(o => o.value))
+let presetsValid = true
+for (const p of ROUTING_PRESETS) {
+  for (const t of p.tags) {
+    if (!optionValues.has(t)) { presetsValid = false; console.error(`   bad preset tag: ${p.key} → ${t}`) }
+  }
+}
+assert(ROUTING_PRESETS.length >= 6, 'at least 6 presets exposed', { n: ROUTING_PRESETS.length })
+assert(presetsValid, 'every preset references valid option values')
+
+// A preset must produce chips when applied.
+{
+  const greens = ROUTING_PRESETS.find(p => p.key === 'greens-mow')
+  const { chips } = routingChipsFromTags(greens?.tags ?? [])
+  assert(chips.length === 2, 'greens-mow preset → 2 chips (direction + cleanup)', chips.map(c => c.label))
+}
 
 console.log(`\n${passed} passed, ${failed} failed`)
 process.exit(failed === 0 ? 0 : 1)
