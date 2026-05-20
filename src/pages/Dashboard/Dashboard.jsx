@@ -12,6 +12,7 @@ import AgronomicIntelligence from './AgronomicIntelligence'
 import SprayWindowCard from './SprayWindowCard'
 import IrrigationIntelCard from './IrrigationIntelCard'
 import OperationalCommand from './OperationalCommand'
+import MobileQuickActions from '../../components/feedback/MobileQuickActions'
 import { useAlertsData, acknowledgeAlert, dismissAlert } from '../../utils/alerts/alertsStore'
 import RecentActivity from './RecentActivity'
 import QuickActions from './QuickActions'
@@ -51,6 +52,14 @@ export default function Dashboard() {
           crew, equipment, weather into one prioritized command surface.
           Lives above the intelligence row so superintendent gets the
           command-center view before any individual widget. */}
+      {/* Phase 32 — Mobile-only quick actions. Sits above Operational
+          Command so the most-used field actions are reachable one-handed
+          without scrolling. Hidden on desktop (CSS), where the full Quick
+          Actions card in the grid serves the same role. */}
+      <div className={styles.mobileQuickRow}>
+        <MobileQuickActions />
+      </div>
+
       <div className={styles.opsCommandRow}>
         <OperationalCommand />
       </div>

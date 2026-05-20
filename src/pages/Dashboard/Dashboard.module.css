@@ -52,6 +52,16 @@
   padding: var(--grid-padding) var(--grid-padding) 0;
 }
 
+/* Phase 32 — mobile quick-actions wrapper. The inner row is itself
+   hidden on desktop, so this only contributes padding on mobile. */
+.mobileQuickRow {
+  padding: var(--grid-padding-mobile) var(--grid-padding-mobile) 0;
+}
+
+@media (min-width: 768px) {
+  .mobileQuickRow { padding: 0; }
+}
+
 /* ── Intelligence row — weather (2fr) + agronomy cards (1fr) ────────────── */
 
 .intelligenceRow {
