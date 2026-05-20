@@ -302,7 +302,6 @@ export default function OperationsBoard() {
 
   const timeStr    = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
   const nowHour    = now.getHours() + now.getMinutes() / 60
-  const nowPercent = Math.max(0, Math.min(100, ((nowHour - TIMELINE_START) / TIMELINE_SPAN) * 100))
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
