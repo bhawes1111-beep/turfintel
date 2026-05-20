@@ -23,18 +23,6 @@ import { SEVERITY } from '../intelligence/severity.js'
 // ── Time / date helpers ───────────────────────────────────────────────────
 
 const HOUR_MS = 60 * 60 * 1000
-const DAY_MS  = 24 * HOUR_MS
-
-function toMs(value) {
-  if (value == null) return null
-  if (typeof value === 'number') return Number.isFinite(value) ? value : null
-  if (value instanceof Date) {
-    const ms = value.getTime()
-    return Number.isFinite(ms) ? ms : null
-  }
-  const ms = Date.parse(value)
-  return Number.isFinite(ms) ? ms : null
-}
 
 function isoDate(ms) {
   return new Date(ms).toISOString().slice(0, 10)
@@ -49,13 +37,6 @@ function sprayDate(s) {
 function sprayStartMs(spray) {
   if (!spray?.date) return null
   const time = spray.startTime || spray.endTime || '00:00'
-  const ms = Date.parse(`${spray.date}T${time}:00`)
-  return Number.isFinite(ms) ? ms : null
-}
-
-function sprayEndMs(spray) {
-  if (!spray?.date) return null
-  const time = spray.endTime || spray.startTime || '23:59'
   const ms = Date.parse(`${spray.date}T${time}:00`)
   return Number.isFinite(ms) ? ms : null
 }
