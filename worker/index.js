@@ -136,6 +136,13 @@ import {
   postWaterBalanceRollup,
   rollupAllCourses,
 } from './api/waterBalance.js'
+import {
+  listMoisture,
+  getMoisture,
+  createMoisture,
+  updateMoisture,
+  deleteMoisture,
+} from './api/moisture.js'
 
 export default {
   async fetch(request, env, ctx) {
@@ -261,6 +268,27 @@ async function handleApi(request, env, url) {
   // also runs the rollup automatically after each capture. Mutation-gated.
   if (pathname === '/api/water-balance/rollup') {
     if (method === 'POST') return postWaterBalanceRollup(env, request, courseId)
+  }
+
+  // ── /api/moisture ─────────────────────────────────────────────────────
+  // Field moisture observations (Moisture + Handwatering Intelligence).
+  if (pathname === '/api/moisture') {
+    if (method === 'GET') {
+      const location = url.searchParams.get('location') || null
+      const days     = url.searchParams.get('days')     || null
+      const limit    = url.searchParams.get('limit')    || null
+      return listMoisture(env, courseId, { location, days, limit })
+    }
+    if (method === 'POST') return createMoisture(env, request)
+  }
+
+  // ── /api/moisture/:id ─────────────────────────────────────────────────
+  const moistureMatch = pathname.match(/^\/api\/moisture\/([^/]+)$/)
+  if (moistureMatch) {
+    const id = decodeURIComponent(moistureMatch[1])
+    if (method === 'GET')    return getMoisture(env, id)
+    if (method === 'PATCH')  return updateMoisture(env, id, request)
+    if (method === 'DELETE') return deleteMoisture(env, id)
   }
 
   // ── /api/equipment ────────────────────────────────────────────────────
