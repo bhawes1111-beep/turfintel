@@ -207,9 +207,18 @@ const ICONS = {
      - Weather    → /weather  (lightweight placeholder until Phase 5)
      - Reports    → /reports  (lightweight placeholder until Phase 6)
 
-   Other routes (/activity, /plant-nutrition, /cultural-practices,
-   /chemical, /course-map, /budget) stay reachable via direct URL —
-   they just don't appear in the sidebar anymore.                          */
+   The remaining routes (/plant-nutrition, /cultural-practices, /chemical,
+   /course-map, /budget) stay reachable via direct URL only — they are NOT
+   surfaced in the sidebar yet, by design (audit R5):
+     - /plant-nutrition, /cultural-practices — full UIs, but read empty
+       static arrays (not D1-persisted). Expose once wired to stores.
+     - /chemical — Overview + Labels only (rest "coming soon"); overlaps
+       /spray. Avoid duplicate nav until consolidated.
+     - /budget — skeleton (Overview only, rest "coming soon").
+     - /course-map — standalone dev validation surface (placeholder
+       geometry), not a production workflow.
+   /activity was exposed in R5: it is live (aggregates real
+   equipment/repairs/spray data) and non-duplicative.                       */
 
 const NAV_TREE = [
   { id: 'dashboard',     label: 'Dashboard',           icon: 'dashboard',  to: '/dashboard'     },
@@ -222,6 +231,7 @@ const NAV_TREE = [
   { id: 'equipment',  label: 'Equipment',  icon: 'equipment',  to: '/equipment'  },
   { id: 'inventory',  label: 'Inventory',  icon: 'inventory',  to: '/inventory'  },
   { id: 'weather',    label: 'Weather',    icon: 'weather',    to: '/weather'    },
+  { id: 'activity',   label: 'Activity',   icon: 'activity',   to: '/activity'   },
   { id: 'reports',    label: 'Reports',    icon: 'reports',    to: '/reports'    },
   { id: 'settings',   label: 'Settings',   icon: 'settings',   to: '/settings'   },
 ]
