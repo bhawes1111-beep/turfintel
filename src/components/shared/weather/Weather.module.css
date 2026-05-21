@@ -175,6 +175,14 @@
   margin-top: 4px;
 }
 
+/* ET source attribution line (Georgia Weather Network — Savannah, or estimated). */
+.etSourceLine {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  margin-top: 6px;
+  font-style: italic;
+}
+
 .etDeficit {
   text-align: right;
 }
