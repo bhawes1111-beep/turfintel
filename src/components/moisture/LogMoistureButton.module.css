@@ -1,0 +1,124 @@
+/* Moisture quick-entry — mobile-first, large tap targets, sunlight-readable. */
+
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0d1a0d;
+  background: var(--color-accent);
+  border: 1px solid var(--color-accent);
+  border-radius: 8px;
+  padding: 9px 14px;
+  cursor: pointer;
+  min-height: 40px;
+}
+
+.trigger:hover { background: var(--color-accent-hover); }
+.triggerCompact { font-size: 12px; padding: 7px 11px; min-height: 36px; }
+
+/* Modal — bottom sheet on phones, centered on desktop. */
+.backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex; align-items: flex-end; justify-content: center;
+  z-index: 1000; padding: 16px;
+}
+@media (min-width: 640px) { .backdrop { align-items: center; } }
+
+.modal {
+  width: 100%; max-width: 460px;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  display: flex; flex-direction: column;
+  max-height: 90vh;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; border-bottom: 1px solid var(--color-border);
+}
+.headerTitle { font-size: 15px; font-weight: 700; color: var(--color-text); }
+.closeBtn {
+  background: none; border: none; color: var(--color-text-muted);
+  font-size: 16px; cursor: pointer; padding: 4px 8px; border-radius: 6px;
+}
+.closeBtn:hover { color: var(--color-text); background: var(--color-card-hover); }
+
+.body { padding: 14px 16px; overflow-y: auto; }
+
+.fieldLabel {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.5px; color: var(--color-text-muted);
+  margin: 12px 0 6px;
+}
+.fieldLabel:first-child { margin-top: 0; }
+.optional { font-weight: 500; text-transform: none; letter-spacing: 0; }
+
+.input {
+  width: 100%; box-sizing: border-box;
+  font-size: 15px; color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 8px; padding: 11px 12px;
+  font-family: inherit;
+}
+.input:focus { outline: none; border-color: var(--color-accent); }
+
+.recentRow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.recentChip {
+  font-size: 12px; color: var(--color-text-muted);
+  background: transparent; border: 1px solid var(--color-border);
+  border-radius: 999px; padding: 5px 11px; cursor: pointer;
+}
+.recentChip:hover { color: var(--color-text); border-color: var(--color-text-muted); }
+
+/* Big condition toggles — 2-col grid, large targets. */
+.toggles {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+.toggle {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 14px; font-weight: 600;
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  cursor: pointer;
+  min-height: 48px;
+}
+.toggleIcon { font-size: 18px; }
+.toggle[data-active="true"] {
+  background: rgba(74, 158, 74, 0.18);
+  border-color: var(--color-accent);
+  color: var(--color-text);
+}
+
+.inlineRow { display: flex; gap: 10px; }
+.inlineField { flex: 1; }
+
+.error { font-size: 12px; color: #e07070; margin-top: 10px; }
+
+.footer {
+  display: flex; justify-content: flex-end; gap: 8px;
+  padding: 12px 16px; border-top: 1px solid var(--color-border);
+}
+.cancelBtn {
+  font-size: 14px; color: var(--color-text-muted);
+  background: transparent; border: 1px solid var(--color-border);
+  border-radius: 8px; padding: 10px 16px; cursor: pointer; min-height: 44px;
+}
+.cancelBtn:hover:not(:disabled) { color: var(--color-text); }
+.saveBtn {
+  font-size: 14px; font-weight: 600; color: #0d1a0d;
+  background: var(--color-accent); border: 1px solid var(--color-accent);
+  border-radius: 8px; padding: 10px 20px; cursor: pointer; min-height: 44px;
+}
+.saveBtn:hover:not(:disabled) { background: var(--color-accent-hover); }
+.saveBtn:disabled, .cancelBtn:disabled { opacity: 0.6; cursor: default; }

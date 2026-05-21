@@ -1,0 +1,94 @@
+/* Moisture Overview — mobile-first, operational. */
+
+.wrap { display: flex; flex-direction: column; gap: 14px; }
+
+.headRow {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; flex-wrap: wrap;
+}
+.headTitle { font-size: 15px; font-weight: 700; color: var(--color-text); }
+
+.error { font-size: 12px; color: #e07070; margin: 0; }
+
+.empty {
+  font-size: 13px; color: var(--color-text-muted);
+  line-height: 1.5; margin: 8px 0;
+}
+
+/* Context bar — trend + weather-derived syringe awareness */
+.contextBar { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.trendChip {
+  font-size: 12px; font-weight: 700;
+  padding: 5px 11px; border-radius: 999px;
+  text-transform: capitalize;
+  color: var(--color-text);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--color-border);
+}
+.trendChip[data-trend="localized stress increasing"],
+.trendChip[data-trend="drying"] { color: #fbbf24; border-color: rgba(251,191,36,0.4); }
+.trendChip[data-trend="recovering moisture"] { color: #38bdf8; border-color: rgba(56,189,248,0.4); }
+.trendChip[data-trend="stable moisture"] { color: #4ade80; border-color: rgba(74,222,128,0.4); }
+
+.syringeChip {
+  font-size: 12px; color: var(--color-text-muted);
+  padding: 5px 11px; border-radius: 999px;
+  background: rgba(56, 189, 248, 0.10);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+/* Sections */
+.section { display: flex; flex-direction: column; gap: 8px; }
+.sectionLabel {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.5px; color: var(--color-text-muted); margin: 0;
+}
+
+.list, .obsList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+
+/* Priority items */
+.priorityItem {
+  display: flex; align-items: flex-start; gap: 10px;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 10px; padding: 10px 12px;
+}
+.priorityDot { width: 10px; height: 10px; border-radius: 50%; margin-top: 4px; flex: 0 0 auto; }
+.priorityBody { flex: 1; min-width: 0; }
+.priorityTop { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.locName { font-size: 14px; font-weight: 600; color: var(--color-text); }
+.priorityTag { font-size: 12px; font-weight: 700; white-space: nowrap; }
+.priorityWhy { font-size: 12px; color: var(--color-text-muted); margin-top: 2px; line-height: 1.4; }
+
+/* Driest */
+.driestRow { display: flex; flex-wrap: wrap; gap: 8px; }
+.driestCard {
+  display: flex; flex-direction: column; align-items: center;
+  background: var(--color-card); border: 1px solid var(--color-border);
+  border-radius: 10px; padding: 10px 14px; min-width: 76px;
+}
+.driestVal { font-size: 20px; font-weight: 700; color: #fbbf24; font-variant-numeric: tabular-nums; }
+.driestLoc { font-size: 11px; color: var(--color-text-muted); margin-top: 2px; }
+
+/* Recent observations */
+.obsItem {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
+  background: var(--color-card); border: 1px solid var(--color-border);
+  border-radius: 10px; padding: 9px 12px;
+}
+.obsMain { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.obsLoc { font-size: 13px; font-weight: 600; color: var(--color-text); }
+.obsMeta { font-size: 11px; color: var(--color-text-muted); }
+.obsNote { font-size: 12px; color: var(--color-text); font-style: italic; }
+.obsBadges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+.obsBadge {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px;
+  color: #fcd34d; background: rgba(251, 191, 36, 0.12);
+  padding: 2px 7px; border-radius: 4px;
+}
+.obsDel {
+  background: none; border: none; color: var(--color-text-muted);
+  font-size: 13px; cursor: pointer; padding: 4px 6px; flex: 0 0 auto;
+}
+.obsDel:hover { color: #e07070; }
