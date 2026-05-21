@@ -131,6 +131,11 @@ import {
   postWeatherCapture,
   captureWeatherForAllCourses,
 } from './api/weather.js'
+import {
+  listWaterBalance,
+  postWaterBalanceRollup,
+  rollupAllCourses,
+} from './api/waterBalance.js'
 
 export default {
   async fetch(request, env, ctx) {
@@ -154,10 +159,15 @@ export default {
   // dedup so overlapping/missed ticks never duplicate rows. Best-effort:
   // failures are logged, never thrown, so a bad tick can't wedge the cron.
   async scheduled(event, env, ctx) {
+    // Capture the Ambient snapshot, then roll today's water balance up from
+    // it. Rollup runs after capture so the day's newest observation is
+    // included. Both are best-effort and never throw.
     ctx.waitUntil(
       captureWeatherForAllCourses(env, { intervalMinutes: 30 })
         .then(r => console.log('[TurfIntel Weather] cron capture:', JSON.stringify(r)))
-        .catch(err => console.warn('[TurfIntel Weather] cron capture error:', err?.message)),
+        .then(() => rollupAllCourses(env))
+        .then(r => console.log('[TurfIntel WaterBalance] cron rollup:', JSON.stringify(r)))
+        .catch(err => console.warn('[TurfIntel Weather] cron error:', err?.message)),
     )
   },
 }
@@ -235,6 +245,22 @@ async function handleApi(request, env, url) {
   // the window-guard + dedup, so spamming it won't create duplicates.
   if (pathname === '/api/weather/capture') {
     if (method === 'POST') return postWeatherCapture(env, courseId)
+  }
+
+  // ── /api/water-balance ────────────────────────────────────────────────
+  // Daily ET / rainfall / net rollup (Irrigation Intelligence Foundation).
+  if (pathname === '/api/water-balance') {
+    if (method === 'GET') {
+      const days = url.searchParams.get('days') || null
+      return listWaterBalance(env, courseId, { days })
+    }
+  }
+
+  // ── /api/water-balance/rollup ─────────────────────────────────────────
+  // Manual rollup (+ optional backfill / GA-Network etReference). The cron
+  // also runs the rollup automatically after each capture. Mutation-gated.
+  if (pathname === '/api/water-balance/rollup') {
+    if (method === 'POST') return postWaterBalanceRollup(env, request, courseId)
   }
 
   // ── /api/equipment ────────────────────────────────────────────────────
