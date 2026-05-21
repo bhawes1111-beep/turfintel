@@ -69,7 +69,7 @@ export function evaluateSprayWindow(current) {
 
 export function evaluateDiseasePressure(current, forecast = []) {
   if (!current) return null
-  const { diseasePressure, humidity = 0, dewPoint, temp } = current
+  const { diseasePressure, dewPoint, temp } = current
 
   if (diseasePressure === 'high' || diseasePressure === 'critical') {
     const isCritical       = diseasePressure === 'critical'

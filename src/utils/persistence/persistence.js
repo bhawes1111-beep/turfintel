@@ -64,7 +64,7 @@ export async function clear(key) {
   try {
     const adapter = await resolveAdapter()
     if (adapter !== localStorageAdapter) await adapter.remove(key)
-  } catch { }
+  } catch { /* ignore */ }
 }
 
 // ── migrate ────────────────────────────────────────────────────────────────────

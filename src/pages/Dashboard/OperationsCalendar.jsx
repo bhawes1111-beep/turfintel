@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useCalendarData } from '../../utils/calendar/calendarStore'
-import { PLACEHOLDER_CURRENT, SPRAY_WINDOW_TOKENS, resolveSprayWindow } from '../../components/shared/weather/weatherTokens'
+import { PLACEHOLDER_CURRENT, resolveSprayWindow } from '../../components/shared/weather/weatherTokens'
 import styles from './OperationsCalendar.module.css'
 
 // ── Constants ─────────────────────────────────────────────────────────────────

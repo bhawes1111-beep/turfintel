@@ -14,7 +14,6 @@ import ReportPreviewModal from '../../../components/reports/ReportPreviewModal'
 import { EmptyState } from '../../../components/shared/EmptyState'
 import styles from '../Irrigation.module.css'
 
-const TODAY      = '2026-05-08'
 const WEEK_START = '2026-05-04'
 
 const STATUS_FILTERS = [
@@ -170,7 +169,7 @@ export default function Repairs() {
               thumbnailUrl = URL.createObjectURL(blob)
               thumbUrls.push(thumbnailUrl)
             }
-          } catch {}
+          } catch { /* ignore */ }
         }
         return createAttachmentRef({
           id:           rec.id,

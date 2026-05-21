@@ -219,7 +219,7 @@ export async function deleteInventory(env, id) {
         'SELECT r2_key FROM operational_attachments WHERE id = ? AND status = ?',
       ).bind(attId, 'active').first()
       if (row?.r2_key && env.PHOTOS) {
-        try { await env.PHOTOS.delete(row.r2_key) } catch {}
+        try { await env.PHOTOS.delete(row.r2_key) } catch { /* best-effort cleanup */ }
       }
       await env.DB.prepare(
         `UPDATE operational_attachments SET status = 'deleted' WHERE id = ?`,

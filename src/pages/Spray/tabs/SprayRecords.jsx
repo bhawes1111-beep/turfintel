@@ -69,7 +69,7 @@ export default function SprayRecords() {
       const allMedia  = [...photos, ...docs]
       const thumbUrls = []
 
-      const attachmentRefs = await Promise.all(allMedia.map(async rec => {
+      await Promise.all(allMedia.map(async rec => {
         let thumbnailUrl = null
         if (rec.type === 'image') {
           try {
@@ -78,7 +78,7 @@ export default function SprayRecords() {
               thumbnailUrl = URL.createObjectURL(blob)
               thumbUrls.push(thumbnailUrl)
             }
-          } catch {}
+          } catch { /* thumbnail optional — ignore */ }
         }
         return createAttachmentRef({
           id:           rec.id,

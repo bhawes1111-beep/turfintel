@@ -55,7 +55,7 @@ function hoursUntilService(hours, nextServiceHours) {
 }
 
 export default function EquipmentList({ initialSelectedId = null, onJumpToMaintenance } = {}) {
-  const { equipment, serviceLog, loading, error } = useEquipmentData()
+  const { equipment, serviceLog } = useEquipmentData()
   const [search,     setSearch]    = useState('')
   const [catFilter,  setCatFilter] = useState('All')
   const [staFilter,  setStaFilter] = useState('All')
@@ -93,7 +93,7 @@ export default function EquipmentList({ initialSelectedId = null, onJumpToMainte
       const allMedia  = [...photos, ...docs]
       const thumbUrls = []
 
-      const attachmentRefs = await Promise.all(allMedia.map(async rec => {
+      await Promise.all(allMedia.map(async rec => {
         let thumbnailUrl = null
         if (rec.type === 'image') {
           try {
@@ -102,7 +102,7 @@ export default function EquipmentList({ initialSelectedId = null, onJumpToMainte
               thumbnailUrl = URL.createObjectURL(blob)
               thumbUrls.push(thumbnailUrl)
             }
-          } catch {}
+          } catch { /* thumbnail optional — ignore */ }
         }
         return createAttachmentRef({
           id:           rec.id,

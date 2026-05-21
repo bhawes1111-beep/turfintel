@@ -29,7 +29,7 @@ export const localStorageAdapter = {
   removeSync(key) {
     try {
       localStorage.removeItem(key)
-    } catch { }
+    } catch { /* ignore */ }
   },
 
   // Promise wrappers — satisfy the shared adapter interface used by storageAdapter.js.

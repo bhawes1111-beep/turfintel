@@ -47,8 +47,6 @@ const CATEGORY_ORDER = ['weather', 'routing', 'crew', 'spray', 'equipment', 'pri
 
 // ── Time helpers ─────────────────────────────────────────────────────────
 
-const HHMM_RE = /^\d{2}:\d{2}$/
-
 function normalizeHHMM(time) {
   if (typeof time !== 'string') return null
   // Accept 'HH:MM' or 'HH:MM:SS'; reject anything else.

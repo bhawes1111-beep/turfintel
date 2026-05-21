@@ -41,7 +41,7 @@ export default function ActivityCard({ activity }) {
           return url
         }))
         if (!cancelled) setThumbUrls(urls.filter(Boolean))
-      } catch {}
+      } catch { /* ignore */ }
     }
     load()
 

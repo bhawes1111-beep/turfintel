@@ -86,7 +86,7 @@ function useLocalState(key, initial) {
   })
   useEffect(() => {
     if (typeof localStorage === 'undefined' || !key) return
-    try { localStorage.setItem(key, JSON.stringify(value)) } catch {}
+    try { localStorage.setItem(key, JSON.stringify(value)) } catch { /* ignore */ }
   }, [key, value])
   return [value, setValue]
 }
@@ -101,7 +101,7 @@ export default function DailyOperationsCenter() {
   const weather                          = useWeather()
   const { employees: crewEmployees }     = useCrewData()
   const { assignments, reservations }    = useAssignmentsData()
-  const { equipment, serviceLog }        = useEquipmentData()
+  const { equipment }        = useEquipmentData()
   const { events: calendarEvents }       = useCalendarData()
   const { records: sprayRecords }        = useSpraysData()
 

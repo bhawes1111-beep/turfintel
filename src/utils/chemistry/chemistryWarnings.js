@@ -37,7 +37,6 @@ import {
   findDuplicateActives,
   findDuplicateActiveFamilies,
   parseActiveIngredients,
-  parseGroupCodes,
 } from './chemistryStructures.js'
 import {
   filterByLookback,

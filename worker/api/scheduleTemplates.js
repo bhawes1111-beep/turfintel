@@ -204,7 +204,7 @@ export async function deleteScheduleTemplate(env, id) {
 // caller may pass courseId in the body for backward compat but we
 // always replace on the template's course.
 
-export async function applyScheduleTemplate(env, templateId, request) {
+export async function applyScheduleTemplate(env, templateId) {
   const tplRow = await env.DB.prepare(
     'SELECT * FROM schedule_templates WHERE id = ?',
   ).bind(templateId).first()

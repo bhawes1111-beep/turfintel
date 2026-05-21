@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect, useRef, Fragment } from 'react'
-import { filterCommands, groupCommands } from '../../utils/command/commandHelpers'
+import { useState, useMemo, useEffect, useRef } from 'react'
+import { filterCommands } from '../../utils/command/commandHelpers'
 import styles from './command.module.css'
 
 export default function CommandPalette({ query, onQuery, onSelect, onClose }) {
@@ -91,7 +91,7 @@ export default function CommandPalette({ query, onQuery, onSelect, onClose }) {
         <p className={styles.cpEmpty}>No commands match "{query}"</p>
       ) : (
         <div className={styles.cpResults} ref={listRef} role="listbox">
-          {displayItems.map((item, di) => {
+          {displayItems.map((item) => {
             if (item.type === 'header') {
               return (
                 <div key={`h-${item.label}`} className={styles.cpGroupHeader}>

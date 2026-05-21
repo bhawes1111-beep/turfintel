@@ -412,7 +412,7 @@ async function handleApi(request, env, url) {
   const tplApplyMatch = pathname.match(/^\/api\/schedule-templates\/([^/]+)\/apply$/)
   if (tplApplyMatch) {
     const id = decodeURIComponent(tplApplyMatch[1])
-    if (method === 'POST') return applyScheduleTemplate(env, id, request)
+    if (method === 'POST') return applyScheduleTemplate(env, id)
   }
 
   // ── /api/schedule-templates ───────────────────────────────────────────

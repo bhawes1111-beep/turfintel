@@ -13,9 +13,9 @@
 //
 // Mutation auth (POST/DELETE) is enforced centrally in worker/index.js.
 
-import { json, badRequest, notFound, readJson } from '../lib/json.js'
+import { json, badRequest, notFound } from '../lib/json.js'
 import { generateId } from '../lib/id.js'
-import { buildCourseFilter, resolveCourseId } from '../lib/scope.js'
+import { buildCourseFilter } from '../lib/scope.js'
 
 const ALLOWED_PARENT_TYPES = new Set([
   'daily_briefing',
@@ -202,7 +202,7 @@ export async function createAttachment(env, request) {
     ).run()
   } catch (err) {
     // Roll back the R2 object so we don't leak storage on metadata failure.
-    try { await env.PHOTOS.delete(r2Key) } catch {}
+    try { await env.PHOTOS.delete(r2Key) } catch { /* best-effort cleanup */ }
     return json({ error: `Metadata insert failed: ${err.message}` }, 500)
   }
 
@@ -222,7 +222,7 @@ export async function deleteAttachment(env, id) {
 
   // Hard-delete the R2 object (storage is the cost driver) then soft-
   // delete the metadata so audit trail survives.
-  try { await env.PHOTOS.delete(row.r2_key) } catch {}
+  try { await env.PHOTOS.delete(row.r2_key) } catch { /* best-effort cleanup */ }
 
   await env.DB.prepare(
     `UPDATE operational_attachments

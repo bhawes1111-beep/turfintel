@@ -355,7 +355,7 @@ export default function BuildSpraySheet() {
     if (typeof localStorage === 'undefined') return
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => {
-      try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)) } catch {}
+      try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)) } catch { /* ignore */ }
     }, 600)
     return () => clearTimeout(saveTimer.current)
   }, [draft])
@@ -591,7 +591,7 @@ export default function BuildSpraySheet() {
   function clearDraft() {
     if (!confirm('Discard the current spray application draft?')) return
     setDraft(makeEmptyDraft())
-    try { localStorage.removeItem(DRAFT_KEY) } catch {}
+    try { localStorage.removeItem(DRAFT_KEY) } catch { /* ignore */ }
   }
 
   // ── Commit pipeline ──────────────────────────────────────────────────
@@ -709,7 +709,7 @@ export default function BuildSpraySheet() {
       }
 
       // 5. Reset draft.
-      try { localStorage.removeItem(DRAFT_KEY) } catch {}
+      try { localStorage.removeItem(DRAFT_KEY) } catch { /* ignore */ }
       setDraft(makeEmptyDraft())
       toast.success(
         `Application committed${deductCount > 0 ? ` · ${deductCount} product${deductCount !== 1 ? 's' : ''} deducted from inventory` : ''}`,

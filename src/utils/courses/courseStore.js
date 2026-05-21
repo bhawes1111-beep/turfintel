@@ -104,7 +104,7 @@ export function getSelectedCourseId() {
 export function setSelectedCourseId(id) {
   if (!id || id === selectedCourseId) return
   selectedCourseId = id
-  try { localStorage.setItem(LS_KEY, id) } catch {}
+  try { localStorage.setItem(LS_KEY, id) } catch { /* ignore */ }
   notifySelected()
   // Tell every vertical store that scope changed — they refresh.
   courseChangeSubscribers.forEach(cb => cb(id))
