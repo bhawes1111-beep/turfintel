@@ -128,6 +128,8 @@ import {
   createWeatherObservation,
   listWeatherHistory,
   getLatestWeather,
+  postWeatherCapture,
+  captureWeatherForAllCourses,
 } from './api/weather.js'
 
 export default {
@@ -144,6 +146,19 @@ export default {
 
     // Defer everything else to the static asset binding.
     return env.ASSETS.fetch(request)
+  },
+
+  // Scheduled (cron) entry point — automatic weather history capture.
+  // Configured in wrangler.jsonc triggers.crons (every 30 min). Each run
+  // stores an Ambient snapshot per course, with window-guard + DB-level
+  // dedup so overlapping/missed ticks never duplicate rows. Best-effort:
+  // failures are logged, never thrown, so a bad tick can't wedge the cron.
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(
+      captureWeatherForAllCourses(env, { intervalMinutes: 30 })
+        .then(r => console.log('[TurfIntel Weather] cron capture:', JSON.stringify(r)))
+        .catch(err => console.warn('[TurfIntel Weather] cron capture error:', err?.message)),
+    )
   },
 }
 
@@ -212,6 +227,14 @@ async function handleApi(request, env, url) {
   // POST is mutation-gated above. Stores one normalized snapshot.
   if (pathname === '/api/weather/observations') {
     if (method === 'POST') return createWeatherObservation(env, request)
+  }
+
+  // ── /api/weather/capture ──────────────────────────────────────────────
+  // Manual trigger of the SAME server-side Ambient capture the cron runs
+  // (for testing + an optional UI button). Mutation-gated above. Honors
+  // the window-guard + dedup, so spamming it won't create duplicates.
+  if (pathname === '/api/weather/capture') {
+    if (method === 'POST') return postWeatherCapture(env, courseId)
   }
 
   // ── /api/equipment ────────────────────────────────────────────────────

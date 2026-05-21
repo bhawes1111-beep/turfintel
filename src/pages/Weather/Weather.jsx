@@ -22,6 +22,7 @@ import {
 } from '../../utils/weather/weatherHistoryStore'
 import { useToast } from '../../utils/feedback/toastContext'
 import { computeSprayConditions } from '../../utils/recommendations/operationalRecommendations'
+import { WEATHER_SOURCE_LABEL, ET_SOURCE_LABEL } from '../../utils/weather/etSourceStore'
 import styles from './Weather.module.css'
 
 const TABS = ['Current Conditions', 'Forecast', 'History']
@@ -279,8 +280,30 @@ function HistoryTab({ weather }) {
     refreshWeatherHistory()
   }
 
+  // Latest saved observation + last capture time (newest-first history).
+  const latest = history[0] ?? null
+
   return (
     <div className={styles.wrap}>
+      {/* Source attribution + automatic-capture status. */}
+      <div className={styles.sourceBar}>
+        <span className={styles.sourceLabel}>Live Weather Source: {WEATHER_SOURCE_LABEL}</span>
+        <span className={styles.sourceMeta}>ET Source: {ET_SOURCE_LABEL}</span>
+      </div>
+
+      <div className={styles.sourceBar}>
+        <span className={styles.sourceLabel}>
+          {latest
+            ? `Latest saved: ${fmt(latest.tempF, { unit: '°F' })}`
+            : 'Automatic capture'}
+        </span>
+        <span className={styles.sourceMeta}>
+          {latest
+            ? `Last capture ${fmtTimestamp(latest.createdAt ?? latest.observedAt)} · auto-captures every 30 min`
+            : 'Snapshots are captured automatically every 30 minutes'}
+        </span>
+      </div>
+
       <div className={styles.historyToolbar}>
         <button
           type="button"
@@ -291,7 +314,7 @@ function HistoryTab({ weather }) {
             ? 'Store a snapshot of the current live weather'
             : 'Live weather not loaded yet'}
         >
-          {capturing ? 'Capturing…' : '+ Capture Current Weather'}
+          {capturing ? 'Capturing…' : '+ Capture Now'}
         </button>
 
         <div className={styles.filterGroup}>
@@ -326,10 +349,9 @@ function HistoryTab({ weather }) {
         <p className={styles.empty}>Loading weather history…</p>
       ) : history.length === 0 ? (
         <p className={styles.empty}>
-          No weather observations captured yet. Click
-          <strong> + Capture Current Weather </strong>
-          to store the first snapshot — each capture becomes a permanent
-          operational record.
+          Weather history will appear after automatic captures begin. Snapshots
+          are saved from {WEATHER_SOURCE_LABEL} every 30 minutes — or use
+          <strong> + Capture Now </strong> to store the first one immediately.
         </p>
       ) : (
         <div className={styles.tableWrap}>

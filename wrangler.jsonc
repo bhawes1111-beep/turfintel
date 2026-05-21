@@ -30,7 +30,16 @@
       "binding": "PHOTOS",
       "bucket_name": "turfintel-photos"
     }
-  ]
+  ],
+
+  // Automatic weather history capture. The worker's scheduled() handler
+  // (worker/index.js) runs every 30 min, fetching an Ambient Weather
+  // snapshot per course into the weather_observations table. Window-guard
+  // + a UNIQUE(course_id, observed_at) partial index prevent duplicates.
+  // Requires the AMBIENT_WEATHER_* secrets to be set (no-op without them).
+  "triggers": {
+    "crons": ["*/30 * * * *"]
+  }
 
   //
   // ──────────────────────────────────────────────────────────────────────

@@ -235,3 +235,163 @@ export async function getLatestWeather(env, courseId) {
   if (!row) return json({ empty: true })
   return json(rowToObservation(row))
 }
+
+// ── Automatic capture (cron + manual trigger) ──────────────────────────────
+//
+// Server-side snapshot: fetch Ambient directly (no browser), map the raw
+// observation to the weather_observations columns, and store it with
+// duplicate protection. ET stays a reference value from the Georgia Weather
+// Network (entered in the UI); raw_json preserves the whole payload.
+
+const CAPTURE_DEVICES_URL = 'https://rt.ambientweather.net/v1/devices'
+
+// Returns { ok, lastData, observedAt } or { ok:false, error } — never throws.
+async function fetchAmbientRaw(env) {
+  const appKey = env.AMBIENT_WEATHER_APPLICATION_KEY
+  const apiKey = env.AMBIENT_WEATHER_API_KEY
+  if (!appKey || !apiKey) return { ok: false, error: 'Ambient keys not configured' }
+
+  const url = `${CAPTURE_DEVICES_URL}?applicationKey=${encodeURIComponent(appKey)}`
+            + `&apiKey=${encodeURIComponent(apiKey)}`
+  let res
+  try {
+    res = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })
+  } catch (err) {
+    return { ok: false, error: `Ambient fetch failed: ${err.message}` }
+  }
+  if (!res.ok) return { ok: false, error: `Ambient API ${res.status}` }
+
+  let devices
+  try { devices = await res.json() } catch { return { ok: false, error: 'Ambient non-JSON' } }
+  if (!Array.isArray(devices) || devices.length === 0) return { ok: false, error: 'No Ambient devices' }
+
+  const device   = devices[0]
+  const lastData = device?.lastData ?? null
+  if (!lastData || typeof lastData.tempf !== 'number') {
+    return { ok: false, error: 'Ambient device has no usable lastData' }
+  }
+  return { ok: true, lastData, observedAt: lastData.date ?? null, deviceName: device?.info?.name ?? null }
+}
+
+function degToDir(deg) {
+  if (typeof deg !== 'number' || !Number.isFinite(deg)) return null
+  const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW']
+  return dirs[Math.round(deg / 22.5) % 16]
+}
+
+// Map Ambient raw lastData → the weather_observations column set.
+function ambientToSnapshot(lastData) {
+  const tempF = numOrNull(lastData.tempf)
+  return {
+    tempF,
+    feelsLikeF: numOrNull(lastData.feelsLike) ?? numOrNull(lastData.feelsLikef),
+    humidity:   numOrNull(lastData.humidity),
+    dewPointF:  numOrNull(lastData.dewPoint) ?? numOrNull(lastData.dewPointf),
+    windMph:    numOrNull(lastData.windspeedmph),
+    windGust:   numOrNull(lastData.windgustmph),
+    windDir:    degToDir(numOrNull(lastData.winddir)),
+    rain24:     numOrNull(lastData.dailyrainin),
+    rainHr:     numOrNull(lastData.hourlyrainin),
+    pressure:   numOrNull(lastData.baromrelin),
+    solar:      numOrNull(lastData.solarradiation),
+    uv:         numOrNull(lastData.uv),
+    frostRisk:  tempF != null && tempF <= 36 ? 1 : 0,
+  }
+}
+
+/**
+ * captureWeatherSnapshot(env, courseId, { intervalMinutes })
+ *
+ * Fetches the current Ambient observation and stores a snapshot, unless a
+ * row for this course was created within the dedup window (window guard).
+ * The DB also enforces a UNIQUE(course_id, observed_at) partial index, so
+ * INSERT OR IGNORE makes identical station readings idempotent.
+ *
+ * Returns a plain result object (used by both the cron handler and the
+ * manual POST route): { stored:boolean, skipped?:string, id?, error? }.
+ */
+export async function captureWeatherSnapshot(env, courseId, { intervalMinutes = 30 } = {}) {
+  if (!env.DB) return { stored: false, error: 'D1 not configured' }
+  const scopedCourse = courseId ?? 'crossroads-gc'
+
+  // Window guard — skip if we already captured recently for this course.
+  const guardMs = Math.max(1, intervalMinutes - 5) * 60 * 1000  // 5-min slack
+  const last = await env.DB.prepare(
+    `SELECT created_at FROM weather_observations
+     WHERE course_id = ? ORDER BY datetime(created_at) DESC LIMIT 1`,
+  ).bind(scopedCourse).first()
+  if (last?.created_at) {
+    const age = Date.now() - new Date(last.created_at.replace(' ', 'T') + 'Z').getTime()
+    if (Number.isFinite(age) && age < guardMs) {
+      return { stored: false, skipped: `recent capture ${Math.round(age / 60000)}m ago` }
+    }
+  }
+
+  const a = await fetchAmbientRaw(env)
+  if (!a.ok) return { stored: false, error: a.error }
+
+  const s  = ambientToSnapshot(a.lastData)
+  const id = generateId('wob')
+
+  const result = await env.DB.prepare(`
+    INSERT OR IGNORE INTO weather_observations (
+      id, course_id, source, observed_at,
+      temp_f, feels_like_f, humidity, dew_point_f,
+      wind_mph, wind_gust_mph, wind_dir,
+      rainfall_today_in, hourly_rain_in, pressure_in, et_in,
+      solar_radiation, uv,
+      disease_pressure, spray_window, frost_risk, raw_json
+    ) VALUES (?, ?, 'ambient_weather', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    id, scopedCourse, a.observedAt,
+    s.tempF, s.feelsLikeF, s.humidity, s.dewPointF,
+    s.windMph, s.windGust, s.windDir,
+    s.rain24, s.rainHr, s.pressure, null,   // et_in: reference ET is GA-Network (entered in UI), not computed here
+    s.solar, s.uv,
+    null, null, s.frostRisk,
+    JSON.stringify(a.lastData),
+  ).run()
+
+  if (result?.meta?.changes === 0) {
+    return { stored: false, skipped: 'duplicate observed_at (unique index)' }
+  }
+  return { stored: true, id, observedAt: a.observedAt }
+}
+
+/**
+ * Cron entry point. Captures a snapshot for every course that has data.
+ * Single-course deployments resolve to the default course. Best-effort:
+ * a failure for one course never aborts the others.
+ */
+export async function captureWeatherForAllCourses(env, { intervalMinutes = 30 } = {}) {
+  if (!env.DB) return { courses: 0, stored: 0 }
+  let courseIds = []
+  try {
+    const { results } = await env.DB.prepare('SELECT id FROM courses').all()
+    courseIds = (results ?? []).map(r => r.id).filter(Boolean)
+  } catch {
+    // courses table absent/empty — fall back to the default course.
+  }
+  if (courseIds.length === 0) courseIds = ['crossroads-gc']
+
+  let stored = 0
+  for (const cid of courseIds) {
+    try {
+      const r = await captureWeatherSnapshot(env, cid, { intervalMinutes })
+      if (r.stored) stored += 1
+    } catch (err) {
+      console.warn(`[TurfIntel Weather] capture failed for ${cid}:`, err?.message)
+    }
+  }
+  return { courses: courseIds.length, stored }
+}
+
+/**
+ * POST /api/weather/capture  (admin-key gated upstream)
+ * Manual trigger of the same server-side capture (for testing + an
+ * optional UI button later). Body/courseId optional.
+ */
+export async function postWeatherCapture(env, courseId) {
+  const result = await captureWeatherSnapshot(env, courseId, { intervalMinutes: 30 })
+  return json(result, result.error ? 502 : 200)
+}
