@@ -1,26 +1,51 @@
-import { ModuleOverview, StatCard, InfoCard, Badge } from '../../../components/shared/ModuleOverview'
+// Cultural Practices Overview — honest empty state.
+//
+// The Cultural Practices tabs read schema-documented arrays in
+// data/culturalPractices.js that are intentionally EMPTY until live records
+// are logged (not yet D1-backed). This overview counts whatever real events
+// exist (currently none) and describes what will appear once aerification /
+// topdressing / verticutting work is recorded — replacing the previous
+// fabricated dates and work-order counts.
+
+import { useMemo } from 'react'
+import {
+  AERIFICATION_EVENTS,
+  TOPDRESS_EVENTS,
+  VERTICUT_EVENTS,
+  CALENDAR_EVENTS,
+} from '../../../data/culturalPractices'
+import { EmptyState } from '../../../components/shared/EmptyState'
+import { ModuleOverview, StatCard, InfoCard } from '../../../components/shared/ModuleOverview'
 
 export default function CulturalPracticesOverview() {
+  const counts = useMemo(() => ({
+    aer:      AERIFICATION_EVENTS.length,
+    topdress: TOPDRESS_EVENTS.length,
+    verticut: VERTICUT_EVENTS.length,
+    upcoming: CALENDAR_EVENTS.length,
+  }), [])
+
+  const hasAny = counts.aer + counts.topdress + counts.verticut + counts.upcoming > 0
+
+  if (!hasAny) {
+    return (
+      <EmptyState
+        icon="🌾"
+        title="No cultural practice records yet"
+        description="Once aerification, topdressing, verticutting, rolling, and mowing work is logged, this overview will show upcoming practices, recent work, and recovery notes. Record events in the practice tabs to begin."
+      />
+    )
+  }
+
   return (
     <ModuleOverview>
-      <StatCard label="Next Aerification" value="May 13"  sub="Greens — 6 days away" color="#5ba8a0" />
-      <StatCard label="Mowing Height"     value='0.125"'  sub="Greens — current setting" />
-      <StatCard label="Last Topdressing"  value="Apr 20"  sub="17 days ago" />
-      <StatCard label="Open Work Orders"  value="4"       color="#d4a43a" sub="Pending scheduling" />
-
-      <InfoCard title="Upcoming Practices" rows={[
-        { label: 'May 13 — Aerification (Greens)',    value: <Badge variant="blue">Planned</Badge> },
-        { label: 'May 20 — Topdressing',              value: <Badge variant="blue">Planned</Badge> },
-        { label: 'May 27 — Verticutting (Fairways)',  value: <Badge variant="blue">Planned</Badge> },
-        { label: 'Rolling',                           value: <Badge variant="green">Biweekly</Badge> },
-      ]} />
-
-      <InfoCard title="Current Programs" rows={[
-        { label: 'Mowing Frequency',       value: 'Daily (Mon – Sat)' },
-        { label: 'Rolling Frequency',      value: 'Tues / Fri' },
-        { label: 'Topdressing Interval',   value: 'Every 4 weeks' },
-        { label: 'Aerification — Greens',  value: '2× per year' },
-        { label: 'Aerification — Fairways',value: '1× per year (fall)' },
+      <StatCard label="Aerification" value={counts.aer} sub="Events logged" />
+      <StatCard label="Topdressing"  value={counts.topdress} sub="Events logged" />
+      <StatCard label="Verticutting" value={counts.verticut} sub="Events logged" />
+      <StatCard label="Upcoming"     value={counts.upcoming} color={counts.upcoming > 0 ? '#5ba8a0' : undefined} sub="On the calendar" />
+      <InfoCard title="Where the detail lives" rows={[
+        { label: 'Recent work & recovery', value: 'Per-practice tabs' },
+        { label: 'Scheduled practices',    value: 'Practice Calendar tab' },
       ]} />
     </ModuleOverview>
   )

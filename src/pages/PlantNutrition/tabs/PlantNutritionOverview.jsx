@@ -1,25 +1,51 @@
-import { ModuleOverview, StatCard, InfoCard, Badge } from '../../../components/shared/ModuleOverview'
+// Plant Nutrition Overview — honest empty state.
+//
+// The Plant Nutrition tabs read schema-documented arrays in
+// data/plantNutrition.js that are intentionally EMPTY until live records
+// are imported (not yet D1-backed). This overview reflects that truth: it
+// counts whatever real records exist (currently none) and describes what
+// will appear here once soil/tissue/water reports and programs are added —
+// rather than the previous fabricated pH/index figures.
+
+import { useMemo } from 'react'
+import {
+  SOIL_REPORTS,
+  TISSUE_REPORTS,
+  WATER_REPORTS,
+  RECOMMENDATIONS,
+} from '../../../data/plantNutrition'
+import { EmptyState } from '../../../components/shared/EmptyState'
+import { ModuleOverview, StatCard, InfoCard } from '../../../components/shared/ModuleOverview'
 
 export default function PlantNutritionOverview() {
+  const counts = useMemo(() => ({
+    soil:   SOIL_REPORTS.length,
+    tissue: TISSUE_REPORTS.length,
+    water:  WATER_REPORTS.length,
+    recs:   RECOMMENDATIONS.length,
+  }), [])
+
+  const hasAny = counts.soil + counts.tissue + counts.water + counts.recs > 0
+
+  if (!hasAny) {
+    return (
+      <EmptyState
+        icon="🌱"
+        title="No nutrition records yet"
+        description="Once soil, tissue, and water reports are imported, this overview will show active programs, recent nutrients applied, nitrogen totals, open recommendations, and upcoming applications. Import lab reports from the Upload Center to begin."
+      />
+    )
+  }
+
   return (
     <ModuleOverview>
-      <StatCard label="Soil pH"            value="6.4"      sub="Target: 6.0 – 6.8" color="#4ecb4e" />
-      <StatCard label="Nitrogen Index"     value="Adequate" sub="No deficiency noted" color="#4ecb4e" />
-      <StatCard label="Pending Recs"       value="2"        color="#d4a43a" sub="Awaiting action" />
-      <StatCard label="Last Soil Test"     value="Mar 15"   sub="Next due: June" />
-
-      <InfoCard title="Open Recommendations" rows={[
-        { label: 'Increase K on fairways (low K index)',  value: <Badge variant="yellow">Pending</Badge> },
-        { label: 'Foliar Mn — greens showing pale tips',  value: <Badge variant="yellow">Pending</Badge> },
-        { label: 'pH adjustment — tee boxes slightly high',value: <Badge variant="green">Resolved</Badge> },
-      ]} />
-
-      <InfoCard title="Recent & Upcoming" rows={[
-        { label: 'Last Foliar Feed',      value: 'May 1 — Greens (N+K)' },
-        { label: 'Next Scheduled',        value: 'May 9 — Foliar Feed Greens' },
-        { label: 'Soil Sample Collection',value: 'May 22' },
-        { label: 'Last Water Report',     value: 'April 28' },
-        { label: 'Tissue Report Status',  value: 'Awaiting results' },
+      <StatCard label="Soil Reports"   value={counts.soil} sub="On file" />
+      <StatCard label="Tissue Reports" value={counts.tissue} sub="On file" />
+      <StatCard label="Water Reports"  value={counts.water} sub="On file" />
+      <StatCard label="Open Recs"      value={counts.recs} color={counts.recs > 0 ? '#d4a43a' : undefined} sub="Recommendations" />
+      <InfoCard title="Programs & applications" rows={[
+        { label: 'Recent nutrients applied', value: 'See Recommendations tab' },
+        { label: 'Lab reports',              value: 'Soil / Tissue / Water tabs' },
       ]} />
     </ModuleOverview>
   )
