@@ -13,6 +13,7 @@
 // Both default to status='active' server-side (archived rows hidden).
 
 import { useSyncExternalStore } from 'react'
+import { mutationHeaders } from '../auth/mutationAuth'
 import {
   withCourseScope,
   subscribeCourseChange,
@@ -21,14 +22,6 @@ import {
 
 const API = '/api/operations-notes'
 
-const ADMIN_KEY = 'TurfAdmin2025!'
-
-function mutationHeaders() {
-  return {
-    'Content-Type': 'application/json',
-    'x-admin-key':  ADMIN_KEY,
-  }
-}
 
 let state = {
   notes:     [],

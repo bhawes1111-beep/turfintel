@@ -6,6 +6,7 @@
 // course change.
 
 import { useSyncExternalStore } from 'react'
+import { mutationHeaders } from '../auth/mutationAuth'
 import {
   withCourseScope,
   subscribeCourseChange,
@@ -14,14 +15,6 @@ import {
 
 const API = '/api/employee-schedules'
 
-const ADMIN_KEY = 'TurfAdmin2025!'
-
-function mutationHeaders() {
-  return {
-    'Content-Type': 'application/json',
-    'x-admin-key':  ADMIN_KEY,
-  }
-}
 
 let state = {
   schedules: [],

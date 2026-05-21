@@ -5,6 +5,7 @@
 // reflects the new state immediately.
 
 import { useSyncExternalStore } from 'react'
+import { mutationHeaders } from '../auth/mutationAuth'
 import {
   withCourseScope,
   subscribeCourseChange,
@@ -14,14 +15,6 @@ import { refreshEmployeeSchedulesData } from './schedulesStore'
 
 const API = '/api/schedule-templates'
 
-const ADMIN_KEY = 'TurfAdmin2025!'
-
-function mutationHeaders() {
-  return {
-    'Content-Type': 'application/json',
-    'x-admin-key':  ADMIN_KEY,
-  }
-}
 
 let state = {
   templates: [],

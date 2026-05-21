@@ -14,16 +14,11 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { withCourseScope, getSelectedCourseId } from '../courses/courseStore'
+// Uploads are multipart — use the key-only header so the browser sets the
+// multipart/form-data boundary itself (no Content-Type). Centralized in R3.
+import { adminKeyHeader } from '../auth/mutationAuth'
 
 const API = '/api/attachments'
-
-const ADMIN_KEY = 'TurfAdmin2025!'
-
-function mutationHeaders() {
-  // NOTE: don't set Content-Type — let the browser set the
-  // multipart/form-data boundary when uploading.
-  return { 'x-admin-key': ADMIN_KEY }
-}
 
 async function fetchJSON(url, init) {
   const res = await fetch(url, init)
@@ -60,7 +55,7 @@ export async function uploadAttachment({ parentType, parentId, file, caption, up
 
   const res = await fetch(API, {
     method:  'POST',
-    headers: mutationHeaders(),
+    headers: adminKeyHeader(),
     body:    fd,
   })
   if (!res.ok) {
@@ -75,7 +70,7 @@ export async function deleteAttachment(id) {
   const url = `${API}/${encodeURIComponent(id)}`
   const res = await fetch(url, {
     method:  'DELETE',
-    headers: mutationHeaders(),
+    headers: adminKeyHeader(),
   })
   if (!res.ok) {
     const text = await res.text().catch(() => '')

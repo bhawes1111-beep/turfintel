@@ -5,6 +5,7 @@
 // mutations that re-fetch on failure. Course-scoped.
 
 import { useSyncExternalStore } from 'react'
+import { mutationHeaders } from '../auth/mutationAuth'
 import {
   withCourseScope,
   subscribeCourseChange,
@@ -13,14 +14,6 @@ import {
 
 const API = '/api/pilot-feedback'
 
-const ADMIN_KEY = 'TurfAdmin2025!'
-
-function mutationHeaders() {
-  return {
-    'Content-Type': 'application/json',
-    'x-admin-key':  ADMIN_KEY,
-  }
-}
 
 let state = {
   feedback:  [],

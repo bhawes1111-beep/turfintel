@@ -9,17 +9,10 @@
 
 import { useSyncExternalStore } from 'react'
 import { withCourseScope, subscribeCourseChange, getSelectedCourseId } from '../courses/courseStore'
+import { mutationHeaders } from '../auth/mutationAuth'
 
 const API = '/api/repairs'
 
-const ADMIN_KEY = 'TurfAdmin2025!'
-
-function mutationHeaders() {
-  return {
-    'Content-Type': 'application/json',
-    'x-admin-key':  ADMIN_KEY,
-  }
-}
 
 let state = {
   repairs:   [],

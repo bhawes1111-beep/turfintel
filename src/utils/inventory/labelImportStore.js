@@ -24,20 +24,12 @@ import {
 } from '../courses/courseStore'
 import { uploadAttachment, deleteAttachment } from '../attachments/attachmentsStore'
 import { refreshInventoryData } from './inventoryStore'
+import { mutationHeaders } from '../auth/mutationAuth'
 
 const API = '/api/inventory/import-label'
 
-const ADMIN_KEY = 'TurfAdmin2025!'
-
 // Mirrors the worker's MAX_FILE_BYTES in attachments.js.
 export const MAX_PDF_BYTES = 8 * 1024 * 1024
-
-function mutationHeaders() {
-  return {
-    'Content-Type': 'application/json',
-    'x-admin-key':  ADMIN_KEY,
-  }
-}
 
 async function fetchJSON(url, init) {
   const res = await fetch(url, init)

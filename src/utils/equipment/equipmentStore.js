@@ -14,26 +14,12 @@
 
 import { useSyncExternalStore } from 'react'
 import { withCourseScope, subscribeCourseChange, getSelectedCourseId } from '../courses/courseStore'
+// Phase 5.1b mutation auth — centralized in R3. See src/utils/auth/mutationAuth.js.
+import { mutationHeaders } from '../auth/mutationAuth'
 
 const API = {
   equipment:   '/api/equipment',
   maintenance: '/api/maintenance',
-}
-
-// Phase 5.1b — mutation auth.
-//
-// Single shared admin key carried on every POST/PATCH/DELETE. This is
-// "obscurity, not security" — the key is bundled into the public SPA,
-// so anyone inspecting the network can read it. It does, however,
-// prevent casual unauthenticated requests against the Worker API.
-// Real per-user auth is a future phase.
-const ADMIN_KEY = 'TurfAdmin2025!'
-
-function mutationHeaders() {
-  return {
-    'Content-Type': 'application/json',
-    'x-admin-key':  ADMIN_KEY,
-  }
 }
 
 let state = {
