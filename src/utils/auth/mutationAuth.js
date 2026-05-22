@@ -1,34 +1,39 @@
-// Shared mutation auth (audit R3).
+// Shared mutation auth — Phase 3C (session cutover, in progress).
 //
-// Centralizes the admin key + mutation headers that were previously
-// duplicated verbatim across 16 stores. Behavior is preserved exactly:
+// HISTORY: this module used to attach the shared `x-admin-key` header (the
+// public ADMIN_KEY) to every browser mutation. Phase 3 moves browser
+// mutations to SESSION-COOKIE auth: the httpOnly `ti_session` cookie rides
+// along automatically when a request sets `credentials: 'same-origin'`, and
+// the Worker gate enforces the logged-in user's role/permissions.
 //
-//   - ADMIN_KEY        — the single shared key, sent as the x-admin-key
-//     header on every POST/PATCH/DELETE. This is "obscurity, not security"
-//     (the key ships in the public bundle); the Worker's central auth gate
-//     rejects mutations without it. To rotate, change it HERE and run
-//     `wrangler secret put ADMIN_KEY` — previously this meant editing 16
-//     files.
+// During the cutover the helpers below stay (so the ~21 imports keep
+// resolving) but NO LONGER emit the key:
 //
-//   - mutationHeaders() — JSON mutation headers (Content-Type +
-//     x-admin-key). The standard variant used by 15 stores.
+//   - mutationHeaders() — JSON headers ONLY ({ 'Content-Type': ... }). No key.
+//   - adminKeyHeader()  — now returns {} (multipart callers add nothing; the
+//     browser still sets the multipart boundary itself).
+//   - sessionInit()     — the credentials default for mutation fetches.
 //
-//   - adminKeyHeader()  — key only, NO Content-Type. Used for multipart
-//     uploads (attachments) where the browser must set the
-//     multipart/form-data boundary itself.
+// Stores must additionally pass `credentials: 'same-origin'` on their mutation
+// fetches (or merge sessionInit()) so the session cookie is sent.
 //
-// No state, no fetching — pure header construction. Importing this does not
-// create a new state layer.
+// ADMIN_KEY remains accepted SERVER-SIDE as a fallback during the transition,
+// but the browser no longer sends it. The legacy constant export below is
+// retained only until Phase 3D removes it; it is no longer used by any helper.
 
-export const ADMIN_KEY = 'TurfAdmin2025!'
+export const ADMIN_KEY = 'TurfAdmin2025!'   // legacy; unused by helpers, removed in Phase 3D
 
+/** JSON mutation headers — session cookie carries auth, no key header. */
 export function mutationHeaders() {
-  return {
-    'Content-Type': 'application/json',
-    'x-admin-key':  ADMIN_KEY,
-  }
+  return { 'Content-Type': 'application/json' }
 }
 
+/** Multipart callers: no headers (browser sets the multipart boundary). */
 export function adminKeyHeader() {
-  return { 'x-admin-key': ADMIN_KEY }
+  return {}
+}
+
+/** Fetch init fragment that sends the httpOnly session cookie. */
+export function sessionInit() {
+  return { credentials: 'same-origin' }
 }
