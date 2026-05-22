@@ -119,5 +119,44 @@ function assert(cond, label, ctx) {
   assert(core(workerSrc) === core(clientSrc), 'client permission matrix is byte-identical to worker core')
 }
 
+// ── Actor helpers (worker/lib/actor.js) ─────────────────────────────────────
+{
+  const { actorHasPermission, actorCanAccessCourse, isAutomationActor } =
+    await import('../worker/lib/actor.js')
+
+  // actorHasPermission threads through the matrix.
+  assert(actorHasPermission({ role: 'owner_admin' }, 'canViewPrivateNotes'), 'actor: owner has private notes')
+  assert(actorHasPermission({ role: 'superintendent' }, 'canViewPrivateNotes'), 'actor: super has private notes')
+  assert(!actorHasPermission({ role: 'crew' }, 'canViewPrivateNotes'), 'actor: crew lacks private notes')
+  assert(!actorHasPermission(null, 'canViewPrivateNotes'), 'actor: null lacks everything')
+  assert(actorHasPermission({ role: 'assistant_super', view_private_notes: 1 }, 'canViewPrivateNotes'), 'actor: override grants private notes')
+
+  // isAutomationActor distinguishes ADMIN_KEY from real users.
+  assert(isAutomationActor({ role: 'owner_admin', automation: true }), 'actor: ADMIN_KEY actor is automation')
+  assert(!isAutomationActor({ role: 'owner_admin' }), 'actor: real owner is not automation')
+  assert(!isAutomationActor(null), 'actor: null is not automation')
+
+  // actorCanAccessCourse — admin/super all; restricted only their list; null=all.
+  assert(actorCanAccessCourse({ role: 'owner_admin' }, 'any'), 'course: owner accesses all')
+  assert(actorCanAccessCourse({ role: 'superintendent' }, 'any'), 'course: super accesses all')
+  assert(actorCanAccessCourse({ role: 'crew', course_access: null }, 'x'), 'course: null access = all')
+  assert(actorCanAccessCourse({ role: 'crew', course_access: '["a","b"]' }, 'a'), 'course: crew accesses listed')
+  assert(!actorCanAccessCourse({ role: 'crew', course_access: '["a"]' }, 'b'), 'course: crew denied unlisted')
+  assert(!actorCanAccessCourse(null, 'a'), 'course: null actor denied')
+  assert(actorCanAccessCourse({ role: 'crew', course_access: '["a"]' }, null), 'course: null courseId is unscoped-ok')
+}
+
+// ── Condition-log serializer: private_notes is OMITTED, not nulled ──────────
+{
+  const src = readFileSync('worker/api/conditionLog.js', 'utf8')
+  // rowToLog must take the canViewPrivate flag and only attach privateNotes
+  // when it is true (omission, never a null/'' placeholder).
+  assert(/function rowToLog\(row, canViewPrivate/.test(src), 'rowToLog takes canViewPrivate flag')
+  assert(/if \(canViewPrivate\) out\.privateNotes/.test(src), 'rowToLog attaches privateNotes only when authorized')
+  // The read paths must thread the flag (not call rowToLog bare).
+  assert(/rowToLog\(r, canViewPrivate\)/.test(src), 'list path threads canViewPrivate')
+  assert(/rowToLog\(row, canViewPrivate\)/.test(src), 'by-date / by-id path threads canViewPrivate')
+}
+
 console.log(`\n${passed} passed, ${failed} failed`)
 process.exit(failed === 0 ? 0 : 1)

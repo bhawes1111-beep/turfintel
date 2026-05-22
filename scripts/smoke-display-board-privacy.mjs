@@ -82,5 +82,20 @@ function assert(cond, label, ctx) {
   assert(tab.includes('delete payload.privateNotes'), 'ConditionLogTab strips privateNotes from unauthorized save')
 }
 
+// ── 4. SERVER-SIDE private_notes enforcement (Phase 2 P1) ──────────────────
+{
+  // The API gate must resolve the actor and pass canViewPrivateNotes into the
+  // condition-log reads — so private_notes is stripped server-side, not just
+  // hidden in the UI.
+  const idx = readFileSync('worker/index.js', 'utf8')
+  assert(idx.includes("actorHasPermission(actor, 'canViewPrivateNotes')"), 'worker resolves canViewPrivateNotes for condition-log reads')
+  assert(/listConditionLogs\(env, courseId, \{ days \}, canViewPrivate\)/.test(idx), 'list read threads canViewPrivate')
+  assert(/getConditionLogByDate\(env, courseId, date, canViewPrivate\)/.test(idx), 'by-date read threads canViewPrivate')
+
+  // The serializer omits the field for unauthorized actors.
+  const api = readFileSync('worker/api/conditionLog.js', 'utf8')
+  assert(/if \(canViewPrivate\) out\.privateNotes = row\.private_notes/.test(api), 'serializer omits privateNotes unless authorized')
+}
+
 console.log(`\n${passed} passed, ${failed} failed`)
 process.exit(failed === 0 ? 0 : 1)

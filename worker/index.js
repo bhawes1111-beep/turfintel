@@ -182,6 +182,7 @@ import {
   createUser,
   updateUser,
 } from './api/users.js'
+import { resolveActor, actorHasPermission } from './lib/actor.js'
 
 export default {
   async fetch(request, env, ctx) {
@@ -356,18 +357,28 @@ async function handleApi(request, env, url) {
   if (pathname === '/api/condition-logs/by-date') {
     if (method === 'GET') {
       const date = url.searchParams.get('date') || null
-      return getConditionLogByDate(env, courseId, date)
+      const actor = await resolveActor(request, env)
+      const canViewPrivate = actorHasPermission(actor, 'canViewPrivateNotes')
+      return getConditionLogByDate(env, courseId, date, canViewPrivate)
     }
   }
 
   // ── /api/condition-logs ───────────────────────────────────────────────
   // Superintendent's structured daily field log (one per course/date).
+  // private_notes is stripped server-side unless the resolved actor has
+  // canViewPrivateNotes (owner_admin / superintendent / override / ADMIN_KEY).
   if (pathname === '/api/condition-logs') {
     if (method === 'GET') {
       const days = url.searchParams.get('days') || null
-      return listConditionLogs(env, courseId, { days })
+      const actor = await resolveActor(request, env)
+      const canViewPrivate = actorHasPermission(actor, 'canViewPrivateNotes')
+      return listConditionLogs(env, courseId, { days }, canViewPrivate)
     }
-    if (method === 'POST') return upsertConditionLog(env, request)   // upsert
+    if (method === 'POST') {
+      const actor = await resolveActor(request, env)
+      const canViewPrivate = actorHasPermission(actor, 'canViewPrivateNotes')
+      return upsertConditionLog(env, request, canViewPrivate)   // upsert
+    }
   }
 
   // ── /api/condition-logs/:id ───────────────────────────────────────────

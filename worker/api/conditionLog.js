@@ -26,9 +26,14 @@ const FIELDS = {
   privateNotes:       'private_notes',
 }
 
-function rowToLog(row) {
+// rowToLog — serialize a condition-log row. `canViewPrivate` gates the
+// superintendent-only private_notes field: when false, the field is OMITTED
+// entirely (not null, not ''), so an unauthorized requester receives a log
+// object with no privateNotes key at all. Enforcement lives here, in the
+// serializer, so every read path is covered uniformly.
+function rowToLog(row, canViewPrivate = false) {
   if (!row) return null
-  return {
+  const out = {
     id:                 row.id,
     courseId:           row.course_id,
     logDate:            row.log_date,
@@ -44,27 +49,32 @@ function rowToLog(row) {
     irrigationConcerns: row.irrigation_concerns,
     playabilityNotes:   row.playability_notes,
     followupNotes:      row.followup_notes,
-    privateNotes:       row.private_notes,
     createdAt:          row.created_at,
     updatedAt:          row.updated_at,
   }
+  if (canViewPrivate) out.privateNotes = row.private_notes
+  return out
 }
 
 // ── List + Get-by-date ──────────────────────────────────────────────────────
 
-/** GET /api/condition-logs?courseId=...&days=N  — newest first. */
-export async function listConditionLogs(env, courseId, opts = {}) {
+/**
+ * GET /api/condition-logs?courseId=...&days=N  — newest first.
+ * `canViewPrivate` (resolved from the actor in worker/index.js) gates the
+ * private_notes field per-row via the serializer.
+ */
+export async function listConditionLogs(env, courseId, opts = {}, canViewPrivate = false) {
   if (!env.DB) return json([])
   const { where, binds } = buildCourseFilter(courseId)
   const limit = Math.min(Math.max(parseInt(opts.days, 10) || 60, 1), 365)
   const { results } = await env.DB.prepare(
     `SELECT * FROM course_condition_logs ${where} ORDER BY log_date DESC LIMIT ${limit}`,
   ).bind(...binds).all()
-  return json((results ?? []).map(rowToLog))
+  return json((results ?? []).map(r => rowToLog(r, canViewPrivate)))
 }
 
 /** GET /api/condition-logs/by-date?courseId=...&date=YYYY-MM-DD */
-export async function getConditionLogByDate(env, courseId, date) {
+export async function getConditionLogByDate(env, courseId, date, canViewPrivate = false) {
   if (!env.DB) return json({ empty: true })
   if (!date) return badRequest('date is required')
   const scoped = courseId ?? 'crossroads-gc'
@@ -72,7 +82,7 @@ export async function getConditionLogByDate(env, courseId, date) {
     'SELECT * FROM course_condition_logs WHERE course_id = ? AND log_date = ?',
   ).bind(scoped, date).first()
   if (!row) return json({ empty: true })
-  return json(rowToLog(row))
+  return json(rowToLog(row, canViewPrivate))
 }
 
 // ── Upsert (one log per course/date) ────────────────────────────────────────
@@ -82,7 +92,7 @@ export async function getConditionLogByDate(env, courseId, date) {
  * Body: { courseId?, logDate?, ...fields }. Upserts on (course_id, log_date):
  * re-saving the same date UPDATEs the existing record in place.
  */
-export async function upsertConditionLog(env, request) {
+export async function upsertConditionLog(env, request, canViewPrivate = false) {
   if (!env.DB) return json({ error: 'D1 not configured' }, 503)
   const body     = await readJson(request)
   const courseId = resolveCourseId(body)
@@ -102,7 +112,7 @@ export async function upsertConditionLog(env, request) {
     await env.DB.prepare(
       `UPDATE course_condition_logs SET ${setClause}, updated_at = datetime('now') WHERE id = ?`,
     ).bind(...vals, existing.id).run()
-    return getConditionLogById(env, existing.id)
+    return getConditionLogById(env, existing.id, canViewPrivate)
   }
 
   const id = body.id ?? generateId('ccl')
@@ -111,15 +121,15 @@ export async function upsertConditionLog(env, request) {
     `INSERT INTO course_condition_logs (id, course_id, log_date, ${cols.join(', ')})
      VALUES (?, ?, ?, ${placeholders})`,
   ).bind(id, courseId, logDate, ...vals).run()
-  return getConditionLogById(env, id)
+  return getConditionLogById(env, id, canViewPrivate)
 }
 
-async function getConditionLogById(env, id) {
+async function getConditionLogById(env, id, canViewPrivate = false) {
   const row = await env.DB.prepare(
     'SELECT * FROM course_condition_logs WHERE id = ?',
   ).bind(id).first()
   if (!row) return notFound('Condition log not found')
-  return json(rowToLog(row))
+  return json(rowToLog(row, canViewPrivate))
 }
 
 export async function deleteConditionLog(env, id) {
