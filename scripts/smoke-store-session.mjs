@@ -23,6 +23,12 @@ const MIGRATED = [
   'src/utils/moisture/moistureStore.js',
   'src/utils/disease/diseaseStore.js',
   'src/utils/nutrition/nutritionStore.js',
+  // 3C-2
+  'src/utils/culturalPractices/culturalPracticesStore.js',
+  'src/utils/calendar/calendarStore.js',
+  'src/utils/assignments/assignmentsStore.js',
+  'src/utils/schedules/schedulesStore.js',
+  'src/utils/schedules/templatesStore.js',
 ]
 
 // ── Per migrated store: session creds, no key header, no hardcoded key ──────
