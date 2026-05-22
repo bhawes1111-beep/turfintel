@@ -174,6 +174,51 @@ function buildAttentionBullets(attentionItems) {
   return { bullets, hasData: true }
 }
 
+// ── Morning Brief v2 section builders ───────────────────────────────────
+//
+// Course Status reads ONLY the crew-safe condition-log fields (ratings +
+// summaries). The superintendent-only condition-log note field is
+// intentionally never read here — the brief and its Send-to-Display-Board
+// path must never carry private superintendent content.
+
+function buildCourseStatusBullets(conditionLog) {
+  const bullets = []
+  if (!conditionLog || conditionLog.empty) return { bullets, hasData: false }
+  const c = conditionLog
+  if (c.overallRating) bullets.push(`Overall: ${c.overallRating}`)
+  const sections = [
+    ['Greens',   c.greensCondition],
+    ['Tees',     c.teesCondition],
+    ['Fairways', c.fairwaysCondition],
+    ['Bunkers',  c.bunkersCondition],
+    ['Rough',    c.roughCondition],
+  ].filter(([, v]) => v)
+  if (sections.length > 0) bullets.push(sections.map(([k, v]) => `${k} ${v}`).join(' · '))
+  if (c.playabilityNotes) bullets.push(c.playabilityNotes)
+  return { bullets, hasData: bullets.length > 0 }
+}
+
+function buildWatchAreaBullets(watchAreas) {
+  const bullets = []
+  if (!Array.isArray(watchAreas) || watchAreas.length === 0) return { bullets, hasData: false }
+  for (const a of watchAreas) {
+    if (!a?.location) continue
+    const flags = Array.isArray(a.flags) && a.flags.length ? ` — ${a.flags.join(', ')}` : ''
+    bullets.push(`${a.location}${flags}`)
+  }
+  return { bullets, hasData: bullets.length > 0 }
+}
+
+function buildWeatherImpactBullets(impacts) {
+  const bullets = []
+  if (!Array.isArray(impacts) || impacts.length === 0) return { bullets, hasData: false }
+  for (const im of impacts) {
+    if (!im?.label) continue
+    bullets.push(`${im.label}${im.detail ? ` · ${im.detail}` : ''}`)
+  }
+  return { bullets, hasData: bullets.length > 0 }
+}
+
 // ── Plain-text serializer ───────────────────────────────────────────────
 
 function serialize(brief) {
@@ -190,9 +235,12 @@ function serialize(brief) {
     lines.push('')
   }
 
+  pushSection('Course Status',    brief.courseStatus)
   pushSection('Conditions',       brief.weatherSummary)
+  pushSection('Weather Impacts',  brief.weatherImpacts)
   pushSection('Operations',       brief.operationsSummary)
   pushSection('Crew',             brief.crewSummary)
+  pushSection('Watch Areas',      brief.watchAreas)
   pushSection('Sprays',           brief.spraySummary)
   pushSection('Equipment',        brief.equipmentSummary)
   pushSection('Priorities',       brief.priorities)
@@ -219,9 +267,12 @@ export function buildMorningBrief(snapshot = {}, meta = {}) {
   const brief = {
     generatedAt,
     courseName,
+    courseStatus:      buildCourseStatusBullets(snapshot.conditionLog),
     weatherSummary:    buildWeatherSummary(snapshot.weatherCurrent, snapshot.cartStatus),
+    weatherImpacts:    buildWeatherImpactBullets(snapshot.weatherImpacts),
     operationsSummary: buildOperationsSummaryBullets(snapshot.cartStatus, snapshot.todayNote),
     crewSummary:       buildCrewSummaryBullets(snapshot.crewSnapshot),
+    watchAreas:        buildWatchAreaBullets(snapshot.watchAreas),
     spraySummary:      buildSpraySummaryBullets(snapshot.spraySchedule),
     equipmentSummary:  buildEquipmentSummaryBullets(snapshot.equipmentAlerts),
     priorities:        buildPriorityBullets(snapshot.priorities),
@@ -254,9 +305,12 @@ export function buildBriefCsvRows(brief) {
   }
   rows.push(['header', brief.courseName ?? 'Morning Operations Brief'])
   rows.push(['header', `Generated ${brief.generatedAt}`])
+  push('Course Status',   brief.courseStatus?.bullets)
   push('Conditions',      brief.weatherSummary?.bullets)
+  push('Weather Impacts', brief.weatherImpacts?.bullets)
   push('Operations',      brief.operationsSummary?.bullets)
   push('Crew',            brief.crewSummary?.bullets)
+  push('Watch Areas',     brief.watchAreas?.bullets)
   push('Sprays',          brief.spraySummary?.bullets)
   push('Equipment',       brief.equipmentSummary?.bullets)
   push('Priorities',      brief.priorities?.bullets)
