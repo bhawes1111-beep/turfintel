@@ -158,5 +158,79 @@ function assert(cond, label, ctx) {
   assert(/rowToLog\(row, canViewPrivate\)/.test(src), 'by-date / by-id path threads canViewPrivate')
 }
 
+// ── Mutation permission map (Phase 2 P2 — worker/lib/mutationPermissions.js) ─
+{
+  const { isMutationAllowed } = await import('../worker/lib/mutationPermissions.js')
+  const owner = { role: 'owner_admin' }
+  const key   = { role: 'owner_admin', automation: true }
+  const sup   = { role: 'superintendent' }
+  const asst  = { role: 'assistant_super' }
+  const lead  = { role: 'crew_lead' }
+  const crew  = { role: 'crew' }
+  const ro    = { role: 'read_only' }
+  const P = (a, path, m = 'POST', body = null) => isMutationAllowed(a, path, m, body)
+
+  // owner_admin + ADMIN_KEY pass everything mapped.
+  for (const path of ['/api/disease', '/api/sprays', '/api/inventory', '/api/equipment', '/api/courses', '/api/operations-notes']) {
+    assert(P(owner, path), `owner allowed ${path}`)
+    assert(P(key, path), `ADMIN_KEY allowed ${path}`)
+  }
+
+  // superintendent: full operational, but NOT courses (system-owner only).
+  for (const path of ['/api/disease', '/api/sprays', '/api/nutrition', '/api/cultural-practices', '/api/moisture', '/api/condition-logs', '/api/equipment', '/api/operations-notes', '/api/calendar-events']) {
+    assert(P(sup, path), `super allowed ${path}`)
+  }
+  assert(!P(sup, '/api/courses'), 'super DENIED /api/courses')
+
+  // assistant_super: operational edits, no courses.
+  assert(P(asst, '/api/disease') && P(asst, '/api/sprays') && P(asst, '/api/equipment'), 'assistant allowed operational')
+  assert(!P(asst, '/api/courses'), 'assistant DENIED /api/courses')
+
+  // crew_lead: moisture yes; sprays/disease/condition-logs/nutrition no.
+  assert(P(lead, '/api/moisture'), 'crew_lead allowed /api/moisture')
+  for (const path of ['/api/sprays', '/api/disease', '/api/condition-logs', '/api/nutrition']) {
+    assert(!P(lead, path), `crew_lead DENIED ${path}`)
+  }
+
+  // crew: blocked from restricted mutations.
+  for (const path of ['/api/sprays', '/api/disease', '/api/nutrition', '/api/condition-logs', '/api/moisture', '/api/inventory', '/api/equipment']) {
+    assert(!P(crew, path), `crew DENIED ${path}`)
+  }
+
+  // read_only: blocked from all mapped mutations.
+  for (const path of ['/api/sprays', '/api/disease', '/api/moisture', '/api/condition-logs', '/api/cultural-practices', '/api/operations-notes']) {
+    assert(!P(ro, path), `read_only DENIED ${path}`)
+  }
+
+  // Prefix precedence: /api/inventory/usage + /import-label resolve to inventory.
+  assert(P(sup, '/api/inventory/usage') && !P(crew, '/api/inventory/usage'), 'inventory/usage inherits canEditInventory')
+  assert(P(sup, '/api/inventory/import-label/save') && !P(crew, '/api/inventory/import-label/save'), 'import-label inherits canEditInventory')
+
+  // operations-notes → canSendCrewNotes (super has it; crew does not).
+  assert(P(sup, '/api/operations-notes') && !P(crew, '/api/operations-notes'), 'operations-notes → canSendCrewNotes')
+
+  // weather/capture + water-balance/rollup → canManageCourses or ADMIN_KEY.
+  assert(P(key, '/api/weather/capture') && !P(crew, '/api/weather/capture'), 'weather/capture admin/key only')
+  assert(P(key, '/api/water-balance/rollup') && !P(sup, '/api/water-balance/rollup'), 'water-balance/rollup admin/key only (super lacks canManageCourses)')
+
+  // crew-assignments special case: status-only PATCH vs full edit / create / delete.
+  assert(P(crew, '/api/crew-assignments/x', 'PATCH', { status: 'done' }), 'crew status-only PATCH allowed')
+  assert(P(crew, '/api/crew-assignments/x', 'PATCH', { status: 'done', id: 'x' }), 'crew status+id PATCH allowed')
+  assert(!P(crew, '/api/crew-assignments/x', 'PATCH', { taskName: 'z' }), 'crew full-edit PATCH denied')
+  assert(!P(crew, '/api/crew-assignments', 'POST', { employeeName: 'X' }), 'crew create assignment denied')
+  assert(!P(crew, '/api/crew-assignments/x', 'DELETE'), 'crew DELETE assignment denied')
+  assert(P(sup, '/api/crew-assignments/x', 'PATCH', { taskName: 'z' }), 'super full-edit PATCH allowed')
+  assert(!P(ro, '/api/crew-assignments/x', 'PATCH', { status: 'done' }), 'read_only status-only PATCH denied')
+  assert(P(lead, '/api/crew-assignments/x', 'PATCH', { status: 'done' }), 'crew_lead status-only PATCH allowed')
+
+  // attachments: any operational-edit perm passes; crew (no edit perms) does not.
+  assert(P(sup, '/api/attachments') && P(key, '/api/attachments'), 'attachments allowed for editor/key')
+  assert(!P(crew, '/api/attachments'), 'attachments denied for crew (no edit perm)')
+
+  // unmapped → any authenticated passes; null actor never.
+  assert(P(crew, '/api/pilot-feedback'), 'unmapped route allows authenticated')
+  assert(!isMutationAllowed(null, '/api/disease', 'POST'), 'null actor never allowed')
+}
+
 console.log(`\n${passed} passed, ${failed} failed`)
 process.exit(failed === 0 ? 0 : 1)

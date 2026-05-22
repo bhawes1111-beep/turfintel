@@ -175,7 +175,6 @@ import {
   login,
   logout,
   me,
-  resolveSession,
 } from './api/auth.js'
 import {
   listUsers,
@@ -183,6 +182,7 @@ import {
   updateUser,
 } from './api/users.js'
 import { resolveActor, actorHasPermission } from './lib/actor.js'
+import { isMutationAllowed, ruleNeedsBody } from './lib/mutationPermissions.js'
 
 export default {
   async fetch(request, env, ctx) {
@@ -260,20 +260,30 @@ async function handleApi(request, env, url) {
   if (pathname === '/api/auth/logout' && method === 'POST') return logout(env, request)
   if (pathname === '/api/auth/me'     && method === 'GET')  return me(env, request)
 
-  // ── Mutation auth gate (Phase 5.1b + auth foundation) ───────────────
+  // ── Mutation auth + permission gate (Phase 2 P2) ────────────────────
   // Every POST/PATCH/DELETE must be authorized by EITHER a valid session
-  // cookie OR the x-admin-key header. GETs remain public. ADMIN_KEY stays
-  // fully valid (internal tools, cron, transition) — sessions are added
-  // alongside it, not in place of it. The gate runs before the D1 check so
-  // an unauthenticated mutation rejects with 401 even if D1 is unbound.
+  // cookie OR the x-admin-key header (401 otherwise). GETs remain public.
+  //
+  // ADMIN_KEY stays fully valid (cron, internal tools, transition) and maps to
+  // a synthetic owner_admin that passes every check. A session actor is now
+  // permission-ENFORCED per route via worker/lib/mutationPermissions.js: a
+  // mapped route requires the named permission (403 if missing); unmapped
+  // mutation routes still allow any authenticated actor. owner_admin and
+  // superintendent pass everything operational through the matrix.
   if (isMutation(method)) {
-    const keyCheck = requireAdminKey(request, env)
-    if (!keyCheck.ok) {
-      // No valid key — fall back to a session cookie.
-      const sessionUser = await resolveSession(request, env)
-      if (!sessionUser) return json({ error: keyCheck.message }, keyCheck.status)
-      // Authenticated by session. Phase 1 is log-only for fine-grained
-      // permissions: the request proceeds (no per-endpoint enforcement yet).
+    const actor = await resolveActor(request, env)
+    if (!actor) {
+      const keyCheck = requireAdminKey(request, env)   // produces the 401/503 message
+      return json({ error: keyCheck.message }, keyCheck.status)
+    }
+    // Some rules (crew-assignments status-only PATCH) inspect the body. Parse
+    // a CLONE so the handler still sees the original request stream.
+    let body = null
+    if (method !== 'DELETE' && ruleNeedsBody(pathname)) {
+      try { body = await request.clone().json() } catch { body = null }
+    }
+    if (!isMutationAllowed(actor, pathname, method, body)) {
+      return json({ error: 'Forbidden — missing required permission' }, 403)
     }
   }
 
