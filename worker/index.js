@@ -183,6 +183,12 @@ import {
 } from './api/users.js'
 import { resolveActor, actorHasPermission } from './lib/actor.js'
 import { isMutationAllowed, ruleNeedsBody } from './lib/mutationPermissions.js'
+import {
+  isCourseScopedReadPath,
+  courseReadDecision,
+  emptyBodyForPath,
+  filterCoursesForActor,
+} from './lib/courseScope.js'
 
 export default {
   async fetch(request, env, ctx) {
@@ -284,6 +290,21 @@ async function handleApi(request, env, url) {
     }
     if (!isMutationAllowed(actor, pathname, method, body)) {
       return json({ error: 'Forbidden — missing required permission' }, 403)
+    }
+  }
+
+  // ── Course-access read scoping (Phase 2 P3) ─────────────────────────
+  // For course-scoped GET reads, a RESTRICTED user requesting a course they
+  // can't access (or holding an empty allow-list) gets an empty result
+  // instead of another course's data. owner_admin / superintendent /
+  // ADMIN_KEY and users with course_access = NULL are unrestricted, so the
+  // single-course production default is unchanged. Reads stay public (no 401
+  // added) — only the data scope narrows.
+  if (method === 'GET' && isCourseScopedReadPath(pathname)) {
+    const actor = await resolveActor(request, env)
+    if (actor) {   // anonymous reads keep legacy behavior (no widening/narrowing)
+      const decision = courseReadDecision(actor, courseId)
+      if (!decision.allow) return json(emptyBodyForPath(pathname))
     }
   }
 
@@ -742,7 +763,15 @@ async function handleApi(request, env, url) {
 
   // ── /api/courses ──────────────────────────────────────────────────────
   if (pathname === '/api/courses') {
-    if (method === 'GET')  return listCourses(env)
+    if (method === 'GET') {
+      // Filter the registry to the actor's accessible courses. owner_admin /
+      // superintendent / ADMIN_KEY / course_access=NULL see all; a restricted
+      // user sees only assigned ids; an empty allow-list sees [].
+      const actor = await resolveActor(request, env)
+      const res = await listCourses(env)
+      const all = await res.json().catch(() => [])
+      return json(filterCoursesForActor(actor, all))
+    }
     if (method === 'POST') return createCourse(env, request)
   }
 

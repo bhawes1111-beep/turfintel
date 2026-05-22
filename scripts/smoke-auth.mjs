@@ -232,5 +232,52 @@ function assert(cond, label, ctx) {
   assert(!isMutationAllowed(null, '/api/disease', 'POST'), 'null actor never allowed')
 }
 
+// ── Course-access scoping (Phase 2 P3 — actor.js + courseScope.js) ──────────
+{
+  const { actorAccessibleCourses } = await import('../worker/lib/actor.js')
+  const { courseReadDecision, filterCoursesForActor, isCourseScopedReadPath, emptyBodyForPath } =
+    await import('../worker/lib/courseScope.js')
+
+  const owner = { role: 'owner_admin' }
+  const key   = { role: 'owner_admin', automation: true }
+  const sup   = { role: 'superintendent' }
+  const crewNull  = { role: 'crew', course_access: null }
+  const crewA     = { role: 'crew', course_access: '["course-a"]' }
+  const crewEmpty = { role: 'crew', course_access: '[]' }
+
+  // accessible set: null = all (unrestricted), array = allow-list.
+  assert(actorAccessibleCourses(owner) === null, 'owner accesses all courses')
+  assert(actorAccessibleCourses(sup) === null, 'superintendent accesses all courses')
+  assert(actorAccessibleCourses(key) === null, 'ADMIN_KEY accesses all courses')
+  assert(actorAccessibleCourses(crewNull) === null, 'course_access NULL = all (single-course default)')
+  assert(JSON.stringify(actorAccessibleCourses(crewA)) === '["course-a"]', 'restricted user → allow-list')
+  assert(JSON.stringify(actorAccessibleCourses(crewEmpty)) === '[]', 'empty allow-list → []')
+  assert(JSON.stringify(actorAccessibleCourses(null)) === '[]', 'null actor → []')
+
+  // read decisions.
+  assert(courseReadDecision(owner, 'any').allow === true, 'owner: any course allowed')
+  assert(courseReadDecision(crewNull, 'crossroads-gc').allow === true, 'NULL-access: single-course default allowed')
+  assert(courseReadDecision(crewA, 'course-a').allow === true, 'restricted: own course allowed')
+  assert(courseReadDecision(crewA, 'course-b').empty === true, 'restricted: other course → empty')
+  assert(courseReadDecision(crewA, null).allow === true, 'restricted + no courseId → handler default scope')
+  assert(courseReadDecision(crewEmpty, null).empty === true, 'empty allow-list → always empty')
+
+  // /api/courses filtering.
+  const list = [{ id: 'course-a' }, { id: 'course-b' }, { id: 'crossroads-gc' }]
+  assert(filterCoursesForActor(owner, list).length === 3, 'owner sees all courses (filter)')
+  assert(filterCoursesForActor(sup, list).length === 3, 'super sees all courses (filter)')
+  assert(JSON.stringify(filterCoursesForActor(crewA, list).map(c => c.id)) === '["course-a"]', 'restricted sees only assigned (filter)')
+  assert(filterCoursesForActor(crewEmpty, list).length === 0, 'empty allow-list → [] (filter)')
+  assert(filterCoursesForActor(crewNull, list).length === 3, 'NULL-access sees all (filter)')
+
+  // scoped-path detection + empty-shape.
+  assert(isCourseScopedReadPath('/api/disease'), 'disease is course-scoped')
+  assert(isCourseScopedReadPath('/api/condition-logs/by-date'), 'by-date sub-path is course-scoped')
+  assert(!isCourseScopedReadPath('/api/users'), 'users is NOT course-scoped')
+  assert(!isCourseScopedReadPath('/api/courses'), 'courses registry handled separately, not in scoped reads')
+  assert(JSON.stringify(emptyBodyForPath('/api/condition-logs/by-date')) === '{"empty":true}', 'by-date empty shape is { empty: true }')
+  assert(JSON.stringify(emptyBodyForPath('/api/disease')) === '[]', 'list empty shape is []')
+}
+
 console.log(`\n${passed} passed, ${failed} failed`)
 process.exit(failed === 0 ? 0 : 1)

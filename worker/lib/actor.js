@@ -75,3 +75,25 @@ export function actorCanAccessCourse(actor, courseId) {
 export function actorPermissions(actor) {
   return actor ? permissionsFor(actor) : {}
 }
+
+/**
+ * actorAccessibleCourses — the set of course ids an actor may see.
+ *   - null  → ALL courses (owner_admin, superintendent, ADMIN_KEY, or any
+ *             user whose course_access is NULL — the single-course default).
+ *   - array → the explicit allow-list (possibly empty → sees nothing).
+ *   - null actor → [] (sees nothing).
+ * Callers use null as "no filter"; an array means "filter to these ids".
+ */
+export function actorAccessibleCourses(actor) {
+  if (!actor) return []
+  const role = typeof actor === 'string' ? actor : actor.role
+  if (isAutomationActor(actor) || role === 'owner_admin' || role === 'superintendent') return null
+
+  const raw = actor.course_access
+  if (raw == null) return null   // null = all courses
+  let list = raw
+  if (typeof raw === 'string') {
+    try { list = JSON.parse(raw) } catch { return [] }
+  }
+  return Array.isArray(list) ? list : null
+}
