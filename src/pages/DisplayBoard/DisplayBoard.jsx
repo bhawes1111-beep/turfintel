@@ -32,6 +32,11 @@ import { useOperationsNotesData, refreshOperationsNotesData } from '../../utils/
 import { useAttachmentsForParent } from '../../utils/attachments/attachmentsStore'
 import { useToast } from '../../utils/feedback/toastContext'
 import { routingChipsFromTags } from '../../utils/routing/routingTags'
+import { weatherImpacts } from '../../utils/weather/weatherImpacts'
+// Moisture observations are crew-relevant FIELD FACTS (location + wilt/dry-spot/
+// handwater flags) — no private fields. The course condition log (which holds
+// private superintendent notes) is intentionally NOT imported here.
+import { useMoistureData, refreshMoisture } from '../../utils/moisture/moistureStore'
 import OperationalIntelligencePanel from '../../components/shared/OperationalIntelligencePanel'
 import styles from './DisplayBoard.module.css'
 
@@ -134,6 +139,7 @@ export default function DisplayBoard({ boardMode = false }) {
   const { current, forecast, sourceLabel: weatherSource } = useWeather()
   const selectedCourse                              = useSelectedCourse()
   const { notes: dailyNotes }                       = useOperationsNotesData()
+  const { observations: moistureObs }               = useMoistureData()
 
   // Display date — defaults to today, can shift via the date selector.
   const [selectedDate, setSelectedDate] = useState(isoToday)
@@ -158,6 +164,7 @@ export default function DisplayBoard({ boardMode = false }) {
         refreshAlertsData(),
         refreshCrewData(),
         refreshOperationsNotesData(),
+        refreshMoisture(),
       ]).then(() => setLastSync(new Date()))
     }, BOARD_REFRESH_MS)
     return () => clearInterval(id)
@@ -248,6 +255,34 @@ export default function DisplayBoard({ boardMode = false }) {
     return m
   }, [dayCrew])
 
+  // ── Crew-facing weather impacts (rule-based, from existing weather) ─────
+  const impacts = useMemo(
+    () => weatherImpacts(current ?? {}, forecast ?? []),
+    [current, forecast],
+  )
+
+  // ── Course watch areas (crew-relevant moisture flags) ──────────────────
+  // Only field facts: location + which flag. No moisture %, no deficit, no
+  // private condition-log data. Newest observation per location wins; only
+  // recent (≤36h) flagged observations surface so stale reads don't linger.
+  const watchAreas = useMemo(() => {
+    const nowMs = now.getTime()   // from the live clock state → pure per render
+    const seen = new Set()
+    const out = []
+    for (const o of moistureObs ?? []) {        // store is newest-first
+      if (!o?.location || seen.has(o.location)) continue
+      seen.add(o.location)
+      const ageH = (nowMs - Date.parse(o.observedAt)) / 3_600_000
+      if (!Number.isFinite(ageH) || ageH > 36) continue
+      const flags = []
+      if (o.handwaterRec) flags.push('Handwater')
+      if (o.wiltStress)   flags.push('Wilt')
+      if (o.drySpot)      flags.push('Dry spot')
+      if (flags.length > 0) out.push({ id: o.id, location: o.location, flags })
+    }
+    return out.slice(0, 8)
+  }, [moistureObs, now])
+
   // ── Render ────────────────────────────────────────────────────────────
   const rootCls = boardMode ? `${styles.root} ${styles.rootBoard}` : styles.root
   const weekIsos = weekOf(selectedDate)
@@ -267,6 +302,8 @@ export default function DisplayBoard({ boardMode = false }) {
         />
 
         <ConditionsPanel current={current} forecast={forecast} sourceLabel={weatherSource} />
+
+        <WeatherImpactsPanel impacts={impacts} />
 
         <EquipmentStatusPanel
           reservations={dayEquipment}
@@ -321,6 +358,7 @@ export default function DisplayBoard({ boardMode = false }) {
       <aside className={styles.notesColumn}>
         <OperationalIntelligencePanel />
         <NotesPanel notes={dayNotes} alerts={liveAlerts} events={dayEvents} />
+        {watchAreas.length > 0 && <CourseWatchAreasPanel areas={watchAreas} />}
         {daySprays.length > 0 && (
           <SprayPanel sprays={daySprays} />
         )}
@@ -447,6 +485,48 @@ function ConditionsPanel({ current, forecast, sourceLabel }) {
         </div>
       )}
     </div>
+  )
+}
+
+// Crew-facing weather impacts — glanceable chips, hidden when nothing notable.
+function WeatherImpactsPanel({ impacts }) {
+  if (!impacts || impacts.length === 0) return null
+  return (
+    <div className={styles.sidePanel}>
+      <span className={styles.sidePanelLabel}>Weather Impacts</span>
+      <div className={styles.impactRow}>
+        {impacts.map(im => (
+          <span key={im.key} className={styles.impactChip} data-severity={im.severity}>
+            {im.label}{im.detail ? ` · ${im.detail}` : ''}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// Course Watch Areas — crew-relevant moisture flags (location + flag only).
+// Source: moisture_observations (field facts; no private data, no % / deficit).
+function CourseWatchAreasPanel({ areas }) {
+  return (
+    <section className={styles.notesPanel}>
+      <header className={styles.notesPanelHeader}>
+        <h3 className={styles.notesPanelTitle}>Course Watch Areas</h3>
+        <span className={styles.notesPanelHint}>{areas.length} area{areas.length !== 1 ? 's' : ''}</span>
+      </header>
+      <ul className={styles.watchList}>
+        {areas.map(a => (
+          <li key={a.id} className={styles.watchRow}>
+            <span className={styles.watchLoc}>{a.location}</span>
+            <span className={styles.watchFlags}>
+              {a.flags.map(f => (
+                <span key={f} className={styles.watchFlag}>{f}</span>
+              ))}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }
 
