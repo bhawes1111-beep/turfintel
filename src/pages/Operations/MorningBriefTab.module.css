@@ -1,0 +1,71 @@
+/* Morning Operations Brief v2 — mobile-first. */
+
+.wrap { display: flex; flex-direction: column; gap: 14px; }
+
+.headRow {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap;
+}
+.title { font-size: 17px; font-weight: 700; color: var(--color-text); margin: 0; }
+.date { font-size: 13px; color: var(--color-text-muted); margin: 2px 0 0; }
+
+.actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.actionBtn {
+  font-size: 12px; font-weight: 600;
+  color: var(--color-text); background: var(--color-card);
+  border: 1px solid var(--color-border); border-radius: 8px;
+  padding: 8px 13px; cursor: pointer; min-height: 38px;
+}
+.actionBtn:hover { background: var(--color-card-hover); }
+
+.sections {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.section {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.sectionLabel {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.5px; color: var(--color-text-muted); margin: 0 0 8px;
+}
+.bullets {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: 5px;
+}
+.bullets li {
+  font-size: 13px; color: var(--color-text); line-height: 1.4;
+  padding-left: 14px; position: relative;
+}
+.bullets li::before {
+  content: '•'; position: absolute; left: 0; color: var(--color-accent);
+}
+.emptySection { font-size: 13px; color: var(--color-text-muted); margin: 0; }
+
+/* Crew Message */
+.crewHint { font-size: 11px; color: #fb923c; margin: 0 0 8px; }
+.crewInput {
+  width: 100%; box-sizing: border-box;
+  font-size: 14px; color: var(--color-text);
+  background: var(--color-bg); border: 1px solid var(--color-border);
+  border-radius: 8px; padding: 9px 11px; font-family: inherit; resize: vertical;
+  margin-bottom: 8px;
+}
+.crewInput:focus { outline: none; border-color: var(--color-accent); }
+.sendBtn {
+  font-size: 13px; font-weight: 600; color: #0d1a0d;
+  background: var(--color-accent); border: 1px solid var(--color-accent);
+  border-radius: 8px; padding: 10px 16px; cursor: pointer; min-height: 42px;
+}
+.sendBtn:hover:not(:disabled) { background: var(--color-accent-hover); }
+.sendBtn:disabled { opacity: 0.6; cursor: default; }
+
+/* Print — show the brief sections cleanly, hide chrome. */
+@media print {
+  .actions, .crewInput, .sendBtn, .crewHint { display: none; }
+}

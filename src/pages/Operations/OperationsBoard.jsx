@@ -8,6 +8,7 @@ import CrewAssignments    from '../Crew/tabs/CrewAssignments'
 import DailyBriefingPanel        from './DailyBriefingPanel'
 import DailyOperationsCenter    from './DailyOperationsCenter'
 import ConditionLogTab          from './ConditionLogTab'
+import MorningBriefTab           from './MorningBriefTab'
 import { EmptyState } from '../../components/shared/EmptyState'
 import PageShell from '../../components/layout/PageShell'
 import WorkspaceActions from '../../components/shared/WorkspaceActions'
@@ -83,6 +84,7 @@ const TASK_GROUPS = [
 const DENSITY_OPTIONS = ['Compact', 'Comfortable', 'Expanded']
 
 const TABS = [
+  { id: 'brief',       label: 'Morning Brief' },
   { id: 'center',      label: 'Daily Operations Center' },
   { id: 'board',       label: 'Operations Board' },
   { id: 'assignments', label: 'Assignments' },
@@ -593,6 +595,7 @@ export default function OperationsBoard() {
       {/* ── Operations sub-tabs ───────────────────────────────────────────── */}
       {activeTab !== 'board' && (
         <div className={styles.obSecondary}>
+          {activeTab === 'brief'       && <MorningBriefTab />}
           {activeTab === 'center'      && <DailyOperationsCenter />}
           {activeTab === 'assignments' && <CrewAssignments />}
           {activeTab === 'notes'       && <DailyBriefingPanel />}
