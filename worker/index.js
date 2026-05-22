@@ -156,6 +156,13 @@ import {
   updateNutrition,
   deleteNutrition,
 } from './api/nutrition.js'
+import {
+  listCulturalPractices,
+  getCulturalPractice,
+  createCulturalPractice,
+  updateCulturalPractice,
+  deleteCulturalPractice,
+} from './api/culturalPractices.js'
 
 export default {
   async fetch(request, env, ctx) {
@@ -348,6 +355,26 @@ async function handleApi(request, env, url) {
     if (method === 'GET')    return getNutrition(env, id)
     if (method === 'PATCH')  return updateNutrition(env, id, request)
     if (method === 'DELETE') return deleteNutrition(env, id)
+  }
+
+  // ── /api/cultural-practices ───────────────────────────────────────────
+  if (pathname === '/api/cultural-practices') {
+    if (method === 'GET') {
+      const days   = url.searchParams.get('days')   || null
+      const status = url.searchParams.get('status') || null
+      const limit  = url.searchParams.get('limit')  || null
+      return listCulturalPractices(env, courseId, { days, status, limit })
+    }
+    if (method === 'POST') return createCulturalPractice(env, request)
+  }
+
+  // ── /api/cultural-practices/:id ───────────────────────────────────────
+  const cpMatch = pathname.match(/^\/api\/cultural-practices\/([^/]+)$/)
+  if (cpMatch) {
+    const id = decodeURIComponent(cpMatch[1])
+    if (method === 'GET')    return getCulturalPractice(env, id)
+    if (method === 'PATCH')  return updateCulturalPractice(env, id, request)
+    if (method === 'DELETE') return deleteCulturalPractice(env, id)
   }
 
   // ── /api/equipment ────────────────────────────────────────────────────
