@@ -1,0 +1,87 @@
+/* Course Condition Log — mobile-first superintendent field log. */
+
+.wrap { display: flex; flex-direction: column; gap: 12px; }
+
+/* Live context panel */
+.context {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-accent);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+.contextLabel {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.5px; color: var(--color-text-muted);
+}
+.contextRow { display: flex; flex-direction: column; gap: 3px; margin-top: 5px; }
+.ctxItem { font-size: 13px; color: var(--color-text); }
+
+/* Date row */
+.dateRow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.dateLabel {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--color-text-muted);
+}
+.dateInput {
+  font-size: 14px; color: var(--color-text);
+  background: var(--color-bg); border: 1px solid var(--color-border);
+  border-radius: 8px; padding: 7px 10px;
+}
+.todayBtn {
+  font-size: 12px; color: var(--color-accent);
+  background: transparent; border: 1px solid var(--color-border);
+  border-radius: 8px; padding: 6px 11px; cursor: pointer;
+}
+.recentDates { display: flex; flex-wrap: wrap; gap: 5px; }
+.recentDate {
+  font-size: 12px; color: var(--color-text-muted);
+  background: transparent; border: 1px solid var(--color-border);
+  border-radius: 999px; padding: 4px 10px; cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+.recentDate:hover { color: var(--color-text); }
+.recentDateActive { color: #0d1a0d; background: var(--color-accent); border-color: var(--color-accent); font-weight: 600; }
+
+.loading { font-size: 13px; color: var(--color-text-muted); }
+
+/* Field labels */
+.fieldLabel {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.5px; color: var(--color-text-muted); margin: 4px 0 6px;
+}
+.sectionLabel { font-size: 13px; font-weight: 600; color: var(--color-text); margin: 0 0 6px; }
+.private { font-weight: 500; text-transform: none; letter-spacing: 0; color: #fb923c; }
+
+.section { display: flex; flex-direction: column; }
+
+/* Rating chips — large tap targets */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip, .chipSm {
+  font-size: 13px; font-weight: 600; text-transform: capitalize;
+  color: var(--color-text-muted);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 999px; padding: 9px 15px; cursor: pointer;
+  min-height: 40px;
+}
+.chipSm { font-size: 12px; padding: 7px 13px; min-height: 36px; }
+.chip:hover, .chipSm:hover { color: var(--color-text); }
+
+.textarea, .input {
+  width: 100%; box-sizing: border-box;
+  font-size: 14px; color: var(--color-text);
+  background: var(--color-bg); border: 1px solid var(--color-border);
+  border-radius: 8px; padding: 9px 11px; font-family: inherit; resize: vertical;
+}
+.textarea:focus, .input:focus { outline: none; border-color: var(--color-accent); }
+
+.footer { position: sticky; bottom: 0; padding-top: 6px; }
+.saveBtn {
+  width: 100%;
+  font-size: 15px; font-weight: 600; color: #0d1a0d;
+  background: var(--color-accent); border: 1px solid var(--color-accent);
+  border-radius: 10px; padding: 13px; cursor: pointer; min-height: 48px;
+}
+.saveBtn:hover:not(:disabled) { background: var(--color-accent-hover); }
+.saveBtn:disabled { opacity: 0.6; cursor: default; }

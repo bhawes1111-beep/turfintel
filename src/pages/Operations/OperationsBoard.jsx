@@ -7,6 +7,7 @@ import { TASKS, HOURS_LOG } from '../../data/crew'
 import CrewAssignments    from '../Crew/tabs/CrewAssignments'
 import DailyBriefingPanel        from './DailyBriefingPanel'
 import DailyOperationsCenter    from './DailyOperationsCenter'
+import ConditionLogTab          from './ConditionLogTab'
 import { EmptyState } from '../../components/shared/EmptyState'
 import PageShell from '../../components/layout/PageShell'
 import WorkspaceActions from '../../components/shared/WorkspaceActions'
@@ -86,6 +87,7 @@ const TABS = [
   { id: 'board',       label: 'Operations Board' },
   { id: 'assignments', label: 'Assignments' },
   { id: 'notes',       label: 'Daily Briefing' },
+  { id: 'condition',   label: 'Condition Log' },
 ]
 const TAB_LABELS  = TABS.map(t => t.label)
 const LABEL_TO_ID = Object.fromEntries(TABS.map(t => [t.label, t.id]))
@@ -594,6 +596,7 @@ export default function OperationsBoard() {
           {activeTab === 'center'      && <DailyOperationsCenter />}
           {activeTab === 'assignments' && <CrewAssignments />}
           {activeTab === 'notes'       && <DailyBriefingPanel />}
+          {activeTab === 'condition'   && <ConditionLogTab />}
         </div>
       )}
 
