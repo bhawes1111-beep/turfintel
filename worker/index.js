@@ -170,6 +170,13 @@ import {
   updateDisease,
   deleteDisease,
 } from './api/disease.js'
+import {
+  bootstrapAdmin,
+  login,
+  logout,
+  me,
+  resolveSession,
+} from './api/auth.js'
 
 export default {
   async fetch(request, env, ctx) {
@@ -234,13 +241,34 @@ async function handleApi(request, env, url) {
     if (method === 'GET') return getAmbientCurrent(env)
   }
 
-  // ── Mutation auth gate (Phase 5.1b) ─────────────────────────────────
-  // Every POST/PATCH/DELETE must carry a valid x-admin-key header.
-  // GETs remain public. The gate runs before the D1 check so that an
-  // unauthenticated mutation rejects with 401 even if D1 is unbound.
-  if (isMutation(method)) {
-    const check = requireAdminKey(request, env)
+  // ── /api/auth/* ─────────────────────────────────────────────────────
+  // Handled BEFORE the mutation gate: login/logout establish identity and
+  // cannot require a pre-existing session, and bootstrap does its own
+  // ADMIN_KEY check. /me is a public read (returns { user: null } if absent).
+  if (pathname === '/api/auth/bootstrap' && method === 'POST') {
+    const check = requireAdminKey(request, env)         // bootstrap is key-gated
     if (!check.ok) return json({ error: check.message }, check.status)
+    return bootstrapAdmin(env, request)
+  }
+  if (pathname === '/api/auth/login'  && method === 'POST') return login(env, request)
+  if (pathname === '/api/auth/logout' && method === 'POST') return logout(env, request)
+  if (pathname === '/api/auth/me'     && method === 'GET')  return me(env, request)
+
+  // ── Mutation auth gate (Phase 5.1b + auth foundation) ───────────────
+  // Every POST/PATCH/DELETE must be authorized by EITHER a valid session
+  // cookie OR the x-admin-key header. GETs remain public. ADMIN_KEY stays
+  // fully valid (internal tools, cron, transition) — sessions are added
+  // alongside it, not in place of it. The gate runs before the D1 check so
+  // an unauthenticated mutation rejects with 401 even if D1 is unbound.
+  if (isMutation(method)) {
+    const keyCheck = requireAdminKey(request, env)
+    if (!keyCheck.ok) {
+      // No valid key — fall back to a session cookie.
+      const sessionUser = await resolveSession(request, env)
+      if (!sessionUser) return json({ error: keyCheck.message }, keyCheck.status)
+      // Authenticated by session. Phase 1 is log-only for fine-grained
+      // permissions: the request proceeds (no per-endpoint enforcement yet).
+    }
   }
 
   // Until the D1 binding is bootstrapped (see wrangler.jsonc), every
