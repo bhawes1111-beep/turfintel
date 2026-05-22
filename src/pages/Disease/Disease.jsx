@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import PageShell from '../../components/layout/PageShell'
 import DiseaseOverview from './tabs/DiseaseOverview'
+import ObservationsTab from './tabs/ObservationsTab'
 import ActiveIssues    from './tabs/ActiveIssues'
 import DiseaseLibrary  from './tabs/DiseaseLibrary'
 import CourseMap       from './tabs/CourseMap'
@@ -8,7 +9,7 @@ import PhotoGallery    from './tabs/PhotoGallery'
 import DiseaseAlerts   from './tabs/DiseaseAlerts'
 import DiseaseReports  from './tabs/DiseaseReports'
 
-const TABS = ['Overview', 'Active Issues', 'Disease Library', 'Course Map', 'Photo Gallery', 'Alerts', 'Reports']
+const TABS = ['Overview', 'Observations', 'Active Issues', 'Disease Library', 'Course Map', 'Photo Gallery', 'Alerts', 'Reports']
 
 export default function Disease() {
   const [activeTab, setActiveTab] = useState('Overview')
@@ -16,6 +17,7 @@ export default function Disease() {
   return (
     <PageShell title="Disease" tabs={TABS} activeTab={activeTab} onTabChange={setActiveTab}>
       {activeTab === 'Overview'        && <DiseaseOverview />}
+      {activeTab === 'Observations'    && <ObservationsTab />}
       {activeTab === 'Active Issues'   && <ActiveIssues />}
       {activeTab === 'Disease Library' && <DiseaseLibrary />}
       {activeTab === 'Course Map'      && <CourseMap />}

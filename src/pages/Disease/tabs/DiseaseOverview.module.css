@@ -1,0 +1,42 @@
+/* Disease Overview — mobile-first. */
+
+.wrap { display: flex; flex-direction: column; gap: 14px; }
+
+.statRow { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 10px; }
+.statCard {
+  background: var(--color-card); border: 1px solid var(--color-border);
+  border-radius: 10px; padding: 12px; text-align: center;
+}
+.statVal { display: block; font-size: 24px; font-weight: 700; color: var(--color-accent); font-variant-numeric: tabular-nums; }
+.statVal[data-alarm="true"] { color: #f87171; }
+.statLbl { font-size: 11px; color: var(--color-text-muted); }
+
+.card {
+  background: var(--color-card); border: 1px solid var(--color-border);
+  border-radius: 10px; padding: 12px 14px;
+}
+.cardLabel { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-text-muted); margin: 0 0 8px; }
+
+/* Awareness card */
+.awareTop { display: flex; align-items: center; gap: 10px; }
+.awareLevel {
+  font-size: 13px; font-weight: 700; padding: 3px 10px; border-radius: 999px;
+  border: 1px solid currentColor; background: transparent;
+}
+.awareLevel[data-level="low"]      { color: #7a9e7a; }
+.awareLevel[data-level="moderate"] { color: #fbbf24; }
+.awareLevel[data-level="high"]     { color: #fb923c; }
+.awareLevel[data-level="critical"] { color: #f87171; }
+.awareSummary { font-size: 13px; color: var(--color-text); }
+.awareNote { font-size: 11px; color: var(--color-text-muted); margin: 8px 0 0; font-style: italic; }
+.factorList { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+.factor { font-size: 12px; color: var(--color-text); line-height: 1.4; }
+.factorName { font-weight: 600; }
+.factorLvl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.3px; color: var(--color-text-muted); margin-left: 6px; }
+
+/* Lists */
+.list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.listItem { font-size: 13px; color: var(--color-text); display: flex; justify-content: space-between; gap: 8px; }
+.itemMeta { font-size: 12px; color: var(--color-text-muted); }
+.sprayLink { font-size: 12px; color: #7dd3fc; }
+.empty { font-size: 13px; color: var(--color-text-muted); line-height: 1.5; margin: 4px 0; }
