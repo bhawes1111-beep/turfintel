@@ -20,6 +20,7 @@ import { useEffect, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { Icon } from '../shared/icons'
 import { loadSync, save } from '../../utils/persistence/persistence'
+import { useAuth } from '../../context/AuthContext'
 import styles from './Sidebar.module.css'
 
 /* ── Inline SVG icons (24×24 viewBox, stroke-based) ──────────────────────── */
@@ -234,6 +235,8 @@ const NAV_TREE = [
   { id: 'activity',   label: 'Activity',   icon: 'activity',   to: '/activity'   },
   { id: 'reports',    label: 'Reports',    icon: 'reports',    to: '/reports'    },
   { id: 'settings',   label: 'Settings',   icon: 'settings',   to: '/settings'   },
+  // Admin is permission-gated: only users with canManageUsers see it.
+  { id: 'admin',      label: 'Admin',      icon: 'administration', to: '/admin', requires: 'canManageUsers' },
 ]
 
 /* ── Persistence ──────────────────────────────────────────────────────── */
@@ -370,7 +373,11 @@ function NavGroup({
 
 export default function Sidebar({ isOpen, onClose }) {
   const location = useLocation()
+  const { can } = useAuth()
   const [prefs, setPrefs] = useState(loadInitialPrefs)
+
+  // Hide permission-gated nodes the current user can't access.
+  const navTree = NAV_TREE.filter(node => !node.requires || can(node.requires))
 
   useEffect(() => {
     save(PREFS_KEY, prefs)
@@ -443,7 +450,7 @@ export default function Sidebar({ isOpen, onClose }) {
 
         {/* Recursive navigation */}
         <ul className={styles.nav}>
-          {NAV_TREE.map(node =>
+          {navTree.map(node =>
             node.children
               ? (
                 <NavGroup

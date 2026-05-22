@@ -23,6 +23,7 @@ import Activity   from './pages/Activity/Activity'
 import CourseMapPreview from './pages/CourseMapPreview/CourseMapPreview'
 import Weather from './pages/Weather/Weather'
 import Reports from './pages/Reports/Reports'
+import Admin from './pages/Admin/Admin'
 
 export default function App() {
   return (
@@ -60,6 +61,10 @@ export default function App() {
           <Route path="course-map"  element={<CourseMapPreview />} />
           <Route path="weather"     element={<Weather />} />
           <Route path="reports"     element={<Reports />} />
+          <Route
+            path="admin"
+            element={<RequireAuth permission="canManageUsers"><Admin /></RequireAuth>}
+          />
         </Route>
       </Routes>
       </AuthProvider>

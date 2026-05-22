@@ -177,6 +177,11 @@ import {
   me,
   resolveSession,
 } from './api/auth.js'
+import {
+  listUsers,
+  createUser,
+  updateUser,
+} from './api/users.js'
 
 export default {
   async fetch(request, env, ctx) {
@@ -430,6 +435,19 @@ async function handleApi(request, env, url) {
     if (method === 'GET')    return getDisease(env, id)
     if (method === 'PATCH')  return updateDisease(env, id, request)
     if (method === 'DELETE') return deleteDisease(env, id)
+  }
+
+  // ── /api/users ────────────────────────────────────────────────────────
+  // User management is permission-ENFORCED (not log-only): each handler
+  // resolves the actor and checks canManageUsers + role hierarchy.
+  if (pathname === '/api/users') {
+    if (method === 'GET')  return listUsers(env, request)
+    if (method === 'POST') return createUser(env, request)
+  }
+  const usrMatch = pathname.match(/^\/api\/users\/([^/]+)$/)
+  if (usrMatch) {
+    const id = decodeURIComponent(usrMatch[1])
+    if (method === 'PATCH') return updateUser(env, id, request)
   }
 
   // ── /api/equipment ────────────────────────────────────────────────────
