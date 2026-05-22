@@ -35,6 +35,10 @@ const MIGRATED = [
   'src/utils/inventory/inventoryStore.js',
   'src/utils/inventory/labelImportStore.js',
   'src/utils/feedback/feedbackStore.js',
+  // 3C-4
+  'src/utils/sprays/spraysStore.js',
+  'src/utils/equipment/equipmentStore.js',
+  'src/utils/repairs/repairsStore.js',
 ]
 
 // ── Per migrated store: session creds, no key header, no hardcoded key ──────
