@@ -40,6 +40,10 @@ const snapshot = {
     { id: '1', location: 'Green 7', flags: ['Handwater'] },
     { id: '2', location: 'Green 3', flags: ['Wilt', 'Dry spot'] },
   ],
+  culturalPractices: [
+    { label: 'Aerification planned — Greens', detail: 'bumpy 7-10 days' },
+    { label: 'Topdressing — Fairways', detail: 'Recovering' },
+  ],
   crewSnapshot: { scheduled: 12, assignments: 14, unassigned: 0, activeTotal: 12 },
   spraySchedule: { todayCount: 1, upcoming: [{ id: 'a' }], pending: 0 },
   equipmentAlerts: { outOfService: 1, overdue: 0, conflicts: 0 },
@@ -63,6 +67,10 @@ const brief = buildMorningBrief(snapshot, { courseName: 'Crosswinds', generatedA
   assert(brief.textVersion.includes('Course Status'), 'textVersion includes Course Status heading')
   assert(brief.textVersion.includes('Overall: good'), 'Course Status shows overall rating')
   assert(brief.textVersion.includes('pace good, bunkers wet'), 'Course Status shows playability (safe field)')
+
+  assert(brief.culturalPractices.hasData, 'Cultural Practices section has data')
+  assert(brief.textVersion.includes('Cultural Practices'), 'textVersion includes Cultural Practices heading')
+  assert(brief.textVersion.includes('Aerification planned — Greens'), 'Cultural Practices line rendered')
 
   assert(brief.weatherImpacts.hasData, 'Weather Impacts section has data')
   assert(brief.textVersion.includes('Heat — hydrate'), 'Weather Impacts rendered')

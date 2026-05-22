@@ -16,6 +16,8 @@ import { useSpraysData } from '../../utils/sprays/spraysStore'
 import { useEquipmentData } from '../../utils/equipment/equipmentStore'
 import { useWeather } from '../../utils/weather/useWeather'
 import { useMoistureData } from '../../utils/moisture/moistureStore'
+import { useCulturalPractices } from '../../utils/culturalPractices/culturalPracticesStore'
+import { categorizePractices, effectiveRecovery, RECOVERY_LABEL } from '../../utils/culturalPractices/recoveryState'
 import { fetchConditionLogByDate } from '../../utils/conditionLog/conditionLogStore'
 import { createOperationsNote } from '../../utils/operations/notesStore'
 import { useSelectedCourse } from '../../utils/courses/courseStore'
@@ -37,6 +39,7 @@ const SECTION_VIEW = [
   ['Weather Impacts', 'weatherImpacts'],
   ['Crew Plan',       'crewSummary'],
   ['Watch Areas',     'watchAreas'],
+  ['Cultural Practices', 'culturalPractices'],
   ['Applications / Sprays', 'spraySummary'],
   ['Equipment Concerns',    'equipmentSummary'],
 ]
@@ -45,6 +48,7 @@ export default function MorningBriefTab() {
   const { crewAssignments } = useAssignmentsData()
   const { employees: crewEmployees } = useCrewData()
   const { records: sprays } = useSpraysData()
+  const { practices: culturalPractices } = useCulturalPractices()
   const { serviceLog } = useEquipmentData()
   const weather = useWeather()
   const { observations: moistureObs } = useMoistureData()
@@ -114,6 +118,21 @@ export default function MorningBriefTab() {
     return out.slice(0, 10)
   }, [moistureObs, today])
 
+  // Cultural practices for the brief: today's planned work + recovery watch.
+  // All fields are crew-safe (no private field on the practice record).
+  const cpItems = useMemo(() => {
+    const { upcoming, watch } = categorizePractices(culturalPractices, today)
+    const titleCase = s => (s ? s.charAt(0).toUpperCase() + s.slice(1).replace(/-/g, ' ') : '')
+    const out = []
+    for (const p of upcoming.filter(x => x.practiceDate === today)) {
+      out.push({ label: `${titleCase(p.practiceType)} planned${p.targetArea ? ` — ${p.targetArea}` : ''}`, detail: p.playabilityImpact || null })
+    }
+    for (const p of watch.slice(0, 4)) {
+      out.push({ label: `${titleCase(p.practiceType)}${p.targetArea ? ` — ${p.targetArea}` : ''}`, detail: RECOVERY_LABEL[effectiveRecovery(p)] ?? null })
+    }
+    return out
+  }, [culturalPractices, today])
+
   const brief = useMemo(() => buildMorningBrief({
     weatherCurrent:  weather.current,
     weatherImpacts:  impacts,
@@ -122,10 +141,11 @@ export default function MorningBriefTab() {
     spraySchedule,
     equipmentAlerts,
     watchAreas,
+    culturalPractices: cpItems,
   }, {
     courseName:  selectedCourse?.shortName ?? selectedCourse?.name ?? null,
     generatedAt: today,
-  }), [weather.current, impacts, conditionLog, crewSnapshot, spraySchedule, equipmentAlerts, watchAreas, selectedCourse, today])
+  }), [weather.current, impacts, conditionLog, crewSnapshot, spraySchedule, equipmentAlerts, watchAreas, cpItems, selectedCourse, today])
 
   // ── Actions ─────────────────────────────────────────────────────────────
   function handlePrint() { if (typeof window !== 'undefined') window.print() }
