@@ -32,7 +32,9 @@ const API = '/api/inventory/import-label'
 export const MAX_PDF_BYTES = 8 * 1024 * 1024
 
 async function fetchJSON(url, init) {
-  const res = await fetch(url, init)
+  // Phase 3C: session-cookie auth — credentials sends the httpOnly ti_session
+  // cookie; no x-admin-key from the browser. The Worker gate enforces role.
+  const res = await fetch(url, { credentials: 'same-origin', ...init })
   const text = await res.text().catch(() => '')
   let body = null
   if (text) {
