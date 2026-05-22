@@ -143,6 +143,12 @@ import {
   updateMoisture,
   deleteMoisture,
 } from './api/moisture.js'
+import {
+  listConditionLogs,
+  getConditionLogByDate,
+  upsertConditionLog,
+  deleteConditionLog,
+} from './api/conditionLog.js'
 
 export default {
   async fetch(request, env, ctx) {
@@ -289,6 +295,32 @@ async function handleApi(request, env, url) {
     if (method === 'GET')    return getMoisture(env, id)
     if (method === 'PATCH')  return updateMoisture(env, id, request)
     if (method === 'DELETE') return deleteMoisture(env, id)
+  }
+
+  // ── /api/condition-logs/by-date ───────────────────────────────────────
+  // Matched BEFORE /:id so "by-date" isn't treated as an id.
+  if (pathname === '/api/condition-logs/by-date') {
+    if (method === 'GET') {
+      const date = url.searchParams.get('date') || null
+      return getConditionLogByDate(env, courseId, date)
+    }
+  }
+
+  // ── /api/condition-logs ───────────────────────────────────────────────
+  // Superintendent's structured daily field log (one per course/date).
+  if (pathname === '/api/condition-logs') {
+    if (method === 'GET') {
+      const days = url.searchParams.get('days') || null
+      return listConditionLogs(env, courseId, { days })
+    }
+    if (method === 'POST') return upsertConditionLog(env, request)   // upsert
+  }
+
+  // ── /api/condition-logs/:id ───────────────────────────────────────────
+  const conditionMatch = pathname.match(/^\/api\/condition-logs\/([^/]+)$/)
+  if (conditionMatch) {
+    const id = decodeURIComponent(conditionMatch[1])
+    if (method === 'DELETE') return deleteConditionLog(env, id)
   }
 
   // ── /api/equipment ────────────────────────────────────────────────────
