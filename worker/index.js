@@ -163,6 +163,13 @@ import {
   updateCulturalPractice,
   deleteCulturalPractice,
 } from './api/culturalPractices.js'
+import {
+  listDisease,
+  getDisease,
+  createDisease,
+  updateDisease,
+  deleteDisease,
+} from './api/disease.js'
 
 export default {
   async fetch(request, env, ctx) {
@@ -375,6 +382,26 @@ async function handleApi(request, env, url) {
     if (method === 'GET')    return getCulturalPractice(env, id)
     if (method === 'PATCH')  return updateCulturalPractice(env, id, request)
     if (method === 'DELETE') return deleteCulturalPractice(env, id)
+  }
+
+  // ── /api/disease ──────────────────────────────────────────────────────
+  if (pathname === '/api/disease') {
+    if (method === 'GET') {
+      const days   = url.searchParams.get('days')   || null
+      const status = url.searchParams.get('status') || null
+      const limit  = url.searchParams.get('limit')  || null
+      return listDisease(env, courseId, { days, status, limit })
+    }
+    if (method === 'POST') return createDisease(env, request)
+  }
+
+  // ── /api/disease/:id ──────────────────────────────────────────────────
+  const dzMatch = pathname.match(/^\/api\/disease\/([^/]+)$/)
+  if (dzMatch) {
+    const id = decodeURIComponent(dzMatch[1])
+    if (method === 'GET')    return getDisease(env, id)
+    if (method === 'PATCH')  return updateDisease(env, id, request)
+    if (method === 'DELETE') return deleteDisease(env, id)
   }
 
   // ── /api/equipment ────────────────────────────────────────────────────
