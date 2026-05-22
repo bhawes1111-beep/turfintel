@@ -149,6 +149,13 @@ import {
   upsertConditionLog,
   deleteConditionLog,
 } from './api/conditionLog.js'
+import {
+  listNutrition,
+  getNutrition,
+  createNutrition,
+  updateNutrition,
+  deleteNutrition,
+} from './api/nutrition.js'
 
 export default {
   async fetch(request, env, ctx) {
@@ -321,6 +328,26 @@ async function handleApi(request, env, url) {
   if (conditionMatch) {
     const id = decodeURIComponent(conditionMatch[1])
     if (method === 'DELETE') return deleteConditionLog(env, id)
+  }
+
+  // ── /api/nutrition ────────────────────────────────────────────────────
+  // Standalone nutrient applications (Plant Nutrition Intelligence).
+  if (pathname === '/api/nutrition') {
+    if (method === 'GET') {
+      const days  = url.searchParams.get('days')  || null
+      const limit = url.searchParams.get('limit') || null
+      return listNutrition(env, courseId, { days, limit })
+    }
+    if (method === 'POST') return createNutrition(env, request)
+  }
+
+  // ── /api/nutrition/:id ────────────────────────────────────────────────
+  const nutritionMatch = pathname.match(/^\/api\/nutrition\/([^/]+)$/)
+  if (nutritionMatch) {
+    const id = decodeURIComponent(nutritionMatch[1])
+    if (method === 'GET')    return getNutrition(env, id)
+    if (method === 'PATCH')  return updateNutrition(env, id, request)
+    if (method === 'DELETE') return deleteNutrition(env, id)
   }
 
   // ── /api/equipment ────────────────────────────────────────────────────
