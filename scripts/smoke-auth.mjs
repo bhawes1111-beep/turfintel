@@ -279,5 +279,90 @@ function assert(cond, label, ctx) {
   assert(JSON.stringify(emptyBodyForPath('/api/disease')) === '[]', 'list empty shape is []')
 }
 
+// ── Login rate limiting (Phase 2 P4 — worker/lib/rateLimit.js) ──────────────
+{
+  const {
+    clientIp, isRateLimited, recordAttempt, clearFailures,
+    MAX_FAILED, WINDOW_MINUTES,
+  } = await import('../worker/lib/rateLimit.js')
+
+  // clientIp: CF-Connecting-IP → first XFF hop → 'unknown'.
+  const mk = (h) => ({ headers: { get: (k) => h[k] ?? h[k.toLowerCase()] ?? null } })
+  assert(clientIp(mk({ 'CF-Connecting-IP': '1.2.3.4' })) === '1.2.3.4', 'clientIp prefers CF-Connecting-IP')
+  assert(clientIp(mk({ 'X-Forwarded-For': '5.6.7.8, 9.9.9.9' })) === '5.6.7.8', 'clientIp falls back to first XFF hop')
+  assert(clientIp(mk({})) === 'unknown', 'clientIp → unknown when absent')
+  assert(MAX_FAILED === 8 && WINDOW_MINUTES === 15, 'threshold 8 / window 15 min')
+
+  // In-memory D1 fake covering the exact queries the helpers run:
+  //  - SELECT SUM(...) by email/ip   (isRateLimited)
+  //  - INSERT auth_attempts          (recordAttempt)
+  //  - DELETE ... WHERE email=? AND success=0  (clearFailures)
+  function fakeDB() {
+    const rows = []   // { email, ip, success }
+    return {
+      _rows: rows,
+      prepare(sql) {
+        const q = sql.replace(/\s+/g, ' ').trim()
+        let bound = []
+        const stmt = {
+          bind(...args) { bound = args; return stmt },
+          async first() {
+            if (q.startsWith('SELECT')) {
+              // bound = [email, ip, sinceExpr]; window check omitted (test rows are "now").
+              const [email, ip] = bound
+              const by_email = rows.filter(r => r.success === 0 && r.email === email).length
+              const by_ip    = rows.filter(r => r.success === 0 && r.ip === ip).length
+              return { by_email, by_ip }
+            }
+            return null
+          },
+          async run() {
+            if (q.startsWith('INSERT INTO auth_attempts')) {
+              // bound = [id, email, ip, success]
+              rows.push({ email: bound[1], ip: bound[2], success: bound[3] })
+            } else if (q.startsWith('DELETE FROM auth_attempts WHERE email')) {
+              const email = bound[0]
+              for (let i = rows.length - 1; i >= 0; i--) {
+                if (rows[i].email === email && rows[i].success === 0) rows.splice(i, 1)
+              }
+            }
+            return { success: true }
+          },
+        }
+        return stmt
+      },
+    }
+  }
+
+  // Fresh state: not limited.
+  let env = { DB: fakeDB() }
+  assert((await isRateLimited(env, 'a@x.com', '1.1.1.1')) === false, 'fresh state not rate-limited')
+
+  // Record 7 failures by email → still under threshold.
+  for (let i = 0; i < 7; i++) await recordAttempt(env, 'a@x.com', '1.1.1.1', false)
+  assert((await isRateLimited(env, 'a@x.com', '1.1.1.1')) === false, '7 failures < threshold → allowed')
+  // 8th failure → at threshold → limited.
+  await recordAttempt(env, 'a@x.com', '1.1.1.1', false)
+  assert((await isRateLimited(env, 'a@x.com', '1.1.1.1')) === true, '8 failures ≥ threshold → limited (by email)')
+
+  // A DIFFERENT email from the same IP is also limited (IP threshold).
+  assert((await isRateLimited(env, 'other@x.com', '1.1.1.1')) === true, 'same IP, different email → limited (by IP)')
+  // A different email AND different IP is clean.
+  assert((await isRateLimited(env, 'other@x.com', '2.2.2.2')) === false, 'different email+IP → not limited')
+
+  // Success clears that email's failures.
+  await clearFailures(env, 'a@x.com')
+  assert((await isRateLimited(env, 'a@x.com', '9.9.9.9')) === false, 'clearFailures neutralizes email failures')
+
+  // recordAttempt with success=true does not count toward the limit.
+  let env2 = { DB: fakeDB() }
+  for (let i = 0; i < 10; i++) await recordAttempt(env2, 'b@x.com', '3.3.3.3', true)
+  assert((await isRateLimited(env2, 'b@x.com', '3.3.3.3')) === false, 'successful attempts never count toward limit')
+
+  // Fail-open: a DB error in isRateLimited → not limited (never lock out on error).
+  const errEnv = { DB: { prepare() { return { bind() { return { first() { throw new Error('db down') } } } } } } }
+  assert((await isRateLimited(errEnv, 'a@x.com', '1.1.1.1')) === false, 'isRateLimited fails open on DB error')
+}
+
 console.log(`\n${passed} passed, ${failed} failed`)
 process.exit(failed === 0 ? 0 : 1)

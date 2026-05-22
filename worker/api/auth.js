@@ -14,6 +14,9 @@ import {
   buildSessionCookie, clearSessionCookie, readSessionCookie, SESSION_TTL_DAYS,
 } from '../lib/sessions.js'
 import { ROLES, permissionsFor } from '../lib/permissions.js'
+import {
+  clientIp, isRateLimited, recordAttempt, clearFailures, pruneOld,
+} from '../lib/rateLimit.js'
 
 // Response with a Set-Cookie header (json() can't carry custom headers).
 function jsonWithCookie(data, cookie, status = 200) {
@@ -108,14 +111,37 @@ export async function login(env, request) {
   const body  = await readJson(request)
   const email = normEmail(body.email)
   const password = typeof body.password === 'string' ? body.password : ''
+  const ip = clientIp(request)
   // Generic failure message — never reveal whether the email exists.
   const fail = () => json({ error: 'Invalid email or password' }, 401)
-  if (!email || !password) return fail()
+
+  // Throttle BEFORE touching the password path. A throttled request gets a
+  // generic 429 — it does not reveal whether the email exists, and we do not
+  // record it (so the attacker can't extend their own lockout indefinitely).
+  if (await isRateLimited(env, email, ip)) {
+    return json({ error: 'Too many attempts. Please try again later.' }, 429)
+  }
+
+  if (!email || !password) {
+    await recordAttempt(env, email, ip, false)
+    return fail()
+  }
 
   const user = await env.DB.prepare('SELECT * FROM users WHERE email = ?').bind(email).first()
-  if (!user || user.status !== 'active') return fail()
+  if (!user || user.status !== 'active') {
+    await recordAttempt(env, email, ip, false)
+    return fail()
+  }
   const ok = await verifyPassword(password, user.password_hash)
-  if (!ok) return fail()
+  if (!ok) {
+    await recordAttempt(env, email, ip, false)
+    return fail()
+  }
+
+  // Success: clear this email's recent failures, record the success, prune.
+  await clearFailures(env, email)
+  await recordAttempt(env, email, ip, true)
+  pruneOld(env)   // fire-and-forget; not awaited
 
   // Mint a session: store only the SHA-256 hash of the opaque token.
   const token = mintToken()
