@@ -18,6 +18,8 @@ import { useWeather } from '../../utils/weather/useWeather'
 import { useMoistureData } from '../../utils/moisture/moistureStore'
 import { useCulturalPractices } from '../../utils/culturalPractices/culturalPracticesStore'
 import { categorizePractices, effectiveRecovery, RECOVERY_LABEL } from '../../utils/culturalPractices/recoveryState'
+import { useDisease } from '../../utils/disease/diseaseStore'
+import { categorizeObservations, dueFollowUps } from '../../utils/disease/diseaseView'
 import { fetchConditionLogByDate } from '../../utils/conditionLog/conditionLogStore'
 import { createOperationsNote } from '../../utils/operations/notesStore'
 import { useSelectedCourse } from '../../utils/courses/courseStore'
@@ -40,6 +42,7 @@ const SECTION_VIEW = [
   ['Crew Plan',       'crewSummary'],
   ['Watch Areas',     'watchAreas'],
   ['Cultural Practices', 'culturalPractices'],
+  ['Disease Watch',   'diseaseWatch'],
   ['Applications / Sprays', 'spraySummary'],
   ['Equipment Concerns',    'equipmentSummary'],
 ]
@@ -49,6 +52,7 @@ export default function MorningBriefTab() {
   const { employees: crewEmployees } = useCrewData()
   const { records: sprays } = useSpraysData()
   const { practices: culturalPractices } = useCulturalPractices()
+  const { observations: diseaseObs } = useDisease()
   const { serviceLog } = useEquipmentData()
   const weather = useWeather()
   const { observations: moistureObs } = useMoistureData()
@@ -133,6 +137,29 @@ export default function MorningBriefTab() {
     return out
   }, [culturalPractices, today])
 
+  // Disease Watch for the brief: open observations + due follow-ups, in
+  // neutral crew-safe wording (status as a verb, location, follow-up date).
+  // The disease record has no private field, so all of this is shareable.
+  const diseaseWatchItems = useMemo(() => {
+    const { active, monitoring } = categorizeObservations(diseaseObs ?? [])
+    const due = dueFollowUps(diseaseObs ?? [], today)
+    const cap = s => (s ? s.charAt(0).toUpperCase() + s.slice(1) : '')
+    const out = []
+    const seen = new Set()
+    for (const o of [...active, ...monitoring]) {
+      if (seen.has(o.id)) continue
+      seen.add(o.id)
+      const where = o.location || (o.hole != null ? `#${o.hole}` : null)
+      out.push({ label: `${cap(o.status)} — ${o.diseaseName}`, detail: where })
+    }
+    for (const o of due) {
+      if (seen.has(`fu-${o.id}`)) continue
+      seen.add(`fu-${o.id}`)
+      out.push({ label: `Follow-up due — ${o.diseaseName}`, detail: o.location || null })
+    }
+    return out.slice(0, 8)
+  }, [diseaseObs, today])
+
   const brief = useMemo(() => buildMorningBrief({
     weatherCurrent:  weather.current,
     weatherImpacts:  impacts,
@@ -142,10 +169,11 @@ export default function MorningBriefTab() {
     equipmentAlerts,
     watchAreas,
     culturalPractices: cpItems,
+    diseaseWatch: diseaseWatchItems,
   }, {
     courseName:  selectedCourse?.shortName ?? selectedCourse?.name ?? null,
     generatedAt: today,
-  }), [weather.current, impacts, conditionLog, crewSnapshot, spraySchedule, equipmentAlerts, watchAreas, cpItems, selectedCourse, today])
+  }), [weather.current, impacts, conditionLog, crewSnapshot, spraySchedule, equipmentAlerts, watchAreas, cpItems, diseaseWatchItems, selectedCourse, today])
 
   // ── Actions ─────────────────────────────────────────────────────────────
   function handlePrint() { if (typeof window !== 'undefined') window.print() }

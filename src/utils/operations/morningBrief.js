@@ -232,6 +232,21 @@ function buildCulturalPracticeBullets(items) {
   return { bullets, hasData: bullets.length > 0 }
 }
 
+// Disease Watch — crew-safe, non-alarming. Items are pre-composed by the
+// caller into neutral { label, detail } pairs (e.g. "Monitoring — Green 7").
+// The disease_observations table has no private field, so every field is
+// crew-shareable; we still keep the wording operational ("watch", "treated",
+// "follow-up") rather than diagnostic, and never imply a prediction.
+function buildDiseaseWatchBullets(items) {
+  const bullets = []
+  if (!Array.isArray(items) || items.length === 0) return { bullets, hasData: false }
+  for (const it of items) {
+    if (!it?.label) continue
+    bullets.push(`${it.label}${it.detail ? ` — ${it.detail}` : ''}`)
+  }
+  return { bullets, hasData: bullets.length > 0 }
+}
+
 // ── Plain-text serializer ───────────────────────────────────────────────
 
 function serialize(brief) {
@@ -255,6 +270,7 @@ function serialize(brief) {
   pushSection('Crew',             brief.crewSummary)
   pushSection('Watch Areas',      brief.watchAreas)
   pushSection('Cultural Practices', brief.culturalPractices)
+  pushSection('Disease Watch',    brief.diseaseWatch)
   pushSection('Sprays',           brief.spraySummary)
   pushSection('Equipment',        brief.equipmentSummary)
   pushSection('Priorities',       brief.priorities)
@@ -288,6 +304,7 @@ export function buildMorningBrief(snapshot = {}, meta = {}) {
     crewSummary:       buildCrewSummaryBullets(snapshot.crewSnapshot),
     watchAreas:        buildWatchAreaBullets(snapshot.watchAreas),
     culturalPractices: buildCulturalPracticeBullets(snapshot.culturalPractices),
+    diseaseWatch:      buildDiseaseWatchBullets(snapshot.diseaseWatch),
     spraySummary:      buildSpraySummaryBullets(snapshot.spraySchedule),
     equipmentSummary:  buildEquipmentSummaryBullets(snapshot.equipmentAlerts),
     priorities:        buildPriorityBullets(snapshot.priorities),
@@ -327,6 +344,7 @@ export function buildBriefCsvRows(brief) {
   push('Crew',            brief.crewSummary?.bullets)
   push('Watch Areas',     brief.watchAreas?.bullets)
   push('Cultural Practices', brief.culturalPractices?.bullets)
+  push('Disease Watch',   brief.diseaseWatch?.bullets)
   push('Sprays',          brief.spraySummary?.bullets)
   push('Equipment',       brief.equipmentSummary?.bullets)
   push('Priorities',      brief.priorities?.bullets)

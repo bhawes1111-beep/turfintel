@@ -44,6 +44,10 @@ const snapshot = {
     { label: 'Aerification planned — Greens', detail: 'bumpy 7-10 days' },
     { label: 'Topdressing — Fairways', detail: 'Recovering' },
   ],
+  diseaseWatch: [
+    { label: 'Monitoring — Dollar Spot', detail: 'Green 7' },
+    { label: 'Follow-up due — Brown Patch', detail: 'Fairway 3' },
+  ],
   crewSnapshot: { scheduled: 12, assignments: 14, unassigned: 0, activeTotal: 12 },
   spraySchedule: { todayCount: 1, upcoming: [{ id: 'a' }], pending: 0 },
   equipmentAlerts: { outOfService: 1, overdue: 0, conflicts: 0 },
@@ -77,6 +81,13 @@ const brief = buildMorningBrief(snapshot, { courseName: 'Crosswinds', generatedA
 
   assert(brief.watchAreas.hasData, 'Watch Areas section has data')
   assert(brief.textVersion.includes('Green 7 — Handwater'), 'Watch Areas rendered with flags')
+
+  assert(brief.diseaseWatch.hasData, 'Disease Watch section has data')
+  assert(brief.textVersion.includes('Disease Watch'), 'textVersion includes Disease Watch heading')
+  assert(brief.textVersion.includes('Monitoring — Dollar Spot — Green 7'), 'Disease Watch monitoring line rendered')
+  assert(brief.textVersion.includes('Follow-up due — Brown Patch — Fairway 3'), 'Disease Watch follow-up line rendered')
+  // Crew-safe wording: neutral, no alarm/severity language baked in here.
+  assert(!/\b(outbreak|epidemic|severe|critical)\b/i.test(brief.diseaseWatch.bullets.join(' ')), 'Disease Watch wording stays non-alarming')
 }
 
 // ── Empty inputs degrade honestly ──────────────────────────────────────────
@@ -84,7 +95,9 @@ const brief = buildMorningBrief(snapshot, { courseName: 'Crosswinds', generatedA
   const empty = buildMorningBrief({}, { generatedAt: '2026-05-22' })
   assert(empty.courseStatus.hasData === false, 'no condition log → Course Status empty')
   assert(empty.watchAreas.hasData === false, 'no moisture → Watch Areas empty')
+  assert(empty.diseaseWatch.hasData === false, 'no observations → Disease Watch empty')
   assert(!empty.textVersion.includes('Course Status'), 'empty sections omitted from text')
+  assert(!empty.textVersion.includes('Disease Watch'), 'empty Disease Watch omitted from text')
 }
 
 // ── PRIVACY (source): the brief module never references privateNotes ───────
