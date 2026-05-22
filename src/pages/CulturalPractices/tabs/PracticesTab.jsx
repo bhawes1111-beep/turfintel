@@ -19,6 +19,7 @@ import {
   RECOVERY_LABEL,
 } from '../../../utils/culturalPractices/recoveryState'
 import { useToast } from '../../../utils/feedback/toastContext'
+import { useAuth } from '../../../context/AuthContext'
 import styles from './PracticesTab.module.css'
 
 const PRACTICE_TYPES = [
@@ -130,6 +131,8 @@ export default function PracticesTab() {
   const { practices, loading } = useCulturalPractices()
   const [logOpen, setLogOpen] = useState(false)
   const toast = useToast()
+  const { can } = useAuth()
+  const canDelete = can('canDeleteRecords')
 
   const { recentCompleted, upcoming, watch } = useMemo(() => categorizePractices(practices), [practices])
 
@@ -160,7 +163,9 @@ export default function PracticesTab() {
           </span>
           {p.playabilityImpact && <span className={styles.rowImpact}>⛳ {p.playabilityImpact}</span>}
         </div>
-        <button type="button" className={styles.delBtn} onClick={() => handleDelete(p.id)} aria-label="Delete">✕</button>
+        {canDelete && (
+          <button type="button" className={styles.delBtn} onClick={() => handleDelete(p.id)} aria-label="Delete">✕</button>
+        )}
       </li>
     )
   }

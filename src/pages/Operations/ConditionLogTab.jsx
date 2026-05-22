@@ -17,6 +17,7 @@ import { useMoistureData } from '../../utils/moisture/moistureStore'
 import { computeWaterBalance } from '../../utils/irrigation/waterBalance'
 import { computeMoistureIntel } from '../../utils/moisture/moistureIntel'
 import { useToast } from '../../utils/feedback/toastContext'
+import { useAuth } from '../../context/AuthContext'
 import styles from './ConditionLogTab.module.css'
 
 const RATINGS = ['excellent', 'good', 'fair', 'poor', 'critical']
@@ -62,6 +63,14 @@ export default function ConditionLogTab() {
   const { balance } = useWaterBalance()
   const { observations } = useMoistureData()
   const toast = useToast()
+  const { can } = useAuth()
+
+  // Private superintendent notes are hidden from users without the
+  // canViewPrivateNotes permission. The field is the only crew-unsafe one.
+  const canViewPrivate = can('canViewPrivateNotes')
+  const visibleTextFields = canViewPrivate
+    ? TEXT_FIELDS
+    : TEXT_FIELDS.filter(([key]) => key !== 'privateNotes')
 
   const [date, setDate]   = useState(todayIso)
   const [form, setForm]   = useState(EMPTY)
@@ -81,8 +90,13 @@ export default function ConditionLogTab() {
         if (cancelled) return
         if (res && !res.empty) {
           // Pull only the editable fields (skip id/courseId/logDate/timestamps).
+          // Never hydrate privateNotes for a user who can't view it — it must
+          // not enter client state for an unauthorized session.
           const next = EMPTY()
-          for (const k of EDITABLE_FIELDS) next[k] = res[k] ?? ''
+          for (const k of EDITABLE_FIELDS) {
+            if (k === 'privateNotes' && !canViewPrivate) continue
+            next[k] = res[k] ?? ''
+          }
           setForm(next)
         } else {
           setForm(EMPTY())
@@ -91,14 +105,18 @@ export default function ConditionLogTab() {
       })
       .catch(() => { if (!cancelled) { setForm(EMPTY()); setLoadedDate(date) } })
     return () => { cancelled = true }
-  }, [date])
+  }, [date, canViewPrivate])
 
   function setField(k, v) { setForm(f => ({ ...f, [k]: v })) }
 
   async function handleSave() {
     setSaving(true)
     try {
-      await saveConditionLog({ logDate: date, ...form })
+      // Strip privateNotes from the payload for users who can't view it, so a
+      // blank/absent field can never overwrite the stored superintendent note.
+      const payload = { logDate: date, ...form }
+      if (!canViewPrivate) delete payload.privateNotes
+      await saveConditionLog(payload)
       toast?.success?.(`Condition log saved for ${date}`)
     } catch (err) {
       toast?.error?.(`Save failed: ${err.message}`)
@@ -200,7 +218,7 @@ export default function ConditionLogTab() {
           ))}
 
           {/* ── Notes ────────────────────────────────────────────────── */}
-          {TEXT_FIELDS.map(([key, label]) => (
+          {visibleTextFields.map(([key, label]) => (
             <div key={key} className={styles.section}>
               <p className={styles.fieldLabel}>
                 {label}{key === 'privateNotes' && <span className={styles.private}> · not crew-visible</span>}

@@ -19,6 +19,7 @@ import {
   computeNpkLbs,
 } from '../../../utils/nutrition/nutritionTotals'
 import { useToast } from '../../../utils/feedback/toastContext'
+import { useAuth } from '../../../context/AuthContext'
 import styles from './NutritionApplications.module.css'
 
 const todayIso = () => new Date().toISOString().slice(0, 10)
@@ -154,6 +155,8 @@ export default function NutritionApplications() {
   const { items: inventory } = useInventoryData()
   const [logOpen, setLogOpen] = useState(false)
   const toast = useToast()
+  const { can } = useAuth()
+  const canDelete = can('canDeleteRecords')
 
   const inventoryById = useMemo(() => {
     const m = {}
@@ -208,7 +211,7 @@ export default function NutritionApplications() {
                   </span>
                   <span className={styles.appNpk}>{a.nLb} N · {a.pLb} P · {a.kLb} K (lb)</span>
                 </div>
-                {a.source === 'manual' && (
+                {a.source === 'manual' && canDelete && (
                   <button type="button" className={styles.delBtn} onClick={() => handleDelete(a.id)} aria-label="Delete">✕</button>
                 )}
               </li>

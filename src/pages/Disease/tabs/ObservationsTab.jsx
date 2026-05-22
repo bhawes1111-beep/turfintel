@@ -14,6 +14,7 @@ import {
 } from '../../../utils/disease/diseaseStore'
 import { categorizeObservations } from '../../../utils/disease/diseaseView'
 import { useToast } from '../../../utils/feedback/toastContext'
+import { useAuth } from '../../../context/AuthContext'
 import styles from './ObservationsTab.module.css'
 
 // Common cool/warm-season turf diseases — chips for fast logging. Free text
@@ -136,6 +137,8 @@ export default function ObservationsTab() {
   const { observations, loading } = useDisease()
   const [logOpen, setLogOpen] = useState(false)
   const toast = useToast()
+  const { can } = useAuth()
+  const canDelete = can('canDeleteRecords')
 
   const { active, monitoring, resolved } = useMemo(() => categorizeObservations(observations), [observations])
 
@@ -165,7 +168,9 @@ export default function ObservationsTab() {
           {o.symptoms && <span className={styles.rowSymptoms}>{o.symptoms}</span>}
           {o.followUpDate && <span className={styles.rowFollowUp}>↻ Follow-up {fmtDate(o.followUpDate)}</span>}
         </div>
-        <button type="button" className={styles.delBtn} onClick={() => handleDelete(o.id)} aria-label="Delete">✕</button>
+        {canDelete && (
+          <button type="button" className={styles.delBtn} onClick={() => handleDelete(o.id)} aria-label="Delete">✕</button>
+        )}
       </li>
     )
   }
