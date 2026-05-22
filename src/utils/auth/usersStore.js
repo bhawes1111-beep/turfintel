@@ -1,8 +1,8 @@
 // Admin users store — CRUD over /api/users.
 //
-// Uses the session cookie for auth (credentials: same-origin), NOT the
-// ADMIN_KEY — the admin page is for logged-in admins. Simple fetch helpers
-// + a useUsers() hook over useSyncExternalStore, matching the other stores.
+// Uses the session cookie for auth (credentials: same-origin) — the admin
+// page is for logged-in admins. Simple fetch helpers + a useUsers() hook
+// over useSyncExternalStore, matching the other stores.
 
 import { useSyncExternalStore } from 'react'
 

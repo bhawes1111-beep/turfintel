@@ -59,18 +59,52 @@ for (const path of MIGRATED) {
   assert(!/adminKeyHeader/.test(src), `${name}: does not use adminKeyHeader`)
 }
 
-// ── mutationAuth.js helpers no longer emit the key ──────────────────────────
+// ── mutationAuth.js: public key + adminKeyHeader REMOVED (Phase 3D) ─────────
 {
   const src = readFileSync('src/utils/auth/mutationAuth.js', 'utf8')
-  assert(!/['"]x-admin-key['"]\s*:/.test(src), 'mutationAuth: mutationHeaders/adminKeyHeader emit no x-admin-key')
+  assert(!/['"]x-admin-key['"]\s*:/.test(src), 'mutationAuth: no x-admin-key header anywhere')
+  assert(!src.includes('TurfAdmin2025!'), 'mutationAuth: no hardcoded ADMIN_KEY literal')
+  assert(!/export\s+(const\s+ADMIN_KEY|function\s+adminKeyHeader)/.test(src), 'mutationAuth: no ADMIN_KEY or adminKeyHeader export')
   assert(/sessionInit/.test(src), 'mutationAuth: exposes sessionInit() credentials helper')
-  // Functional check: import and confirm the returned headers carry no key.
 }
 {
-  const { mutationHeaders, adminKeyHeader } = await import('../src/utils/auth/mutationAuth.js')
-  const mh = mutationHeaders()
+  const mod = await import('../src/utils/auth/mutationAuth.js')
+  const mh = mod.mutationHeaders()
   assert(!('x-admin-key' in mh) && mh['Content-Type'] === 'application/json', 'mutationHeaders() = JSON only, no key')
-  assert(Object.keys(adminKeyHeader()).length === 0, 'adminKeyHeader() = {} (no key)')
+  assert(mod.ADMIN_KEY === undefined, 'mutationAuth no longer exports ADMIN_KEY')
+  assert(mod.adminKeyHeader === undefined, 'mutationAuth no longer exports adminKeyHeader')
+}
+
+// ── GLOBAL: no src/ file references ADMIN_KEY or imports adminKeyHeader ─────
+// (in CODE — historical comments mentioning the names are allowed; the
+// bundle scan below is the hard guarantee that nothing reaches the browser.)
+{
+  // Strip // line comments and /* block comments */ before scanning identifiers.
+  function stripComments(src) {
+    return src
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '')
+  }
+  const adminKeyHits = []
+  const adminHeaderHits = []
+  const literalHits = []
+  function walk(dir) {
+    for (const entry of readdirSync(dir)) {
+      const p = `${dir}/${entry}`
+      if (statSync(p).isDirectory()) walk(p)
+      else if (/\.(js|jsx|ts|tsx)$/.test(entry)) {
+        const raw  = readFileSync(p, 'utf8')
+        const code = stripComments(raw)
+        if (/\bADMIN_KEY\b/.test(code)) adminKeyHits.push(p)
+        if (/\badminKeyHeader\b/.test(code)) adminHeaderHits.push(p)
+        if (raw.includes('TurfAdmin2025!')) literalHits.push(p)   // raw: the literal must not exist anywhere
+      }
+    }
+  }
+  walk('src')
+  assert(adminKeyHits.length === 0, 'no src/ file references ADMIN_KEY in code', adminKeyHits)
+  assert(adminHeaderHits.length === 0, 'no src/ file references adminKeyHeader in code', adminHeaderHits)
+  assert(literalHits.length === 0, 'no src/ file contains TurfAdmin2025! anywhere', literalHits)
 }
 
 // ── GLOBAL: no client store under src/utils/**/*Store.js hardcodes the key ──
@@ -115,6 +149,36 @@ for (const path of MIGRATED) {
   }
   walk('src/utils')
   assert(offenders.length === 0, 'no *Store.js sets an x-admin-key header', offenders)
+}
+
+// ── BUNDLE SCAN: production build must not leak the public key (Phase 3D) ───
+// Requires the build to have been run before this smoke (npm run build).
+{
+  const distExists = (() => { try { statSync('dist'); return true } catch { return false } })()
+  if (!distExists) {
+    assert(false, 'dist/ exists (run `npm run build` before this smoke)')
+  } else {
+    const hits = { literal: [], header: [], adminConst: [] }
+    function walk(dir) {
+      for (const entry of readdirSync(dir)) {
+        const p = `${dir}/${entry}`
+        if (statSync(p).isDirectory()) walk(p)
+        else if (/\.(js|css|html|map)$/.test(entry)) {
+          const src = readFileSync(p, 'utf8')
+          if (src.includes('TurfAdmin2025!')) hits.literal.push(p)
+          if (/['"]x-admin-key['"]\s*:/i.test(src)) hits.header.push(p)
+          // The literal string "ADMIN_KEY" may legitimately appear in source
+          // maps that include the worker side; scan js+css only for the
+          // identifier in client-runtime bundles (not .map files).
+          if (/\.(js|css|html)$/.test(entry) && /\bADMIN_KEY\b/.test(src)) hits.adminConst.push(p)
+        }
+      }
+    }
+    walk('dist')
+    assert(hits.literal.length === 0, 'dist: no file contains TurfAdmin2025!', hits.literal)
+    assert(hits.header.length === 0, 'dist: no file sets an x-admin-key header', hits.header)
+    assert(hits.adminConst.length === 0, 'dist (js/css/html): no ADMIN_KEY identifier remains', hits.adminConst)
+  }
 }
 
 console.log(`\n${passed} passed, ${failed} failed`)
