@@ -364,5 +364,60 @@ function assert(cond, label, ctx) {
   assert((await isRateLimited(errEnv, 'a@x.com', '1.1.1.1')) === false, 'isRateLimited fails open on DB error')
 }
 
+// ── Dual server key (Phase 3B — worker/lib/auth.js) ─────────────────────────
+{
+  const { requireAdminKey, isMutation } = await import('../worker/lib/auth.js')
+  const req = (key) => ({ headers: { get: (h) => (h.toLowerCase() === 'x-admin-key' ? key : null) } })
+
+  const ADMIN = 'TurfAdmin2025!'
+  const AUTO  = 'Automation-Secret-XYZ'
+  const env = { ADMIN_KEY: ADMIN, AUTOMATION_KEY: AUTO }
+
+  assert(requireAdminKey(req(ADMIN), env).ok === true, 'ADMIN_KEY still accepted')
+  assert(requireAdminKey(req(AUTO), env).ok === true, 'AUTOMATION_KEY accepted')
+  const bad = requireAdminKey(req('nope'), env)
+  assert(bad.ok === false && bad.status === 401, 'invalid key → 401')
+  const none = requireAdminKey(req(null), env)
+  assert(none.ok === false && none.status === 401, 'no key → 401')
+
+  // Either key alone still works (the other unset).
+  assert(requireAdminKey(req(ADMIN), { ADMIN_KEY: ADMIN }).ok === true, 'ADMIN_KEY works when AUTOMATION_KEY unset')
+  assert(requireAdminKey(req(AUTO), { AUTOMATION_KEY: AUTO }).ok === true, 'AUTOMATION_KEY works when ADMIN_KEY unset')
+  // AUTOMATION_KEY must NOT be accepted as if it were ADMIN when only ADMIN is set.
+  assert(requireAdminKey(req(AUTO), { ADMIN_KEY: ADMIN }).ok === false, 'AUTOMATION_KEY value rejected when not configured')
+
+  // Neither key configured → 503 fail-closed.
+  const misconfig = requireAdminKey(req(ADMIN), {})
+  assert(misconfig.ok === false && misconfig.status === 503, 'no server key configured → 503 fail-closed')
+
+  // isMutation unchanged.
+  assert(isMutation('POST') && isMutation('PATCH') && isMutation('DELETE'), 'isMutation true for writes')
+  assert(!isMutation('GET'), 'isMutation false for GET')
+}
+
+// ── AUTOMATION_KEY must never appear in the client (src/) ───────────────────
+{
+  // Source-scan (portable, no shell): walk src/ for the literal token.
+  const { readdirSync, statSync } = await import('fs')
+  const hits = []
+  function walk(dir) {
+    for (const name of readdirSync(dir)) {
+      const p = `${dir}/${name}`
+      const st = statSync(p)
+      if (st.isDirectory()) walk(p)
+      else if (/\.(js|jsx|ts|tsx)$/.test(name) && readFileSync(p, 'utf8').includes('AUTOMATION_KEY')) hits.push(p)
+    }
+  }
+  walk('src')
+  assert(hits.length === 0, 'no file under src/ references AUTOMATION_KEY', hits)
+
+  // Cron remains structurally untouched: scheduled() still calls capture/rollup
+  // in-process (no requireAdminKey, no x-admin-key in the handler).
+  const idx = readFileSync('worker/index.js', 'utf8')
+  const scheduled = idx.slice(idx.indexOf('async scheduled'), idx.indexOf('async scheduled') + 600)
+  assert(scheduled.includes('captureWeatherForAllCourses') && scheduled.includes('rollupAllCourses'), 'cron still calls capture/rollup in-process')
+  assert(!/x-admin-key/i.test(scheduled) && !/requireAdminKey/.test(scheduled), 'cron handler uses no key (in-process)')
+}
+
 console.log(`\n${passed} passed, ${failed} failed`)
 process.exit(failed === 0 ? 0 : 1)

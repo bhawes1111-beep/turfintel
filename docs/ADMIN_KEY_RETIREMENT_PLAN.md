@@ -73,16 +73,26 @@ regression is isolated to one vertical at a time.
 
 ## 6. Server-only automation key
 
-Cron + internal maintenance still need a non-session credential. Keep a key,
-but **server-only**:
+**IMPLEMENTED in Phase 3B.** `worker/lib/auth.js#requireAdminKey` now accepts
+the `x-admin-key` header matching EITHER `env.ADMIN_KEY` OR `env.AUTOMATION_KEY`;
+both resolve to the synthetic owner_admin automation actor.
 
-- Rename/segregate to make intent explicit (e.g. `AUTOMATION_KEY` as a Worker
-  **secret**), distinct from the retired client key.
-- Used only by the `scheduled()` handler and any server-side maintenance
-  scripts — never embedded in the browser bundle.
-- Optionally narrow its authority to the specific automation routes
-  (`/api/weather/capture`, `/api/water-balance/rollup`) rather than full
-  owner_admin, so a leak is lower-impact.
+- `AUTOMATION_KEY` is a Worker **secret only** — never imported under `src/`,
+  never in the browser bundle. For internal / manual server-side tooling
+  (remote verification scripts, maintenance ops).
+- **Provision (server-side, run when deploying Phase 3):**
+
+  ```
+  npx wrangler secret put AUTOMATION_KEY
+  ```
+
+- Clarification (corrected from the original draft): **cron does NOT use any
+  key.** The `scheduled()` handler calls `captureWeatherForAllCourses(env)` /
+  `rollupAllCourses(env)` directly in-process — no HTTP request, no
+  `x-admin-key`. So cron is unaffected by ADMIN_KEY retirement entirely; the
+  automation key exists for *external* HTTP tooling, not the scheduled job.
+- Future option: narrow `AUTOMATION_KEY` authority to specific routes rather
+  than full owner_admin, so a leak is lower-impact.
 
 ## 7. Key rotation plan
 
