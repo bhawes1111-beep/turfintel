@@ -14,14 +14,15 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { withCourseScope, getSelectedCourseId } from '../courses/courseStore'
-// Uploads are multipart — use the key-only header so the browser sets the
-// multipart/form-data boundary itself (no Content-Type). Centralized in R3.
-import { adminKeyHeader } from '../auth/mutationAuth'
+// Phase 3C: session-cookie auth. Uploads stay multipart — we send NO headers
+// at all so the browser sets the multipart/form-data boundary itself, and
+// `credentials: 'same-origin'` carries the httpOnly ti_session cookie. No
+// x-admin-key from the browser.
 
 const API = '/api/attachments'
 
 async function fetchJSON(url, init) {
-  const res = await fetch(url, init)
+  const res = await fetch(url, { credentials: 'same-origin', ...init })
   if (!res.ok) {
     const text = await res.text().catch(() => '')
     throw new Error(`${init?.method ?? 'GET'} ${url} → ${res.status} ${text}`)
@@ -54,9 +55,9 @@ export async function uploadAttachment({ parentType, parentId, file, caption, up
   if (uploadedBy) fd.append('uploadedBy', uploadedBy)
 
   const res = await fetch(API, {
-    method:  'POST',
-    headers: adminKeyHeader(),
-    body:    fd,
+    method:      'POST',
+    credentials: 'same-origin',   // session cookie; NO Content-Type (browser sets the multipart boundary)
+    body:        fd,
   })
   if (!res.ok) {
     const text = await res.text().catch(() => '')
@@ -69,8 +70,8 @@ export async function uploadAttachment({ parentType, parentId, file, caption, up
 export async function deleteAttachment(id) {
   const url = `${API}/${encodeURIComponent(id)}`
   const res = await fetch(url, {
-    method:  'DELETE',
-    headers: adminKeyHeader(),
+    method:      'DELETE',
+    credentials: 'same-origin',
   })
   if (!res.ok) {
     const text = await res.text().catch(() => '')

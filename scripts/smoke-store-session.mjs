@@ -39,6 +39,10 @@ const MIGRATED = [
   'src/utils/sprays/spraysStore.js',
   'src/utils/equipment/equipmentStore.js',
   'src/utils/repairs/repairsStore.js',
+  // 3C-5 (final group)
+  'src/utils/courses/courseStore.js',
+  'src/utils/weather/weatherHistoryStore.js',
+  'src/utils/attachments/attachmentsStore.js',
 ]
 
 // ── Per migrated store: session creds, no key header, no hardcoded key ──────
@@ -81,6 +85,36 @@ for (const path of MIGRATED) {
   }
   walk('src/utils')
   assert(offenders.length === 0, 'no *Store.js hardcodes TurfAdmin2025!', offenders)
+}
+
+// ── Attachments multipart specifics (3C-5) ─────────────────────────────────
+{
+  const src = readFileSync('src/utils/attachments/attachmentsStore.js', 'utf8')
+  // Must NOT import or use adminKeyHeader anymore.
+  assert(!/adminKeyHeader/.test(src), 'attachments: no adminKeyHeader import/use')
+  // Upload + delete + listing must all send credentials.
+  const credCount = (src.match(/credentials: 'same-origin'/g) || []).length
+  assert(credCount >= 3, 'attachments: credentials on fetchJSON + upload + delete', credCount)
+  // FormData upload must NOT set a manual Content-Type header (browser sets the
+  // multipart boundary). Match an actual header key (`'Content-Type':`), so a
+  // comment mentioning the term doesn't trip the check.
+  assert(!/['"]content-type['"]\s*:/i.test(src), 'attachments: no manual Content-Type header (FormData boundary preserved)')
+  // The FormData upload path is intact.
+  assert(/new FormData\(\)/.test(src) && /body:\s*fd/.test(src), 'attachments: FormData upload body preserved')
+}
+
+// ── GLOBAL: no store under src/utils sends an x-admin-key header ────────────
+{
+  const offenders = []
+  function walk(dir) {
+    for (const entry of readdirSync(dir)) {
+      const p = `${dir}/${entry}`
+      if (statSync(p).isDirectory()) walk(p)
+      else if (/Store\.js$/.test(entry) && /['"]x-admin-key['"]\s*:/i.test(readFileSync(p, 'utf8'))) offenders.push(p)
+    }
+  }
+  walk('src/utils')
+  assert(offenders.length === 0, 'no *Store.js sets an x-admin-key header', offenders)
 }
 
 console.log(`\n${passed} passed, ${failed} failed`)
