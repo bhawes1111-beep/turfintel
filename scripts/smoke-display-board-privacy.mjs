@@ -63,5 +63,24 @@ function assert(cond, label, ctx) {
   assert(mild.length === 0, 'mild conditions → no impacts', mild)
 }
 
+// ── 3. PERMISSION LAYER — private notes restricted to authorized roles ─────
+{
+  const { can } = await import('../src/utils/auth/permissions.js')
+  // Crew-tier roles must never have the private-notes permission.
+  assert(!can('crew', 'canViewPrivateNotes'), 'crew denied private notes')
+  assert(!can('crew_lead', 'canViewPrivateNotes'), 'crew_lead denied private notes')
+  assert(!can('read_only', 'canViewPrivateNotes'), 'read_only denied private notes')
+  assert(!can('assistant_super', 'canViewPrivateNotes'), 'assistant denied private notes (no override)')
+  // Authorized roles keep access.
+  assert(can('superintendent', 'canViewPrivateNotes'), 'superintendent retains private notes')
+  assert(can('owner_admin', 'canViewPrivateNotes'), 'owner_admin retains private notes')
+
+  // The condition-log editor must gate the field on the permission, and must
+  // not hydrate/save it for unauthorized sessions.
+  const tab = readFileSync('src/pages/Operations/ConditionLogTab.jsx', 'utf8')
+  assert(tab.includes('canViewPrivateNotes'), 'ConditionLogTab checks canViewPrivateNotes')
+  assert(tab.includes('delete payload.privateNotes'), 'ConditionLogTab strips privateNotes from unauthorized save')
+}
+
 console.log(`\n${passed} passed, ${failed} failed`)
 process.exit(failed === 0 ? 0 : 1)
