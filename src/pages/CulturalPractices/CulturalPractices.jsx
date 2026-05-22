@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import PageShell from '../../components/layout/PageShell'
 import CulturalPracticesOverview from './tabs/CulturalPracticesOverview'
+import PracticesTab               from './tabs/PracticesTab'
 import Aerification               from './tabs/Aerification'
 import Topdressing                from './tabs/Topdressing'
 import Verticutting               from './tabs/Verticutting'
@@ -9,7 +10,7 @@ import Mowing                     from './tabs/Mowing'
 import PracticeCalendar           from './tabs/PracticeCalendar'
 import CPReports                  from './tabs/CPReports'
 
-const TABS = ['Overview', 'Aerification', 'Topdressing', 'Verticutting', 'Rolling', 'Mowing', 'Practice Calendar', 'Reports']
+const TABS = ['Overview', 'Practices', 'Aerification', 'Topdressing', 'Verticutting', 'Rolling', 'Mowing', 'Practice Calendar', 'Reports']
 
 export default function CulturalPractices() {
   const [activeTab, setActiveTab] = useState('Overview')
@@ -17,6 +18,7 @@ export default function CulturalPractices() {
   return (
     <PageShell title="Cultural Practices" tabs={TABS} activeTab={activeTab} onTabChange={setActiveTab}>
       {activeTab === 'Overview'          && <CulturalPracticesOverview />}
+      {activeTab === 'Practices'         && <PracticesTab />}
       {activeTab === 'Aerification'      && <Aerification />}
       {activeTab === 'Topdressing'       && <Topdressing />}
       {activeTab === 'Verticutting'      && <Verticutting />}
