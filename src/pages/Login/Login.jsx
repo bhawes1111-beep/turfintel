@@ -1,17 +1,32 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
 import styles from './Login.module.css'
 
 export default function Login() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const { login, isAuthenticated, loading } = useAuth()
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
+  const [error, setError]       = useState(null)
+  const [busy, setBusy]         = useState(false)
 
-  function handleSignIn(e) {
+  // Already logged in → bounce into the app (where they were headed, or /).
+  const dest = location.state?.from || '/dashboard'
+  useEffect(() => {
+    if (!loading && isAuthenticated) navigate(dest, { replace: true })
+  }, [loading, isAuthenticated, navigate, dest])
+
+  async function handleSignIn(e) {
     e.preventDefault()
-    // No auth yet — navigate directly to app.
-    // To wire real auth: replace this with your auth provider call.
-    navigate('/dashboard')
+    setError(null)
+    if (!email.trim() || !password) { setError('Enter your email and password'); return }
+    setBusy(true)
+    const res = await login(email.trim(), password)
+    setBusy(false)
+    if (res.ok) navigate(dest, { replace: true })
+    else setError(res.error || 'Login failed')
   }
 
   return (
@@ -51,6 +66,7 @@ export default function Login() {
               value={email}
               onChange={e => setEmail(e.target.value)}
               autoComplete="email"
+              disabled={busy}
             />
           </div>
 
@@ -64,11 +80,14 @@ export default function Login() {
               value={password}
               onChange={e => setPassword(e.target.value)}
               autoComplete="current-password"
+              disabled={busy}
             />
           </div>
 
-          <button type="submit" className={styles.signInBtn}>
-            Sign In
+          {error && <p className={styles.error} role="alert">{error}</p>}
+
+          <button type="submit" className={styles.signInBtn} disabled={busy}>
+            {busy ? 'Signing in…' : 'Sign In'}
           </button>
         </form>
 
@@ -79,22 +98,6 @@ export default function Login() {
           onClick={() => {/* password reset flow — coming soon */}}
         >
           Forgot Password?
-        </button>
-
-        {/* Divider */}
-        <div className={styles.divider}>
-          <span className={styles.dividerLine} />
-          <span className={styles.dividerText}>or</span>
-          <span className={styles.dividerLine} />
-        </div>
-
-        {/* Demo bypass */}
-        <button
-          type="button"
-          className={styles.demoBtn}
-          onClick={() => navigate('/dashboard')}
-        >
-          Continue to Demo Dashboard →
         </button>
 
       </div>

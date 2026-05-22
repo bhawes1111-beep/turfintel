@@ -189,6 +189,20 @@
   transform: translateY(1px);
 }
 
+.signInBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+  box-shadow: none;
+}
+
+/* Login error message */
+.error {
+  margin: 2px 0 0;
+  font-size: 0.82rem;
+  color: #f8a0a0;
+  text-align: center;
+}
+
 /* ── Forgot password ────────────────────────────────────────────────────── */
 
 .forgotBtn {

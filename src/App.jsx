@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { CourseProvider } from './context/CourseContext'
+import { AuthProvider } from './context/AuthContext'
+import RequireAuth from './components/auth/RequireAuth'
 import ToastProvider from './components/feedback/ToastProvider'
 import Layout from './components/layout/Layout'
 import Login from './pages/Login/Login'
@@ -27,16 +29,18 @@ export default function App() {
     <CourseProvider>
     <ToastProvider>
     <BrowserRouter>
+      <AuthProvider>
       <Routes>
         {/* Login lives outside Layout — no sidebar rendered */}
         <Route path="/login" element={<Login />} />
 
-        {/* Full-screen Display Board mode — outside Layout so the
-            sidebar + top bar are hidden for TV / tablet display. */}
+        {/* Full-screen Display Board mode — outside Layout AND outside the
+            auth guard, so a TV / tablet kiosk can show it without a login.
+            It is read-only (GET) and carries no private data. */}
         <Route path="/display-board/board" element={<DisplayBoard boardMode />} />
 
-        {/* All app routes share the sidebar Layout */}
-        <Route path="/" element={<Layout />}>
+        {/* All app routes share the sidebar Layout and require a session */}
+        <Route path="/" element={<RequireAuth><Layout /></RequireAuth>}>
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="crew/*" element={<OperationsBoard />} />
@@ -58,6 +62,7 @@ export default function App() {
           <Route path="reports"     element={<Reports />} />
         </Route>
       </Routes>
+      </AuthProvider>
     </BrowserRouter>
     </ToastProvider>
     </CourseProvider>
