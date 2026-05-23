@@ -12,27 +12,36 @@ later hardening pass. Cross-refs: [Invite/Reset Plan](AUTH_INVITE_RESET_PLAN.md)
   a user to zero courses by sending `[]`.
 - **Impact:** low today — the only restricted users are ones explicitly given a
   non-empty allow-list. But "remove all course access" silently grants all.
-- **Fix later:** distinguish "unset/NULL = all" from "explicit empty = none" at
-  the API layer (e.g. store `[]` literally, or add an `all_courses` boolean).
+- **FIXED in Phase 4 Step 4** ([8e21e14](#)): `encodeCourseAccess()` now
+  distinguishes `undefined` (no change) / `null` (NULL = all) / `[]` (explicit
+  no-access, stored as `'[]'`) / `['..']` (allow-list). Invalid types → 400.
 
 ## 2. Course-scope enforcement is read-side and partial
 - **Enforced reads (P3):** condition-logs, moisture, sprays, inventory,
   equipment, nutrition, cultural-practices, disease, water-balance,
   weather/history, weather/current, crew-assignments, operations-notes,
   calendar-events, and `/api/courses` filtering.
-- **Deferred endpoints:** `/api/weather/observations`, `/api/weather/capture`
-  (automation/cron surfaces), `/api/users`, `/api/attachments`,
-  `/api/pilot-feedback`, `/api/schedule-templates`, `/api/employee-schedules`,
-  `/api/crew-employees`, `/api/alerts`. Add as needed in a later pass.
+- **Enforced by-id reads (Phase 4 Step 5):** `/api/attachments/:id` +
+  `/api/attachments/:id/file` via `enforceRowCourseAccess()` — denied/missing
+  return a uniform 404 (no existence leak; binary leak closed).
+- **Still deferred endpoints:** `/api/weather/observations`, `/api/weather/capture`
+  (automation/cron surfaces), `/api/users`, `/api/pilot-feedback`,
+  `/api/schedule-templates`, `/api/employee-schedules`, `/api/crew-employees`,
+  `/api/alerts`. Add as needed in a later pass.
 
-## 3. By-id course-access reads are not guarded
-- **What:** `GET /api/<resource>/:id` fetches a single record by id without a
+## 3. By-id course-access reads are PARTIALLY guarded
+- **Closed:** attachments (`/api/attachments/:id` + `/file`) — the
+  highest-risk binary-leak path. Helper `enforceRowCourseAccess` in
+  `worker/lib/courseScope.js` ready for re-use.
+- **Still open:** every other operational `GET /api/<resource>/:id` (disease,
+  nutrition, sprays, equipment, condition-logs, moisture, crew-assignments,
+  calendar-events, etc.) fetches a single record by id without a
   course-access check. A restricted user who knows an id could read a record
   from a course they're not assigned to.
 - **Impact:** low — ids are opaque and not enumerated to restricted users; the
   list endpoints (their normal discovery path) are scoped.
-- **Fix later:** load the row, compare `row.course_id` via
-  `actorCanAccessCourse`, return 404/empty if denied. Apply per-resource.
+- **Fix later:** apply the existing `enforceRowCourseAccess` helper to each
+  by-id GET (extending the table whitelist in `courseScope.js`).
 
 ## 4. Mutation-level course enforcement is deferred
 - **What:** P2 enforces *permission* on mutations; it does **not** check that

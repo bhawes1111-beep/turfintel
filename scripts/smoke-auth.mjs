@@ -477,5 +477,79 @@ function assert(cond, label, ctx) {
     'users.js: invalid courseAccess → 400 with helpful message')
 }
 
+// ── enforceRowCourseAccess — row-level course guard (Phase 4 Step 5) ────────
+// Locks the helper's behavior + asserts the worker routes use it. The route
+// integration is the no-existence-leak guarantee for cross-course attachment
+// reads (metadata + binary file).
+{
+  const { enforceRowCourseAccess } = await import('../worker/lib/courseScope.js')
+
+  // Fake D1 returning a row for known ids only.
+  function mkDB(rows) {
+    return {
+      prepare() {
+        let bound = []
+        return {
+          bind(...a) { bound = a; return this },
+          first: async () => rows.find(r => r.id === bound[0]) || null,
+        }
+      },
+    }
+  }
+  const env = { DB: mkDB([
+    { id: 'a-x', course_id: 'crossroads-gc' },
+    { id: 'a-y', course_id: 'course-b' },
+  ]) }
+
+  const owner = { role: 'owner_admin' }
+  const key   = { role: 'owner_admin', automation: true }
+  const sup   = { role: 'superintendent' }
+  const restricted = { role: 'crew', course_access: '["crossroads-gc"]' }
+  const noAccess   = { role: 'crew', course_access: '[]' }
+  const nullAccess = { role: 'crew', course_access: null }
+
+  // Allow paths.
+  assert((await enforceRowCourseAccess(env, owner, 'operational_attachments', 'a-y')).allow === true, 'owner → any course allowed')
+  assert((await enforceRowCourseAccess(env, key,   'operational_attachments', 'a-y')).allow === true, 'AUTOMATION_KEY actor → any course allowed')
+  assert((await enforceRowCourseAccess(env, sup,   'operational_attachments', 'a-y')).allow === true, 'superintendent → any course allowed')
+  assert((await enforceRowCourseAccess(env, nullAccess, 'operational_attachments', 'a-y')).allow === true, 'NULL-access user → all courses allowed (unchanged)')
+  assert((await enforceRowCourseAccess(env, restricted, 'operational_attachments', 'a-x')).allow === true, 'restricted → own course allowed')
+
+  // Deny paths — every one returns allow:false so the caller emits 404.
+  assert((await enforceRowCourseAccess(env, restricted, 'operational_attachments', 'a-y')).allow === false, 'restricted → other course DENIED')
+  assert((await enforceRowCourseAccess(env, noAccess,   'operational_attachments', 'a-x')).allow === false, '[]-access user DENIED any row')
+  assert((await enforceRowCourseAccess(env, owner,      'operational_attachments', 'does-not-exist')).allow === false, 'missing id DENIED (no existence leak)')
+  assert((await enforceRowCourseAccess(env, null,       'operational_attachments', 'a-x')).allow === false, 'null actor DENIED')
+  assert((await enforceRowCourseAccess(env, owner,      'arbitrary_table',         'a-x')).allow === false, 'un-whitelisted table DENIED')
+  assert((await enforceRowCourseAccess(env, owner,      'operational_attachments', '')).allow === false, 'empty id DENIED')
+  assert((await enforceRowCourseAccess({},  owner,      'operational_attachments', 'a-x')).allow === false, 'no DB → DENIED')
+
+  // No-existence-leak: a missing id and a denied row produce IDENTICAL
+  // shapes (`allow: false`) so the caller's uniform 404 reveals nothing.
+  const missing = await enforceRowCourseAccess(env, restricted, 'operational_attachments', 'does-not-exist')
+  const denied  = await enforceRowCourseAccess(env, restricted, 'operational_attachments', 'a-y')
+  assert(JSON.stringify(missing) === JSON.stringify(denied), 'missing vs denied responses are identical (no existence leak)')
+
+  // Allowed → row returned.
+  const ok = await enforceRowCourseAccess(env, restricted, 'operational_attachments', 'a-x')
+  assert(ok.allow === true && ok.row?.id === 'a-x' && ok.row?.course_id === 'crossroads-gc', 'allow returns the fetched row')
+
+  // ── Source-level: the worker routes use the helper + map deny → 404 ──
+  const idx = readFileSync('worker/index.js', 'utf8')
+  // Both attachment GET routes resolve the actor and call the helper.
+  const guarded = (idx.match(/enforceRowCourseAccess\(env, actor, 'operational_attachments', id\)/g) || []).length
+  assert(guarded >= 2, 'worker: both /:id and /:id/file GETs call enforceRowCourseAccess', guarded)
+  // Both routes deny → 404 (uniform; no error body that hints at existence).
+  const metaSlice = idx.slice(idx.indexOf("// ── /api/attachments/:id ──"), idx.indexOf("// ── /api/attachments/:id ──") + 900)
+  const fileSlice = idx.slice(idx.indexOf("// ── /api/attachments/:id/file"), idx.indexOf("// ── /api/attachments/:id/file") + 900)
+  assert(/notFound\('Attachment not found'\)/.test(metaSlice), 'attachments/:id deny → notFound (404)')
+  assert(/Response\('Not found', \{ status: 404 \}\)/.test(fileSlice), 'attachments/:id/file deny → 404 plain Response')
+
+  // List + upload paths are NOT row-guarded (they have other protections —
+  // list is course-scoped via the GET guard; upload is gate-perm-checked).
+  const listSlice = idx.slice(idx.indexOf("if (pathname === '/api/attachments') {"), idx.indexOf("if (pathname === '/api/attachments') {") + 400)
+  assert(!/enforceRowCourseAccess/.test(listSlice), 'attachments list/upload not row-guarded (other protections apply)')
+}
+
 console.log(`\n${passed} passed, ${failed} failed`)
 process.exit(failed === 0 ? 0 : 1)

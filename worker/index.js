@@ -188,6 +188,7 @@ import {
   courseReadDecision,
   emptyBodyForPath,
   filterCoursesForActor,
+  enforceRowCourseAccess,
 } from './lib/courseScope.js'
 
 export default {
@@ -662,13 +663,23 @@ async function handleApi(request, env, url) {
   }
 
   // ── /api/attachments/:id/file (must precede /api/attachments/:id) ─────
+  // Row-level course scoping (Phase 4 Step 5): a restricted actor requesting
+  // an attachment that belongs to a course they cannot access gets a uniform
+  // 404 — no existence leak (same response as for a missing id).
   const attachFileMatch = pathname.match(/^\/api\/attachments\/([^/]+)\/file$/)
   if (attachFileMatch) {
     const id = decodeURIComponent(attachFileMatch[1])
-    if (method === 'GET') return streamAttachment(env, id)
+    if (method === 'GET') {
+      const actor = await resolveActor(request, env)
+      const decision = await enforceRowCourseAccess(env, actor, 'operational_attachments', id)
+      if (!decision.allow) return new Response('Not found', { status: 404 })
+      return streamAttachment(env, id)
+    }
   }
 
   // ── /api/attachments ──────────────────────────────────────────────────
+  // LIST + UPLOAD — list is already course-scoped (via the GET guard above
+  // and the ?courseId param); upload is gate-permission-checked.
   if (pathname === '/api/attachments') {
     if (method === 'GET') {
       const parentType = url.searchParams.get('parentType') || null
@@ -679,10 +690,16 @@ async function handleApi(request, env, url) {
   }
 
   // ── /api/attachments/:id ──────────────────────────────────────────────
+  // Same row-level scoping for metadata reads as the /file route above.
   const attachMatch = pathname.match(/^\/api\/attachments\/([^/]+)$/)
   if (attachMatch) {
     const id = decodeURIComponent(attachMatch[1])
-    if (method === 'GET')    return getAttachment(env, id)
+    if (method === 'GET') {
+      const actor = await resolveActor(request, env)
+      const decision = await enforceRowCourseAccess(env, actor, 'operational_attachments', id)
+      if (!decision.allow) return notFound('Attachment not found')
+      return getAttachment(env, id)
+    }
     if (method === 'DELETE') return deleteAttachment(env, id)
   }
 

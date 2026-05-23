@@ -12,6 +12,43 @@
 
 import { actorCanAccessCourse, actorAccessibleCourses } from './actor.js'
 
+/**
+ * enforceRowCourseAccess — row-level course-access guard for a GET-by-id read.
+ *
+ * Fetches `id, course_id` from `table` and checks the actor's course access.
+ * Returns:
+ *   { allow: true,  row: { id, course_id } } — row exists AND actor may access
+ *   { allow: false }                          — row missing OR denied
+ *
+ * Callers map `allow: false` to **404** so a denied caller can't distinguish
+ * "exists but not yours" from "doesn't exist" — no existence leak. (The same
+ * uniform 404 covers a malformed/empty id and an actor with NULL DB.)
+ *
+ * The helper deliberately does not enforce auth itself (the central gate
+ * handles 401); it only enforces course-access for an already-resolved actor.
+ * Pass `null` for `actor` only if you intend public-read semantics — in that
+ * case actorCanAccessCourse returns false and the helper denies (no leak).
+ */
+export async function enforceRowCourseAccess(env, actor, table, id) {
+  if (!env?.DB || !id) return { allow: false }
+  // Whitelist `table` to a safe set so the column name is never user-controlled.
+  // The intersection of "course-keyed table" and "currently uses this helper":
+  const ALLOWED = new Set(['operational_attachments'])
+  if (!ALLOWED.has(table)) return { allow: false }
+
+  let row
+  try {
+    row = await env.DB.prepare(
+      `SELECT id, course_id FROM ${table} WHERE id = ?`,
+    ).bind(id).first()
+  } catch {
+    return { allow: false }
+  }
+  if (!row) return { allow: false }
+  if (!actorCanAccessCourse(actor, row.course_id)) return { allow: false }
+  return { allow: true, row }
+}
+
 // GET list/read endpoints that are course-scoped and safe to guard now.
 // Matched by exact path OR `${path}/...` sub-path (e.g. /by-date).
 export const COURSE_SCOPED_READ_PATHS = [
