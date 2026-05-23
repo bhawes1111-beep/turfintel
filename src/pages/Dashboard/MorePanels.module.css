@@ -1,0 +1,73 @@
+/* Phase 6A.2 — "More dashboard panels" collapsible.
+   Sits below the calendar; collapsed by default so it adds zero
+   pre-scroll cost. When open, lays its children out in the same
+   responsive grid the main dashboard used to use. */
+
+.details {
+  padding: var(--grid-padding);
+  border-top: 1px solid var(--color-border);
+}
+
+.summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  list-style: none;
+  background: var(--color-bg-elevated, rgba(255, 255, 255, 0.02));
+  border: 1px solid var(--color-border);
+  user-select: none;
+}
+
+.summary::-webkit-details-marker { display: none; }
+
+.summary:hover {
+  background: rgba(74, 158, 74, 0.04);
+}
+
+.summaryLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  flex: 0 0 auto;
+}
+
+.summaryHint {
+  flex: 1 1 auto;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chev {
+  flex: 0 0 auto;
+  font-size: 14px;
+  color: var(--color-text-muted);
+  transition: transform 120ms ease;
+}
+
+.details[open] .chev { transform: rotate(180deg); }
+
+.panels {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--grid-gap);
+  margin-top: 12px;
+}
+
+@media (max-width: 1100px) {
+  .panels { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 768px) {
+  .details { padding: var(--grid-padding-mobile); }
+  .summaryHint { display: none; }
+  .panels {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}

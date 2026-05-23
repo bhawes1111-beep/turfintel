@@ -194,6 +194,17 @@ const ICONS = {
       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
     </SVG>
   ),
+  // Sunrise — chosen to evoke the pre-dawn morning brief use case.
+  'morning-brief': (
+    <SVG>
+      <path d="M3 18h18"/>
+      <path d="M5 22h14"/>
+      <path d="M5 18a7 7 0 0 1 14 0"/>
+      <line x1="12" y1="2" x2="12" y2="6"/>
+      <line x1="4" y1="10" x2="6" y2="11"/>
+      <line x1="20" y1="10" x2="18" y2="11"/>
+    </SVG>
+  ),
 }
 
 /* ── Navigation tree ──────────────────────────────────────────────────────
@@ -222,8 +233,12 @@ const ICONS = {
    equipment/repairs/spray data) and non-duplicative.                       */
 
 const NAV_TREE = [
-  { id: 'dashboard',     label: 'Dashboard',           icon: 'dashboard',  to: '/dashboard'     },
-  { id: 'operations',    label: 'Operations',          icon: 'operations', to: '/crew'          },
+  { id: 'dashboard',     label: 'Dashboard',           icon: 'dashboard',     to: '/dashboard'      },
+  // Phase 6A.1 — Morning Brief promoted from a tab inside Operations to a
+  // top-level route + sidebar entry. Highest-value 5:30am surface; deserves
+  // a one-click landing. The legacy tab inside /crew remains for back-compat.
+  { id: 'morning-brief', label: 'Morning Brief',       icon: 'morning-brief', to: '/morning-brief' },
+  { id: 'operations',    label: 'Operations',          icon: 'operations',    to: '/crew'           },
   { id: 'display-board', label: 'Display Board',       icon: 'display',    to: '/display-board' },
   { id: 'employees',     label: 'Employee Management', icon: 'crew',       to: '/employees'     },
   { id: 'agronomy',   label: 'Agronomy',            icon: 'agronomy',   to: '/disease'    },

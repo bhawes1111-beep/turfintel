@@ -21,48 +21,69 @@
   color: var(--color-text);
 }
 
-/* ── Weather section ─────────────────────────────────────────────────────── */
-
-.weatherSection {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: var(--grid-padding);
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-bg);
-}
-
-.weatherBanners {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-/* WeatherCard and ETCard side by side */
-.weatherCardsRow {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--grid-gap);
-}
-
-/* ── Phase 29 — Operational Command row (above intelligence row) ────────── */
-/* Full-width container; the inner panel supplies its own padding. */
-
-.opsCommandRow {
-  padding: var(--grid-padding) var(--grid-padding) 0;
-}
-
 /* Phase 32 — mobile quick-actions wrapper. The inner row is itself
    hidden on desktop, so this only contributes padding on mobile. */
 .mobileQuickRow {
   padding: var(--grid-padding-mobile) var(--grid-padding-mobile) 0;
+  /* Mobile order — render first below the page header. */
+  order: 1;
 }
 
 @media (min-width: 768px) {
   .mobileQuickRow { padding: 0; }
 }
 
-/* ── Intelligence row — weather (2fr) + agronomy cards (1fr) ────────────── */
+/* ── Phase 6A.2 — Command row (Today's Priorities + Action Required) ─────
+   2-column on desktop; stacks on mobile. Sits at the very top of the
+   data area so the morning view leads with priorities + actions. */
+
+.commandRow {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: var(--grid-gap);
+  padding: var(--grid-padding);
+  border-bottom: 1px solid var(--color-border);
+  align-items: start;
+  order: 2;
+}
+
+@media (max-width: 1100px) {
+  .commandRow { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 768px) {
+  .commandRow {
+    padding: var(--grid-padding-mobile);
+    gap: 10px;
+  }
+}
+
+/* ── Phase 6A.2 — Readiness row (Overnight / Crew / Spray Window) ───────── */
+
+.readinessRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--grid-gap);
+  padding: var(--grid-padding);
+  border-bottom: 1px solid var(--color-border);
+  align-items: start;
+  order: 3;
+}
+
+@media (max-width: 1100px) {
+  .readinessRow { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 768px) {
+  .readinessRow {
+    grid-template-columns: 1fr;
+    padding: var(--grid-padding-mobile);
+    gap: 10px;
+  }
+}
+
+/* ── Intelligence row — weather (2fr) + agronomy cards (1fr) ─────────────
+   Demoted below the action/readiness rows in Phase 6A.2. */
 
 .intelligenceRow {
   display: grid;
@@ -71,6 +92,7 @@
   padding: var(--grid-padding);
   border-bottom: 1px solid var(--color-border);
   align-items: stretch;
+  order: 4;
 }
 
 .intelligenceWeather {
@@ -108,6 +130,7 @@
 .calendarSection {
   padding: var(--grid-padding);
   border-bottom: 1px solid var(--color-border);
+  order: 5;
 }
 
 @media (max-width: 768px) {
@@ -116,90 +139,13 @@
   }
 }
 
-/* ── Card grid ───────────────────────────────────────────────────────────── */
+/* ── Mobile ordering ─────────────────────────────────────────────────────
+   The .page is column-flex, so child `order` values control top-down
+   stacking on every viewport. We set explicit orders so adding sections
+   later (e.g. a banner) won't accidentally jump above the command row. */
 
-.grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--grid-gap);
-  padding: var(--grid-padding);
-  min-width: 0;
-  box-sizing: border-box;
-  align-items: start;
-}
-
-/* ── Calendar legend row ─────────────────────────────────────────────────── */
-
-.calLegend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px 16px;
-  align-items: center;
-}
-
-
-/* ── Tablet: 2 columns ───────────────────────────────────────────────────── */
-
-@media (max-width: 1100px) {
-  .grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-/* ── Operations Command section ──────────────────────────────────────────── */
-
-.opsSection {
-  grid-column: span 3;
-  display: flex;
-  flex-direction: column;
-  gap: var(--grid-gap);
-  background: rgba(74, 158, 74, 0.025);
-  border: 1px solid rgba(74, 158, 74, 0.12);
-  border-left: 3px solid rgba(74, 158, 74, 0.35);
-  border-radius: 10px;
-  padding: 16px;
-  box-sizing: border-box;
-}
-
-.opsSectionLabel {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: rgba(74, 158, 74, 0.75);
-}
-
-@media (max-width: 1100px) {
-  .opsSection {
-    grid-column: span 2;
-  }
-}
-
-/* ── Mobile: 1 column ────────────────────────────────────────────────────── */
-
-@media (max-width: 768px) {
-  .header {
-    padding: 14px var(--grid-padding-mobile) 10px;
-    padding-left: 52px;
-  }
-
-  .weatherSection {
-    padding: var(--grid-padding-mobile);
-    gap: 10px;
-  }
-
-  .weatherCardsRow {
-    grid-template-columns: 1fr;
-  }
-
-  .grid {
-    grid-template-columns: 1fr;
-    gap: 10px;
-    padding: var(--grid-padding-mobile);
-  }
-
-  .opsSection {
-    grid-column: span 1;
-    padding: 12px;
-  }
-}
+.page > * { order: 99; }
+.header           { order: 0; }
+/* mobileQuickRow, commandRow, readinessRow, intelligenceRow,
+   calendarSection orders are set on their own rules above so they stay
+   colocated with the layout they describe. */

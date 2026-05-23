@@ -1,0 +1,65 @@
+/* Phase 6A.2 — Overnight Changes card.
+   Compact "what's new since 6 PM yesterday" list. Indoor dashboard theme. */
+
+.allQuiet {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  padding: 6px 0;
+}
+
+.allQuietIcon {
+  font-size: 16px;
+  color: var(--color-accent);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.row { margin: 0; }
+
+.rowBtn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-border);
+  font: inherit;
+  color: inherit;
+}
+
+.row:last-child .rowBtn { border-bottom: none; }
+
+.rowBtn:hover {
+  background: rgba(74, 158, 74, 0.04);
+}
+
+.icon {
+  font-size: 16px;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+
+.label {
+  flex: 1 1 auto;
+  font-size: 13px;
+  color: var(--color-text);
+}
+
+.chev {
+  flex: 0 0 auto;
+  font-size: 16px;
+  color: var(--color-text-muted);
+}

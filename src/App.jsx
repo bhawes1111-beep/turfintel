@@ -8,6 +8,7 @@ import Login from './pages/Login/Login'
 import AcceptInvitePage from './pages/Auth/AcceptInvitePage'
 import ResetPasswordPage from './pages/Auth/ResetPasswordPage'
 import Dashboard from './pages/Dashboard/Dashboard'
+import MorningBrief from './pages/MorningBrief/MorningBrief'
 import OperationsBoard from './pages/Operations/OperationsBoard'
 import Employees from './pages/Employees/Employees'
 import DisplayBoard from './pages/DisplayBoard/DisplayBoard'
@@ -54,6 +55,7 @@ export default function App() {
         <Route path="/" element={<RequireAuth><Layout /></RequireAuth>}>
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
+          <Route path="morning-brief" element={<MorningBrief />} />
           <Route path="crew/*" element={<OperationsBoard />} />
           <Route path="employees/*" element={<Employees />} />
           <Route path="display-board" element={<DisplayBoard />} />

@@ -1,3 +1,21 @@
+// Phase 6A.2 — Dashboard restructure: Morning Command Center.
+//
+// Goal: the 5:30 AM landing page surfaces priorities + actions first,
+// then readiness, then ambient intelligence — with duplicate/secondary
+// cards moved into a single collapsible "More dashboard panels" so
+// nothing is lost but the morning view is calm.
+//
+// Hierarchy (top → bottom):
+//   1. Mobile Quick Actions (mobile only — unchanged)
+//   2. COMMAND ROW    — Today's Priorities + Action Required
+//   3. READINESS ROW  — Overnight Changes + Crew Readiness + Spray Windows
+//   4. INTELLIGENCE ROW — Weather (single primary) + Agronomic / Irrigation / GDD
+//   5. Operations Calendar (unchanged)
+//   6. MORE DASHBOARD PANELS (collapsed by default) — every demoted card
+//
+// All store wiring is preserved; this file is layout only. The Operations
+// workspace tabs, Display Board, and every other surface are untouched.
+
 import { useState } from 'react'
 import DashboardCard from '../../components/shared/DashboardCard'
 import { AlertList } from '../../components/shared/alerts'
@@ -12,6 +30,9 @@ import AgronomicIntelligence from './AgronomicIntelligence'
 import SprayWindowCard from './SprayWindowCard'
 import IrrigationIntelCard from './IrrigationIntelCard'
 import OperationalCommand from './OperationalCommand'
+import OvernightChanges from './OvernightChanges'
+import CrewReadiness from './CrewReadiness'
+import MorePanels from './MorePanels'
 import MobileQuickActions from '../../components/feedback/MobileQuickActions'
 import { useAlertsData, acknowledgeAlert, dismissAlert } from '../../utils/alerts/alertsStore'
 import RecentActivity from './RecentActivity'
@@ -20,7 +41,6 @@ import OperationalSummary from './OperationalSummary'
 import ActionQueue from './ActionQueue'
 import SchedulingAwareness from './SchedulingAwareness'
 import {
-  CrewStatusCard,
   EquipmentAlertsCard,
   UpcomingApplicationsCard,
   RecentNotesCard,
@@ -48,29 +68,47 @@ export default function Dashboard() {
   return (
     <div className={styles.page}>
 
-      {/* Page header */}
       <div className={styles.header}>
         <h1 className={styles.title}>Dashboard</h1>
       </div>
 
-      {/* Phase 29 — Operational Command top-of-dashboard panel.
-          Composes intelligence outputs from Phases 28A/B/C plus calendar,
-          crew, equipment, weather into one prioritized command surface.
-          Lives above the intelligence row so superintendent gets the
-          command-center view before any individual widget. */}
-      {/* Phase 32 — Mobile-only quick actions. Sits above Operational
-          Command so the most-used field actions are reachable one-handed
-          without scrolling. Hidden on desktop (CSS), where the full Quick
-          Actions card in the grid serves the same role. */}
+      {/* Mobile-only quick actions — unchanged. */}
       <div className={styles.mobileQuickRow}>
         <MobileQuickActions />
       </div>
 
-      <div className={styles.opsCommandRow}>
-        <OperationalCommand />
+      {/* ── COMMAND ROW ───────────────────────────────────────────────────
+          Highest-priority morning surfaces. OperationalCommand wraps the
+          existing priorities engine (Phase 29) — reused intact under a
+          clearer dashboard-level title. */}
+      <div className={styles.commandRow}>
+        <DashboardCard title="Today's Priorities">
+          <OperationalCommand />
+        </DashboardCard>
+        <DashboardCard title="Action Required">
+          <ActionQueue />
+        </DashboardCard>
       </div>
 
-      {/* Intelligence row — unified weather card + agronomy intelligence */}
+      {/* ── READINESS ROW ─────────────────────────────────────────────────
+          What changed overnight, who's working, and the spray window —
+          the three "can we start the day" signals. */}
+      <div className={styles.readinessRow}>
+        <DashboardCard title="Overnight Changes">
+          <OvernightChanges />
+        </DashboardCard>
+        <DashboardCard title="Crew Readiness">
+          <CrewReadiness />
+        </DashboardCard>
+        <DashboardCard title="Spray Windows">
+          <SprayWindowCard />
+        </DashboardCard>
+      </div>
+
+      {/* ── INTELLIGENCE ROW ──────────────────────────────────────────────
+          A single primary weather surface, plus the compact intelligence
+          stack. WeatherIntelligence + IrrigationIntelligence (the larger
+          duplicate variants) live in "More panels" below. */}
       <div className={styles.intelligenceRow}>
         <div className={styles.intelligenceWeather}>
           <WeatherSection
@@ -79,41 +117,30 @@ export default function Dashboard() {
           />
         </div>
         <div className={styles.intelligenceRight}>
-          <DashboardCard title="Growing Degree Days">
-            <GDDCard />
-          </DashboardCard>
-          <DashboardCard title="Application Effectiveness">
-            <AppEffectivenessCard />
-          </DashboardCard>
-          {/* Phase 28A — Agronomic Intelligence Foundation. Decision-support
-              only: REI, reapplication windows, rainfast vs forecast,
-              FRAC/HRAC/IRAC rotation, weekly N-P-K totals. */}
           <DashboardCard title="Agronomic Intelligence">
             <AgronomicIntelligence />
           </DashboardCard>
-          {/* Phase 28B — Spray Window Intelligence. Active spray planning:
-              current rating, next ideal window, top risk, rain countdown. */}
-          <DashboardCard title="Spray Window Intelligence">
-            <SprayWindowCard />
-          </DashboardCard>
-          {/* Phase 28C — Irrigation & Moisture Intelligence (compact).
-              Decision-support only: ET/rain class, rolling deficit, tonight
-              rec, top irrigation risk, wilt indicator. */}
           <DashboardCard title="Irrigation Intelligence">
             <IrrigationIntelCard />
+          </DashboardCard>
+          <DashboardCard title="Growing Degree Days">
+            <GDDCard />
           </DashboardCard>
         </div>
       </div>
 
-      {/* Operations Calendar — below intelligence row */}
+      {/* Operations Calendar — unchanged position. */}
       <div className={styles.calendarSection}>
         <OperationsCalendar />
       </div>
 
-      {/* Responsive card grid */}
-      <div className={styles.grid}>
-
-        {/* ── Urgent ── */}
+      {/* ── MORE DASHBOARD PANELS ────────────────────────────────────────
+          Collapsed by default. Every previously top-level card lives here:
+          full Alerts list, desktop Quick Actions, briefing + scheduling
+          duplicates, the second weather/irrigation surfaces, app
+          effectiveness, equipment snapshot, recent activity/notes,
+          upcoming applications. Nothing deleted; everything reachable. */}
+      <MorePanels>
         <DashboardCard title={`Alerts${activeAlerts.length > 0 ? ` (${activeAlerts.length})` : ''}`} wide tall>
           <AlertList
             alerts={activeAlerts}
@@ -126,50 +153,32 @@ export default function Dashboard() {
           />
         </DashboardCard>
 
-        {/* ── Actions ── */}
         <DashboardCard title="Quick Actions" full>
           <QuickActions />
         </DashboardCard>
 
-        {/* ── Operations Command — Briefing + Action Required + Scheduling ── */}
-        <div className={styles.opsSection}>
-          <span className={styles.opsSectionLabel}>Operations Command</span>
-          <DashboardCard title="Today's Briefing">
-            <OperationalSummary />
-          </DashboardCard>
-          <DashboardCard title="Action Required">
-            <ActionQueue />
-          </DashboardCard>
-          <DashboardCard title="Scheduling Awareness">
-            <SchedulingAwareness />
-          </DashboardCard>
-        </div>
+        <DashboardCard title="Today's Briefing">
+          <OperationalSummary />
+        </DashboardCard>
 
-        {/* ── Intelligence ── */}
+        <DashboardCard title="Scheduling Awareness">
+          <SchedulingAwareness />
+        </DashboardCard>
+
         <DashboardCard title="Weather Intelligence" wide>
           <WeatherIntelligence />
         </DashboardCard>
 
-        {/* Phase 28C renamed: the compact "Irrigation Intelligence" card
-            now lives in the intelligence row beside Spray Window/Agronomic.
-            This wide card keeps the full advisory list under a clearer
-            name so the two surfaces don't share a title. */}
         <DashboardCard title="Irrigation Detail" wide>
           <IrrigationIntelligence />
         </DashboardCard>
 
-        {/* ── Live snapshot cards (audit R2 — were static placeholders) ── */}
-        <DashboardCard title="Crew Status">
-          <CrewStatusCard />
+        <DashboardCard title="Application Effectiveness">
+          <AppEffectivenessCard />
         </DashboardCard>
 
         <DashboardCard title="Equipment Alerts">
           <EquipmentAlertsCard />
-        </DashboardCard>
-
-        {/* ── Operations ── */}
-        <DashboardCard title="Recent Activity" full>
-          <RecentActivity />
         </DashboardCard>
 
         <DashboardCard title="Upcoming Applications" wide>
@@ -180,7 +189,10 @@ export default function Dashboard() {
           <RecentNotesCard />
         </DashboardCard>
 
-      </div>
+        <DashboardCard title="Recent Activity" full>
+          <RecentActivity />
+        </DashboardCard>
+      </MorePanels>
 
     </div>
   )
