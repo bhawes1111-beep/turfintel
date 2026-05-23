@@ -43,19 +43,34 @@
 
   //
   // ──────────────────────────────────────────────────────────────────────
-  //  Phase 5.1b — Mutation auth (one-time bootstrap)
+  //  Worker SECRETS (configured via `npx wrangler secret put <NAME>`).
+  //  No secret values live in this file or anywhere in the repo. See
+  //  docs/ADMIN_KEY_RETIREMENT_PLAN.md and docs/PHASE4_DEPLOY_CHECKLIST.md
+  //  for the full operational model.
   //
-  //  Mutations (POST/PATCH/DELETE) require an x-admin-key header that
-  //  matches the env.ADMIN_KEY secret. Until the secret is set, every
-  //  mutation route responds 503 with a server-misconfigured message.
-  //  Reads (GET) remain public.
+  //  Required for auth:
+  //    ADMIN_KEY                       legacy mutation key (rollback safety).
+  //                                    Both rotation candidate and accepted
+  //                                    server-side. Browser no longer sends.
+  //    AUTOMATION_KEY                  server-only key for manual / future
+  //                                    automation tooling. Never imported
+  //                                    under src/.
   //
-  //  To activate auth:
-  //         npx wrangler secret put ADMIN_KEY
-  //         # When prompted, enter: TurfAdmin2025!
+  //  Required for the cron weather capture:
+  //    AMBIENT_WEATHER_API_KEY
+  //    AMBIENT_WEATHER_APPLICATION_KEY
   //
-  //  The same value is hardcoded in src/utils/equipment/equipmentStore.js
-  //  so the frontend automatically carries the header on its mutation
-  //  helpers. To rotate, update both places and run `wrangler secret put
-  //  ADMIN_KEY` again.
+  //  Optional, for the Phase 5 email provider (no-op without them):
+  //    MAIL_PROVIDER                   currently only 'resend' is supported.
+  //    MAIL_API_KEY                    provider API key (Resend: re_…).
+  //    MAIL_FROM                       sender email address.
+  //    MAIL_FROM_NAME                  display name (default 'TurfIntel').
+  //    MAIL_REPLY_TO                   optional reply-to header.
+  //    MAIL_DEBUG_ALLOWED              optional override: keep admin
+  //                                    debug.resetUrl in reset-request
+  //                                    responses even after MAIL_PROVIDER
+  //                                    is configured (for recovery).
+  //
+  //  Mutation gate accepts EITHER ADMIN_KEY OR AUTOMATION_KEY (worker/lib/
+  //  auth.js#requireAdminKey). 503 if neither is configured (fail-closed).
 }

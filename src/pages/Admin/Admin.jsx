@@ -84,6 +84,7 @@ function InviteModal({ actor, onClose }) {
         inviteUrl: res.inviteUrl,
         expiresAt: res.expiresAt,
         userEmail: res.user?.email,
+        emailSent: res.emailSent === true,   // Phase 5 — provider may not be configured
       })
       setPhase('LINK')
     } catch (err) {
@@ -149,6 +150,14 @@ function InviteModal({ actor, onClose }) {
           <>
             <div className={styles.mBody}>
               <p className={styles.lbl}>Invite link for <strong>{inviteResult.userEmail}</strong></p>
+              {/* Phase 5 — email-status line. Tells the admin whether the
+                  invitee already received the link, or whether copy-fallback
+                  is the only delivery path. */}
+              <p className={styles.optional} style={{ marginTop: 0, marginBottom: 6, fontSize: 12 }} role="status">
+                {inviteResult.emailSent
+                  ? '✓ Email sent. Share the link below as a backup if needed.'
+                  : 'Email not configured — share the link below manually.'}
+              </p>
               <input
                 id="invite-url-display"
                 className={styles.input}

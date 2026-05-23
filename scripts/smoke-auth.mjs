@@ -1087,9 +1087,10 @@ function assert(cond, label, ctx) {
 
   // 3) inviteUser response shape contract — no secret fields in the
   //    handler's returned shape. Source-level: the handler returns
-  //    { ok: true, user: publicUser(row), inviteUrl, expiresAt }.
-  assert(/return json\(\{ ok: true, user: publicUser\(row\), inviteUrl, expiresAt \}, 201\)/.test(inviteSlice),
-    'inviteUser: response shape is { ok, user, inviteUrl, expiresAt } (201)')
+  //    { ok, user: publicUser(row), inviteUrl, expiresAt, emailSent }.
+  //    Phase 5 added `emailSent` to the shape.
+  assert(/return json\(\{ ok: true, user: publicUser\(row\), inviteUrl, expiresAt, emailSent \}, 201\)/.test(inviteSlice),
+    'inviteUser: response shape is { ok, user, inviteUrl, expiresAt, emailSent } (201)')
   // publicUser projection (defined at top of users.js) MUST NOT include
   // password_hash. (Defensive — covered earlier but pinned here too.)
   assert(!/password_hash:\s*row\./.test(usersSrc.slice(0, usersSrc.indexOf('export async function listUsers'))),
@@ -1201,7 +1202,8 @@ function assert(cond, label, ctx) {
   assert(/isRateLimited\(env, email, ip\)/.test(rr), 'reset-request shares login rate limiter')
   assert(/recordAttempt\(env, email, ip, false\)/.test(rr), 'reset-request records attempts for throttle accounting')
   assert(/revokeActiveTokensFor\(env, user\.id, TOKEN_TYPE_RESET\)/.test(rr), 'reset-request revokes prior reset tokens on re-request')
-  assert(/if \(isAdmin\)/.test(rr), 'reset-request branches on isAdmin for debug.resetUrl')
+  assert(/if \(isAdmin && debugAllowed\)/.test(rr),
+    'reset-request branches on isAdmin && debugAllowed for debug.resetUrl (Phase 5: auto-off when MAIL_PROVIDER set)')
   assert(/debug: \{ resetUrl, expiresAt \}/.test(rr), 'reset-request: admin debug shape = { resetUrl, expiresAt }')
 
   // --- token-status negative shape (no detail leakage) ---
@@ -1383,6 +1385,84 @@ function assert(cond, label, ctx) {
   // a re-send / re-invite call site or button text.
   assert(!/Re-?send invite/i.test(admin), 'admin: no "Resend invite" UI (decision 5 deferred)')
   assert(!/reinviteUser|reInviteUser/.test(admin), 'admin: no reinviteUser() call')
+}
+
+// ── Phase 5 — Email integration wiring (source-level) ──────────────────────
+// The mail abstraction itself is covered by scripts/smoke-mail.mjs. This
+// block locks the wiring INTO the existing invite + reset paths and the
+// admin-debug auto-off behavior, plus the Admin UI surface.
+{
+  const usersSrc = readFileSync('worker/api/users.js', 'utf8')
+  const authSrc  = readFileSync('worker/api/auth.js', 'utf8')
+  const idxSrc   = readFileSync('worker/index.js', 'utf8')
+  const adminSrc = readFileSync('src/pages/Admin/Admin.jsx', 'utf8')
+
+  // --- mail.js is imported by both invite and reset handlers ---
+  assert(/from '\.\.\/lib\/mail\.js'/.test(usersSrc), 'users.js: imports mail.js')
+  assert(/from '\.\.\/lib\/mail\.js'/.test(authSrc), 'auth.js: imports mail.js')
+
+  // --- inviteUser awaits sendMail and reports emailSent ---
+  // Slice the inviteUser function for proximity assertions.
+  const ivStart = usersSrc.indexOf('export async function inviteUser')
+  const ivEnd   = usersSrc.indexOf('// ── Update', ivStart)
+  const iv      = usersSrc.slice(ivStart, ivEnd > 0 ? ivEnd : usersSrc.length)
+  assert(/let emailSent = false/.test(iv), 'inviteUser: declares emailSent (default false)')
+  assert(/if \(mailConfigured\(env\)\)/.test(iv), 'inviteUser: only attempts send when configured')
+  assert(/await sendMail\(env, \{/.test(iv), 'inviteUser: awaits sendMail (so emailSent is accurate)')
+  assert(/subject:\s*'Your TurfIntel invitation'/.test(iv), 'inviteUser: invite-specific subject line')
+  assert(/text:\s*inviteEmailBody\(\{ inviteUrl, expiresAt \}\)/.test(iv), 'inviteUser: uses inviteEmailBody composer')
+  assert(/result\.status === 'sent'/.test(iv), 'inviteUser: emailSent set only when status==="sent"')
+  assert(/inviteUrl, expiresAt, emailSent \}/.test(iv), 'inviteUser: response includes emailSent')
+
+  // --- resetRequest sends via ctx.waitUntil (fire-and-forget; preserves
+  //     timing equality so enumeration safety holds) ---
+  const rrStart = authSrc.indexOf('export async function resetRequest')
+  const rrEnd   = authSrc.indexOf('// Lightweight admin check', rrStart)
+  const rr      = authSrc.slice(rrStart, rrEnd > 0 ? rrEnd : authSrc.length)
+  assert(/resetRequest\(env, request, ctx\)/.test(rr), 'resetRequest: signature includes ctx parameter')
+  assert(/ctx\.waitUntil\(sendMail\(env, \{/.test(rr),
+    'resetRequest: sendMail dispatched via ctx.waitUntil (timing-equal, response returns first)')
+  assert(/subject:\s*'Reset your TurfIntel password'/.test(rr), 'resetRequest: reset-specific subject line')
+  assert(/text:\s*resetEmailBody\(\{ resetUrl, expiresAt \}\)/.test(rr), 'resetRequest: uses resetEmailBody composer')
+  // The send is GUARDED on env.MAIL_PROVIDER + ctx.waitUntil being available.
+  assert(/env\.MAIL_PROVIDER && ctx && typeof ctx\.waitUntil === 'function'/.test(rr),
+    'resetRequest: guards mail dispatch on MAIL_PROVIDER + ctx.waitUntil')
+
+  // --- Admin debug.resetUrl: auto-off when MAIL_PROVIDER is set ---
+  assert(/const debugAllowed = !env\.MAIL_PROVIDER \|\| env\.MAIL_DEBUG_ALLOWED/.test(rr),
+    'resetRequest: debug auto-off when MAIL_PROVIDER set (override via MAIL_DEBUG_ALLOWED)')
+  assert(/if \(isAdmin && debugAllowed\)/.test(rr),
+    'resetRequest: debug.resetUrl gated on isAdmin && debugAllowed')
+
+  // --- worker/index.js threads ctx through handleApi ---
+  assert(/handleApi\(request, env, url, ctx\)/.test(idxSrc), 'index.js: ctx passed to handleApi')
+  assert(/async function handleApi\(request, env, url, ctx\)/.test(idxSrc),
+    'index.js: handleApi signature includes ctx')
+  // Both mail-sending routes receive ctx.
+  assert(/inviteUser\(env, request, ctx\)/.test(idxSrc), 'index.js: inviteUser route passes ctx')
+  assert(/resetRequest\(env, request, ctx\)/.test(idxSrc), 'index.js: resetRequest route passes ctx')
+
+  // --- Admin UI surfaces emailSent in the LINK phase ---
+  assert(/emailSent: res\.emailSent === true/.test(adminSrc),
+    'admin: stores res.emailSent as boolean in inviteResult')
+  assert(/inviteResult\.emailSent[\s\S]{0,300}Email sent/.test(adminSrc),
+    'admin: LINK phase shows "Email sent" when emailSent is true')
+  assert(/inviteResult\.emailSent[\s\S]{0,400}Email not configured/.test(adminSrc),
+    'admin: LINK phase shows "Email not configured" when emailSent is false')
+  // Copy button + URL field unchanged.
+  assert(/Copy Invite Link/.test(adminSrc), 'admin: Copy Invite Link button retained')
+  assert(/id="invite-url-display"/.test(adminSrc), 'admin: URL display field retained')
+
+  // --- No console.log of tokens anywhere in invite/reset paths ---
+  function stripComments(src) {
+    return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+  }
+  const ivCode = stripComments(iv)
+  const rrCode = stripComments(rr)
+  assert(!/console\.(log|info|warn|error)\([^)]*\btoken\b/.test(ivCode), 'inviteUser: no console.log of token in code')
+  assert(!/console\.(log|info|warn|error)\([^)]*\btoken\b/.test(rrCode), 'resetRequest: no console.log of token in code')
+  assert(!/console\.(log|info|warn|error)\([^)]*\b(inviteUrl|resetUrl)\b/.test(ivCode + rrCode),
+    'no console output references inviteUrl/resetUrl')
 }
 
 console.log(`\n${passed} passed, ${failed} failed`)

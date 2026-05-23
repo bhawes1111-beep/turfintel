@@ -22,6 +22,7 @@ import {
   revokeActiveTokensFor, pruneOldTokens,
   TOKEN_TYPE_INVITE, TOKEN_TYPE_RESET,
 } from '../lib/inviteTokens.js'
+import { sendMail, resetEmailBody } from '../lib/mail.js'
 
 // Response with a Set-Cookie header (json() can't carry custom headers).
 // Exported so the set-password handler (and any future cookie-issuing
@@ -335,7 +336,7 @@ export async function tokenStatus(env, request) {
 //     with /login here for consistency.
 const RESET_GENERIC = { ok: true, message: 'If that email is registered, a reset link has been sent.' }
 
-export async function resetRequest(env, request) {
+export async function resetRequest(env, request, ctx) {
   if (!env.DB) return json(RESET_GENERIC)
 
   const ip = clientIp(request)
@@ -379,11 +380,27 @@ export async function resetRequest(env, request) {
     // freely and the audit signal is in auth_attempts).
   })
 
-  // Admin-mode interim: include the link in the response. Anonymous path:
-  // identical generic body, no link, no hint that a token was minted.
-  if (isAdmin) {
-    const origin = new URL(request.url).origin
-    const resetUrl = `${origin}/reset-password?token=${encodeURIComponent(token)}`
+  const origin = new URL(request.url).origin
+  const resetUrl = `${origin}/reset-password?token=${encodeURIComponent(token)}`
+
+  // Phase 5: send the reset email if a provider is configured. Fire-and-
+  // forget via ctx.waitUntil so the response shape + timing are identical
+  // for the email-configured and no-email paths — preserves enumeration
+  // safety. The send result is intentionally not reflected in the response.
+  if (env.MAIL_PROVIDER && ctx && typeof ctx.waitUntil === 'function') {
+    ctx.waitUntil(sendMail(env, {
+      to:      user.email,
+      subject: 'Reset your TurfIntel password',
+      text:    resetEmailBody({ resetUrl, expiresAt }),
+    }))
+  }
+
+  // Admin-mode debug.resetUrl: auto-disabled once MAIL_PROVIDER is set, so
+  // admins use email like everyone else. An explicit MAIL_DEBUG_ALLOWED
+  // secret keeps the escape hatch for recovery during transition.
+  // Anonymous path always sees the bare generic body.
+  const debugAllowed = !env.MAIL_PROVIDER || env.MAIL_DEBUG_ALLOWED
+  if (isAdmin && debugAllowed) {
     return json({ ...RESET_GENERIC, debug: { resetUrl, expiresAt } })
   }
   return json(RESET_GENERIC)

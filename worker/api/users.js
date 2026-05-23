@@ -19,6 +19,7 @@ import { requireAdminKey } from '../lib/auth.js'
 import {
   mintAuthToken, revokeActiveTokensFor, TOKEN_TYPE_INVITE,
 } from '../lib/inviteTokens.js'
+import { sendMail, inviteEmailBody, mailConfigured } from '../lib/mail.js'
 
 // Sentinel placeholder written to users.password_hash for an invited account.
 // It is NOT a valid pbkdf2$ storage string, so verifyPassword() returns false
@@ -141,7 +142,7 @@ export async function createUser(env, request) {
 // Authorization mirrors createUser: actor must have canManageUsers AND
 // canManageRole(actor, role) — i.e. can only invite to a role strictly
 // below their own.
-export async function inviteUser(env, request) {
+export async function inviteUser(env, request /* , ctx */) {
   if (!env.DB) return json({ error: 'D1 not configured' }, 503)
   const actor = await resolveActor(request, env)
   if (!can(actor, 'canManageUsers')) return json({ error: 'Forbidden' }, 403)
@@ -189,8 +190,25 @@ export async function inviteUser(env, request) {
   const origin = new URL(request.url).origin
   const inviteUrl = `${origin}/accept-invite?token=${encodeURIComponent(token)}`
 
+  // Phase 5: send the invite email if a provider is configured. Awaited
+  // (not fire-and-forget) so the response can carry an accurate
+  // `emailSent` flag — the admin UI uses it to show whether to rely on
+  // the copy-link fallback. There is no enumeration concern here: the
+  // caller is an authenticated admin and the response already carries
+  // the inviteUrl. A failed send NEVER blocks user creation — the user
+  // row + token are persisted, and the admin can still copy the link.
+  let emailSent = false
+  if (mailConfigured(env)) {
+    const result = await sendMail(env, {
+      to:      email,
+      subject: 'Your TurfIntel invitation',
+      text:    inviteEmailBody({ inviteUrl, expiresAt }),
+    })
+    emailSent = result.status === 'sent'
+  }
+
   const row = await env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(id).first()
-  return json({ ok: true, user: publicUser(row), inviteUrl, expiresAt }, 201)
+  return json({ ok: true, user: publicUser(row), inviteUrl, expiresAt, emailSent }, 201)
 }
 
 // ── Update (role / status / overrides / password / course access) ─────────

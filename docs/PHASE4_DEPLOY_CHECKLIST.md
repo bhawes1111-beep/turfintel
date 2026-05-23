@@ -311,8 +311,93 @@ Once Phase 4 is stable in production for a few days:
 
 - [ ] Update memory note `project_turfintel_auth.md` with the deployed
       version id.
-- [ ] Consider provisioning the email provider (see
-      [AUTH_INVITE_RESET_PLAN.md](AUTH_INVITE_RESET_PLAN.md) §"Email
-      delivery") — this would stop returning links in API responses.
 - [ ] Schedule the ADMIN_KEY gate-removal phase per
       [ADMIN_KEY_RETIREMENT_PLAN.md](ADMIN_KEY_RETIREMENT_PLAN.md) §7.
+
+---
+
+## 7. Phase 5 — Email Provider (incremental, separate deploy)
+
+Phase 5 adds real email delivery for invite + password-reset links via
+Resend. The code ships in **no-op mode by default** — adding mail is a
+secret-only upgrade requiring no redeploy beyond the Phase-5 code itself.
+
+### 7a. Phase-5 commits (push + deploy ONCE, then enable via secrets)
+
+| Commit | Scope |
+|---|---|
+| `<phase5>` | `worker/lib/mail.js` + invite/reset wiring + Admin UI status + smokes |
+
+```powershell
+git push origin master
+npx wrangler deploy
+```
+
+**No migration.** Phase 5 is schema-additive only at the worker level.
+
+### 7b. Provision the provider (user actions, then secret writes)
+
+1. Sign up at https://resend.com using `bhawes1111@gmail.com`. Verify the
+   email. Generate an API key (starts with `re_`).
+2. Provision the secrets — interactive, values never echoed to chat:
+   ```powershell
+   npx wrangler secret put MAIL_PROVIDER     # → resend
+   npx wrangler secret put MAIL_API_KEY      # → re_…
+   npx wrangler secret put MAIL_FROM         # → onboarding@resend.dev   (interim, Resend-restricted to your verified email)
+   npx wrangler secret put MAIL_FROM_NAME    # → TurfIntel   (optional)
+   ```
+3. Secret writes take effect within a few seconds; no redeploy needed.
+
+### 7c. Verification (the moment MAIL_PROVIDER is set)
+
+- [ ] **Invite send**: in Admin, "+ Invite User" → use **your own email
+      address** (Resend interim sender only delivers to your verified email).
+      Modal LINK phase shows **"✓ Email sent. Share the link below as a
+      backup if needed."**. Invite arrives in inbox within seconds.
+- [ ] **Reset-request silently sends**: on `/login`, click "Forgot
+      Password?" → enter your owner email → generic "If that email is
+      registered…" message. Reset email arrives. (Try an unknown email
+      too; no email sent, no UI difference.)
+- [ ] **Admin reset-request `debug.resetUrl` is now ABSENT**:
+      ```powershell
+      curl -X POST https://turfintel.bhawes1111.workers.dev/api/auth/reset-request `
+        -H "Content-Type: application/json" `
+        -H "Cookie: ti_session=<your session>" `
+        -d '{"email":"<your owner email>"}'
+      # Expect: { ok, message } only — NO `debug` field.
+      ```
+- [ ] **Provider failure is non-fatal** — set `MAIL_API_KEY` to a bad
+      value temporarily, retry invite: response `emailSent: false`, UI
+      shows "Email not configured — share the link below manually.",
+      user is still created, link still works. Restore the real key.
+
+### 7d. Rollback / disable
+
+Single secret deletion restores no-op mode immediately:
+
+```powershell
+npx wrangler secret delete MAIL_PROVIDER
+```
+
+After delete, `mailConfigured(env)` returns false → `sendMail()` short-
+circuits to `{status:'disabled'}` → invite response has `emailSent:false`
+→ Admin UI falls back to "Email not configured — share manually." Reset
+admin-debug `debug.resetUrl` returns automatically (since `MAIL_PROVIDER`
+is absent and the auto-off rule no longer applies).
+
+To roll back the **code** of Phase 5 (returning to copy-link only):
+`git revert <phase5 commit>` + `wrangler deploy`. The mail secrets can
+remain; they become harmless once the code is gone.
+
+### 7e. Recovery escape hatch
+
+If email is configured but breaks (e.g. Resend incident), admins can keep
+issuing resets manually by setting an explicit override secret:
+
+```powershell
+npx wrangler secret put MAIL_DEBUG_ALLOWED   # → 1
+```
+
+That re-enables `debug.resetUrl` for admin callers regardless of
+`MAIL_PROVIDER`. Delete it (`wrangler secret delete MAIL_DEBUG_ALLOWED`)
+when email is working again.

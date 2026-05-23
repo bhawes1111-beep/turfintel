@@ -201,7 +201,7 @@ export default {
 
     if (url.pathname.startsWith('/api/')) {
       try {
-        return await handleApi(request, env, url)
+        return await handleApi(request, env, url, ctx)
       } catch (err) {
         return serverError(err)
       }
@@ -230,7 +230,7 @@ export default {
   },
 }
 
-async function handleApi(request, env, url) {
+async function handleApi(request, env, url, ctx) {
   const { pathname } = url
   const method       = request.method
   // Phase 5.7 — operational scope filter. If the caller passes
@@ -277,7 +277,7 @@ async function handleApi(request, env, url) {
   // Self-service: enumeration-safe, throttled (shares auth_attempts with /login).
   // Admin-mode response additionally includes debug.resetUrl when the caller
   // has canManageUsers — for hand-delivering reset links pre-email-provider.
-  if (pathname === '/api/auth/reset-request' && method === 'POST') return resetRequest(env, request)
+  if (pathname === '/api/auth/reset-request' && method === 'POST') return resetRequest(env, request, ctx)
 
   // ── Mutation auth + permission gate (Phase 2 P2) ────────────────────
   // Every POST/PATCH/DELETE must be authorized by EITHER a valid session
@@ -498,7 +498,7 @@ async function handleApi(request, env, url) {
   //
   // Note: /api/users/invite is matched BEFORE the /api/users/:id regex so
   // the literal subpath wins (otherwise it would resolve to id='invite').
-  if (pathname === '/api/users/invite' && method === 'POST') return inviteUser(env, request)
+  if (pathname === '/api/users/invite' && method === 'POST') return inviteUser(env, request, ctx)
   if (pathname === '/api/users') {
     if (method === 'GET')  return listUsers(env, request)
     if (method === 'POST') return createUser(env, request)
