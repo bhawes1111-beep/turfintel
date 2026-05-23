@@ -41,6 +41,25 @@ export async function createUser(payload) {
   return saved
 }
 
+/**
+ * inviteUser — POST /api/users/invite. Creates a user with status='invited'
+ * and mints an invite token; the server returns the raw one-time URL.
+ *
+ * IMPORTANT: the returned { inviteUrl, expiresAt } is given back to the
+ * caller for a one-shot copy-link UI. The store DOES NOT cache it — the
+ * URL never enters `state.users` nor any other persisted slot. Only the
+ * public user projection (no token) is added to the list.
+ */
+export async function inviteUser(payload) {
+  const res = await fetchJSON(`${API}/invite`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(payload),
+  })
+  if (res?.user) setState({ users: [...state.users, res.user] })
+  return res   // { ok, user, inviteUrl, expiresAt }
+}
+
 export async function updateUser(id, updates) {
   const saved = await fetchJSON(`${API}/${encodeURIComponent(id)}`, {
     method:  'PATCH',

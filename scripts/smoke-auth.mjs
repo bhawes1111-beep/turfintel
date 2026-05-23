@@ -1179,5 +1179,87 @@ function assert(cond, label, ctx) {
     'form: reuses Login.module.css (no new design system work)')
 }
 
+// ── Step 3.4 Admin Invite UI (source-level) ─────────────────────────────────
+// Locks the invite-only Admin flow + the no-persisted-token guarantees.
+{
+  const admin     = readFileSync('src/pages/Admin/Admin.jsx', 'utf8')
+  const adminCss  = readFileSync('src/pages/Admin/Admin.module.css', 'utf8')
+  const store     = readFileSync('src/utils/auth/usersStore.js', 'utf8')
+
+  // Strip comments before checking for forbidden CODE patterns; mentions in
+  // comments / labels are explicitly allowed.
+  function stripComments(src) {
+    return src
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '')
+  }
+  const adminCode = stripComments(admin)
+  const storeCode = stripComments(store)
+
+  // --- usersStore: inviteUser exported, hits /api/users/invite, never caches
+  //     the inviteUrl into shared state.
+  assert(/export async function inviteUser\(/.test(store), 'usersStore: inviteUser exported')
+  assert(/`\$\{API\}\/invite`/.test(store), 'usersStore: inviteUser POSTs /api/users/invite')
+  // The store updates `users` with `res.user`, NEVER pushes inviteUrl into state.
+  assert(/setState\(\{ users: \[\.\.\.state\.users, res\.user\] \}\)/.test(store),
+    'usersStore: inviteUser only adds the public user to state (NOT the inviteUrl)')
+  assert(!/setState\([^)]*inviteUrl/.test(storeCode), 'usersStore: never persists inviteUrl into shared state')
+
+  // --- Admin page no longer requests a temporary password ---
+  assert(!/Temporary password/.test(admin), 'admin: temporary-password label removed')
+  // password-bearing form field removed from the create flow
+  assert(!/value=\{form\.password\}/.test(adminCode), 'admin: password field removed from create flow')
+  // createUser store helper no longer called from Admin (only inviteUser).
+  // (NOTE: createUser is still EXPORTED by the store for backwards-compat;
+  // we only assert Admin.jsx isn't using it.)
+  assert(!/\bcreateUser\(/.test(adminCode), 'admin: no createUser() call (invite-only flow)')
+
+  // --- InviteModal: two-phase, clears inviteResult on close, explicit copy ---
+  assert(/function InviteModal\(/.test(admin), 'admin: InviteModal component present')
+  assert(/inviteUser\(\{/.test(admin), 'admin: InviteModal calls inviteUser')
+  assert(/phase === 'FORM'/.test(admin) && /phase === 'LINK'/.test(admin), 'admin: two-phase modal (FORM | LINK)')
+  // The result holder is cleared in closeAndReset (defensive wipe).
+  assert(/function closeAndReset\(\)/.test(admin), 'admin: closeAndReset() helper')
+  assert(/setInviteResult\(null\)/.test(admin), 'admin: closeAndReset clears inviteResult')
+
+  // --- No automatic clipboard writes; the Copy button is explicit ---
+  // Allow navigator.clipboard.writeText ONLY inside handleCopy() (called from
+  // user click), and forbid any other call site.
+  const writeCount = (adminCode.match(/navigator\.clipboard\.writeText/g) || []).length
+  assert(writeCount === 1, 'admin: single navigator.clipboard.writeText call (inside handleCopy)', writeCount)
+  // Quick proximity check: the only writeText() must be inside handleCopy().
+  const handleCopyStart = admin.indexOf('async function handleCopy')
+  const handleCopyEnd   = admin.indexOf('}\n\n', handleCopyStart)
+  const handleCopyBlock = admin.slice(handleCopyStart, handleCopyEnd)
+  assert(/navigator\.clipboard\.writeText/.test(handleCopyBlock),
+    'admin: writeText only inside handleCopy (explicit user action)')
+  // No QR code or Web Share API.
+  assert(!/\bqrcode\b/i.test(adminCode), 'admin: no QR code')
+  assert(!/navigator\.share\(/.test(adminCode), 'admin: no Web Share API')
+
+  // --- No browser storage APIs anywhere in Admin code ---
+  assert(!/\blocalStorage\b/.test(adminCode),   'admin: no localStorage in code')
+  assert(!/\bsessionStorage\b/.test(adminCode), 'admin: no sessionStorage in code')
+  assert(!/document\.cookie/.test(adminCode),   'admin: no document.cookie in code')
+
+  // --- No console output of inviteUrl/token ---
+  assert(!/console\.(log|info|warn|error)\([^)]*\b(inviteUrl|token)\b/.test(adminCode),
+    'admin: no console output referencing inviteUrl/token')
+
+  // --- "invited" status badge has a CSS variant ---
+  assert(/\.statusBadge\[data-status="invited"\]/.test(adminCss),
+    'admin.css: statusBadge variant for "invited" defined')
+
+  // --- Permissions preserved: assignableRoles + canManageRole gate selects ---
+  assert(/function assignableRoles\(actor\)/.test(admin), 'admin: assignableRoles helper preserved')
+  assert(/canManageRole\(actor, u\.role\)/.test(admin), 'admin: canManageRole still gates row controls')
+
+  // --- Decision 5 still deferred: no Re-send Invite button ---
+  // Tolerate the word "invite" in the new flow's labels; specifically forbid
+  // a re-send / re-invite call site or button text.
+  assert(!/Re-?send invite/i.test(admin), 'admin: no "Resend invite" UI (decision 5 deferred)')
+  assert(!/reinviteUser|reInviteUser/.test(admin), 'admin: no reinviteUser() call')
+}
+
 console.log(`\n${passed} passed, ${failed} failed`)
 process.exit(failed === 0 ? 0 : 1)

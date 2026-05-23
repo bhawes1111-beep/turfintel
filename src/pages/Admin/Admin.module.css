@@ -42,6 +42,7 @@
 }
 .statusBadge[data-status="active"]   { color: #4ade80; }
 .statusBadge[data-status="disabled"] { color: var(--color-text-muted); }
+.statusBadge[data-status="invited"]  { color: #fbbf24; }   /* subtle amber: pending acceptance */
 .rowMeta { font-size: 12px; color: var(--color-text-muted); }
 .rowActions { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
 .miniBtn {

@@ -8,7 +8,7 @@ import { useMemo, useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import PageShell from '../../components/layout/PageShell'
 import { useAuth } from '../../context/AuthContext'
-import { useUsers, createUser, updateUser } from '../../utils/auth/usersStore'
+import { useUsers, inviteUser, updateUser } from '../../utils/auth/usersStore'
 import { ROLES, ROLE_LABELS, canManageRole } from '../../utils/auth/permissions'
 import { useToast } from '../../utils/feedback/toastContext'
 import styles from './Admin.module.css'
@@ -24,70 +24,152 @@ function assignableRoles(actor) {
   return ROLES.filter(r => canManageRole(actor, r))
 }
 
-function CreateModal({ actor, onClose }) {
+// InviteModal — Phase 4 Step 3.4. Two-phase modal:
+//   FORM  → collect email/role/overrides; submit calls POST /api/users/invite
+//   LINK  → display inviteUrl + Copy button (no auto-clipboard); Close clears state.
+//
+// Security constraints (Step 3.4 audit):
+//   - the raw inviteUrl is held in component state ONLY while the modal is
+//     open; closing the modal clears it. Not persisted to the store, not
+//     written to localStorage/sessionStorage, never console.logged.
+//   - clipboard write happens only on the user's explicit click of the
+//     Copy button (no navigator.clipboard.writeText on render).
+function InviteModal({ actor, onClose }) {
   const roles = assignableRoles(actor)
+  const [phase, setPhase] = useState('FORM')   // 'FORM' | 'LINK'
   const [form, setForm] = useState({
-    email: '', displayName: '', password: '',
+    email: '', displayName: '',
     role: roles[roles.length - 1] || 'crew',
     viewPrivateNotes: false, sendCrewNotes: false,
   })
+  // inviteResult holds { inviteUrl, expiresAt, user } while phase==='LINK'.
+  // Cleared in closeAndReset() so the URL never lingers in component state.
+  const [inviteResult, setInviteResult] = useState(null)
+  const [copied, setCopied] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError]   = useState(null)
   const toast = useToast()
   const ref = useRef(null)
 
+  function closeAndReset() {
+    // Defensive: explicitly wipe sensitive fields before unmount.
+    setInviteResult(null)
+    setForm({ email: '', displayName: '', role: roles[roles.length - 1] || 'crew', viewPrivateNotes: false, sendCrewNotes: false })
+    setCopied(false)
+    onClose()
+  }
+
   useEffect(() => {
-    function onKey(e) { if (e.key === 'Escape') onClose() }
+    function onKey(e) { if (e.key === 'Escape') closeAndReset() }
     document.addEventListener('keydown', onKey); ref.current?.focus()
     return () => document.removeEventListener('keydown', onKey)
-  }, [onClose])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function set(k, v) { setForm(f => ({ ...f, [k]: v })) }
 
-  async function handleSave() {
+  async function handleInvite() {
     if (!form.email.trim() || !form.email.includes('@')) { setError('Valid email required'); return }
-    if (form.password.length < 8) { setError('Password must be at least 8 characters'); return }
     setSaving(true); setError(null)
     try {
-      await createUser({
-        email: form.email.trim(), displayName: form.displayName.trim() || null,
-        password: form.password, role: form.role,
-        viewPrivateNotes: form.viewPrivateNotes, sendCrewNotes: form.sendCrewNotes,
+      const res = await inviteUser({
+        email: form.email.trim(),
+        displayName: form.displayName.trim() || null,
+        role: form.role,
+        viewPrivateNotes: form.viewPrivateNotes,
+        sendCrewNotes: form.sendCrewNotes,
       })
-      toast?.success?.('User created')
-      onClose()
-    } catch (err) { setError(err.message || 'Create failed'); setSaving(false) }
+      toast?.success?.('Invite created')
+      setInviteResult({
+        inviteUrl: res.inviteUrl,
+        expiresAt: res.expiresAt,
+        userEmail: res.user?.email,
+      })
+      setPhase('LINK')
+    } catch (err) {
+      setError(err.message || 'Invite failed')
+      setSaving(false)
+    }
+  }
+
+  async function handleCopy() {
+    if (!inviteResult?.inviteUrl) return
+    try {
+      await navigator.clipboard.writeText(inviteResult.inviteUrl)
+      setCopied(true)
+      toast?.success?.('Invite link copied')
+    } catch {
+      // Fallback: select the text so user can Cmd/Ctrl-C manually.
+      const el = document.getElementById('invite-url-display')
+      if (el) { el.focus(); el.select() }
+      toast?.info?.('Copy from the field manually')
+    }
   }
 
   return createPortal(
-    <div className={styles.backdrop} onClick={onClose} role="dialog" aria-modal="true" aria-label="Create user">
+    <div className={styles.backdrop} onClick={closeAndReset} role="dialog" aria-modal="true" aria-label="Invite user">
       <div className={styles.modal} onClick={e => e.stopPropagation()}>
-        <div className={styles.mHeader}><span className={styles.mTitle}>Create User</span><button className={styles.closeBtn} onClick={onClose} aria-label="Close">✕</button></div>
-        <div className={styles.mBody}>
-          <p className={styles.lbl}>Email</p>
-          <input ref={ref} type="email" className={styles.input} value={form.email} onChange={e => set('email', e.target.value)} placeholder="name@course.com" autoComplete="off" />
-          <p className={styles.lbl}>Display name <span className={styles.optional}>(optional)</span></p>
-          <input className={styles.input} value={form.displayName} onChange={e => set('displayName', e.target.value)} />
-          <p className={styles.lbl}>Temporary password</p>
-          <input type="password" className={styles.input} value={form.password} onChange={e => set('password', e.target.value)} placeholder="min 8 characters" autoComplete="new-password" />
-          <p className={styles.lbl}>Role</p>
-          <select className={styles.input} value={form.role} onChange={e => set('role', e.target.value)}>
-            {roles.map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
-          </select>
-          <label className={styles.checkRow}>
-            <input type="checkbox" checked={form.viewPrivateNotes} onChange={e => set('viewPrivateNotes', e.target.checked)} />
-            Allow viewing private superintendent notes
-          </label>
-          <label className={styles.checkRow}>
-            <input type="checkbox" checked={form.sendCrewNotes} onChange={e => set('sendCrewNotes', e.target.checked)} />
-            Allow sending crew notes
-          </label>
-          {error && <p className={styles.error}>{error}</p>}
+        <div className={styles.mHeader}>
+          <span className={styles.mTitle}>{phase === 'FORM' ? 'Invite User' : 'Invite Link Ready'}</span>
+          <button className={styles.closeBtn} onClick={closeAndReset} aria-label="Close">✕</button>
         </div>
-        <div className={styles.mFooter}>
-          <button className={styles.cancelBtn} onClick={onClose} disabled={saving}>Cancel</button>
-          <button className={styles.saveBtn} onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Create'}</button>
-        </div>
+
+        {phase === 'FORM' && (
+          <>
+            <div className={styles.mBody}>
+              <p className={styles.lbl}>Email</p>
+              <input ref={ref} type="email" className={styles.input} value={form.email} onChange={e => set('email', e.target.value)} placeholder="name@course.com" autoComplete="off" />
+              <p className={styles.lbl}>Display name <span className={styles.optional}>(optional)</span></p>
+              <input className={styles.input} value={form.displayName} onChange={e => set('displayName', e.target.value)} />
+              <p className={styles.lbl}>Role</p>
+              <select className={styles.input} value={form.role} onChange={e => set('role', e.target.value)}>
+                {roles.map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+              </select>
+              <label className={styles.checkRow}>
+                <input type="checkbox" checked={form.viewPrivateNotes} onChange={e => set('viewPrivateNotes', e.target.checked)} />
+                Allow viewing private superintendent notes
+              </label>
+              <label className={styles.checkRow}>
+                <input type="checkbox" checked={form.sendCrewNotes} onChange={e => set('sendCrewNotes', e.target.checked)} />
+                Allow sending crew notes
+              </label>
+              <p className={styles.optional} style={{ marginTop: 12, fontSize: 12 }}>
+                The user will receive a one-time link to set their own password.
+              </p>
+              {error && <p className={styles.error}>{error}</p>}
+            </div>
+            <div className={styles.mFooter}>
+              <button className={styles.cancelBtn} onClick={closeAndReset} disabled={saving}>Cancel</button>
+              <button className={styles.saveBtn} onClick={handleInvite} disabled={saving}>{saving ? 'Sending…' : 'Create invite'}</button>
+            </div>
+          </>
+        )}
+
+        {phase === 'LINK' && inviteResult && (
+          <>
+            <div className={styles.mBody}>
+              <p className={styles.lbl}>Invite link for <strong>{inviteResult.userEmail}</strong></p>
+              <input
+                id="invite-url-display"
+                className={styles.input}
+                value={inviteResult.inviteUrl}
+                readOnly
+                onFocus={e => e.target.select()}
+                aria-label="Invite link"
+              />
+              <p className={styles.optional} style={{ marginTop: 8, fontSize: 12 }}>
+                One-time use. Expires {new Date(inviteResult.expiresAt).toLocaleString()}.
+                Share securely (it grants the user account access).
+              </p>
+            </div>
+            <div className={styles.mFooter}>
+              <button className={styles.cancelBtn} onClick={closeAndReset}>Close</button>
+              <button className={styles.saveBtn} onClick={handleCopy}>
+                {copied ? 'Copied ✓' : 'Copy Invite Link'}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>,
     document.body,
@@ -97,7 +179,7 @@ function CreateModal({ actor, onClose }) {
 export default function Admin() {
   const { user: actor } = useAuth()
   const { users, loading, error } = useUsers()
-  const [createOpen, setCreateOpen] = useState(false)
+  const [inviteOpen, setInviteOpen] = useState(false)
   const toast = useToast()
 
   const roleOptions = useMemo(() => assignableRoles(actor), [actor])
@@ -119,7 +201,7 @@ export default function Admin() {
       <div className={styles.wrap}>
         <div className={styles.headRow}>
           <span className={styles.headTitle}>Users</span>
-          <button type="button" className={styles.addBtn} onClick={() => setCreateOpen(true)}>+ Create User</button>
+          <button type="button" className={styles.addBtn} onClick={() => setInviteOpen(true)}>+ Invite User</button>
         </div>
 
         {actor && (
@@ -173,7 +255,7 @@ export default function Admin() {
           </ul>
         )}
 
-        {createOpen && <CreateModal actor={actor} onClose={() => setCreateOpen(false)} />}
+        {inviteOpen && <InviteModal actor={actor} onClose={() => setInviteOpen(false)} />}
       </div>
     </PageShell>
   )
