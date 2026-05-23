@@ -825,6 +825,27 @@
   margin: 0;
 }
 
+/* Phase 6B.2 — subgroup label inside a consolidated notes-column panel.
+   Tinted accent (vs the muted card section label) so it reads as part of
+   the panel header family. Rendered only when both subgroups have content. */
+.subPanelLabel {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(74, 222, 128, 0.55);
+}
+
+.rootBoard .subPanelLabel { font-size: 10.5px; }
+
+/* The second subgroup gets a thin dashed rule above its label to separate
+   it from the first subgroup's rows. */
+.subPanelLabel[data-divider="true"] {
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(74, 158, 74, 0.18);
+}
+
 .noticeRow {
   display: flex;
   flex-direction: column;

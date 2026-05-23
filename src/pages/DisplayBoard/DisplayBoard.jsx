@@ -362,14 +362,8 @@ export default function DisplayBoard({ boardMode = false }) {
 
       <aside className={styles.notesColumn}>
         <OperationalIntelligencePanel />
-        <NotesPanel notes={dayNotes} alerts={liveAlerts} events={dayEvents} />
-        {watchAreas.length > 0 && <CourseWatchAreasPanel areas={watchAreas} />}
-        {daySprays.length > 0 && (
-          <SprayPanel sprays={daySprays} />
-        )}
-        {liveAlerts.length > 0 && dayNotes.length > 0 && (
-          <AlertsPanel alerts={liveAlerts} />
-        )}
+        <CrewBriefingPanel notes={dayNotes} alerts={liveAlerts} events={dayEvents} />
+        <FieldConditionsPanel watchAreas={watchAreas} sprays={daySprays} />
       </aside>
 
       <footer className={styles.dateStrip}>
@@ -507,37 +501,6 @@ function WeatherImpactsPanel({ impacts }) {
         ))}
       </div>
     </div>
-  )
-}
-
-// Course Watch Areas — crew-relevant moisture flags (location + flag only).
-// Source: moisture_observations (field facts; no private data, no % / deficit).
-function CourseWatchAreasPanel({ areas }) {
-  return (
-    <section className={styles.notesPanel}>
-      <header className={styles.notesPanelHeader}>
-        <h3 className={styles.notesPanelTitle}>Course Watch Areas</h3>
-        <span className={styles.notesPanelHint}>{areas.length} area{areas.length !== 1 ? 's' : ''}</span>
-      </header>
-      <ul className={styles.watchList}>
-        {areas.map(a => (
-          <li key={a.id} className={styles.watchRow}>
-            <span className={styles.watchLoc}>{a.location}</span>
-            <span className={styles.watchFlags}>
-              {a.flags.map(f => (
-                <span
-                  key={f}
-                  className={styles.watchFlag}
-                  data-flag={String(f).toLowerCase().replace(/\s+/g, '-')}
-                >
-                  {f}
-                </span>
-              ))}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </section>
   )
 }
 
@@ -839,23 +802,59 @@ function CrewStatusControl({ assignmentId, status, notes }) {
 
 /* ── Notes column pieces ────────────────────────────────────────────── */
 
-function NotesPanel({ notes, alerts, events }) {
+// Phase 6B.2 — Crew Briefing consolidates Daily Briefing + Active Alerts.
+// Alerts always render in a stable subgroup; subgroup labels only appear
+// when both groups have content. Empty state preserves the eventNotes
+// fallback via FallbackNotices(alerts=[], events).
+function CrewBriefingPanel({ notes, alerts, events }) {
+  const hasNotes  = notes.length > 0
+  const hasAlerts = alerts.length > 0
+  const showSubLabels = hasNotes && hasAlerts
+
+  const hintText = hasNotes && hasAlerts
+    ? `${notes.length} note${notes.length !== 1 ? 's' : ''} · ${alerts.length} alert${alerts.length !== 1 ? 's' : ''}`
+    : hasNotes  ? `${notes.length} from supervisor`
+    : hasAlerts ? `${alerts.length} alert${alerts.length !== 1 ? 's' : ''}`
+    : 'Safety · routing · conditions'
+
   return (
     <section className={styles.notesPanel}>
       <header className={styles.notesPanelHeader}>
-        <h3 className={styles.notesPanelTitle}>Daily Briefing</h3>
-        <span className={styles.notesPanelHint}>
-          {notes.length > 0
-            ? `${notes.length} from supervisor`
-            : 'Safety · routing · conditions'}
-        </span>
+        <h3 className={styles.notesPanelTitle}>Crew Briefing</h3>
+        <span className={styles.notesPanelHint}>{hintText}</span>
       </header>
-      {notes.length > 0 ? (
-        notes.map(n => (
-          <NoticeWithPhotos key={n.id} note={n} tone={noticeTone(n.priority)} />
-        ))
-      ) : (
-        <FallbackNotices alerts={alerts} events={events} />
+
+      {hasNotes && (
+        <>
+          {showSubLabels && (
+            <span className={styles.subPanelLabel}>Supervisor Notes</span>
+          )}
+          {notes.map(n => (
+            <NoticeWithPhotos key={n.id} note={n} tone={noticeTone(n.priority)} />
+          ))}
+        </>
+      )}
+
+      {hasAlerts && (
+        <>
+          {showSubLabels && (
+            <span className={styles.subPanelLabel} data-divider="true">Active Alerts</span>
+          )}
+          {alerts.map(a => (
+            <div
+              key={a.id}
+              className={styles.noticeRow}
+              data-tone={a.priority === 'high' ? 'alert' : undefined}
+            >
+              <strong className={styles.noticeTitle}>{a.title}</strong>
+              {a.message && <p className={styles.noticeBody}>{a.message}</p>}
+            </div>
+          ))}
+        </>
+      )}
+
+      {!hasNotes && !hasAlerts && (
+        <FallbackNotices alerts={[]} events={events} />
       )}
     </section>
   )
@@ -924,62 +923,87 @@ function FallbackNotices({ alerts, events }) {
   )
 }
 
-function SprayPanel({ sprays }) {
-  return (
-    <section className={styles.notesPanel}>
-      <header className={styles.notesPanelHeader}>
-        <h3 className={styles.notesPanelTitle}>Spray Operations</h3>
-        <span className={styles.notesPanelHint}>
-          {sprays.length} application{sprays.length !== 1 ? 's' : ''}
-        </span>
-      </header>
-      {sprays.map(s => (
-        <div
-          key={s.id}
-          className={styles.sprayRow}
-          data-rei={(s.rei ?? 0) > 0 ? 'true' : undefined}
-        >
-          <div className={styles.sprayHeader}>
-            <span className={styles.sprayName}>
-              {s.applicationName ?? s.area ?? 'Spray Application'}
-            </span>
-            {(s.rei ?? 0) > 0 && (
-              <span className={styles.reiBadge}>REI {s.rei}h</span>
-            )}
-          </div>
-          <div className={styles.taskMetaRow}>
-            {s.applicator && <span>{s.applicator}</span>}
-            {s.area && <span>· {s.area}</span>}
-            {s.acreage != null && <span>· {s.acreage} ac</span>}
-          </div>
-          {Array.isArray(s.products) && s.products.length > 0 && (
-            <p className={styles.sprayProducts}>
-              {s.products.map(p => p.name).filter(Boolean).join(' + ')}
-            </p>
-          )}
-        </div>
-      ))}
-    </section>
-  )
-}
+// Phase 6B.2 — Field Conditions consolidates Course Watch Areas + Spray
+// Operations. Watch areas always render first (turf condition signals),
+// sprays second (chemical ops). Severity tiering on watch flags is inherited
+// from Phase 6B.1 (data-flag attribute). Panel hidden when both empty.
+function FieldConditionsPanel({ watchAreas, sprays }) {
+  const hasWatch = watchAreas.length > 0
+  const hasSpray = sprays.length > 0
+  if (!hasWatch && !hasSpray) return null
 
-function AlertsPanel({ alerts }) {
+  const showSubLabels = hasWatch && hasSpray
+  const hintText = hasWatch && hasSpray
+    ? `${watchAreas.length} area${watchAreas.length !== 1 ? 's' : ''} · ${sprays.length} spray${sprays.length !== 1 ? 's' : ''}`
+    : hasWatch ? `${watchAreas.length} area${watchAreas.length !== 1 ? 's' : ''}`
+    : `${sprays.length} application${sprays.length !== 1 ? 's' : ''}`
+
   return (
     <section className={styles.notesPanel}>
       <header className={styles.notesPanelHeader}>
-        <h3 className={styles.notesPanelTitle}>Active Alerts</h3>
-        <span className={styles.notesPanelHint}>{alerts.length}</span>
+        <h3 className={styles.notesPanelTitle}>Field Conditions</h3>
+        <span className={styles.notesPanelHint}>{hintText}</span>
       </header>
-      {alerts.map(a => (
-        <div
-          key={a.id}
-          className={styles.noticeRow}
-          data-tone={a.priority === 'high' ? 'alert' : undefined}
-        >
-          <strong className={styles.noticeTitle}>{a.title}</strong>
-          {a.message && <p className={styles.noticeBody}>{a.message}</p>}
-        </div>
-      ))}
+
+      {hasWatch && (
+        <>
+          {showSubLabels && (
+            <span className={styles.subPanelLabel}>Watch Areas</span>
+          )}
+          <ul className={styles.watchList}>
+            {watchAreas.map(a => (
+              <li key={a.id} className={styles.watchRow}>
+                <span className={styles.watchLoc}>{a.location}</span>
+                <span className={styles.watchFlags}>
+                  {a.flags.map(f => (
+                    <span
+                      key={f}
+                      className={styles.watchFlag}
+                      data-flag={String(f).toLowerCase().replace(/\s+/g, '-')}
+                    >
+                      {f}
+                    </span>
+                  ))}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {hasSpray && (
+        <>
+          {showSubLabels && (
+            <span className={styles.subPanelLabel} data-divider="true">Spray Operations</span>
+          )}
+          {sprays.map(s => (
+            <div
+              key={s.id}
+              className={styles.sprayRow}
+              data-rei={(s.rei ?? 0) > 0 ? 'true' : undefined}
+            >
+              <div className={styles.sprayHeader}>
+                <span className={styles.sprayName}>
+                  {s.applicationName ?? s.area ?? 'Spray Application'}
+                </span>
+                {(s.rei ?? 0) > 0 && (
+                  <span className={styles.reiBadge}>REI {s.rei}h</span>
+                )}
+              </div>
+              <div className={styles.taskMetaRow}>
+                {s.applicator && <span>{s.applicator}</span>}
+                {s.area && <span>· {s.area}</span>}
+                {s.acreage != null && <span>· {s.acreage} ac</span>}
+              </div>
+              {Array.isArray(s.products) && s.products.length > 0 && (
+                <p className={styles.sprayProducts}>
+                  {s.products.map(p => p.name).filter(Boolean).join(' + ')}
+                </p>
+              )}
+            </div>
+          ))}
+        </>
+      )}
     </section>
   )
 }
