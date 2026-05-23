@@ -247,7 +247,7 @@
   display: grid;
   grid-template-columns: auto 1fr auto;
   gap: 6px;
-  align-items: center;
+  align-items: start;
   font-size: 11px;
 }
 
@@ -266,9 +266,9 @@
 .equipMeta {
   font-size: 10.5px;
   color: var(--db-fg-mute);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+  min-width: 0;
 }
 
 .equipStatus {
@@ -393,6 +393,19 @@
   border-left-color: #fbbf24;
 }
 
+/* Phase 6B.1 — card-level progress escalation. Source-order overrides the
+   priority left-edge above so blocked/delayed visibility wins at distance. */
+.taskCard[data-card-progress="delayed"] {
+  border-left: 6px solid #fbbf24;
+}
+.taskCard[data-card-progress="blocked"] {
+  border-left: 6px solid #ef4444;
+  background: linear-gradient(165deg, rgba(239, 68, 68, 0.10) 0%, var(--db-card) 100%);
+}
+.taskCard[data-card-progress="completed"] {
+  opacity: 0.55;
+}
+
 .taskCardHeader {
   display: flex;
   justify-content: space-between;
@@ -421,11 +434,56 @@
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--db-fg-mute);
 }
 
-.rootBoard .taskMetaRow { font-size: 13px; }
+.rootBoard .taskMetaRow { font-size: 14px; }
+
+/* Phase 6B.1 — group time pill + priority pill on the right side of the card
+   header. The time pill replaces the small "⏰ HH:MM" inside the meta row so
+   start time is glanceable at distance. */
+.headerRight {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.timePill {
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 3px 9px;
+  background: rgba(74, 222, 128, 0.10);
+  border: 1px solid rgba(74, 222, 128, 0.32);
+  border-radius: 6px;
+  color: var(--db-fg);
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.rootBoard .timePill { font-size: 19px; padding: 4px 11px; }
+
+/* Phase 6B.1 — internal section grouping (ROUTE / EQUIP / CREW). Subtle
+   uppercase mini-labels visually separate routing chips from equipment chips
+   from the crew list. */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sectionLabel {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(212, 237, 212, 0.42);
+}
+
+.rootBoard .sectionLabel { font-size: 10.5px; }
 
 .priorityPill {
   font-size: 9.5px;
@@ -471,7 +529,7 @@
 }
 
 .chip {
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.02em;
   padding: 3px 10px;
@@ -482,7 +540,7 @@
   white-space: nowrap;
 }
 
-.rootBoard .chip { font-size: 12px; padding: 4px 12px; }
+.rootBoard .chip { font-size: 14px; padding: 4px 12px; }
 
 .chip[data-status="in-use"] {
   background: rgba(14, 165, 233, 0.18);
@@ -510,7 +568,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.02em;
   padding: 3px 9px;
@@ -521,10 +579,10 @@
   color: var(--db-fg);
 }
 
-.rootBoard .routingChip { font-size: 13px; padding: 4px 11px; }
+.rootBoard .routingChip { font-size: 14px; padding: 4px 11px; }
 
-.routingIcon { font-size: 13px; line-height: 1; }
-.rootBoard .routingIcon { font-size: 15px; }
+.routingIcon { font-size: 14px; line-height: 1; }
+.rootBoard .routingIcon { font-size: 16px; }
 
 /* Tones — high-contrast for sunlight (VISUAL_LANGUAGE §2/§4). */
 .routingChip[data-tone="critical"] {
@@ -561,37 +619,39 @@
 .crewList {
   list-style: none;
   margin: 0;
-  padding: 8px 0 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  border-top: 1px dashed rgba(255, 255, 255, 0.06);
+  gap: 6px;
 }
 
 .crewRow {
   display: flex;
-  gap: 6px;
-  align-items: baseline;
-  font-size: 12.5px;
-  color: rgba(212, 237, 212, 0.88);
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  align-items: center;
+  font-size: 14px;
+  color: rgba(212, 237, 212, 0.92);
 }
 
-.rootBoard .crewRow { font-size: 14px; }
+.rootBoard .crewRow { font-size: 17px; }
 
 .crewRow::before {
   content: '▸';
   color: var(--db-accent);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .crewName {
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .crewRole {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--db-fg-mute);
 }
+
+.rootBoard .crewRole { font-size: 14px; }
 
 /* Phase 10 — inline chips beside the operator's name */
 .crewChips {
@@ -972,28 +1032,52 @@
 
 /* ── Print ──────────────────────────────────────────────────────────── */
 
+/* Phase 6B.1 — printable assignment sheet. Hidden on screen; revealed in
+   print to anchor the page with course + date. */
+.printHeader {
+  display: none;
+}
+
 @media print {
   .root,
   .rootBoard {
+    display: block;
     position: static;
     background: white;
     color: #111;
+    padding: 0;
   }
   .sidebar,
-  .taskCard,
-  .notesPanel,
-  .dateCell {
+  .notesColumn,
+  .dateStrip { display: none !important; }
+  .printHeader {
+    display: block;
+    text-align: center;
+    font-size: 18px;
+    font-weight: 700;
+    color: #111;
+    padding: 6px 0 10px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #555;
+    letter-spacing: 0.02em;
+  }
+  .taskBoardHeader { padding: 0 0 6px; }
+  .taskBoardTitle  { font-size: 16px; color: #166534; }
+  .taskBoardSubtitle { color: #444; }
+  .tasksGrid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .taskCard {
     background: white !important;
     color: #111 !important;
     border-color: #999 !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
-  .taskBoardTitle,
-  .brandMark,
-  .sidePanelLabel,
-  .notesPanelTitle { color: #166534; }
+  .sectionLabel { color: #555; }
+  .taskDescription { background: white; color: #222; }
   .modeBtn { display: none; }
-  .clock { color: #111; }
-  .clockSep { animation: none; opacity: 1; }
 }
 
 /* ── Weather Impacts (sidebar) — crew-facing impact chips ───────────────── */
@@ -1059,3 +1143,22 @@
   white-space: nowrap;
 }
 .rootBoard .watchFlag { font-size: 12px; }
+
+/* Phase 6B.1 — severity tiering for moisture watch flags. Wilt is the
+   highest-urgency signal (turf already stressed), dry-spot is advisory,
+   handwater is informational/weather-tone. */
+.watchFlag[data-flag="wilt"] {
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.16);
+  border-color: rgba(239, 68, 68, 0.35);
+}
+.watchFlag[data-flag="dry-spot"] {
+  color: #fcd34d;
+  background: rgba(251, 191, 36, 0.16);
+  border-color: rgba(251, 191, 36, 0.35);
+}
+.watchFlag[data-flag="handwater"] {
+  color: #7dd3fc;
+  background: rgba(56, 189, 248, 0.16);
+  border-color: rgba(56, 189, 248, 0.3);
+}

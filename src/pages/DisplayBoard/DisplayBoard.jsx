@@ -291,6 +291,11 @@ export default function DisplayBoard({ boardMode = false }) {
   return (
     <div className={rootCls}>
 
+      <div className={styles.printHeader} aria-hidden="true">
+        {selectedCourse?.shortName ?? selectedCourse?.name ?? 'TurfIntel'}
+        {' · '}{prettyDate(selectedDate)}
+      </div>
+
       <aside className={styles.sidebar}>
         <BrandHeader course={selectedCourse} />
 
@@ -520,7 +525,13 @@ function CourseWatchAreasPanel({ areas }) {
             <span className={styles.watchLoc}>{a.location}</span>
             <span className={styles.watchFlags}>
               {a.flags.map(f => (
-                <span key={f} className={styles.watchFlag}>{f}</span>
+                <span
+                  key={f}
+                  className={styles.watchFlag}
+                  data-flag={String(f).toLowerCase().replace(/\s+/g, '-')}
+                >
+                  {f}
+                </span>
               ))}
             </span>
           </li>
@@ -627,53 +638,76 @@ function TaskCard({ event, equipment, crew, resolveName }) {
   // Phase 34 — routing/mowing visual chips from existing event.tags[].
   const { chips: routingChips, extra: routingExtra } = routingChipsFromTags(event.tags)
 
+  // Phase 6B.1 — card-level progress escalation. Only real (DB-backed) rows
+  // contribute; fallback name-only rows have no patchable status.
+  const cardProgress =
+    crewRows.length === 0 ? null
+    : crewRows.some(r => r.status === 'blocked')    ? 'blocked'
+    : crewRows.some(r => r.status === 'delayed')    ? 'delayed'
+    : crewRows.every(r => r.status === 'completed') ? 'completed'
+    : null
+
   return (
-    <article className={styles.taskCard} data-priority={event.priority}>
+    <article
+      className={styles.taskCard}
+      data-priority={event.priority}
+      data-card-progress={cardProgress ?? undefined}
+    >
       <header className={styles.taskCardHeader}>
         <div className={styles.taskTitleBlock}>
           <h2 className={styles.taskTitle}>{event.title}</h2>
           <div className={styles.taskMetaRow}>
-            {event.startTime && <span>⏰ {fmtTime(event.startTime)}</span>}
             {event.eventType && <span>{EVENT_TYPE_LABEL[event.eventType] ?? event.eventType}</span>}
             {event.location && <span>{event.location}</span>}
           </div>
         </div>
-        <span className={styles.priorityPill} data-priority={event.priority}>
-          {PRIORITY_LABEL[event.priority] ?? 'TASK'}
-        </span>
+        <div className={styles.headerRight}>
+          {event.startTime && (
+            <span className={styles.timePill}>{fmtTime(event.startTime)}</span>
+          )}
+          <span className={styles.priorityPill} data-priority={event.priority}>
+            {PRIORITY_LABEL[event.priority] ?? 'TASK'}
+          </span>
+        </div>
       </header>
 
       {routingChips.length > 0 && (
-        <div className={styles.routingRow}>
-          {routingChips.map(c => (
-            <span
-              key={c.key}
-              className={styles.routingChip}
-              data-tone={c.tone}
-              title={c.label}
-            >
-              <span className={styles.routingIcon} aria-hidden="true">{c.icon}</span>
-              <span className={styles.routingLabel}>{c.label}</span>
-            </span>
-          ))}
-          {routingExtra > 0 && (
-            <span className={styles.routingMore}>+{routingExtra}</span>
-          )}
+        <div className={styles.section}>
+          <span className={styles.sectionLabel}>Route</span>
+          <div className={styles.routingRow}>
+            {routingChips.map(c => (
+              <span
+                key={c.key}
+                className={styles.routingChip}
+                data-tone={c.tone}
+                title={c.label}
+              >
+                <span className={styles.routingIcon} aria-hidden="true">{c.icon}</span>
+                <span className={styles.routingLabel}>{c.label}</span>
+              </span>
+            ))}
+            {routingExtra > 0 && (
+              <span className={styles.routingMore}>+{routingExtra}</span>
+            )}
+          </div>
         </div>
       )}
 
       {headerChips.length > 0 && (
-        <div className={styles.chipRow}>
-          {headerChips.map(c => (
-            <span
-              key={c.id}
-              className={styles.chip}
-              data-status={c.status}
-              title={c.status ? `${c.name} · ${c.status}` : c.name}
-            >
-              {c.name}
-            </span>
-          ))}
+        <div className={styles.section}>
+          <span className={styles.sectionLabel}>Equip</span>
+          <div className={styles.chipRow}>
+            {headerChips.map(c => (
+              <span
+                key={c.id}
+                className={styles.chip}
+                data-status={c.status}
+                title={c.status ? `${c.name} · ${c.status}` : c.name}
+              >
+                {c.name}
+              </span>
+            ))}
+          </div>
         </div>
       )}
 
@@ -682,8 +716,10 @@ function TaskCard({ event, equipment, crew, resolveName }) {
       )}
 
       {fallbackNames.length > 0 && (
-        <ul className={styles.crewList}>
-          {fallbackNames.map(c => (
+        <div className={styles.section}>
+          <span className={styles.sectionLabel}>Crew</span>
+          <ul className={styles.crewList}>
+            {fallbackNames.map(c => (
             <li key={c.id} className={styles.crewRow} data-progress={c.status}>
               <span className={styles.crewName}>{c.name}</span>
               {c.role && <span className={styles.crewRole}>· {c.role}</span>}
@@ -710,7 +746,8 @@ function TaskCard({ event, equipment, crew, resolveName }) {
               )}
             </li>
           ))}
-        </ul>
+          </ul>
+        </div>
       )}
     </article>
   )
