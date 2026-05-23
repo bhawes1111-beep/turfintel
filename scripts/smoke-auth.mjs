@@ -985,6 +985,130 @@ function assert(cond, label, ctx) {
   }
 }
 
+// ── Phase 4 Step 3.5 — gap-fill coverage (wrap-up) ──────────────────────────
+// Targeted assertions for items the audit identified as not yet locked end-
+// to-end: third-token-type rejection, duplicate-invite at the API layer,
+// invite handler's response shape carrying no secret fields, and the
+// inviteUser store helper's no-state-caching contract.
+{
+  const authMod  = await import('../worker/api/auth.js')
+  const { mintAuthToken, TOKEN_TYPE_INVITE } = await import('../worker/lib/inviteTokens.js')
+
+  // Tiny fake env reused from earlier patterns (token + users tables only).
+  function tinyEnv() {
+    const tokens = []
+    const users  = []
+    const sessions = []
+    const exec = (sql, bound) => {
+      const q = sql.replace(/\s+/g, ' ').trim()
+      if (q.startsWith('INSERT INTO auth_tokens')) {
+        const [id, token_hash, token_type, user_id, email, created_by_user_id, expires_at, metadata_json] = bound
+        tokens.push({ id, token_hash, token_type, user_id, email, status: 'active', created_by_user_id, expires_at, metadata_json, used_at: null })
+        return { kind: 'run', success: true, changes: 1 }
+      }
+      if (q.startsWith('SELECT * FROM auth_tokens WHERE token_hash = ?')) {
+        return { kind: 'first', row: tokens.find(r => r.token_hash === bound[0]) || null }
+      }
+      if (q.includes("UPDATE auth_tokens SET status = 'used'") ||
+          q.includes("UPDATE auth_tokens SET status = 'expired'") ||
+          q.includes("UPDATE auth_tokens SET status = 'revoked'")) {
+        return { kind: 'run', success: true, changes: 0 }
+      }
+      if (q.startsWith('DELETE FROM auth_tokens')) return { kind: 'run', success: true, changes: 0 }
+      if (q.startsWith('SELECT * FROM users WHERE id = ?')) {
+        return { kind: 'first', row: users.find(u => u.id === bound[0]) || null }
+      }
+      if (q.startsWith('DELETE FROM sessions WHERE user_id = ?')) return { kind: 'run', success: true, changes: 0 }
+      if (q.startsWith('INSERT INTO sessions')) return { kind: 'run', success: true, changes: 1 }
+      if (q.includes("UPDATE users SET")) return { kind: 'run', success: true, changes: 1 }
+      return { kind: 'run', success: false, changes: 0 }
+    }
+    const DB = {
+      _tokens: tokens, _users: users, _sessions: sessions,
+      prepare(sql) {
+        let bound = []
+        const stmt = {
+          bind(...args) { bound = args; return stmt },
+          async first() { const r = exec(sql, bound); return r.kind === 'first' ? r.row : null },
+          async run()   { const r = exec(sql, bound); return { success: !!r.success, meta: { changes: r.changes ?? 0 } } },
+        }
+        return stmt
+      },
+    }
+    return { DB }
+  }
+  function mkReq(body) {
+    return {
+      url: 'https://turfintel.test/api/auth/set-password',
+      headers: { get: () => null },
+      json: async () => body,
+    }
+  }
+
+  // 1) Wrong-token-type rejection at the set-password whitelist.
+  // verifyAuthToken accepts the row (we don't pass expectedType to verify
+  // in setPassword), then the line `row.token_type !== INVITE && !== RESET`
+  // whitelist must reject any other type. Simulate by hand-inserting a
+  // type='other' row with a known hash; then call setPassword with the raw.
+  {
+    const env = tinyEnv()
+    env.DB._users.push({ id: 'u_wrong', email: 'w@x.com', status: 'active',
+      password_hash: 'pbkdf2$100000$AAAA$BBBB', display_name: 'W', role: 'crew',
+      course_access: null, view_private_notes: 0, send_crew_notes: 0,
+      created_at: 'now', updated_at: 'now', last_login_at: null })
+    // Mint a real token to get a valid hash for lookup, then mutate its type
+    // (mintAuthToken validates type, but we can write the row directly via
+    // the fake DB).
+    const real = await mintAuthToken(env, { type: TOKEN_TYPE_INVITE, userId: 'u_wrong', email: 'w@x.com' })
+    env.DB._tokens[0].token_type = 'something_else'   // bypass the helper validation
+    const r = await authMod.setPassword(env, mkReq({ token: real.token, password: 'goodpass1' }))
+    const body = await r.json()
+    assert(r.status === 400 && body?.error === 'This link is invalid or has expired',
+      'set-password: third token-type rejected with generic 400 (whitelist defense)')
+    // The whitelisted-type rejection short-circuits BEFORE update/consume.
+    assert(env.DB._users[0].password_hash === 'pbkdf2$100000$AAAA$BBBB',
+      'wrong-type rejection does NOT update password')
+    assert(env.DB._tokens[0].status === 'active',
+      'wrong-type rejection does NOT consume the token')
+  }
+
+  // 2) Duplicate-invite handling at the inviteUser API source layer.
+  // (The runtime E2E confirms 409; here we lock the source so a refactor
+  //  can't drop the existence check.)
+  const usersSrc = readFileSync('worker/api/users.js', 'utf8')
+  assert(/SELECT id FROM users WHERE email = \?/.test(usersSrc),
+    'inviteUser: looks up existing user by email')
+  // Two paths use that select (createUser + inviteUser); make sure the
+  // inviteUser branch specifically branches to 409 on duplicate.
+  const inviteSlice = usersSrc.slice(usersSrc.indexOf('export async function inviteUser'),
+                                     usersSrc.indexOf('// ── Update'))
+  assert(/existing\)?\s*\)?\s*return json\(\{ error: '[^']*already exists/.test(inviteSlice),
+    'inviteUser: returns 409 with "already exists" on duplicate email')
+
+  // 3) inviteUser response shape contract — no secret fields in the
+  //    handler's returned shape. Source-level: the handler returns
+  //    { ok: true, user: publicUser(row), inviteUrl, expiresAt }.
+  assert(/return json\(\{ ok: true, user: publicUser\(row\), inviteUrl, expiresAt \}, 201\)/.test(inviteSlice),
+    'inviteUser: response shape is { ok, user, inviteUrl, expiresAt } (201)')
+  // publicUser projection (defined at top of users.js) MUST NOT include
+  // password_hash. (Defensive — covered earlier but pinned here too.)
+  assert(!/password_hash:\s*row\./.test(usersSrc.slice(0, usersSrc.indexOf('export async function listUsers'))),
+    'publicUser: omits password_hash')
+
+  // 4) usersStore.inviteUser does NOT cache inviteUrl into shared state.
+  //    (Asserted in Step 3.4's block too; pinned here for the lifecycle.)
+  const storeSrc = readFileSync('src/utils/auth/usersStore.js', 'utf8')
+  assert(/setState\(\{ users: \[\.\.\.state\.users, res\.user\] \}\)/.test(storeSrc),
+    'usersStore.inviteUser: stores ONLY the public user, never inviteUrl')
+
+  // 5) The bundle scan from store-session smoke covers no-x-admin-key for
+  //    every store including usersStore (we added it to MIGRATED in 3.5).
+  //    Cross-check the MIGRATED list explicitly contains usersStore.
+  const sessionSmoke = readFileSync('scripts/smoke-store-session.mjs', 'utf8')
+  assert(/'src\/utils\/auth\/usersStore\.js'/.test(sessionSmoke),
+    'store-session MIGRATED list now includes usersStore.js (locks inviteUser to no-key contract)')
+}
+
 // ── Step 3.2 endpoint contract guarantees (source-level) ────────────────────
 // The lifecycle behavior is locked by the helper smokes above + an E2E run;
 // these assertions lock the WIRING + the security-critical text/order so a

@@ -43,6 +43,10 @@ const MIGRATED = [
   'src/utils/courses/courseStore.js',
   'src/utils/weather/weatherHistoryStore.js',
   'src/utils/attachments/attachmentsStore.js',
+  // Phase 4 Step 3.4 — usersStore was session-based from Phase 1, but
+  // adding it here locks the new inviteUser() helper to the same
+  // no-key/credentials contract as every other store.
+  'src/utils/auth/usersStore.js',
 ]
 
 // ── Per migrated store: session creds, no key header, no hardcoded key ──────

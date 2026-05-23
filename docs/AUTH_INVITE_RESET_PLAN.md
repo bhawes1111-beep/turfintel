@@ -1,7 +1,49 @@
 # Auth — Invite & Password Reset Plan
 
-Status: **PLAN ONLY (not implemented).** Produced in Auth Phase 2, Commit 5.
-Implementation is a future phase; nothing here is wired yet.
+Status: **IMPLEMENTED in Phase 4, Step 3** (commits `ef3e156` → `0457ebe`,
+not yet pushed at time of writing). Local smoke suite green: auth 413,
+store-session 107. Awaiting Phase 4 push/deploy approval.
+
+## Implementation status (Phase 4 Step 3)
+
+| Spec area | Status | Where |
+|---|---|---|
+| `auth_tokens` schema + indexes | ✅ Implemented | [migration 0039](../worker/migrations/0039_auth_tokens.sql) |
+| Token mint/verify/consume/revoke/prune helpers | ✅ Implemented | [worker/lib/inviteTokens.js](../worker/lib/inviteTokens.js) |
+| `POST /api/users/invite` | ✅ Implemented | [worker/api/users.js#inviteUser](../worker/api/users.js) |
+| `POST /api/users/:id/invite` (per-user re-invite) | ⏸️ **Deferred** (decision 5 of Step 3.2 audit) | — |
+| `GET /api/auth/token-status` | ✅ Implemented | [worker/api/auth.js#tokenStatus](../worker/api/auth.js) |
+| `POST /api/auth/accept-invite` + `POST /api/auth/reset-password` | ✅ Implemented as **single endpoint** `POST /api/auth/set-password` (token type drives post-success behavior) | [worker/api/auth.js#setPassword](../worker/api/auth.js) |
+| `POST /api/auth/reset-request` (enumeration-safe + throttled) | ✅ Implemented | [worker/api/auth.js#resetRequest](../worker/api/auth.js) |
+| Admin invite UI (copy-link modal) | ✅ Implemented | [src/pages/Admin/Admin.jsx](../src/pages/Admin/Admin.jsx) (`InviteModal`) |
+| SPA accept-invite + reset-password pages | ✅ Implemented | [src/pages/Auth/](../src/pages/Auth/) (`SetPasswordForm`, `AcceptInvitePage`, `ResetPasswordPage`) |
+| Login "Forgot Password?" wired | ✅ Implemented | [src/pages/Login/Login.jsx](../src/pages/Login/Login.jsx) |
+| Admin reset fallback (`PATCH /api/users/:id { password }`) | ✅ Already in place since Phase 1 | [worker/api/users.js#updateUser](../worker/api/users.js) |
+| Email provider | 🚫 **Intentionally postponed.** Invite URL is returned in the API response (admin copies it from the modal). Reset-request returns the URL via `debug.resetUrl` ONLY for authenticated admins; anonymous callers get the generic 200. | — |
+| MFA | 🚫 Out of scope for Phase 4 | — |
+| Password policy (configurable) | 🚫 Out of scope; enforces min-8 only (same as PBKDF2 helper) | — |
+
+**Key decisions locked at Step 3.2 audit:**
+
+1. Accept-invite → **auto-login** (server issues a session cookie on success).
+2. Reset-password → **manual login** (no cookie; prior sessions are deleted; user must sign in again).
+3. Timing-leak parity with `/api/auth/login` accepted; constant-time hardening deferred (TODO note in `setPassword`).
+4. `'invite-pending'` sentinel value for `users.password_hash` — not a valid PBKDF2 storage string, so `verifyPassword()` cannot accept it.
+5. Per-user re-invite endpoint **deferred**.
+6. Invite handler lives in `worker/api/users.js`; set-password / token-status / reset-request live in `worker/api/auth.js`.
+
+**Note on `users.status`:** Phase 4 added the `'invited'` status value. The
+schema column is TEXT (no CHECK constraint), and the worker validates allowed
+values per route. Existing `'active'`/`'disabled'` rows are unaffected.
+
+---
+
+## Original design record (Phase 2 Commit 5)
+
+The remainder of this document is the original design narrative produced
+before implementation. It is kept intact as the historical specification.
+Where implementation diverged, the "Implementation status" table above
+takes precedence.
 
 ## Context
 
