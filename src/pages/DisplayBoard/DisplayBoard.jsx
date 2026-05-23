@@ -19,7 +19,7 @@
 //   spray_records, operations_daily_notes, operational_attachments,
 //   crew_employees (name only — no payRate / private fields).
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useCalendarData,    refreshCalendarData }    from '../../utils/calendar/calendarStore'
 import { useSpraysData,      refreshSpraysData }      from '../../utils/sprays/spraysStore'
@@ -129,7 +129,7 @@ function titleFromBody(body) {
 
 // ── Main component ───────────────────────────────────────────────────────
 
-export default function DisplayBoard({ boardMode = false }) {
+export default function DisplayBoard({ boardMode = false, printMode = false }) {
   const navigate                                    = useNavigate()
   const { events, loading: eventsLoading }          = useCalendarData()
   const { records: sprays }                         = useSpraysData()
@@ -174,6 +174,25 @@ export default function DisplayBoard({ boardMode = false }) {
   // section would otherwise render its empty state ("No tasks…"),
   // making a freshly-opened board look broken.
   const isFirstLoad = eventsLoading && events.length === 0
+
+  // Phase 6B.3 — print-mode auto-trigger. The /display-board/print route
+  // mounts this with printMode=true, expecting a one-shot browser print
+  // dialog after the data resolves. The ref guards against StrictMode's
+  // double-mount in dev and against re-renders re-firing print().
+  const printedRef = useRef(false)
+  const [printedAt] = useState(() => new Date())
+  useEffect(() => {
+    if (!printMode) return
+    if (printedRef.current) return
+    if (isFirstLoad) return
+    printedRef.current = true
+    // Small delay so layout settles (fonts, chips, page-break-before)
+    // before the dialog snapshots the document.
+    const id = setTimeout(() => {
+      try { window.print() } catch { /* no-op in non-browser hosts */ }
+    }, 400)
+    return () => clearTimeout(id)
+  }, [printMode, isFirstLoad])
 
   // ── Crew name lookup (ID → name; never reads payRate) ─────────────────
   const employeeNameLookup = useMemo(() => {
@@ -284,12 +303,15 @@ export default function DisplayBoard({ boardMode = false }) {
   }, [moistureObs, now])
 
   // ── Render ────────────────────────────────────────────────────────────
-  const rootCls = boardMode ? `${styles.root} ${styles.rootBoard}` : styles.root
+  const rootCls =
+    boardMode ? `${styles.root} ${styles.rootBoard}`
+    : printMode ? `${styles.root} ${styles.rootPrint}`
+    : styles.root
   const weekIsos = weekOf(selectedDate)
   const todayIso = isoToday()
 
   return (
-    <div className={rootCls}>
+    <div className={rootCls} data-print-mode={printMode ? 'true' : undefined}>
 
       <div className={styles.printHeader} aria-hidden="true">
         {selectedCourse?.shortName ?? selectedCourse?.name ?? 'TurfIntel'}
@@ -365,6 +387,30 @@ export default function DisplayBoard({ boardMode = false }) {
         <CrewBriefingPanel notes={dayNotes} alerts={liveAlerts} events={dayEvents} />
         <FieldConditionsPanel watchAreas={watchAreas} sprays={daySprays} />
       </aside>
+
+      {/* Phase 6B.3 — print-only Page 2.
+          Wide-interpretation notes block: Operational Intelligence,
+          Crew Briefing (supervisor notes + alerts), Field Conditions
+          (watch areas + sprays). Lives outside the screen grid so the
+          existing layout stays untouched; CSS gates visibility to
+          [data-print-mode] / @media print. */}
+      {printMode && (
+        <section className={styles.printPage2} aria-label="Operational details">
+          <OperationalIntelligencePanel />
+          <CrewBriefingPanel notes={dayNotes} alerts={liveAlerts} events={dayEvents} />
+          <FieldConditionsPanel watchAreas={watchAreas} sprays={daySprays} />
+        </section>
+      )}
+
+      {printMode && (
+        <div className={styles.printFooter} aria-hidden="true">
+          Printed {printedAt.toLocaleString(undefined, {
+            year: 'numeric', month: 'short', day: 'numeric',
+            hour: '2-digit', minute: '2-digit',
+          })}
+          {' · TurfIntel Display Board'}
+        </div>
+      )}
 
       <footer className={styles.dateStrip}>
         {weekIsos.map((iso, i) => {

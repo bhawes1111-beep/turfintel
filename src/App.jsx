@@ -51,6 +51,12 @@ export default function App() {
             It is read-only (GET) and carries no private data. */}
         <Route path="/display-board/board" element={<DisplayBoard boardMode />} />
 
+        {/* Phase 6B.3 — printable fallback. Same data path as Board Mode,
+            but emits a paper-friendly layout and auto-opens the print
+            dialog once on mount. Outside the auth guard for the same
+            reason as /board: read-only, no private data. */}
+        <Route path="/display-board/print" element={<DisplayBoard printMode />} />
+
         {/* All app routes share the sidebar Layout and require a session */}
         <Route path="/" element={<RequireAuth><Layout /></RequireAuth>}>
           <Route index element={<Navigate to="/dashboard" replace />} />

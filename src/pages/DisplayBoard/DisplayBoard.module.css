@@ -1059,6 +1059,46 @@
   display: none;
 }
 
+/* Phase 6B.3 — print-only Page 2 sections. Hidden by default; revealed
+   when the component is mounted in print mode (data-print-mode="true")
+   for on-screen preview, and always revealed in actual print. */
+.printPage2,
+.printFooter {
+  display: none;
+}
+
+/* ── Phase 6B.3 — on-screen preview of /display-board/print ───────────
+   The `rootPrint` class is applied when printMode=true (via the route
+   <DisplayBoard printMode />). It mirrors the @media print rules so the
+   user sees what will land on paper before/after the auto-fired dialog.
+   Authored as a CSS-Modules-scoped duplicate of the print block; the
+   :where() selectors keep specificity low so individual rules can be
+   tweaked without !important. */
+.rootPrint {
+  display: block !important;
+  position: static !important;
+  background: white !important;
+  color: #111 !important;
+  padding: 18px 22px !important;
+  font-size: 12px;
+  min-height: 100vh;
+  /* Disable the dark radial gradient inherited from .root. */
+  background-image: none !important;
+}
+
+.rootPrint .sidebar,
+.rootPrint .notesColumn,
+.rootPrint .dateStrip,
+.rootPrint .modeBtn {
+  display: none !important;
+}
+
+.rootPrint .printHeader,
+.rootPrint .printFooter,
+.rootPrint .printPage2 {
+  display: block;
+}
+
 @media print {
   .root,
   .rootBoard {
@@ -1067,12 +1107,34 @@
     background: white;
     color: #111;
     padding: 0;
+    /* Disable the dark radial gradient inherited from .root. */
+    background-image: none !important;
   }
   .sidebar,
   .notesColumn,
-  .dateStrip { display: none !important; }
+  .dateStrip,
+  .modeBtn { display: none !important; }
+  .printHeader,
+  .printFooter,
+  .printPage2 { display: block; }
+}
+
+/* ── Shared print styling — applies on-screen preview + actual print ── */
+
+/* Header band: course · date */
+.rootPrint .printHeader {
+  text-align: center;
+  font-size: 18px;
+  font-weight: 700;
+  color: #111;
+  padding: 6px 0 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid #555;
+  letter-spacing: 0.02em;
+}
+
+@media print {
   .printHeader {
-    display: block;
     text-align: center;
     font-size: 18px;
     font-weight: 700;
@@ -1082,23 +1144,364 @@
     border-bottom: 1px solid #555;
     letter-spacing: 0.02em;
   }
+}
+
+/* Task board header */
+.rootPrint .taskBoardHeader,
+.rootPrint .taskBoardTitle,
+.rootPrint .taskBoardSubtitle {
+  color: #111;
+}
+.rootPrint .taskBoardHeader { padding: 0 0 6px; }
+.rootPrint .taskBoardTitle  { font-size: 17px; color: #111; }
+.rootPrint .taskBoardSubtitle { color: #444; font-size: 12px; }
+
+@media print {
   .taskBoardHeader { padding: 0 0 6px; }
-  .taskBoardTitle  { font-size: 16px; color: #166534; }
-  .taskBoardSubtitle { color: #444; }
+  .taskBoardTitle  { font-size: 17px; color: #111; }
+  .taskBoardSubtitle { color: #444; font-size: 12px; }
+}
+
+/* Tasks grid: two-up, tight gaps. break-inside avoid on every card. */
+.rootPrint .tasksGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+@media print {
   .tasksGrid {
     grid-template-columns: 1fr 1fr;
     gap: 8px;
   }
-  .taskCard {
+}
+
+/* Task card flattening — white bg, black text, gray border, no color tints. */
+.rootPrint .taskCard,
+.rootPrint .taskCard[data-priority="high"],
+.rootPrint .taskCard[data-priority="medium"],
+.rootPrint .taskCard[data-card-progress="blocked"],
+.rootPrint .taskCard[data-card-progress="delayed"],
+.rootPrint .taskCard[data-card-progress="completed"] {
+  background: white !important;
+  color: #111 !important;
+  border: 1px solid #888 !important;
+  border-left: 3px solid #111 !important;
+  opacity: 1 !important;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* B&W escalation glyph on the card's left edge. Thicker bar for
+   blocked/delayed so it still reads at distance on a toner print. */
+.rootPrint .taskCard[data-card-progress="blocked"] { border-left-width: 6px !important; }
+.rootPrint .taskCard[data-card-progress="delayed"] { border-left-width: 5px !important; }
+
+@media print {
+  .taskCard,
+  .taskCard[data-priority="high"],
+  .taskCard[data-priority="medium"],
+  .taskCard[data-card-progress="blocked"],
+  .taskCard[data-card-progress="delayed"],
+  .taskCard[data-card-progress="completed"] {
     background: white !important;
     color: #111 !important;
-    border-color: #999 !important;
+    border: 1px solid #888 !important;
+    border-left: 3px solid #111 !important;
+    opacity: 1 !important;
     break-inside: avoid;
     page-break-inside: avoid;
   }
-  .sectionLabel { color: #555; }
-  .taskDescription { background: white; color: #222; }
-  .modeBtn { display: none; }
+  .taskCard[data-card-progress="blocked"] { border-left-width: 6px !important; }
+  .taskCard[data-card-progress="delayed"] { border-left-width: 5px !important; }
+}
+
+/* Card type — black, slightly smaller for paper. */
+.rootPrint .taskTitle { color: #111; font-size: 14px; }
+.rootPrint .taskMetaRow { color: #444; font-size: 11px; }
+.rootPrint .sectionLabel { color: #444; }
+.rootPrint .taskDescription {
+  background: white !important;
+  color: #222 !important;
+  border: 1px solid #ccc;
+}
+
+@media print {
+  .taskTitle { color: #111; font-size: 14px; }
+  .taskMetaRow { color: #444; font-size: 11px; }
+  .sectionLabel { color: #444; }
+  .taskDescription {
+    background: white !important;
+    color: #222 !important;
+    border: 1px solid #ccc;
+  }
+}
+
+/* Time + priority pills — outlined (no fill), explicit text. */
+.rootPrint .timePill {
+  background: white !important;
+  color: #111 !important;
+  border: 1px solid #555 !important;
+  font-size: 13px;
+}
+.rootPrint .priorityPill,
+.rootPrint .priorityPill[data-priority="high"],
+.rootPrint .priorityPill[data-priority="medium"] {
+  background: white !important;
+  color: #111 !important;
+  border: 1px solid #555 !important;
+  font-weight: 700;
+}
+.rootPrint .priorityPill[data-priority="high"] { border-width: 2px !important; }
+
+@media print {
+  .timePill {
+    background: white !important;
+    color: #111 !important;
+    border: 1px solid #555 !important;
+    font-size: 13px;
+  }
+  .priorityPill,
+  .priorityPill[data-priority="high"],
+  .priorityPill[data-priority="medium"] {
+    background: white !important;
+    color: #111 !important;
+    border: 1px solid #555 !important;
+    font-weight: 700;
+  }
+  .priorityPill[data-priority="high"] { border-width: 2px !important; }
+}
+
+/* All chips (equip, routing) — outlined only. */
+.rootPrint .chip,
+.rootPrint .chip[data-status="in-use"],
+.rootPrint .chip[data-status="cancelled"],
+.rootPrint .chip[data-status="released"],
+.rootPrint .routingChip,
+.rootPrint .routingChip[data-tone="critical"],
+.rootPrint .routingChip[data-tone="caution"],
+.rootPrint .routingChip[data-tone="weather"] {
+  background: white !important;
+  color: #111 !important;
+  border: 1px solid #555 !important;
+}
+.rootPrint .routingChip[data-tone="critical"] { border-width: 2px !important; font-weight: 800; }
+
+@media print {
+  .chip,
+  .chip[data-status="in-use"],
+  .chip[data-status="cancelled"],
+  .chip[data-status="released"],
+  .routingChip,
+  .routingChip[data-tone="critical"],
+  .routingChip[data-tone="caution"],
+  .routingChip[data-tone="weather"] {
+    background: white !important;
+    color: #111 !important;
+    border: 1px solid #555 !important;
+  }
+  .routingChip[data-tone="critical"] { border-width: 2px !important; font-weight: 800; }
+}
+
+/* Crew rows — explicit B&W glyph + label by progress. The screen chip
+   only shows a colored glyph; in print we need the WORD too so a
+   black-and-white photocopy is unambiguous. */
+.rootPrint .crewRow,
+.rootPrint .crewRow[data-progress="completed"],
+.rootPrint .crewRow[data-progress="blocked"],
+.rootPrint .crewRow[data-progress="delayed"] {
+  color: #111;
+  opacity: 1;
+  font-size: 12px;
+}
+.rootPrint .crewRow::before { color: #111; }
+.rootPrint .crewName { color: #111 !important; text-decoration: none !important; }
+.rootPrint .crewRow[data-progress="completed"] .crewName { text-decoration: line-through !important; }
+
+/* Outlined progress chip + injected status label after the glyph. */
+.rootPrint .progressChip,
+.rootPrint .progressChip[data-progress="completed"],
+.rootPrint .progressChip[data-progress="delayed"],
+.rootPrint .progressChip[data-progress="blocked"] {
+  background: white !important;
+  color: #111 !important;
+  border: 1px solid #555 !important;
+  font-weight: 700;
+}
+.rootPrint .progressChip[data-progress="blocked"] { border-width: 2px !important; }
+.rootPrint .progressChip[data-progress="delayed"] { border-width: 2px !important; }
+/* Append the status label after the glyph so toner output is unambiguous. */
+.rootPrint .progressChip[data-progress="completed"]::after { content: ' DONE'; font-size: 9px; letter-spacing: 0.06em; }
+.rootPrint .progressChip[data-progress="delayed"]::after   { content: ' DELAYED'; font-size: 9px; letter-spacing: 0.06em; }
+.rootPrint .progressChip[data-progress="blocked"]::after   { content: ' BLOCKED'; font-size: 9px; letter-spacing: 0.06em; }
+.rootPrint .progressChip[data-progress="assigned"]::after  { content: ' OPEN'; font-size: 9px; letter-spacing: 0.06em; color: #555; }
+/* Picker UI never shows in print. */
+.rootPrint .progressPicker { display: none !important; }
+
+@media print {
+  .crewRow,
+  .crewRow[data-progress="completed"],
+  .crewRow[data-progress="blocked"],
+  .crewRow[data-progress="delayed"] {
+    color: #111;
+    opacity: 1;
+    font-size: 12px;
+  }
+  .crewRow::before { color: #111; }
+  .crewName { color: #111 !important; text-decoration: none !important; }
+  .crewRow[data-progress="completed"] .crewName { text-decoration: line-through !important; }
+  .progressChip,
+  .progressChip[data-progress="completed"],
+  .progressChip[data-progress="delayed"],
+  .progressChip[data-progress="blocked"] {
+    background: white !important;
+    color: #111 !important;
+    border: 1px solid #555 !important;
+    font-weight: 700;
+  }
+  .progressChip[data-progress="blocked"] { border-width: 2px !important; }
+  .progressChip[data-progress="delayed"] { border-width: 2px !important; }
+  .progressChip[data-progress="completed"]::after { content: ' DONE'; font-size: 9px; letter-spacing: 0.06em; }
+  .progressChip[data-progress="delayed"]::after   { content: ' DELAYED'; font-size: 9px; letter-spacing: 0.06em; }
+  .progressChip[data-progress="blocked"]::after   { content: ' BLOCKED'; font-size: 9px; letter-spacing: 0.06em; }
+  .progressChip[data-progress="assigned"]::after  { content: ' OPEN'; font-size: 9px; letter-spacing: 0.06em; color: #555; }
+  .progressPicker { display: none !important; }
+}
+
+/* ── Page 2 — operational details ──────────────────────────────────────
+   Crew Briefing + Field Conditions + Operational Intelligence. Stacks
+   vertically; lands on a new page. */
+.rootPrint .printPage2 {
+  break-before: page;
+  page-break-before: always;
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 2px solid #111;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+@media print {
+  .printPage2 {
+    break-before: page;
+    page-break-before: always;
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+    display: flex !important;
+    flex-direction: column;
+    gap: 14px;
+  }
+}
+
+/* Flatten the panels inside Page 2 so they read on paper. They're the
+   same React components used in the screen notes column, just re-rendered
+   here with no dark background. The universal descendant selector is
+   scoped to .printPage2 to avoid bleed into the screen-mode notes column,
+   and it covers cross-module class names (OperationalIntelligencePanel
+   has its own CSS module). */
+.rootPrint .printPage2 * {
+  color: #111 !important;
+  background-image: none !important;
+}
+.rootPrint .printPage2 :global([class*="notesPanel"]),
+.rootPrint .printPage2 :global([class*="panel"]) {
+  background: white !important;
+  color: #111 !important;
+  border: 1px solid #888 !important;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.rootPrint .printPage2 .noticeRow,
+.rootPrint .printPage2 .sprayRow {
+  background: white !important;
+  color: #111 !important;
+  border-left: 3px solid #111 !important;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.rootPrint .printPage2 .noticeRow[data-tone="alert"] { border-left-width: 5px !important; }
+.rootPrint .printPage2 .noticeTitle { color: #111 !important; }
+.rootPrint .printPage2 .noticeBody  { color: #222 !important; }
+.rootPrint .printPage2 .watchFlag,
+.rootPrint .printPage2 .watchFlag[data-flag="wilt"],
+.rootPrint .printPage2 .watchFlag[data-flag="dry-spot"],
+.rootPrint .printPage2 .watchFlag[data-flag="handwater"] {
+  background: white !important;
+  color: #111 !important;
+  border: 1px solid #555 !important;
+}
+.rootPrint .printPage2 .watchFlag[data-flag="wilt"] { border-width: 2px !important; font-weight: 800; }
+.rootPrint .printPage2 .reiBadge {
+  background: white !important;
+  color: #111 !important;
+  border: 2px solid #111 !important;
+}
+.rootPrint .printPage2 .subPanelLabel { color: #333 !important; }
+.rootPrint .printPage2 .notesPanelTitle { color: #111 !important; }
+.rootPrint .printPage2 .notesPanelHint { color: #444 !important; }
+
+@media print {
+  .printPage2 * {
+    color: #111 !important;
+    background-image: none !important;
+  }
+  .printPage2 :global([class*="notesPanel"]),
+  .printPage2 :global([class*="panel"]) {
+    background: white !important;
+    color: #111 !important;
+    border: 1px solid #888 !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .printPage2 .noticeRow,
+  .printPage2 .sprayRow {
+    background: white !important;
+    color: #111 !important;
+    border-left: 3px solid #111 !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .printPage2 .noticeRow[data-tone="alert"] { border-left-width: 5px !important; }
+  .printPage2 .noticeTitle { color: #111 !important; }
+  .printPage2 .noticeBody  { color: #222 !important; }
+  .printPage2 .watchFlag,
+  .printPage2 .watchFlag[data-flag="wilt"],
+  .printPage2 .watchFlag[data-flag="dry-spot"],
+  .printPage2 .watchFlag[data-flag="handwater"] {
+    background: white !important;
+    color: #111 !important;
+    border: 1px solid #555 !important;
+  }
+  .printPage2 .watchFlag[data-flag="wilt"] { border-width: 2px !important; font-weight: 800; }
+  .printPage2 .reiBadge {
+    background: white !important;
+    color: #111 !important;
+    border: 2px solid #111 !important;
+  }
+  .printPage2 .subPanelLabel { color: #333 !important; }
+  .printPage2 .notesPanelTitle { color: #111 !important; }
+  .printPage2 .notesPanelHint { color: #444 !important; }
+}
+
+/* Footer — printed timestamp anchors a stale handout to its source moment. */
+.rootPrint .printFooter,
+.printFooter {
+  text-align: center;
+  font-size: 10px;
+  color: #555;
+  letter-spacing: 0.04em;
+  margin-top: 18px;
+  padding-top: 8px;
+  border-top: 1px solid #999;
+}
+
+@media print {
+  /* @page margin handles the physical margin; the in-document footer is
+     informational rather than a running footer. */
+  @page { margin: 0.5in; }
 }
 
 /* ── Weather Impacts (sidebar) — crew-facing impact chips ───────────────── */
