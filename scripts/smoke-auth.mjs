@@ -695,5 +695,396 @@ function assert(cond, label, ctx) {
   assert(D1.token !== D2.token && D1.hash !== D2.hash, 'two mints → distinct token + hash')
 }
 
+// ── Phase 4 Step 3.2 — invite + set-password endpoints ─────────────────
+{
+  console.log('\n— Step 3.2: invite + set-password —')
+
+  const usersMod = await import('../worker/api/users.js')
+  const authMod  = await import('../worker/api/auth.js')
+  const {
+    mintAuthToken, TOKEN_TYPE_INVITE, TOKEN_TYPE_RESET,
+  } = await import('../worker/lib/inviteTokens.js')
+
+  // ── exported surfaces ──
+  assert(typeof usersMod.inviteUser === 'function', 'users.inviteUser exported')
+  assert(typeof authMod.setPassword === 'function', 'auth.setPassword exported')
+  assert(typeof authMod.jsonWithCookie === 'function', 'auth.jsonWithCookie exported (reused by setPassword)')
+  assert(usersMod.INVITE_PENDING_PASSWORD === 'invite-pending', 'INVITE_PENDING_PASSWORD sentinel literal')
+
+  // ── sentinel safety: cannot be brute-forced via verifyPassword ──
+  // INVITE_PENDING_PASSWORD is not a pbkdf2$ storage string, so any login
+  // attempt against an invited (un-redeemed) user fails closed.
+  assert(!(await verifyPassword('invite-pending', usersMod.INVITE_PENDING_PASSWORD)), 'sentinel cannot self-verify')
+  assert(!(await verifyPassword('', usersMod.INVITE_PENDING_PASSWORD)), 'sentinel rejects empty password')
+  assert(!(await verifyPassword('anything', usersMod.INVITE_PENDING_PASSWORD)), 'sentinel rejects arbitrary password')
+
+  // ── source-level guarantees ──
+  const indexSrc = readFileSync(new URL('../worker/index.js', import.meta.url), 'utf8')
+  const authSrc  = readFileSync(new URL('../worker/api/auth.js', import.meta.url), 'utf8')
+  const usersSrc = readFileSync(new URL('../worker/api/users.js', import.meta.url), 'utf8')
+
+  // set-password is registered BEFORE the mutation gate (pre-gate exemption).
+  const setPassPos = indexSrc.indexOf("'/api/auth/set-password'")
+  const mutGatePos = indexSrc.indexOf('if (isMutation(method))')
+  assert(setPassPos > 0 && mutGatePos > 0 && setPassPos < mutGatePos,
+    'index.js: /api/auth/set-password handled BEFORE the mutation gate', { setPassPos, mutGatePos })
+
+  // /api/users/invite is matched BEFORE the /api/users/:id regex.
+  const invitePos = indexSrc.indexOf("'/api/users/invite'")
+  const usrRegex  = indexSrc.indexOf("pathname.match(/^\\/api\\/users\\/")
+  assert(invitePos > 0 && usrRegex > 0 && invitePos < usrRegex,
+    'index.js: /api/users/invite matched BEFORE /api/users/:id regex', { invitePos, usrRegex })
+
+  // setPassword operation order: verify → hash → update users → delete sessions → consume.
+  const order = [
+    ['verifyAuthToken',                      'verify token'],
+    ['hashPassword(password)',               'hash password'],
+    ["UPDATE users SET password_hash = ?, status = 'active'", 'update password/status'],
+    ['DELETE FROM sessions WHERE user_id = ?', 'invalidate sessions'],
+    ['consumeAuthToken(env, row.token_hash)', 'consume token'],
+  ]
+  let last = -1
+  for (const [needle, label] of order) {
+    const i = authSrc.indexOf(needle)
+    assert(i > last, `setPassword: "${label}" appears AFTER previous step`, { needle, i, last })
+    last = i
+  }
+
+  // Cookie issuance is gated on invite type only (reset → no auto-login).
+  // Allow nested braces in the if-body (object literals, template strings, etc.)
+  // by using a lazy [\s\S] character class with a bounded length.
+  const cookieGate = /if\s*\(\s*row\.token_type\s*===\s*TOKEN_TYPE_INVITE\s*\)\s*\{[\s\S]{0,800}?buildSessionCookie/.test(authSrc)
+  assert(cookieGate, 'setPassword: Set-Cookie issuance is inside `if (row.token_type === TOKEN_TYPE_INVITE)`')
+
+  // Generic-message string used for parity.
+  assert(authSrc.includes("'This link is invalid or has expired'"), 'setPassword: generic failure message present')
+
+  // Timing-leak TODO present (audit acknowledgment). Match across line breaks.
+  assert(/TODO\(hardening\)[\s\S]{0,200}PBKDF2/.test(authSrc), 'setPassword: timing-leak TODO documented')
+
+  // Invite handler writes the sentinel + status='invited'.
+  assert(/status='invited'|status\s*=\s*'invited'/.test(usersSrc.replace(/\s+/g, ' ')) || /'invited'/.test(usersSrc),
+    'inviteUser: writes status=invited')
+  assert(usersSrc.includes('INVITE_PENDING_PASSWORD'), 'inviteUser: writes INVITE_PENDING_PASSWORD sentinel')
+  assert(usersSrc.includes('encodeCourseAccess(body.courseAccess)'),
+    'inviteUser: validates courseAccess via encodeCourseAccess (Step 4 semantics inherited)')
+  assert(usersSrc.includes('revokeActiveTokensFor(env, id, TOKEN_TYPE_INVITE)'),
+    'inviteUser: revokes prior active invite tokens before minting')
+  assert(usersSrc.includes('mintAuthToken(env'),
+    'inviteUser: mints token via mintAuthToken')
+  assert(usersSrc.includes('/accept-invite?token='),
+    'inviteUser: builds /accept-invite?token=... URL')
+
+  // ── behavior — full setPassword lifecycle on a fake env ──
+  function makeFakeEnv() {
+    const tokens  = []
+    const users   = []
+    const sessions = []
+    const exec = (sql, bound) => {
+      const q = sql.replace(/\s+/g, ' ').trim()
+
+      // ── auth_tokens ──
+      if (q.startsWith('INSERT INTO auth_tokens')) {
+        const [id, token_hash, token_type, user_id, email, created_by_user_id, expires_at, metadata_json] = bound
+        tokens.push({ id, token_hash, token_type, user_id, email, status: 'active', created_by_user_id, expires_at, metadata_json, used_at: null })
+        return { kind: 'run', success: true, changes: 1 }
+      }
+      if (q.startsWith('SELECT * FROM auth_tokens WHERE token_hash = ?')) {
+        return { kind: 'first', row: tokens.find(r => r.token_hash === bound[0]) || null }
+      }
+      if (q.includes("UPDATE auth_tokens SET status = 'used'")) {
+        const r = tokens.find(r => r.token_hash === bound[0])
+        if (r && r.status === 'active') { r.status = 'used'; r.used_at = new Date().toISOString(); return { kind: 'run', success: true, changes: 1 } }
+        return { kind: 'run', success: true, changes: 0 }
+      }
+      if (q.includes("UPDATE auth_tokens SET status = 'expired'")) {
+        const r = tokens.find(r => r.id === bound[0])
+        if (r && r.status === 'active') { r.status = 'expired'; return { kind: 'run', success: true, changes: 1 } }
+        return { kind: 'run', success: true, changes: 0 }
+      }
+      if (q.includes("UPDATE auth_tokens SET status = 'revoked'")) {
+        const [userId, type] = bound
+        let n = 0
+        for (const r of tokens) if (r.user_id === userId && r.token_type === type && r.status === 'active') { r.status = 'revoked'; n++ }
+        return { kind: 'run', success: true, changes: n }
+      }
+      if (q.startsWith('DELETE FROM auth_tokens')) return { kind: 'run', success: true, changes: 0 }
+
+      // ── users ──
+      if (q.startsWith('SELECT * FROM users WHERE id = ?')) {
+        return { kind: 'first', row: users.find(u => u.id === bound[0]) || null }
+      }
+      if (q.includes("UPDATE users SET password_hash = ?, status = 'active'")) {
+        const [hash, id] = bound
+        const u = users.find(x => x.id === id)
+        if (!u) return { kind: 'run', success: true, changes: 0 }
+        u.password_hash = hash; u.status = 'active'; u.updated_at = new Date().toISOString()
+        return { kind: 'run', success: true, changes: 1 }
+      }
+      if (q.startsWith("UPDATE users SET last_login_at")) {
+        const u = users.find(x => x.id === bound[0])
+        if (u) u.last_login_at = new Date().toISOString()
+        return { kind: 'run', success: true, changes: 1 }
+      }
+
+      // ── sessions ──
+      if (q.startsWith('INSERT INTO sessions')) {
+        const [id, token_hash, user_id, expires_at, user_agent] = bound
+        sessions.push({ id, token_hash, user_id, expires_at, user_agent, last_seen_at: new Date().toISOString() })
+        return { kind: 'run', success: true, changes: 1 }
+      }
+      if (q.startsWith('DELETE FROM sessions WHERE user_id = ?')) {
+        const before = sessions.length
+        for (let i = sessions.length - 1; i >= 0; i--) if (sessions[i].user_id === bound[0]) sessions.splice(i, 1)
+        return { kind: 'run', success: true, changes: before - sessions.length }
+      }
+
+      return { kind: 'run', success: false, changes: 0 }
+    }
+    const DB = {
+      _tokens: tokens, _users: users, _sessions: sessions,
+      prepare(sql) {
+        let bound = []
+        const stmt = {
+          bind(...args) { bound = args; return stmt },
+          async first() { const r = exec(sql, bound); return r.kind === 'first' ? r.row : null },
+          async run()   { const r = exec(sql, bound); return { success: !!r.success, meta: { changes: r.changes ?? 0 } } },
+        }
+        return stmt
+      },
+    }
+    return { DB }
+  }
+  function makeReq(body, { ua = 'smoke/1.0' } = {}) {
+    const json = JSON.stringify(body ?? {})
+    return {
+      url: 'https://turfintel.test/api/auth/set-password',
+      headers: { get(name) { return name.toLowerCase() === 'user-agent' ? ua : null } },
+      json: async () => JSON.parse(json),
+    }
+  }
+
+  // happy path — invite redemption auto-issues a session
+  {
+    const env = makeFakeEnv()
+    const uid = 'usr_invitee_a'
+    env.DB._users.push({ id: uid, email: 'a@x.com', display_name: 'A', role: 'crew',
+      status: 'invited', course_access: null, password_hash: 'invite-pending',
+      view_private_notes: 0, send_crew_notes: 0, created_at: 'now', updated_at: 'now', last_login_at: null })
+    const { token } = await mintAuthToken(env, { type: TOKEN_TYPE_INVITE, userId: uid, email: 'a@x.com' })
+    const res = await authMod.setPassword(env, makeReq({ token, password: 'goodpass1' }))
+    assert(res.status === 200, 'invite redeem → 200', { status: res.status })
+    assert(!!res.headers.get('Set-Cookie'), 'invite redeem → Set-Cookie header issued')
+    assert(/ti_session=[0-9a-f]+/.test(res.headers.get('Set-Cookie')), 'cookie carries session token')
+    const body = await res.json()
+    assert(body.ok === true && body.user.status === 'active', 'invite redeem → body.user.status active')
+    const u = env.DB._users[0]
+    assert(u.status === 'active', 'users row flipped to active')
+    assert(u.password_hash.startsWith('pbkdf2$100000$'), 'real PBKDF2 hash written')
+    assert(await verifyPassword('goodpass1', u.password_hash), 'new password verifies')
+    assert(env.DB._tokens[0].status === 'used', 'token consumed (status=used)')
+    assert(env.DB._sessions.length === 1 && env.DB._sessions[0].user_id === uid, 'one session created for invitee')
+    assert(u.last_login_at !== null, 'last_login_at touched')
+  }
+
+  // happy path — reset DOES NOT auto-issue, and DOES invalidate prior sessions
+  {
+    const env = makeFakeEnv()
+    const uid = 'usr_resetter_b'
+    env.DB._users.push({ id: uid, email: 'b@x.com', display_name: 'B', role: 'crew',
+      status: 'active', course_access: null, password_hash: 'pbkdf2$100000$AAAA$BBBB',
+      view_private_notes: 0, send_crew_notes: 0, created_at: 'now', updated_at: 'now', last_login_at: 'old' })
+    env.DB._sessions.push({ id: 's_old1', token_hash: 'xxx', user_id: uid, expires_at: '2099', user_agent: 'old', last_seen_at: 'old' })
+    env.DB._sessions.push({ id: 's_old2', token_hash: 'yyy', user_id: uid, expires_at: '2099', user_agent: 'old', last_seen_at: 'old' })
+    const { token } = await mintAuthToken(env, { type: TOKEN_TYPE_RESET, userId: uid, email: 'b@x.com' })
+    const res = await authMod.setPassword(env, makeReq({ token, password: 'newpass99' }))
+    assert(res.status === 200, 'reset → 200', { status: res.status })
+    assert(!res.headers.get('Set-Cookie'), 'reset → NO Set-Cookie (manual login required)')
+    assert(env.DB._sessions.length === 0, 'reset → prior sessions invalidated')
+    assert(env.DB._tokens[0].status === 'used', 'reset token consumed')
+    const u = env.DB._users[0]
+    assert(u.status === 'active' && (await verifyPassword('newpass99', u.password_hash)), 'reset → new password verifies')
+    assert(u.last_login_at === 'old', 'reset does NOT touch last_login_at (no login yet)')
+  }
+
+  // failure parity: identical body+status for every reject path
+  async function rejectBody(env, req) {
+    const r = await authMod.setPassword(env, req)
+    return { status: r.status, body: await r.json(), cookie: r.headers.get('Set-Cookie') }
+  }
+  {
+    const env = makeFakeEnv()
+    const uid = 'usr_reject'
+    env.DB._users.push({ id: uid, email: 'r@x.com', display_name: 'R', role: 'crew',
+      status: 'invited', course_access: null, password_hash: 'invite-pending',
+      view_private_notes: 0, send_crew_notes: 0, created_at: 'now', updated_at: 'now', last_login_at: null })
+    const { token, hash } = await mintAuthToken(env, { type: TOKEN_TYPE_INVITE, userId: uid, email: 'r@x.com' })
+
+    const canonical = { status: 400, body: { error: 'This link is invalid or has expired' }, cookie: null }
+    const sameAs = (got) =>
+      got.status === canonical.status &&
+      got.body && got.body.error === canonical.body.error &&
+      Object.keys(got.body).length === 1 &&
+      got.cookie === null
+
+    // empty token
+    assert(sameAs(await rejectBody(makeFakeEnv(), makeReq({ token: '', password: 'goodpass1' }))), 'empty token → generic 400')
+    // missing token field
+    assert(sameAs(await rejectBody(makeFakeEnv(), makeReq({ password: 'goodpass1' }))), 'no token field → generic 400')
+    // unknown token
+    assert(sameAs(await rejectBody(makeFakeEnv(), makeReq({ token: 'deadbeef'.repeat(8), password: 'goodpass1' }))), 'unknown token → generic 400')
+    // weak password (valid token + short pw)
+    {
+      const env2 = makeFakeEnv()
+      env2.DB._users.push({ ...env.DB._users[0] })
+      const t = await mintAuthToken(env2, { type: TOKEN_TYPE_INVITE, userId: uid, email: 'r@x.com' })
+      const got = await rejectBody(env2, makeReq({ token: t.token, password: 'short' }))
+      assert(sameAs(got), 'weak password → generic 400')
+      // critical: password is NOT changed on weak-password reject
+      assert(env2.DB._users[0].password_hash === 'invite-pending', 'weak password → users row unchanged')
+      assert(env2.DB._tokens[0].status === 'active', 'weak password → token NOT consumed')
+    }
+    // expired token (lazy-transition path)
+    {
+      const env2 = makeFakeEnv()
+      env2.DB._users.push({ ...env.DB._users[0] })
+      const t = await mintAuthToken(env2, { type: TOKEN_TYPE_INVITE, userId: uid, email: 'r@x.com' })
+      env2.DB._tokens[0].expires_at = '2000-01-01T00:00:00.000Z'   // force expired
+      const got = await rejectBody(env2, makeReq({ token: t.token, password: 'goodpass1' }))
+      assert(sameAs(got), 'expired token → generic 400')
+      assert(env2.DB._tokens[0].status === 'expired', 'lazy-transitioned to expired on verify')
+      assert(env2.DB._users[0].password_hash === 'invite-pending', 'expired token → users row unchanged')
+    }
+    // already-used token (consume happens after update — second redemption fails at verify)
+    {
+      const env2 = makeFakeEnv()
+      env2.DB._users.push({ ...env.DB._users[0] })
+      const t = await mintAuthToken(env2, { type: TOKEN_TYPE_INVITE, userId: uid, email: 'r@x.com' })
+      const ok = await authMod.setPassword(env2, makeReq({ token: t.token, password: 'firstgood' }))
+      assert(ok.status === 200, 'first redemption succeeds')
+      const got = await rejectBody(env2, makeReq({ token: t.token, password: 'secondtry' }))
+      assert(sameAs(got), 'replay of used token → generic 400')
+      // password is NOT overwritten by the replay
+      assert(await verifyPassword('firstgood', env2.DB._users[0].password_hash), 'replay does not overwrite password')
+    }
+    // disabled user
+    {
+      const env2 = makeFakeEnv()
+      env2.DB._users.push({ ...env.DB._users[0], status: 'disabled' })
+      const t = await mintAuthToken(env2, { type: TOKEN_TYPE_RESET, userId: uid, email: 'r@x.com' })
+      assert(sameAs(await rejectBody(env2, makeReq({ token: t.token, password: 'goodpass1' }))), 'disabled user → generic 400')
+      assert(env2.DB._users[0].password_hash === 'invite-pending', 'disabled user → password unchanged')
+    }
+    // no env.DB
+    {
+      const r = await authMod.setPassword({}, makeReq({ token: token, password: 'goodpass1' }))
+      assert(r.status === 503, 'no env.DB → 503 (infrastructure, not enumeration-sensitive)')
+    }
+
+    void hash   // silence unused (kept for shape symmetry with happy-path closure)
+  }
+}
+
+// ── Step 3.2 endpoint contract guarantees (source-level) ────────────────────
+// The lifecycle behavior is locked by the helper smokes above + an E2E run;
+// these assertions lock the WIRING + the security-critical text/order so a
+// future refactor can't quietly drop them.
+{
+  const authSrc  = readFileSync('worker/api/auth.js', 'utf8')
+  const usersSrc = readFileSync('worker/api/users.js', 'utf8')
+  const idxSrc   = readFileSync('worker/index.js', 'utf8')
+
+  // --- export surface (decisions 6 location split) ---
+  assert(/export async function inviteUser\(/.test(usersSrc), 'users.js: inviteUser exported')
+  assert(/export async function setPassword\(/.test(authSrc), 'auth.js: setPassword exported')
+  assert(/export async function tokenStatus\(/.test(authSrc), 'auth.js: tokenStatus exported')
+  assert(/export async function resetRequest\(/.test(authSrc), 'auth.js: resetRequest exported')
+
+  // --- route wiring ---
+  assert(/pathname === '\/api\/users\/invite'/.test(idxSrc), 'route: POST /api/users/invite wired')
+  assert(/pathname === '\/api\/auth\/set-password'/.test(idxSrc), 'route: POST /api/auth/set-password wired')
+  assert(/pathname === '\/api\/auth\/token-status'/.test(idxSrc), 'route: GET /api/auth/token-status wired')
+  assert(/pathname === '\/api\/auth\/reset-request'/.test(idxSrc), 'route: POST /api/auth/reset-request wired')
+  // Token-gated routes must sit BEFORE the mutation gate.
+  const gatePos        = idxSrc.indexOf('// ── Mutation auth + permission gate')
+  const setPwPos       = idxSrc.indexOf("pathname === '/api/auth/set-password'")
+  const tokenStatusPos = idxSrc.indexOf("pathname === '/api/auth/token-status'")
+  const resetReqPos    = idxSrc.indexOf("pathname === '/api/auth/reset-request'")
+  assert(setPwPos > 0 && setPwPos < gatePos, 'set-password runs BEFORE mutation gate')
+  assert(tokenStatusPos > 0 && tokenStatusPos < gatePos, 'token-status runs BEFORE mutation gate')
+  assert(resetReqPos > 0 && resetReqPos < gatePos, 'reset-request runs BEFORE mutation gate')
+  // /api/users/invite literal MUST be matched BEFORE the /api/users/:id regex
+  // (otherwise it would resolve to id='invite' and 404).
+  const inviteRoute  = idxSrc.indexOf("pathname === '/api/users/invite'")
+  const usersIdRoute = idxSrc.indexOf("pathname.match(/^\\/api\\/users\\/")
+  assert(inviteRoute > 0 && (usersIdRoute < 0 || inviteRoute < usersIdRoute), '/api/users/invite literal matched before /:id regex')
+
+  // --- decision 4: 'invite-pending' sentinel literal ---
+  assert(/INVITE_PENDING_PASSWORD = 'invite-pending'/.test(usersSrc), "decision 4: sentinel literal is 'invite-pending'")
+  assert(/INVITE_PENDING_PASSWORD/.test(usersSrc), 'sentinel is referenced (used at INSERT)')
+
+  // --- decision 1+2: invite auto-login, reset manual login ---
+  // The set-password handler must issue jsonWithCookie ONLY when type=invite.
+  const sp = authSrc.slice(authSrc.indexOf('export async function setPassword'),
+                          authSrc.indexOf('// ── Token status'))
+  assert(/row\.token_type === TOKEN_TYPE_INVITE/.test(sp), 'set-password: branches on TOKEN_TYPE_INVITE for auto-login')
+  assert(/jsonWithCookie\(payload, buildSessionCookie\(token\)\)/.test(sp), 'set-password: invite branch issues Set-Cookie')
+  // Reset branch returns plain json(payload) — no cookie.
+  const resetBranch = sp.slice(sp.lastIndexOf('jsonWithCookie'))
+  assert(/return json\(payload\)/.test(resetBranch), 'set-password: reset branch returns json(payload) (no cookie)')
+
+  // --- decision 3 + your strict-order constraint ---
+  // verify → hash → update → invalidate sessions → consume → optionally session
+  const stepVerify   = sp.indexOf('verifyAuthToken(env, rawToken)')
+  const stepHash     = sp.indexOf('await hashPassword(password)')
+  const stepUpdate   = sp.indexOf("status = 'active'")
+  const stepRevoke   = sp.indexOf('DELETE FROM sessions WHERE user_id = ?')
+  const stepConsume  = sp.indexOf('consumeAuthToken')
+  const stepSession  = sp.indexOf('INSERT INTO sessions')
+  assert(stepVerify > 0 && stepHash > stepVerify, 'order: verify before hash')
+  assert(stepUpdate > stepHash, 'order: hash before update')
+  assert(stepRevoke > stepUpdate, 'order: update before invalidate-sessions')
+  assert(stepConsume > stepRevoke, 'order: invalidate before consume')
+  assert(stepSession > stepConsume, 'order: consume before issue-session')
+  // Decision 3 hardening TODO must be present. The comment lives just ABOVE
+  // the setPassword function (so it's not in the `sp` slice above) — search
+  // the whole authSrc.
+  assert(/TODO\(hardening\)[\s\S]{0,400}timing/.test(authSrc), 'decision 3: TODO(hardening) timing-leak note present')
+
+  // --- enumeration safety: a single generic error constant ---
+  assert(/SET_PASSWORD_GENERIC = \{ error: 'This link is invalid or has expired' \}/.test(authSrc),
+    'set-password uses single generic error object')
+  // resetRequest is enumeration-safe: a constant generic response object.
+  assert(/RESET_GENERIC = \{ ok: true, message:/.test(authSrc), 'reset-request uses single generic response object')
+
+  // --- decision 5: re-invite NOT yet implemented (deferred) ---
+  assert(!/\/api\/users\/[^\s'"]*\/invite/.test(idxSrc) ||
+         !/pathname\.match\(\/\^\\\/api\\\/users\\\/.*\\\/invite\$\//.test(idxSrc),
+         'decision 5: per-user re-invite endpoint NOT wired (deferred)')
+
+  // --- invite handler authorization: canManageUsers + canManageRole ---
+  const iv = usersSrc.slice(usersSrc.indexOf('export async function inviteUser'),
+                            usersSrc.indexOf('// ── Update'))
+  assert(/can\(actor, 'canManageUsers'\)/.test(iv), 'invite: canManageUsers checked')
+  assert(/canManageRole\(actor, role\)/.test(iv), 'invite: canManageRole hierarchy checked')
+  assert(/encodeCourseAccess\(body\.courseAccess\)/.test(iv), 'invite: courseAccess goes through encodeCourseAccess (Step 4 semantics)')
+  assert(/revokeActiveTokensFor\(env, id, TOKEN_TYPE_INVITE\)/.test(iv), 'invite: revokes prior active invite tokens (defensive)')
+  assert(/mintAuthToken\(env, \{/.test(iv), 'invite: mints token')
+
+  // --- reset-request admin-mode debug ---
+  const rr = authSrc.slice(authSrc.indexOf('export async function resetRequest'),
+                           authSrc.indexOf('// Lightweight admin check'))
+  assert(/isRateLimited\(env, email, ip\)/.test(rr), 'reset-request shares login rate limiter')
+  assert(/recordAttempt\(env, email, ip, false\)/.test(rr), 'reset-request records attempts for throttle accounting')
+  assert(/revokeActiveTokensFor\(env, user\.id, TOKEN_TYPE_RESET\)/.test(rr), 'reset-request revokes prior reset tokens on re-request')
+  assert(/if \(isAdmin\)/.test(rr), 'reset-request branches on isAdmin for debug.resetUrl')
+  assert(/debug: \{ resetUrl, expiresAt \}/.test(rr), 'reset-request: admin debug shape = { resetUrl, expiresAt }')
+
+  // --- token-status negative shape (no detail leakage) ---
+  const ts = authSrc.slice(authSrc.indexOf('export async function tokenStatus'),
+                           authSrc.indexOf('// ── Password reset request'))
+  assert(/const NEG = \{ valid: false \}/.test(ts), 'token-status: single negative shape')
+}
+
 console.log(`\n${passed} passed, ${failed} failed`)
 process.exit(failed === 0 ? 0 : 1)

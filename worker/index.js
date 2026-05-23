@@ -175,10 +175,14 @@ import {
   login,
   logout,
   me,
+  setPassword,
+  tokenStatus,
+  resetRequest,
 } from './api/auth.js'
 import {
   listUsers,
   createUser,
+  inviteUser,
   updateUser,
 } from './api/users.js'
 import { resolveActor, actorHasPermission } from './lib/actor.js'
@@ -266,6 +270,14 @@ async function handleApi(request, env, url) {
   if (pathname === '/api/auth/login'  && method === 'POST') return login(env, request)
   if (pathname === '/api/auth/logout' && method === 'POST') return logout(env, request)
   if (pathname === '/api/auth/me'     && method === 'GET')  return me(env, request)
+  // Token-gated: the invitee/resetter has no session — the auth_tokens row
+  // is the authority. Must be handled BEFORE the mutation gate below.
+  if (pathname === '/api/auth/set-password'  && method === 'POST') return setPassword(env, request)
+  if (pathname === '/api/auth/token-status'  && method === 'GET')  return tokenStatus(env, request)
+  // Self-service: enumeration-safe, throttled (shares auth_attempts with /login).
+  // Admin-mode response additionally includes debug.resetUrl when the caller
+  // has canManageUsers — for hand-delivering reset links pre-email-provider.
+  if (pathname === '/api/auth/reset-request' && method === 'POST') return resetRequest(env, request)
 
   // ── Mutation auth + permission gate (Phase 2 P2) ────────────────────
   // Every POST/PATCH/DELETE must be authorized by EITHER a valid session
@@ -483,6 +495,10 @@ async function handleApi(request, env, url) {
   // ── /api/users ────────────────────────────────────────────────────────
   // User management is permission-ENFORCED (not log-only): each handler
   // resolves the actor and checks canManageUsers + role hierarchy.
+  //
+  // Note: /api/users/invite is matched BEFORE the /api/users/:id regex so
+  // the literal subpath wins (otherwise it would resolve to id='invite').
+  if (pathname === '/api/users/invite' && method === 'POST') return inviteUser(env, request)
   if (pathname === '/api/users') {
     if (method === 'GET')  return listUsers(env, request)
     if (method === 'POST') return createUser(env, request)

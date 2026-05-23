@@ -16,6 +16,15 @@ import { hashPassword } from '../lib/passwords.js'
 import { resolveSession } from './auth.js'
 import { ROLES, canManageRole, can } from '../lib/permissions.js'
 import { requireAdminKey } from '../lib/auth.js'
+import {
+  mintAuthToken, revokeActiveTokensFor, TOKEN_TYPE_INVITE,
+} from '../lib/inviteTokens.js'
+
+// Sentinel placeholder written to users.password_hash for an invited account.
+// It is NOT a valid pbkdf2$ storage string, so verifyPassword() returns false
+// for any input — an invitee cannot log in until they redeem the invite token
+// via POST /api/auth/set-password.
+export const INVITE_PENDING_PASSWORD = 'invite-pending'
 
 function normEmail(v) { return typeof v === 'string' ? v.trim().toLowerCase() : '' }
 
@@ -117,6 +126,71 @@ export async function createUser(env, request) {
   ).run()
   const row = await env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(id).first()
   return json(publicUser(row), 201)
+}
+
+// ── Invite (Phase 4 Step 3.2) ───────────────────────────────────────────
+//
+// Admin-driven user creation that issues an invite token instead of a
+// typed password. Creates the users row with status='invited' and the
+// INVITE_PENDING_PASSWORD sentinel, then mints a token via inviteTokens.js
+// and returns a one-time link. The raw token appears ONLY in the response
+// body — never logged, never persisted. The invitee redeems the link at
+// POST /api/auth/set-password, which flips status to 'active' and sets a
+// real PBKDF2 hash.
+//
+// Authorization mirrors createUser: actor must have canManageUsers AND
+// canManageRole(actor, role) — i.e. can only invite to a role strictly
+// below their own.
+export async function inviteUser(env, request) {
+  if (!env.DB) return json({ error: 'D1 not configured' }, 503)
+  const actor = await resolveActor(request, env)
+  if (!can(actor, 'canManageUsers')) return json({ error: 'Forbidden' }, 403)
+
+  const body  = await readJson(request)
+  const email = normEmail(body.email)
+  const role  = typeof body.role === 'string' ? body.role : 'crew'
+  if (!email || !email.includes('@')) return badRequest('Valid email required')
+  if (!ROLES.includes(role)) return badRequest(`Invalid role "${body.role}"`)
+  if (!canManageRole(actor, role)) return json({ error: 'Cannot assign a role at or above your own' }, 403)
+
+  const existing = await env.DB.prepare('SELECT id FROM users WHERE email = ?').bind(email).first()
+  if (existing) return json({ error: 'A user with that email already exists' }, 409)
+
+  let courseAccess
+  if (Object.prototype.hasOwnProperty.call(body, 'courseAccess')) {
+    courseAccess = encodeCourseAccess(body.courseAccess)
+    if (courseAccess === undefined) return badRequest('courseAccess must be null or an array')
+  } else {
+    courseAccess = null
+  }
+
+  const id = generateId('usr')
+  await env.DB.prepare(`
+    INSERT INTO users (id, email, password_hash, display_name, role, status, course_access, view_private_notes, send_crew_notes)
+    VALUES (?, ?, ?, ?, ?, 'invited', ?, ?, ?)
+  `).bind(
+    id, email, INVITE_PENDING_PASSWORD, (body.displayName ?? '').trim() || null, role, courseAccess,
+    body.viewPrivateNotes ? 1 : 0, body.sendCrewNotes ? 1 : 0,
+  ).run()
+
+  // Defensive — a brand-new row has no prior invite tokens, but the
+  // future re-invite endpoint (deferred sub-step) will share this code path.
+  await revokeActiveTokensFor(env, id, TOKEN_TYPE_INVITE)
+
+  const createdByUserId = actor?.synthetic ? null : (actor?.id ?? null)
+  const { token, expiresAt } = await mintAuthToken(env, {
+    type:            TOKEN_TYPE_INVITE,
+    userId:          id,
+    email,
+    createdByUserId,
+    metadata:        { role, courseAccess },
+  })
+
+  const origin = new URL(request.url).origin
+  const inviteUrl = `${origin}/accept-invite?token=${encodeURIComponent(token)}`
+
+  const row = await env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(id).first()
+  return json({ ok: true, user: publicUser(row), inviteUrl, expiresAt }, 201)
 }
 
 // ── Update (role / status / overrides / password / course access) ─────────
