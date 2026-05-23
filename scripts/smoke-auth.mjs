@@ -551,5 +551,149 @@ function assert(cond, label, ctx) {
   assert(!/enforceRowCourseAccess/.test(listSlice), 'attachments list/upload not row-guarded (other protections apply)')
 }
 
+// ── Invite / password-reset token helpers (Phase 4 Step 3.1) ────────────────
+// Lifecycle coverage via an in-memory D1 fake that mirrors the exact queries
+// worker/lib/inviteTokens.js issues. Same fake-DB pattern as the rate-limit
+// block above. No server required.
+{
+  const {
+    mintAuthToken, verifyAuthToken, consumeAuthToken,
+    revokeActiveTokensFor, pruneOldTokens,
+    TOKEN_TYPE_INVITE, TOKEN_TYPE_RESET, TOKEN_TYPES,
+    INVITE_TTL_MINUTES, RESET_TTL_MINUTES,
+  } = await import('../worker/lib/inviteTokens.js')
+
+  // Sanity: constants.
+  assert(TOKEN_TYPES.length === 2, 'two token types exported')
+  assert(TOKEN_TYPE_INVITE === 'invite' && TOKEN_TYPE_RESET === 'password_reset', 'token type values')
+  assert(INVITE_TTL_MINUTES === 72 * 60, 'invite TTL = 72h')
+  assert(RESET_TTL_MINUTES === 30, 'reset TTL = 30min')
+
+  function fakeDB() {
+    const rows = []
+    const byHash = (h) => rows.find(r => r.token_hash === h) || null
+    return {
+      _rows: rows,
+      prepare(sql) {
+        const q = sql.replace(/\s+/g, ' ').trim()
+        let bound = []
+        const stmt = {
+          bind(...args) { bound = args; return stmt },
+          async first() {
+            if (q.startsWith('SELECT * FROM auth_tokens WHERE token_hash = ?')) return byHash(bound[0])
+            return null
+          },
+          async run() {
+            if (q.startsWith('INSERT INTO auth_tokens')) {
+              const [id, token_hash, token_type, user_id, email, created_by_user_id, expires_at, metadata_json] = bound
+              rows.push({ id, token_hash, token_type, user_id, email, status: 'active', created_by_user_id, expires_at, metadata_json, used_at: null })
+              return { success: true, meta: { changes: 1 } }
+            }
+            if (q.includes("SET status = 'used'")) {
+              const r = byHash(bound[0])
+              if (r && r.status === 'active') { r.status = 'used'; r.used_at = new Date().toISOString(); return { success: true, meta: { changes: 1 } } }
+              return { success: true, meta: { changes: 0 } }
+            }
+            if (q.includes("SET status = 'expired'")) {
+              const r = rows.find(x => x.id === bound[0])
+              if (r && r.status === 'active') { r.status = 'expired'; return { success: true, meta: { changes: 1 } } }
+              return { success: true, meta: { changes: 0 } }
+            }
+            if (q.includes("SET status = 'revoked'")) {
+              const [userId, type] = bound
+              let n = 0
+              for (const r of rows) if (r.user_id === userId && r.token_type === type && r.status === 'active') { r.status = 'revoked'; n++ }
+              return { success: true, meta: { changes: n } }
+            }
+            if (q.startsWith('DELETE FROM auth_tokens')) {
+              return { success: true, meta: { changes: 0 } }
+            }
+            return { success: false }
+          },
+        }
+        return stmt
+      },
+    }
+  }
+  const env = { DB: fakeDB() }
+
+  // ── mint → verify → consume (happy path) ──
+  const A = await mintAuthToken(env, { type: TOKEN_TYPE_INVITE, userId: 'u1', email: 'a@x.com', createdByUserId: 'admin', metadata: { role: 'crew' } })
+  assert(A.token.length === 64 && /^[0-9a-f]+$/.test(A.token), 'minted token is 32-byte hex')
+  assert(A.hash !== A.token, 'hash differs from raw token (SHA-256 stored, not raw)')
+  assert(env.DB._rows.length === 1 && env.DB._rows[0].status === 'active', 'one active row written')
+  // The raw token must NOT appear in any DB column — only the hash.
+  const stored = env.DB._rows[0]
+  assert(!Object.values(stored).some(v => typeof v === 'string' && v.includes(A.token)), 'no plaintext token in DB row')
+
+  const v1 = await verifyAuthToken(env, A.token, TOKEN_TYPE_INVITE)
+  assert(v1.valid === true && v1.row?.email === 'a@x.com', 'verify happy path')
+
+  // Type-mismatch rejection.
+  const v2 = await verifyAuthToken(env, A.token, TOKEN_TYPE_RESET)
+  assert(v2.valid === false && v2.reason === 'type-mismatch', 'verify rejects wrong type')
+
+  // Unknown token rejected.
+  const v3 = await verifyAuthToken(env, 'totally-bogus-token')
+  assert(v3.valid === false && v3.reason === 'not-found', 'unknown token → not-found')
+
+  // Empty token rejected.
+  assert((await verifyAuthToken(env, '')).valid === false, 'empty token rejected')
+  assert((await verifyAuthToken(env, null)).valid === false, 'null token rejected')
+
+  // ── consume (one-time use; race-safe via conditional UPDATE) ──
+  const c1 = await consumeAuthToken(env, A.hash)
+  const c2 = await consumeAuthToken(env, A.hash)
+  assert(c1 === true && c2 === false, 'consume is one-time (first wins, second returns false)')
+  // Verify after consume → status=used, not active.
+  const v4 = await verifyAuthToken(env, A.token, TOKEN_TYPE_INVITE)
+  assert(v4.valid === false && v4.reason === 'status-used', 'verify after consume → status-used')
+
+  // ── revoke-on-reissue ──
+  const B1 = await mintAuthToken(env, { type: TOKEN_TYPE_RESET, userId: 'u2', email: 'b@x.com' })
+  const B2 = await mintAuthToken(env, { type: TOKEN_TYPE_RESET, userId: 'u2', email: 'b@x.com' })
+  const revoked = await revokeActiveTokensFor(env, 'u2', TOKEN_TYPE_RESET)
+  assert(revoked === 2, 'revokeActiveTokensFor revokes BOTH prior active tokens')
+  const v5 = await verifyAuthToken(env, B1.token)
+  const v6 = await verifyAuthToken(env, B2.token)
+  assert(v5.valid === false && v5.reason === 'status-revoked', 'revoked B1 → reject')
+  assert(v6.valid === false && v6.reason === 'status-revoked', 'revoked B2 → reject')
+  // revokeActiveTokensFor on a different user → 0.
+  assert((await revokeActiveTokensFor(env, 'u-nobody', TOKEN_TYPE_RESET)) === 0, 'revoke for unknown user → 0')
+
+  // ── expired-on-verify lazy transition ──
+  const C = await mintAuthToken(env, { type: TOKEN_TYPE_INVITE, userId: 'u3', email: 'c@x.com', ttlMinutes: 1 / 60_000 })  // ~16 ms
+  await new Promise(r => setTimeout(r, 80))
+  const v7 = await verifyAuthToken(env, C.token)
+  assert(v7.valid === false && v7.reason === 'expired', 'past-expiry verify → expired')
+  // Row was lazily transitioned.
+  const Crow = env.DB._rows.find(r => r.id === C.id)
+  assert(Crow.status === 'expired', 'expired row status flipped to "expired" on verify')
+
+  // ── input validation ──
+  let threwBadType = false
+  try { await mintAuthToken(env, { type: 'bogus', userId: 'u', email: 'x@x.com' }) } catch { threwBadType = true }
+  assert(threwBadType, 'mintAuthToken rejects unknown type')
+  let threwNoEmail = false
+  try { await mintAuthToken(env, { type: TOKEN_TYPE_INVITE, userId: 'u' }) } catch { threwNoEmail = true }
+  assert(threwNoEmail, 'mintAuthToken requires email')
+  let threwNoDB = false
+  try { await mintAuthToken({}, { type: TOKEN_TYPE_INVITE, userId: 'u', email: 'x@x.com' }) } catch { threwNoDB = true }
+  assert(threwNoDB, 'mintAuthToken requires env.DB')
+
+  // pruneOldTokens is best-effort and safe to call with the fake (returns 0).
+  assert((await pruneOldTokens(env)) === 0, 'pruneOldTokens runs without throwing')
+  assert((await pruneOldTokens({})) === 0, 'pruneOldTokens fails open with no DB')
+
+  // ── consume with unknown hash → false (no row mutated) ──
+  assert((await consumeAuthToken(env, 'unknown-hash')) === false, 'consume unknown hash → false')
+  assert((await consumeAuthToken(env, null)) === false, 'consume null hash → false')
+
+  // ── hash entropy: two mints produce different tokens + hashes ──
+  const D1 = await mintAuthToken(env, { type: TOKEN_TYPE_INVITE, userId: 'u4', email: 'd@x.com' })
+  const D2 = await mintAuthToken(env, { type: TOKEN_TYPE_INVITE, userId: 'u5', email: 'd@x.com' })
+  assert(D1.token !== D2.token && D1.hash !== D2.hash, 'two mints → distinct token + hash')
+}
+
 console.log(`\n${passed} passed, ${failed} failed`)
 process.exit(failed === 0 ? 0 : 1)
