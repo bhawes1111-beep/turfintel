@@ -1100,6 +1100,25 @@
 }
 
 @media print {
+  /* Counter-leak: other modules (MorningBrief ops-brief, Program
+     Intelligence) use `body > * { visibility: hidden }` to mask
+     everything except their own [data-print-region]. Those rules are
+     in the same global stylesheet and apply on ANY printed page, so
+     printing /display-board would otherwise render blank. Re-asserting
+     visibility on the DisplayBoard subtree fixes it without touching
+     the other modules' print paths (their scoped class names won't
+     match this selector). display:none on sidebar/notesColumn/dateStrip
+     still wins over visibility:visible because display removes the box
+     entirely. */
+  .root,
+  .root *,
+  .rootBoard,
+  .rootBoard *,
+  .rootPrint,
+  .rootPrint * {
+    visibility: visible !important;
+  }
+
   .root,
   .rootBoard {
     display: block;
