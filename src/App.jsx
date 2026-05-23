@@ -5,6 +5,8 @@ import RequireAuth from './components/auth/RequireAuth'
 import ToastProvider from './components/feedback/ToastProvider'
 import Layout from './components/layout/Layout'
 import Login from './pages/Login/Login'
+import AcceptInvitePage from './pages/Auth/AcceptInvitePage'
+import ResetPasswordPage from './pages/Auth/ResetPasswordPage'
 import Dashboard from './pages/Dashboard/Dashboard'
 import OperationsBoard from './pages/Operations/OperationsBoard'
 import Employees from './pages/Employees/Employees'
@@ -34,6 +36,14 @@ export default function App() {
       <Routes>
         {/* Login lives outside Layout — no sidebar rendered */}
         <Route path="/login" element={<Login />} />
+
+        {/* Invite-accept + password-reset pages. Outside RequireAuth — the
+            invitee/resetter has no session yet; the URL token IS the
+            authority. The /accept-invite success path auto-issues a session
+            cookie and redirects to /dashboard. /reset-password redirects to
+            /login (server does NOT auto-login on reset). */}
+        <Route path="/accept-invite"  element={<AcceptInvitePage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         {/* Full-screen Display Board mode — outside Layout AND outside the
             auth guard, so a TV / tablet kiosk can show it without a login.

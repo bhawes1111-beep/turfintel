@@ -1086,5 +1086,98 @@ function assert(cond, label, ctx) {
   assert(/const NEG = \{ valid: false \}/.test(ts), 'token-status: single negative shape')
 }
 
+// ── Step 3.3 SPA security constraints (source-level) ────────────────────────
+// The pages live in src/pages/Auth/* + the wired Login forgot-password panel.
+// We lock the "no client-side token persistence" + "URL is the only source"
+// + "deterministic flows" properties so a future refactor can't quietly drop
+// them.
+{
+  const form   = readFileSync('src/pages/Auth/SetPasswordForm.jsx', 'utf8')
+  const invite = readFileSync('src/pages/Auth/AcceptInvitePage.jsx', 'utf8')
+  const reset  = readFileSync('src/pages/Auth/ResetPasswordPage.jsx', 'utf8')
+  const login  = readFileSync('src/pages/Login/Login.jsx', 'utf8')
+  const app    = readFileSync('src/App.jsx', 'utf8')
+
+  // Routes wired and OUTSIDE the RequireAuth wrapper.
+  assert(/path="\/accept-invite"/.test(app), 'route /accept-invite wired')
+  assert(/path="\/reset-password"/.test(app), 'route /reset-password wired')
+  // Both routes are siblings of /login, not children of the RequireAuth
+  // <Route path="/" element={<RequireAuth...>}> block.
+  const requireAuthIdx = app.indexOf('element={<RequireAuth>')
+  const acceptIdx = app.indexOf('path="/accept-invite"')
+  const resetIdx  = app.indexOf('path="/reset-password"')
+  assert(acceptIdx > 0 && acceptIdx < requireAuthIdx, '/accept-invite is OUTSIDE the RequireAuth subtree')
+  assert(resetIdx  > 0 && resetIdx  < requireAuthIdx, '/reset-password is OUTSIDE the RequireAuth subtree')
+
+  // Source-of-truth for the token: URLSearchParams. NO storage APIs in CODE
+  // (comments mentioning the prohibited APIs are explicitly allowed).
+  function stripComments(src) {
+    return src
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '')
+  }
+  for (const [name, src] of [['form', form], ['invite', invite], ['reset', reset]]) {
+    const code = stripComments(src)
+    assert(!/\blocalStorage\b/.test(code),   `${name}: no localStorage in code`)
+    assert(!/\bsessionStorage\b/.test(code), `${name}: no sessionStorage in code`)
+    assert(!/document\.cookie/.test(code),   `${name}: no document.cookie access in code`)
+  }
+  assert(/URLSearchParams\(location\.search\)/.test(form), 'form: token sourced from URLSearchParams only')
+
+  // Token state is cleared after submit, regardless of outcome.
+  assert(/setToken\(''\)/.test(form), 'form: clears token from local state after submit')
+  assert(/setPassword\(''\)/.test(form), 'form: clears password from local state after submit')
+
+  // Token is submitted exactly once: a double-submit guard exists.
+  assert(/phase !== PHASE\.READY\) return/.test(form), 'form: double-submit guard (only fires when phase=READY)')
+
+  // No console.log of token-bearing values.
+  for (const [name, src] of [['form', form], ['invite', invite], ['reset', reset]]) {
+    // Detect any `console.log(...token...)` patterns. Tight match — allows
+    // unrelated "token" mentions in comments.
+    assert(!/console\.(log|info|warn|error)\([^)]*\btoken\b/.test(src), `${name}: no console output referencing token`)
+  }
+
+  // Decision branching is correct per Step 3.2:
+  //   invite success → AuthContext.refresh() + navigate('/dashboard')
+  //   reset success  → navigate('/login') with { resetSuccess: true } state;
+  //                    NO refresh()
+  assert(/refresh\(\)/.test(invite) && /navigate\('\/dashboard'/.test(invite),
+    'invite page: refresh() + navigate /dashboard on success')
+  assert(!/refresh\(\)/.test(reset), 'reset page: does NOT call refresh() (no session to refresh into)')
+  assert(/navigate\('\/login'/.test(reset) && /resetSuccess:\s*true/.test(reset),
+    'reset page: navigate /login with { resetSuccess: true }')
+
+  // Page validates the token IMMEDIATELY on load via token-status, and uses
+  // the expectedType prop to type-check.
+  assert(/\/api\/auth\/token-status\?token=\$\{encodeURIComponent\(token\)\}/.test(form),
+    'form: validates token via /api/auth/token-status on mount')
+  assert(/expectedType="invite"/.test(invite), 'invite page: passes expectedType="invite"')
+  assert(/expectedType="password_reset"/.test(reset), 'reset page: passes expectedType="password_reset"')
+
+  // Submit hits set-password with credentials, JSON content type, ONLY the
+  // raw token and password — no extra fields that could leak metadata.
+  const submitCall = form.match(/fetch\('\/api\/auth\/set-password'[\s\S]{0,500}?\}\)/)
+  assert(submitCall && /credentials: 'same-origin'/.test(submitCall[0]), 'form: set-password sends credentials')
+  assert(submitCall && /Content-Type[^,]*application\/json/i.test(submitCall[0]), 'form: set-password sends JSON content type')
+
+  // Login wires the forgot-password panel + reset-request POST + always
+  // shows a generic confirmation (enumeration-safe UI).
+  assert(/forgotOpen/.test(login) && /forgotEmail/.test(login), 'login: inline forgot-password panel state')
+  assert(/\/api\/auth\/reset-request/.test(login), 'login: POSTs /api/auth/reset-request')
+  assert(/credentials: 'same-origin'/.test(login), 'login: forgot-password fetch sends credentials')
+  assert(/If that email is registered/.test(login), 'login: generic reset confirmation (enumeration-safe)')
+  // Login reads the resetSuccess router state for the post-reset notice.
+  assert(/location\.state\?\.resetSuccess/.test(login), 'login: reads resetSuccess router state')
+  // And clears it from history so refresh doesn't re-trigger.
+  assert(/navigate\(location\.pathname, \{ replace: true, state: null \}\)/.test(login),
+    'login: clears resetSuccess from history on mount')
+
+  // No new state-management layer or auth modal framework — the form just
+  // reuses Login.module.css.
+  assert(/styles from '\.\.\/Login\/Login\.module\.css'/.test(form),
+    'form: reuses Login.module.css (no new design system work)')
+}
+
 console.log(`\n${passed} passed, ${failed} failed`)
 process.exit(failed === 0 ? 0 : 1)
