@@ -419,5 +419,63 @@ function assert(cond, label, ctx) {
   assert(!/x-admin-key/i.test(scheduled) && !/requireAdminKey/.test(scheduled), 'cron handler uses no key (in-process)')
 }
 
+// ── courseAccess semantics — write side (Phase 4 Step 4) ────────────────────
+// encodeCourseAccess distinguishes undefined / null / [] / [..]. The actor
+// helpers (tested in the course-scope block above) already treat the stored
+// values correctly; this block locks the WRITE path so future users sent with
+// explicit [] truly have no course access (closes the previous footgun where
+// [] silently became NULL = all-access).
+{
+  const { encodeCourseAccess } = await import('../worker/api/users.js')
+  const { actorAccessibleCourses, actorCanAccessCourse } =
+    await import('../worker/lib/actor.js')
+
+  // encode: undefined → undefined (caller skips column on UPDATE).
+  assert(encodeCourseAccess(undefined) === undefined, 'encode: undefined → undefined (omit)')
+  // encode: null → null (NULL in DB = all access).
+  assert(encodeCourseAccess(null) === null, 'encode: null → null (all access)')
+  // encode: [] → "[]" (explicit empty allow-list = NO access).
+  assert(encodeCourseAccess([]) === '[]', 'encode: [] → "[]" (no access)')
+  // encode: ['..'] → JSON.
+  assert(encodeCourseAccess(['course-a']) === '["course-a"]', 'encode: ["course-a"] → JSON allow-list')
+  assert(encodeCourseAccess(['a', 'b']) === '["a","b"]', 'encode: ["a","b"] → JSON allow-list')
+  // encode: invalid types → undefined (caller maps to 400).
+  assert(encodeCourseAccess('course-a') === undefined, 'encode: string rejected')
+  assert(encodeCourseAccess(42) === undefined, 'encode: number rejected')
+  assert(encodeCourseAccess({}) === undefined, 'encode: object rejected')
+
+  // End-to-end: a user row carrying the encoded value behaves correctly.
+  const userNull  = { role: 'crew', course_access: null }
+  const userEmpty = { role: 'crew', course_access: encodeCourseAccess([]) }   // '[]'
+  const userListed = { role: 'crew', course_access: encodeCourseAccess(['course-a']) }  // '["course-a"]'
+
+  assert(actorAccessibleCourses(userNull) === null, 'roundtrip: null user sees all (NULL)')
+  assert(JSON.stringify(actorAccessibleCourses(userEmpty)) === '[]', 'roundtrip: [] user accessible = []')
+  assert(JSON.stringify(actorAccessibleCourses(userListed)) === '["course-a"]', 'roundtrip: listed user accessible = allow-list')
+
+  // [] user is DENIED on every course, including the production default.
+  assert(!actorCanAccessCourse(userEmpty, 'crossroads-gc'), '[] user denied default course (crossroads-gc)')
+  assert(!actorCanAccessCourse(userEmpty, 'any-course'), '[] user denied any course')
+  // null user is allowed (unchanged behavior preserved).
+  assert(actorCanAccessCourse(userNull, 'any-course'), 'null user allowed any course (unchanged)')
+  // Listed user is allowed only their listed courses.
+  assert(actorCanAccessCourse(userListed, 'course-a'), 'listed user allowed assigned course')
+  assert(!actorCanAccessCourse(userListed, 'course-b'), 'listed user denied unassigned course')
+}
+
+// ── Source-level guarantee: createUser + updateUser use encodeCourseAccess ──
+{
+  const src = readFileSync('worker/api/users.js', 'utf8')
+  // The buggy old expression must be gone (it collapsed [] → NULL).
+  assert(!/Array\.isArray\(body\.courseAccess\)\s*&&\s*body\.courseAccess\.length/.test(src),
+    'users.js: legacy "&& .length" courseAccess expression removed (no longer collapses [] → NULL)')
+  // Both write paths must consult encodeCourseAccess.
+  const encodeCalls = (src.match(/encodeCourseAccess\(/g) || []).length
+  assert(encodeCalls >= 2, 'users.js: encodeCourseAccess invoked on both create + update paths', encodeCalls)
+  // Invalid values must be rejected with a 400 (badRequest) on both paths.
+  assert(/courseAccess must be null or an array/.test(src),
+    'users.js: invalid courseAccess → 400 with helpful message')
+}
+
 console.log(`\n${passed} passed, ${failed} failed`)
 process.exit(failed === 0 ? 0 : 1)

@@ -37,6 +37,27 @@ function publicUser(row) {
 function safeParseArray(s) { try { const a = JSON.parse(s); return Array.isArray(a) ? a : null } catch { return null } }
 
 /**
+ * encodeCourseAccess — turn an API value into the DB column value.
+ *
+ * Semantics (Phase 4 Step 4):
+ *   undefined  → undefined  (caller decides: skip the column on UPDATE, or use
+ *                            the default NULL on INSERT)
+ *   null       → null       (stored as NULL = unrestricted, all courses)
+ *   []         → '"[]"'      (explicit empty allow-list = NO course access)
+ *   ['a','b']  → '["a","b"]' (restricted to listed courses)
+ *
+ * Any non-array, non-null, non-undefined value (e.g. a string, number, object)
+ * is rejected — callers should validate before calling. Returning undefined
+ * here signals "invalid"; callers may map that to a 400.
+ */
+export function encodeCourseAccess(v) {
+  if (v === undefined) return undefined
+  if (v === null) return null
+  if (Array.isArray(v)) return JSON.stringify(v)   // [] → '[]', [..] → JSON
+  return undefined   // invalid input
+}
+
+/**
  * Resolve the acting user. A valid ADMIN_KEY → synthetic owner_admin actor.
  * Otherwise the session user. Returns null if neither.
  */
@@ -78,8 +99,15 @@ export async function createUser(env, request) {
 
   const id   = generateId('usr')
   const hash = await hashPassword(body.password)
-  const courseAccess = Array.isArray(body.courseAccess) && body.courseAccess.length
-    ? JSON.stringify(body.courseAccess) : null
+  // courseAccess semantics: omitted → NULL (all courses, the create default);
+  // null → NULL (all); [] → '[]' (no courses); ['..'] → JSON allow-list.
+  let courseAccess
+  if (Object.prototype.hasOwnProperty.call(body, 'courseAccess')) {
+    courseAccess = encodeCourseAccess(body.courseAccess)
+    if (courseAccess === undefined) return badRequest('courseAccess must be null or an array')
+  } else {
+    courseAccess = null   // omitted on create defaults to NULL = all access
+  }
   await env.DB.prepare(`
     INSERT INTO users (id, email, password_hash, display_name, role, status, course_access, view_private_notes, send_crew_notes)
     VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?)
@@ -130,8 +158,10 @@ export async function updateUser(env, id, request) {
     sets.push('send_crew_notes = ?'); binds.push(body.sendCrewNotes ? 1 : 0)
   }
   if (Object.prototype.hasOwnProperty.call(body, 'courseAccess')) {
-    const ca = Array.isArray(body.courseAccess) && body.courseAccess.length
-      ? JSON.stringify(body.courseAccess) : null
+    // Semantics: null → NULL (all), [] → '[]' (none), ['..'] → JSON allow-list.
+    // Omitted (handled above by hasOwnProperty) leaves the column untouched.
+    const ca = encodeCourseAccess(body.courseAccess)
+    if (ca === undefined) return badRequest('courseAccess must be null or an array')
     sets.push('course_access = ?'); binds.push(ca)
   }
   if (typeof body.password === 'string') {
