@@ -1,0 +1,130 @@
+// Reports hub — declarative registry.
+//
+// One entry per generatable report card. The Reports hub page assembles a
+// data bundle from existing store hooks, then maps over REPORT_DEFS and
+// calls `build(data)` when a card is clicked.
+//
+// Pure module — no React, no fetch, no DOM. Adding a new card means:
+//   1. Add a pure builder to reportBuilder.js (read-only over existing data).
+//   2. Register it here with `requires` listing the bundle keys it consumes.
+// No hub-page changes needed.
+
+import {
+  buildMaintenanceSummaryReport,
+  buildMorningBriefReport,
+  buildNutritionSummaryReport,
+  buildCulturalHistoryReport,
+  buildDiseaseLogReport,
+  buildMoistureTrendReport,
+} from './reportBuilder.js'
+import { REPORT_MODULE } from './reportSchemas.js'
+
+/**
+ * @typedef {Object} ReportDef
+ * @property {string}   id        Stable identifier (kebab-case).
+ * @property {string}   module    REPORT_MODULE value for grouping/badge.
+ * @property {string}   title     Card title — also defaults the report title.
+ * @property {string}   desc      One-sentence description for the card body.
+ * @property {string[]} requires  Bundle keys the build function reads. The
+ *                                hub disables a card whose required keys are
+ *                                still loading or returned an error.
+ * @property {(data: Object) => Object} build
+ *                                Pure function. Receives the bundle assembled
+ *                                by the hub and returns a TurfReport.
+ */
+
+/** @type {ReportDef[]} */
+export const REPORT_DEFS = [
+  // ── Equipment ─────────────────────────────────────────────────────────────
+  {
+    id:       'maintenance-summary',
+    module:   REPORT_MODULE.EQUIPMENT,
+    title:    'Maintenance Summary',
+    desc:     'Aggregate of maintenance log records — counts, cost rollup, and breakdowns by category and technician.',
+    requires: ['maintenanceLogs'],
+    build: ({ maintenanceLogs }) =>
+      buildMaintenanceSummaryReport(maintenanceLogs, {
+        title: 'Maintenance Summary',
+      }),
+  },
+
+  // ── Operations ────────────────────────────────────────────────────────────
+  {
+    id:       'morning-brief',
+    module:   REPORT_MODULE.OPERATIONS,
+    title:    'Morning Brief',
+    desc:     "Today's operational brief — conditions, sprays, equipment, priorities — wrapped as a printable report.",
+    requires: ['morningBrief'],
+    build: ({ morningBrief }) =>
+      buildMorningBriefReport(morningBrief),
+  },
+  {
+    id:       'cultural-history',
+    module:   REPORT_MODULE.OPERATIONS,
+    title:    'Cultural Practices History',
+    desc:     'Aerification, topdressing, verticutting, rolling, and related cultural events grouped by practice type.',
+    requires: ['culturalPractices'],
+    build: ({ culturalPractices }) =>
+      buildCulturalHistoryReport(culturalPractices, {
+        title: 'Cultural Practices History',
+      }),
+  },
+
+  // ── Agronomy ──────────────────────────────────────────────────────────────
+  {
+    id:       'nutrition-summary',
+    module:   REPORT_MODULE.AGRONOMY,
+    title:    'Plant Nutrition Summary',
+    desc:     'Soil, tissue, and water lab reports plus any active recommendations — counts and recent entries.',
+    requires: ['nutrition'],
+    build: ({ nutrition }) =>
+      buildNutritionSummaryReport(nutrition, {
+        title: 'Plant Nutrition Summary',
+      }),
+  },
+
+  // ── Disease ───────────────────────────────────────────────────────────────
+  {
+    id:       'disease-log',
+    module:   REPORT_MODULE.DISEASE,
+    title:    'Disease Observation Log',
+    desc:     'Active and resolved disease observations with severity rollup — sourced from field observation records.',
+    requires: ['diseaseObservations'],
+    build: ({ diseaseObservations }) =>
+      buildDiseaseLogReport(diseaseObservations, {
+        title: 'Disease Log',
+      }),
+  },
+
+  // ── Moisture ──────────────────────────────────────────────────────────────
+  {
+    id:       'moisture-trend',
+    module:   REPORT_MODULE.MOISTURE,
+    title:    'Moisture Trend',
+    desc:     'Recent moisture observations — readings, averages, and flagged wilt / dry-spot / handwater / syringe items.',
+    requires: ['moistureObservations'],
+    build: ({ moistureObservations }) =>
+      buildMoistureTrendReport(moistureObservations, {
+        title: 'Moisture Trend',
+      }),
+  },
+]
+
+/**
+ * Determine whether the bundle has all keys a definition requires resolved
+ * (i.e. present and not in a loading/error state). The hub uses this to
+ * disable cards whose data isn't ready yet.
+ *
+ * @param {ReportDef} def
+ * @param {Object}    bundle  Page-assembled bundle. Each key maps to either
+ *                            the raw data value or `{ loading, error }`.
+ * @returns {boolean}
+ */
+export function isReady(def, bundle) {
+  for (const key of def.requires) {
+    const v = bundle[key]
+    if (v == null) return false
+    if (typeof v === 'object' && !Array.isArray(v) && (v.loading || v.error)) return false
+  }
+  return true
+}
