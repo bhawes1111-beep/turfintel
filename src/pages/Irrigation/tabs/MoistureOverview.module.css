@@ -92,3 +92,32 @@
   font-size: 13px; cursor: pointer; padding: 4px 6px; flex: 0 0 auto;
 }
 .obsDel:hover { color: #e07070; }
+
+/* Phase 7A.2 — pending/retry affordances on optimistic rows.
+   Pending row gets a subtle left-border accent so the eye sees "not done yet"
+   without re-reading the list. Saving is muted; Retry is tappable + obvious. */
+.obsItem[data-pending="true"] {
+  border-left: 3px solid rgba(251, 191, 36, 0.55);
+}
+
+.savingBadge {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px;
+  color: var(--color-text-muted);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--color-border);
+  padding: 2px 7px; border-radius: 4px;
+}
+
+.retryBadge {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px;
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.14);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  padding: 3px 9px;       /* slightly larger than badges — thumb-tappable */
+  border-radius: 4px;
+  min-height: 22px;
+  cursor: pointer;
+  line-height: 1;
+}
+.retryBadge:hover { background: rgba(239, 68, 68, 0.22); }
+.retryBadge:active { transform: translateY(1px); }

@@ -165,6 +165,33 @@ console.log('— src/components/moisture/MoistureFab.jsx + .module.css')
   assert(/<MoistureFab\s*\/>/.test(layout),                          'Layout mounts MoistureFab')
 }
 
+// ── 6b. MoistureOverview renders pending/retry affordances (Phase 7A.2) ────
+console.log('— src/pages/Irrigation/tabs/MoistureOverview.jsx (pending UI)')
+{
+  const overview = readFileSync('src/pages/Irrigation/tabs/MoistureOverview.jsx', 'utf8')
+  assert(/retryPendingObservation/.test(overview),
+                                                'imports retryPendingObservation')
+  assert(/dismissPendingObservation/.test(overview),
+                                                'imports dismissPendingObservation')
+  // The row must guard delete against the synthetic pending-<clientId> id.
+  assert(/o\._pending\s*\?\s*dismissPendingObservation\(o\.clientId\)/.test(overview)
+        || /if\s*\(o\._pending\)\s*dismissPendingObservation/.test(overview),
+                                                'delete handler routes pending rows to dismiss (no DELETE 404)')
+  // Saving / Retry badges conditional on _pending state.
+  assert(/o\._pending\s*&&\s*o\._error/.test(overview),
+                                                'renders Retry only when _pending && _error')
+  assert(/o\._pending\s*&&\s*!o\._error/.test(overview),
+                                                'renders Saving only when _pending && !_error')
+  assert(/retryPendingObservation\(o\.clientId\)/.test(overview),
+                                                'Retry click calls retryPendingObservation(clientId)')
+
+  const overviewCss = readFileSync('src/pages/Irrigation/tabs/MoistureOverview.module.css', 'utf8')
+  assert(/\.retryBadge\b/.test(overviewCss),    'CSS defines .retryBadge')
+  assert(/\.savingBadge\b/.test(overviewCss),   'CSS defines .savingBadge')
+  assert(/data-pending="true"/.test(overviewCss),
+                                                'CSS targets row [data-pending="true"]')
+}
+
 // ── 7. Reports + Display Board compatibility ───────────────────────────────
 console.log('— consumer compatibility (no regressions)')
 {

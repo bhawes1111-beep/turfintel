@@ -5,7 +5,12 @@
 // analytics — honest empty/partial states, no invented precision.
 
 import { useMemo } from 'react'
-import { useMoistureData, deleteMoistureObservation } from '../../../utils/moisture/moistureStore'
+import {
+  useMoistureData,
+  deleteMoistureObservation,
+  retryPendingObservation,
+  dismissPendingObservation,
+} from '../../../utils/moisture/moistureStore'
 import { useWaterBalance } from '../../../utils/irrigation/waterBalanceStore'
 import { useWeather } from '../../../utils/weather/useWeather'
 import { computeWaterBalance } from '../../../utils/irrigation/waterBalance'
@@ -46,6 +51,16 @@ export default function MoistureOverview() {
   const syringe = useMemo(() => syringeAwareness(current, wb), [current, wb])
 
   function handleDelete(id) { deleteMoistureObservation(id).catch(() => {}) }
+
+  // Phase 7A.2 — pending-row helpers. A row created via the FAB capture path
+  // sits in the store with `_pending: true` until the network call resolves.
+  // On failure the row keeps `_pending: true` and gains `_error` so the user
+  // can retry. Pending rows have a synthetic id (`pending-<clientId>`) — the
+  // legacy DELETE endpoint would 404, so dismiss them via the store helper.
+  function handleRowDelete(o) {
+    if (o._pending) dismissPendingObservation(o.clientId)
+    else            handleDelete(o.id)
+  }
 
   return (
     <div className={styles.wrap}>
@@ -124,7 +139,7 @@ export default function MoistureOverview() {
             <p className={styles.sectionLabel}>Recent Observations</p>
             <ul className={styles.obsList}>
               {observations.slice(0, 8).map(o => (
-                <li key={o.id} className={styles.obsItem}>
+                <li key={o.id} className={styles.obsItem} data-pending={o._pending ? 'true' : 'false'}>
                   <div className={styles.obsMain}>
                     <span className={styles.obsLoc}>{o.location}</span>
                     <span className={styles.obsMeta}>
@@ -138,14 +153,27 @@ export default function MoistureOverview() {
                       {FLAG_BADGES.filter(([k]) => o[k]).map(([k, label]) => (
                         <span key={k} className={styles.obsBadge}>{label}</span>
                       ))}
+                      {o._pending && o._error && (
+                        <button
+                          type="button"
+                          className={styles.retryBadge}
+                          onClick={() => retryPendingObservation(o.clientId)}
+                          title={`Retry — last attempt failed: ${o._error}`}
+                        >
+                          ↻ Retry
+                        </button>
+                      )}
+                      {o._pending && !o._error && (
+                        <span className={styles.savingBadge}>Saving…</span>
+                      )}
                     </span>
                   </div>
                   <button
                     type="button"
                     className={styles.obsDel}
-                    onClick={() => handleDelete(o.id)}
-                    aria-label="Delete observation"
-                    title="Delete observation"
+                    onClick={() => handleRowDelete(o)}
+                    aria-label={o._pending ? 'Discard pending observation' : 'Delete observation'}
+                    title={o._pending ? 'Discard pending observation' : 'Delete observation'}
                   >✕</button>
                 </li>
               ))}
