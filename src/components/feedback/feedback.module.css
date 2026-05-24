@@ -120,12 +120,19 @@
   to   { opacity: 0; transform: translateX(16px); }
 }
 
-/* ── Mobile: full-width bottom stack, slide up ───────────────────────────── */
+/* ── Mobile: full-width bottom stack, slide up ─────────────────────────────
+   Bottom offset clears the moisture-capture FAB (56px circle, anchored 16px
+   from the bottom + safe-area inset — see src/components/moisture/MoistureFab
+   .module.css). Without this lift, the toast occludes the FAB for ~3s after
+   every Save, blocking the repeated-entry cadence the Phase 7A workflow needs.
+   env(safe-area-inset-bottom) keeps the stack clear of the iOS home indicator
+   even when no FAB is present (e.g. on /login, where the FAB is permission-
+   gated off). */
 
 @media (max-width: 768px) {
   .toastContainer {
     top: auto;
-    bottom: 16px;
+    bottom: calc(16px + 56px + 16px + env(safe-area-inset-bottom, 0px));
     right: 12px;
     left: 12px;
     max-width: none;
