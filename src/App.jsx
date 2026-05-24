@@ -78,7 +78,10 @@ export default function App() {
           <Route path="activity/*"  element={<Activity />} />
           <Route path="course-map"  element={<CourseMapPreview />} />
           <Route path="weather"     element={<Weather />} />
-          <Route path="reports"     element={<Reports />} />
+          <Route
+            path="reports"
+            element={<RequireAuth permission="canViewReports"><Reports /></RequireAuth>}
+          />
           <Route
             path="admin"
             element={<RequireAuth permission="canManageUsers"><Admin /></RequireAuth>}

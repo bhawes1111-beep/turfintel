@@ -5,14 +5,21 @@ export const REPORT_MODULE = {
   DISEASE:    'disease',
   OPERATIONS: 'operations',
   AGRONOMY:   'agronomy',
+  MOISTURE:   'moisture',
 }
 
 export const REPORT_TYPE = {
   REPAIR_LOG:           'repair-log',
   SPRAY_SUMMARY:        'spray-summary',
   MAINTENANCE_LOG:      'maintenance-log',
+  MAINTENANCE_SUMMARY:  'maintenance-summary',
   OPERATIONAL_SUMMARY:  'operational-summary',
   DISEASE_SUMMARY:      'disease-summary',
+  MORNING_BRIEF:        'morning-brief',
+  NUTRITION_SUMMARY:    'nutrition-summary',
+  CULTURAL_HISTORY:     'cultural-history',
+  DISEASE_LOG:          'disease-log',
+  MOISTURE_TREND:       'moisture-trend',
 }
 
 export const EXPORT_FORMAT = {
