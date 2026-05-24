@@ -27,10 +27,15 @@ const TRACK_TABLE    = '_migrations'
 // ── CLI ───────────────────────────────────────────────────────────────────
 
 function parseArgs() {
-  const args   = process.argv.slice(2)
-  const remote = args.includes('--remote')
-  const local  = args.includes('--local')
-  const status = args.includes('--status')
+  const args      = process.argv.slice(2)
+  const remote    = args.includes('--remote')
+  const local     = args.includes('--local')
+  const status    = args.includes('--status')
+  // --reconcile: record every on-disk migration file as applied WITHOUT
+  // running its SQL. One-time backfill for envs whose schema is correct
+  // but whose tracker rows drifted (e.g. files applied via direct
+  // `wrangler d1 execute --file` while the runner was broken).
+  const reconcile = args.includes('--reconcile')
   if (remote && local) {
     fail('Specify either --local or --remote, not both.')
   }
@@ -39,9 +44,13 @@ function parseArgs() {
          '  node scripts/applyMigrations.js --local\n' +
          '  node scripts/applyMigrations.js --remote\n' +
          '  node scripts/applyMigrations.js --local  --status\n' +
-         '  node scripts/applyMigrations.js --remote --status')
+         '  node scripts/applyMigrations.js --remote --status\n' +
+         '  node scripts/applyMigrations.js --remote --reconcile  (metadata-only backfill)')
   }
-  return { target: remote ? 'remote' : 'local', status }
+  if (status && reconcile) {
+    fail('--status and --reconcile are mutually exclusive.')
+  }
+  return { target: remote ? 'remote' : 'local', status, reconcile }
 }
 
 function fail(msg) {
@@ -90,10 +99,11 @@ function parseWranglerJson(raw) {
 // ── Migration state ───────────────────────────────────────────────────────
 
 function ensureTrackingTable(target) {
-  const sql = `CREATE TABLE IF NOT EXISTS ${TRACK_TABLE} (
-    name TEXT PRIMARY KEY,
-    applied_at TEXT NOT NULL DEFAULT (datetime('now'))
-  );`
+  // SINGLE LINE: cmd.exe (Windows/PowerShell) shell-quoting through execSync
+  // mangles multi-line strings inside --command "…" and wrangler reports
+  // "incomplete input: SQLITE_ERROR". The tracker DDL is short; keep it
+  // on one line and the runner is portable.
+  const sql = `CREATE TABLE IF NOT EXISTS ${TRACK_TABLE} (name TEXT PRIMARY KEY, applied_at TEXT NOT NULL DEFAULT (datetime('now')));`
   wranglerJson(sql, target)
 }
 
@@ -105,8 +115,11 @@ function readAppliedSet(target) {
 }
 
 function recordMigration(name, target) {
+  // INSERT OR IGNORE so reconcile and re-run paths are idempotent — same
+  // SQL whether the row already exists or not. The new partial-unique
+  // PRIMARY KEY on `name` enforces uniqueness either way.
   const escaped = String(name).replace(/'/g, "''")
-  wranglerJson(`INSERT INTO ${TRACK_TABLE} (name) VALUES ('${escaped}');`, target)
+  wranglerJson(`INSERT OR IGNORE INTO ${TRACK_TABLE} (name) VALUES ('${escaped}');`, target)
 }
 
 function listMigrationFiles() {
@@ -132,6 +145,40 @@ function printStatus(target) {
   }
   const pending = files.filter(f => !applied.has(f)).length
   console.log(`\n${applied.size} applied · ${pending} pending\n`)
+}
+
+/**
+ * Reconcile mode — backfill the tracker for envs whose schema is correct
+ * but whose tracker is missing rows. Runs NO migration SQL; only records
+ * each on-disk file as applied. Uses INSERT OR IGNORE so re-running is a
+ * no-op. Use after fixing the bootstrap quoting bug to catch the tracker
+ * up to reality without re-applying any DDL.
+ */
+function reconcileTracker(target) {
+  console.log(`\nReconciling _migrations tracker (${target}):\n`)
+  ensureTrackingTable(target)
+  const before = readAppliedSet(target)
+  const files  = listMigrationFiles()
+  if (files.length === 0) {
+    console.log('  (no migration files found in worker/migrations/)')
+    return
+  }
+  let added = 0
+  for (const file of files) {
+    if (before.has(file)) {
+      console.log(`  skip      ${file}  (already recorded)`)
+      continue
+    }
+    console.log(`  record    ${file}`)
+    recordMigration(file, target)
+    added++
+  }
+  const after = readAppliedSet(target)
+  console.log(`\nDone. ${added} migration(s) backfilled. ${after.size}/${files.length} now tracked.`)
+  if (after.size !== files.length) {
+    console.error(`\nWARNING: tracker count (${after.size}) does not match file count (${files.length}). Investigate before applying further migrations.`)
+    process.exit(1)
+  }
 }
 
 function applyMigrations(target) {
@@ -166,10 +213,11 @@ function applyMigrations(target) {
 
 // ── Entry ─────────────────────────────────────────────────────────────────
 
-const { target, status } = parseArgs()
+const { target, status, reconcile } = parseArgs()
 try {
-  if (status) printStatus(target)
-  else        applyMigrations(target)
+  if (reconcile)   reconcileTracker(target)
+  else if (status) printStatus(target)
+  else             applyMigrations(target)
 } catch (err) {
   console.error('Migration runner aborted:', err.message || err)
   process.exit(1)

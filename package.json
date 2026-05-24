@@ -11,7 +11,9 @@
     "db:migrate:local": "node scripts/applyMigrations.js --local",
     "db:migrate:remote": "node scripts/applyMigrations.js --remote",
     "db:status:local": "node scripts/applyMigrations.js --local --status",
-    "db:status:remote": "node scripts/applyMigrations.js --remote --status"
+    "db:status:remote": "node scripts/applyMigrations.js --remote --status",
+    "db:reconcile:local": "node scripts/applyMigrations.js --local --reconcile",
+    "db:reconcile:remote": "node scripts/applyMigrations.js --remote --reconcile"
   },
   "dependencies": {
     "react": "^19.2.5",
