@@ -47,6 +47,8 @@ const MIGRATED = [
   // adding it here locks the new inviteUser() helper to the same
   // no-key/credentials contract as every other store.
   'src/utils/auth/usersStore.js',
+  // Phase 7B.1 — Turf Health Observation Foundation (modeled on moisture).
+  'src/utils/turfHealth/turfHealthStore.js',
 ]
 
 // ── Per migrated store: session creds, no key header, no hardcoded key ──────
