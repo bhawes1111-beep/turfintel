@@ -33,6 +33,7 @@ export const PERMISSION_KEYS = [
   'canEditDisease',
   'canEditNutrition',
   'canEditAssignments',
+  'canEditTurfHealth',
   'canUpdateTaskStatus',
   'canAccessDisplayBoard',
   'canSendCrewNotes',
@@ -52,6 +53,7 @@ const OPERATIONAL = {
   canEditDisease:           true,
   canEditNutrition:         true,
   canEditAssignments:       true,
+  canEditTurfHealth:        true,
   canUpdateTaskStatus:      true,
   canAccessDisplayBoard:    true,
   canSendCrewNotes:         true,
@@ -86,8 +88,9 @@ export const ROLE_PERMISSIONS = {
   crew_lead: {
     canUpdateTaskStatus:   true,
     canEditMoisture:       true,
+    canEditTurfHealth:     true,   // crew leads walk the course and spot chronic stress same as moisture
     canAccessDisplayBoard: true,
-    canSendCrewNotes:      false, // optional per-user override may grant it
+    canSendCrewNotes:      false,  // optional per-user override may grant it
   },
   crew: {
     canUpdateTaskStatus:   true,

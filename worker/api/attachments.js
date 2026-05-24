@@ -27,6 +27,11 @@ const ALLOWED_PARENT_TYPES = new Set([
   // observation row. UI lands in v2; the whitelist is opened now so the
   // contract is stable.
   'moisture_observation',
+  // Phase 7B.1 — Turf Health observations (shade, airflow, traffic, chronic
+  // stress) attach field photos via the same R2 pipeline. Same UI patterns
+  // as moisture: row chip + lightbox + delete. Worker contract opened up
+  // front so the client + Worker ship in lockstep.
+  'turf_health_observation',
 ])
 
 // Whitelist mirrors what mobile crews are likely to upload. HEIC covers
