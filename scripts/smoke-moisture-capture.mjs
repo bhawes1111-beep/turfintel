@@ -230,6 +230,117 @@ console.log('— src/pages/Irrigation/tabs/MoistureOverview.jsx (pending UI)')
                                                 'CSS targets row [data-pending="true"]')
 }
 
+// ── 6c. Phase 7A.4: photo attachment pipeline ─────────────────────────────
+console.log('— Phase 7A.4: moisture photo attachment')
+{
+  // Store-side: new exports + pendingPhotos map + sendToServer drain.
+  const store = readFileSync('src/utils/moisture/moistureStore.js', 'utf8')
+  assert(/import\s+\{\s*uploadAttachment\s*\}\s+from\s+['"]\.\.\/attachments\/attachmentsStore/.test(store),
+                                                'store imports uploadAttachment from R2 pipeline')
+  assert(/export\s+function\s+stagePendingPhoto/.test(store),
+                                                'store exports stagePendingPhoto')
+  assert(/export\s+function\s+retryPendingPhoto/.test(store),
+                                                'store exports retryPendingPhoto')
+  // Module-scope map keyed by clientId — not React state.
+  assert(/const\s+pendingPhotos\s*=\s*new\s+Map\(\)/.test(store),
+                                                'pendingPhotos lives at module scope as Map')
+  // sendToServer drains the queue after observation success.
+  const sendBody = store.match(/async\s+function\s+sendToServer[\s\S]*?\n\}/)?.[0]
+  assert(sendBody != null,                      'sendToServer body extractable')
+  if (sendBody) {
+    assert(/pendingPhotos\.has\(payload\.clientId\)/.test(sendBody),
+                                                'success path checks pendingPhotos queue')
+    assert(/uploadStagedPhoto\(payload\.clientId,\s*saved\.id\)/.test(sendBody),
+                                                'drain fires uploadStagedPhoto with the REAL server id')
+  }
+  // uploadStagedPhoto stamps _photoError on failure, clears state on success.
+  const uploadBody = store.match(/async\s+function\s+uploadStagedPhoto[\s\S]*?\n\}/)?.[0]
+  assert(uploadBody != null,                    'uploadStagedPhoto body extractable')
+  if (uploadBody) {
+    assert(/parentType:\s*['"]moisture_observation['"]/.test(uploadBody),
+                                                'uploads use moisture_observation parentType')
+    assert(/pendingPhotos\.delete\(clientId\)/.test(uploadBody),
+                                                'success clears the staged file')
+    assert(/_photoError:\s*err\.message/.test(uploadBody),
+                                                'failure stamps _photoError with the message')
+    assert(/_photoPending:\s*false/.test(uploadBody),
+                                                'both branches clear _photoPending')
+    // Explicit success ack via the toast bridge.
+    assert(/bridgeToast\(\)\.success\??\.\(['"]Photo attached['"],\s*2000\)/.test(uploadBody),
+                                                'success fires bridgeToast().success("Photo attached", 2000)')
+  }
+  // Toast bridge wiring.
+  assert(/import\s+\{\s*bridgeToast\s*\}\s+from\s+['"]\.\.\/feedback\/toastBridge/.test(store),
+                                                'store imports bridgeToast')
+  const provider2 = readFileSync('src/components/feedback/ToastProvider.jsx', 'utf8')
+  assert(/registerToast/.test(provider2),       'ToastProvider imports registerToast')
+  assert(/useEffect\([\s\S]*registerToast\(ctx\)[\s\S]*registerToast\(null\)/.test(provider2),
+                                                'ToastProvider registers + unregisters the handle via useEffect')
+  // dismissPendingObservation also clears any staged photo for that clientId.
+  assert(/pendingPhotos\.delete\(clientId\)[\s\S]*function\s+dismissPendingObservation|function\s+dismissPendingObservation[\s\S]*pendingPhotos\.delete\(clientId\)/.test(store),
+                                                'dismissPendingObservation also clears the staged photo')
+
+  // Sheet-side: photo action lives on the Save toast, NOT on Log another.
+  const sheet = readFileSync('src/components/moisture/MoistureCaptureSheet.jsx', 'utf8')
+  assert(/import\s+\{[\s\S]*stagePendingPhoto[\s\S]*\}\s+from/.test(sheet),
+                                                'sheet imports stagePendingPhoto')
+  // The dynamic file picker uses capture="environment" (rear camera) and
+  // accept="image/*" (unsupported browsers fall back to standard picker).
+  assert(/input\.type\s*=\s*['"]file['"]/.test(sheet),
+                                                'sheet creates <input type="file"> dynamically')
+  assert(/input\.accept\s*=\s*['"]image\/\*['"]/.test(sheet),
+                                                'sheet sets accept="image/*"')
+  assert(/input\.capture\s*=\s*['"]environment['"]/.test(sheet),
+                                                'sheet sets capture="environment" (rear camera)')
+  assert(/stagePendingPhoto\(clientId,\s*file\)/.test(sheet),
+                                                'picked file is staged via stagePendingPhoto')
+
+  // handleSave shows the action toast; handleSaveAndContinue does NOT.
+  const saveBody2 = sheet.match(/function\s+handleSave\s*\(\s*\)[\s\S]*?\n\s\s\}/)?.[0]
+  assert(saveBody2 != null,                     'handleSave body extractable')
+  if (saveBody2) {
+    assert(/duration:\s*6000/.test(saveBody2),  'Save toast extends to ~6s for photo action')
+    assert(/label:\s*['"]?\+ Add photo['"]?/.test(saveBody2),
+                                                'Save toast carries "+ Add photo" action label')
+    assert(/pickPhotoForClientId\(row\.clientId\)/.test(saveBody2),
+                                                'action handler opens picker for the row clientId')
+  }
+  const contBody2 = sheet.match(/function\s+handleSaveAndContinue\s*\([\s\S]*?\n\s\s\}/)?.[0]
+  assert(contBody2 != null,                     'handleSaveAndContinue body extractable')
+  if (contBody2) {
+    assert(!/pickPhotoForClientId|\+ Add photo|action:\s*\{/.test(contBody2),
+                                                'Log another toast has NO photo action (repeat-entry stays fast)')
+  }
+
+  // Toast API: generic { label, onClick } action support.
+  const provider = readFileSync('src/components/feedback/ToastProvider.jsx', 'utf8')
+  assert(/normalizeOpts/.test(provider),        'ToastProvider has normalizeOpts (number | options)')
+  assert(/action:\s*durOrOpts\.action/.test(provider),
+                                                'ToastProvider threads action through')
+  const item = readFileSync('src/components/feedback/ToastItem.jsx', 'utf8')
+  assert(/toast\.action[\s\S]*toast\.action\.label/.test(item),
+                                                'ToastItem renders the action button when supplied')
+  assert(/toast\.action\.onClick/.test(item),  'ToastItem invokes action onClick')
+  const toastCss = readFileSync('src/components/feedback/feedback.module.css', 'utf8')
+  assert(/\.toastAction\b/.test(toastCss),     'CSS defines .toastAction')
+  assert(/min-height:\s*36px/.test(toastCss),  'toast action button is thumb-tappable (≥36px)')
+
+  // Overview row distinguishes obs retry from photo retry.
+  const overview = readFileSync('src/pages/Irrigation/tabs/MoistureOverview.jsx', 'utf8')
+  assert(/retryPendingPhoto/.test(overview),    'overview imports retryPendingPhoto')
+  assert(/o\._photoError/.test(overview),       'overview branches on _photoError')
+  assert(/o\._photoPending/.test(overview),     'overview branches on _photoPending')
+  assert(/retryPendingPhoto\(o\.clientId\)/.test(overview),
+                                                'photo retry click calls retryPendingPhoto')
+  assert(/↻ Retry photo/.test(overview),        'photo retry pill labelled "Retry photo" (distinct from observation Retry)')
+  assert(/Uploading photo…/.test(overview),     'photo in-flight pill labelled "Uploading photo…"')
+  // Critical guard: photo retry only fires when _pending is FALSE (i.e.
+  // observation has succeeded). Otherwise we'd be retrying against a
+  // synthetic pending- id.
+  assert(/!o\._pending\s*&&\s*o\._photoError/.test(overview),
+                                                'photo retry pill gated on !_pending (observation must be saved first)')
+}
+
 // ── 7. Reports + Display Board compatibility ───────────────────────────────
 console.log('— consumer compatibility (no regressions)')
 {

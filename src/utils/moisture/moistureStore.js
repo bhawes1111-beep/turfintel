@@ -11,6 +11,8 @@ import {
   subscribeCourseChange,
   getSelectedCourseId,
 } from '../courses/courseStore'
+import { uploadAttachment } from '../attachments/attachmentsStore'
+import { bridgeToast } from '../feedback/toastBridge'
 
 const API = '/api/moisture'
 
@@ -20,6 +22,13 @@ let state = {
   error:        null,
   lastFetch:    null,
 }
+
+// Phase 7A.4 — module-scope (NOT React state) staging map for photos picked
+// before the observation's server id has arrived. Keyed by clientId. File
+// objects don't belong in a state tree snapshot (no value-equality, not
+// serializable). Entries are removed on successful upload, on dismiss, or
+// on explicit retry success. Survives across re-renders; clears on reload.
+const pendingPhotos = new Map()   // clientId → File
 
 const subscribers = new Set()
 let hasBooted = false
@@ -158,11 +167,22 @@ async function sendToServer(payload) {
       body:    JSON.stringify(payload),
     })
     // Replace the matching pending row with the canonical server row.
+    // Preserve any photo-pending flags so the row UI can still show the
+    // photo-retry pill if a queued photo is mid-upload or already failed.
+    const prior = state.observations.find(o => o.clientId === payload.clientId)
+    const merged = prior?._photoPending || prior?._photoError
+      ? { ...saved, _photoPending: prior._photoPending, _photoError: prior._photoError }
+      : saved
     setState({
       observations: state.observations.map(o =>
-        o.clientId === payload.clientId ? saved : o,
+        o.clientId === payload.clientId ? merged : o,
       ),
     })
+    // Phase 7A.4 — drain any photo the user staged before the server id
+    // arrived. Fire-and-forget; the photo upload reports its own state.
+    if (pendingPhotos.has(payload.clientId)) {
+      void uploadStagedPhoto(payload.clientId, saved.id)
+    }
   } catch (err) {
     // Keep the row in the list with retry badge. The user keeps their work.
     setState({
@@ -173,6 +193,98 @@ async function sendToServer(payload) {
       ),
     })
   }
+}
+
+// ── Phase 7A.4: photo staging + upload ─────────────────────────────────────
+//
+// The capture sheet closes synchronously on Save; the observation POST fires
+// in the background. The user may tap "+ Add photo" from the success toast
+// BEFORE the observation server id has arrived. stagePendingPhoto() holds the
+// File in the per-clientId map so the upload can fire once the real id is
+// known. If the observation POST has already resolved when the user picks
+// the photo, the upload fires immediately.
+
+/**
+ * Stage a photo File for a recent observation. Marks the row with
+ * _photoPending so the UI can show a "Uploading photo…" affordance. The
+ * actual network call happens here if the observation already has a real
+ * id, otherwise it fires in sendToServer when the id arrives.
+ *
+ * @param {string} clientId  - the observation's clientId (must already exist in observations[])
+ * @param {File}   file      - the image file from <input type="file">
+ */
+export function stagePendingPhoto(clientId, file) {
+  if (!clientId || !file) return
+  pendingPhotos.set(clientId, file)
+  // Stamp _photoPending on the row so the UI can reflect it.
+  setState({
+    observations: state.observations.map(o =>
+      o.clientId === clientId
+        ? { ...o, _photoPending: true, _photoError: null }
+        : o,
+    ),
+  })
+  // If the row already has a real server id (observation POST already
+  // resolved), fire the upload right now. Otherwise sendToServer drains us.
+  const row = state.observations.find(o => o.clientId === clientId)
+  const hasRealId = row && row.id && !row.id.startsWith('pending-')
+  if (hasRealId) void uploadStagedPhoto(clientId, row.id)
+}
+
+async function uploadStagedPhoto(clientId, observationId) {
+  const file = pendingPhotos.get(clientId)
+  if (!file) return
+  try {
+    await uploadAttachment({
+      parentType: 'moisture_observation',
+      parentId:   observationId,
+      file,
+    })
+    pendingPhotos.delete(clientId)
+    setState({
+      observations: state.observations.map(o =>
+        o.clientId === clientId
+          ? { ...o, _photoPending: false, _photoError: null }
+          : o,
+      ),
+    })
+    // Phase 7A.4 — explicit success ack via the toast bridge so the user
+    // knows the photo landed even though the upload was async and the
+    // capture sheet has long since closed. 2s — short, non-intrusive.
+    bridgeToast().success?.('Photo attached', 2000)
+  } catch (err) {
+    // Keep the File around — retry will reuse it. Stamp the row so the UI
+    // can surface a Retry photo affordance distinct from observation retry.
+    setState({
+      observations: state.observations.map(o =>
+        o.clientId === clientId
+          ? { ...o, _photoPending: false, _photoError: err.message || 'Photo upload failed' }
+          : o,
+      ),
+    })
+  }
+}
+
+/**
+ * Retry a failed photo upload for a row whose observation succeeded but
+ * whose photo upload did not. Distinct from retryPendingObservation: the
+ * observation is fine; only the attached image needs another try.
+ */
+export function retryPendingPhoto(clientId) {
+  const row = state.observations.find(o => o.clientId === clientId)
+  if (!row) return
+  const hasRealId = row.id && !row.id.startsWith('pending-')
+  if (!hasRealId) return    // observation hasn't been saved yet; nothing to attach to
+  if (!pendingPhotos.has(clientId)) return  // file already consumed or lost
+  // Clear _photoError before retry so the UI reflects in-flight state.
+  setState({
+    observations: state.observations.map(o =>
+      o.clientId === clientId
+        ? { ...o, _photoError: null, _photoPending: true }
+        : o,
+    ),
+  })
+  void uploadStagedPhoto(clientId, row.id)
 }
 
 /**
@@ -208,9 +320,12 @@ export function retryPendingObservation(clientId) {
 }
 
 /**
- * Drop a pending row the user explicitly wants to discard.
+ * Drop a pending row the user explicitly wants to discard. Also clears any
+ * staged photo so File memory is released and a stale retry can't fire
+ * against a row that no longer exists.
  */
 export function dismissPendingObservation(clientId) {
+  pendingPhotos.delete(clientId)
   setState({
     observations: state.observations.filter(o => o.clientId !== clientId || !o._pending),
   })

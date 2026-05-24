@@ -18,10 +18,43 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   submitMoistureObservation,
+  stagePendingPhoto,
   useMoistureData,
 } from '../../utils/moisture/moistureStore'
 import { useToast } from '../../utils/feedback/toastContext'
 import styles from './LogMoistureButton.module.css'
+
+// Phase 7A.4 — Open the rear camera on tap. capture="environment" is the
+// spec-compliant hint for the back camera; unsupported browsers degrade
+// to the standard file picker (same UX as the existing DailyBriefing
+// upload path, which never sets capture). Created on-demand so the picker
+// works even after the capture sheet has closed (toast outlives the sheet).
+function pickPhotoForClientId(clientId) {
+  const input = document.createElement('input')
+  input.type        = 'file'
+  input.accept      = 'image/*'
+  input.capture     = 'environment'
+  input.style.position = 'fixed'
+  input.style.opacity  = '0'
+  input.style.pointerEvents = 'none'
+  input.onchange = () => {
+    const file = input.files && input.files[0]
+    if (file) stagePendingPhoto(clientId, file)
+    // Detach the input on next tick so the change event fully fires first.
+    setTimeout(() => { try { input.remove() } catch { /* noop */ } }, 0)
+  }
+  // Some browsers require the input to be in the DOM for the click to open
+  // the picker; attach it briefly. Removed in onchange (or via cancel below).
+  document.body.appendChild(input)
+  // If the user cancels the picker, browsers don't reliably fire any event;
+  // a one-shot focus listener cleans up after focus returns to the window.
+  const cleanup = () => {
+    setTimeout(() => { try { input.remove() } catch { /* noop */ } }, 1500)
+    window.removeEventListener('focus', cleanup)
+  }
+  window.addEventListener('focus', cleanup)
+  input.click()
+}
 
 // ── Presets ─────────────────────────────────────────────────────────────────
 // Greens 1–18 + the three approved shoulder areas. Anything beyond this set
@@ -90,15 +123,15 @@ export default function MoistureCaptureSheet({ onClose, recentLocations = [] }) 
   )
 
   // Phase 7A.3 — shared validate+submit, so Save and "Log another" route
-  // through identical logic. Returns true on success so the caller can
-  // decide whether to close the sheet (Save) or just clear the row inputs
-  // (Log another). Never throws — validation failures set the inline error
-  // and return false; submit itself is fire-and-forget via the store wrapper.
+  // through identical logic. Phase 7A.4 — returns the optimistic row on
+  // success (so the caller can stage a photo against its clientId) or
+  // null on validation failure. Never throws; submit itself is fire-and-
+  // forget via the store wrapper.
   function doSubmit() {
     const finalLocation = otherOpen ? otherText.trim() : (location ?? '')
     if (!finalLocation) {
       setError('Pick a location.')
-      return false
+      return null
     }
     const anyFlag = FLAGS.some(f => flags[f.key])
     const moistureNum = moisture.trim() !== '' ? Number(moisture) : null
@@ -106,10 +139,10 @@ export default function MoistureCaptureSheet({ onClose, recentLocations = [] }) 
     // a measured %, or a free-text note all count.
     if (!anyFlag && moistureNum == null && note.trim() === '') {
       setError('Tap at least one condition pill.')
-      return false
+      return null
     }
 
-    submitMoistureObservation({
+    const optimistic = submitMoistureObservation({
       location:     finalLocation,
       hole:         holeFromLocation(finalLocation),
       moisturePct:  moistureNum,
@@ -119,21 +152,38 @@ export default function MoistureCaptureSheet({ onClose, recentLocations = [] }) 
       handwaterRec: !!flags.handwaterRec,
       syringeRec:   !!flags.syringeRec,
     })
-
-    toast?.success?.(`Logged ${finalLocation}`)
-    return true
+    return optimistic
   }
 
   function handleSave() {
-    if (doSubmit()) onClose()
+    const row = doSubmit()
+    if (!row) return
+    // Phase 7A.4 — Save path offers an optional "+ Add photo" action on the
+    // success toast. Toast auto-dismisses after ~6s; the action fires a
+    // native file picker (rear camera on mobile) and stages the picked
+    // file against this row's clientId so the upload fires as soon as the
+    // observation server id is known. The action is intentionally absent
+    // from the "Log another" path so rapid repeat captures stay friction-
+    // free.
+    toast?.success?.(
+      `Logged ${row.location}`,
+      {
+        duration: 6000,
+        action: { label: '+ Add photo', onClick: () => pickPhotoForClientId(row.clientId) },
+      },
+    )
+    onClose()
   }
 
   // Save & log another: submit, keep the sheet open + location selected,
   // clear everything else so the next observation is one location-confirm-
   // (already selected) plus one condition-pill tap away. Targets ≤ 3s per
-  // repeat capture during a walking-greens run.
+  // repeat capture during a walking-greens run. Phase 7A.4: deliberately
+  // NO photo action on this toast — repeat captures stay fast.
   function handleSaveAndContinue() {
-    if (!doSubmit()) return
+    const row = doSubmit()
+    if (!row) return
+    toast?.success?.(`Logged ${row.location}`)
     setFlags({})
     setMoisture('')
     setNote('')

@@ -83,6 +83,36 @@
   min-width: 0;
 }
 
+/* ── Phase 7A.4 — inline action button (e.g. "+ Add photo") ───────────────
+   Sized for thumb taps on mobile (≥ 36px). Lives between the message and
+   the dismiss X so it doesn't shift either of them on hover. Uses the
+   accent green so it reads as the next thing to tap, not chrome. */
+
+.toastAction {
+  flex-shrink: 0;
+  background: rgba(74, 158, 74, 0.18);
+  border: 1px solid rgba(74, 158, 74, 0.55);
+  color: var(--color-accent, #4a9e4a);
+  font-size: 0.78rem;
+  font-weight: 700;
+  border-radius: 6px;
+  padding: 8px 12px;
+  min-height: 36px;
+  cursor: pointer;
+  line-height: 1;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.toastAction:hover {
+  background: rgba(74, 158, 74, 0.28);
+  border-color: var(--color-accent, #4a9e4a);
+}
+
+.toastAction:active {
+  transform: translateY(1px);
+}
+
 /* ── Dismiss button ──────────────────────────────────────────────────────── */
 
 .toastDismiss {

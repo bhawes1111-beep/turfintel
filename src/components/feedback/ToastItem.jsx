@@ -24,6 +24,17 @@ export default function ToastItem({ toast, onDismiss }) {
     return () => { clearTimeout(t1); clearTimeout(t2) }
   }, [toast.id, toast.duration, onDismiss])
 
+  // Phase 7A.4 — optional inline action ("+ Add photo", "Undo", "View", …).
+  // The handler decides whether to dismiss the toast — most actions want
+  // the toast to close on tap, so we do that here unless onClick returned
+  // the literal false (escape hatch for actions that want to keep the
+  // toast visible while doing something async).
+  function handleAction() {
+    if (!toast.action || typeof toast.action.onClick !== 'function') return
+    const keep = toast.action.onClick()
+    if (keep !== false) dismiss()
+  }
+
   return (
     <div
       className={[
@@ -35,6 +46,15 @@ export default function ToastItem({ toast, onDismiss }) {
     >
       <span className={styles.toastIcon}>{meta.icon}</span>
       <span className={styles.toastMessage}>{toast.message}</span>
+      {toast.action && typeof toast.action.label === 'string' && (
+        <button
+          type="button"
+          className={styles.toastAction}
+          onClick={handleAction}
+        >
+          {toast.action.label}
+        </button>
+      )}
       <button
         className={styles.toastDismiss}
         onClick={dismiss}

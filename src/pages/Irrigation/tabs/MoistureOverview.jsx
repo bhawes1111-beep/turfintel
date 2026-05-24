@@ -9,6 +9,7 @@ import {
   useMoistureData,
   deleteMoistureObservation,
   retryPendingObservation,
+  retryPendingPhoto,
   dismissPendingObservation,
 } from '../../../utils/moisture/moistureStore'
 import { useWaterBalance } from '../../../utils/irrigation/waterBalanceStore'
@@ -153,6 +154,8 @@ export default function MoistureOverview() {
                       {FLAG_BADGES.filter(([k]) => o[k]).map(([k, label]) => (
                         <span key={k} className={styles.obsBadge}>{label}</span>
                       ))}
+                      {/* Observation-level retry (7A.2): row hasn't been
+                          successfully saved yet. */}
                       {o._pending && o._error && (
                         <button
                           type="button"
@@ -165,6 +168,22 @@ export default function MoistureOverview() {
                       )}
                       {o._pending && !o._error && (
                         <span className={styles.savingBadge}>Saving…</span>
+                      )}
+                      {/* Phase 7A.4 — photo-level retry. Observation is
+                          saved; only the attached image failed. Distinct
+                          handler so we don't re-POST the observation. */}
+                      {!o._pending && o._photoError && (
+                        <button
+                          type="button"
+                          className={styles.retryBadge}
+                          onClick={() => retryPendingPhoto(o.clientId)}
+                          title={`Retry photo — last upload failed: ${o._photoError}`}
+                        >
+                          ↻ Retry photo
+                        </button>
+                      )}
+                      {!o._pending && o._photoPending && (
+                        <span className={styles.savingBadge}>Uploading photo…</span>
                       )}
                     </span>
                   </div>
