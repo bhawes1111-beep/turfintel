@@ -171,6 +171,13 @@ import {
   deleteDisease,
 } from './api/disease.js'
 import {
+  listTurfHealth,
+  getTurfHealth,
+  createTurfHealth,
+  updateTurfHealth,
+  deleteTurfHealth,
+} from './api/turfHealth.js'
+import {
   bootstrapAdmin,
   login,
   logout,
@@ -490,6 +497,29 @@ async function handleApi(request, env, url, ctx) {
     if (method === 'GET')    return getDisease(env, id)
     if (method === 'PATCH')  return updateDisease(env, id, request)
     if (method === 'DELETE') return deleteDisease(env, id)
+  }
+
+  // ── /api/turf-health ──────────────────────────────────────────────────
+  // Phase 7B.1 — shade / airflow / weak-turf / chronic-stress observations.
+  // Same routing shape as /api/disease; mutation auth applied centrally.
+  if (pathname === '/api/turf-health') {
+    if (method === 'GET') {
+      const days       = url.searchParams.get('days')       || null
+      const status     = url.searchParams.get('status')     || null
+      const healthType = url.searchParams.get('healthType') || null
+      const limit      = url.searchParams.get('limit')      || null
+      return listTurfHealth(env, courseId, { days, status, healthType, limit })
+    }
+    if (method === 'POST') return createTurfHealth(env, request)
+  }
+
+  // ── /api/turf-health/:id ──────────────────────────────────────────────
+  const thMatch = pathname.match(/^\/api\/turf-health\/([^/]+)$/)
+  if (thMatch) {
+    const id = decodeURIComponent(thMatch[1])
+    if (method === 'GET')    return getTurfHealth(env, id)
+    if (method === 'PATCH')  return updateTurfHealth(env, id, request)
+    if (method === 'DELETE') return deleteTurfHealth(env, id)
   }
 
   // ── /api/users ────────────────────────────────────────────────────────
