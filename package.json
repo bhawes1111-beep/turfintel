@@ -8,6 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "smoke": "node scripts/run-smokes.mjs",
     "db:migrate:local": "node scripts/applyMigrations.js --local",
     "db:migrate:remote": "node scripts/applyMigrations.js --remote",
     "db:status:local": "node scripts/applyMigrations.js --local --status",
