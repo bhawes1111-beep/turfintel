@@ -5,7 +5,7 @@ import {
   REPORT_TYPE,
   EXPORT_FORMAT,
   SECTION_TYPE,
-} from './reportSchemas'
+} from './reportSchemas.js'
 
 // Duplicated here to keep reports/ self-contained — no coupling to Irrigation page
 const ISSUE_TYPE_LABELS = {
@@ -389,6 +389,502 @@ export function buildOperationalSummaryReport(operations, options = {}) {
     generatedBy:   'operations-module',
     sections,
     metadata:      { dateRange: dateRange ?? null, eventCount: calendarEvents.length, alertCount: alerts.length },
+    exportFormats: STANDARD_FORMATS,
+  })
+}
+
+// ── Phase 6C.2: additional pure builders ──────────────────────────────────────
+
+// ── Equipment: maintenance summary across logs ────────────────────────────────
+
+/**
+ * Build an aggregate maintenance summary across maintenance_logs records
+ * (counts, cost rollup, breakdowns by category and technician).
+ * @param {Object[]} logs                - maintenance_logs records
+ * @param {Object}   [options]
+ * @param {string}   [options.dateRange]
+ * @param {string}   [options.title]
+ */
+export function buildMaintenanceSummaryReport(logs = [], options = {}) {
+  const { dateRange, title = 'Maintenance Summary' } = options
+
+  const completed = logs.filter(l => l.status === 'completed')
+  const pending   = logs.filter(l => l.status !== 'completed')
+  const totalCost = logs.reduce((sum, l) => sum + (Number(l.cost) || 0), 0)
+
+  const byCategory = {}
+  for (const l of logs) {
+    const k = l.category ?? '—'
+    byCategory[k] = (byCategory[k] ?? 0) + 1
+  }
+  const byTechnician = {}
+  for (const l of logs) {
+    const t = l.technician ?? 'Unassigned'
+    byTechnician[t] = (byTechnician[t] ?? 0) + 1
+  }
+
+  const sections = [
+    createSection({
+      title: 'Summary',
+      type:  SECTION_TYPE.FIELDS,
+      data: {
+        'Total Records': logs.length,
+        'Completed':     completed.length,
+        'Pending':       pending.length,
+        'Total Cost':    `$${totalCost.toFixed(2)}`,
+        'Date Range':    dateRange ?? '—',
+      },
+    }),
+  ]
+
+  if (Object.keys(byCategory).length > 0) {
+    sections.push(createSection({
+      title: 'By Category',
+      type:  SECTION_TYPE.TABLE,
+      data: {
+        columns: ['Category', 'Records'],
+        rows:    Object.entries(byCategory).map(([k, v]) => [k, v]),
+      },
+    }))
+  }
+
+  if (Object.keys(byTechnician).length > 0) {
+    sections.push(createSection({
+      title: 'By Technician',
+      type:  SECTION_TYPE.TABLE,
+      data: {
+        columns: ['Technician', 'Records'],
+        rows:    Object.entries(byTechnician).map(([k, v]) => [k, v]),
+      },
+    }))
+  }
+
+  return createReport({
+    module:        REPORT_MODULE.EQUIPMENT,
+    type:          REPORT_TYPE.MAINTENANCE_SUMMARY,
+    title,
+    generatedBy:   'equipment-module',
+    sections,
+    metadata:      { dateRange: dateRange ?? null, recordCount: logs.length, totalCost },
+    exportFormats: STANDARD_FORMATS,
+  })
+}
+
+// ── Operations: morning brief envelope ────────────────────────────────────────
+
+/**
+ * Wrap the structured brief from src/utils/operations/morningBrief.js
+ * (`buildMorningBrief()`) into the standard report envelope. Each non-empty
+ * brief section becomes a report TEXT section of bulleted lines.
+ * @param {Object|null} brief    - output of buildMorningBrief()
+ * @param {Object}      [options]
+ * @param {string}      [options.title]
+ */
+export function buildMorningBriefReport(brief, options = {}) {
+  const { title } = options
+  const safe = brief ?? {}
+
+  const sectionMap = [
+    ['Course Status',      safe.courseStatus],
+    ['Conditions',         safe.weatherSummary],
+    ['Weather Impacts',    safe.weatherImpacts],
+    ['Operations',         safe.operationsSummary],
+    ['Crew',               safe.crewSummary],
+    ['Watch Areas',        safe.watchAreas],
+    ['Cultural Practices', safe.culturalPractices],
+    ['Disease Watch',      safe.diseaseWatch],
+    ['Sprays',             safe.spraySummary],
+    ['Equipment',          safe.equipmentSummary],
+    ['Priorities',         safe.priorities],
+    ['Needs Attention',    safe.attentionItems],
+  ]
+
+  const sections = []
+  for (const [label, sec] of sectionMap) {
+    if (sec && Array.isArray(sec.bullets) && sec.bullets.length > 0) {
+      sections.push(createSection({
+        title: label,
+        type:  SECTION_TYPE.TEXT,
+        data:  sec.bullets.map(b => `• ${b}`).join('\n'),
+      }))
+    }
+  }
+
+  if (sections.length === 0) {
+    sections.push(createSection({
+      title: 'Brief',
+      type:  SECTION_TYPE.TEXT,
+      data:  'No brief data available.',
+    }))
+  }
+
+  return createReport({
+    module:        REPORT_MODULE.OPERATIONS,
+    type:          REPORT_TYPE.MORNING_BRIEF,
+    title:         title ?? `Morning Brief — ${safe.generatedAt ?? 'Today'}`,
+    generatedBy:   'operations-module',
+    sections,
+    metadata:      { generatedAt: safe.generatedAt ?? null, courseName: safe.courseName ?? null },
+    exportFormats: STANDARD_FORMATS,
+  })
+}
+
+// ── Agronomy: plant nutrition summary ─────────────────────────────────────────
+
+/**
+ * Build a nutrition summary across soil/tissue/water reports + recommendations.
+ * @param {Object}   data
+ * @param {Object[]} [data.soilReports]
+ * @param {Object[]} [data.tissueReports]
+ * @param {Object[]} [data.waterReports]
+ * @param {Object[]} [data.recommendations]
+ * @param {Object}   [options]
+ * @param {string}   [options.dateRange]
+ * @param {string}   [options.title]
+ */
+export function buildNutritionSummaryReport(data = {}, options = {}) {
+  const { title = 'Plant Nutrition Summary', dateRange } = options
+  const {
+    soilReports     = [],
+    tissueReports   = [],
+    waterReports    = [],
+    recommendations = [],
+  } = data
+
+  const sections = [
+    createSection({
+      title: 'Summary',
+      type:  SECTION_TYPE.FIELDS,
+      data: {
+        'Soil Reports':    soilReports.length,
+        'Tissue Reports':  tissueReports.length,
+        'Water Reports':   waterReports.length,
+        'Recommendations': recommendations.length,
+        'Date Range':      dateRange ?? '—',
+      },
+    }),
+  ]
+
+  if (soilReports.length > 0) {
+    sections.push(createSection({
+      title: 'Soil Reports',
+      type:  SECTION_TYPE.TABLE,
+      data: {
+        columns: ['Date', 'Area', 'Lab', 'pH', 'OM%'],
+        rows: soilReports.slice(0, 25).map(r => [
+          r.date ?? '—', r.area ?? '—', r.lab ?? '—',
+          r.ph   ?? '—', r.om   ?? '—',
+        ]),
+      },
+    }))
+  }
+
+  if (tissueReports.length > 0) {
+    sections.push(createSection({
+      title: 'Tissue Reports',
+      type:  SECTION_TYPE.TABLE,
+      data: {
+        columns: ['Date', 'Area', 'Lab', 'N', 'P', 'K'],
+        rows: tissueReports.slice(0, 25).map(r => [
+          r.date ?? '—', r.area ?? '—', r.lab ?? '—',
+          r.n    ?? '—', r.p    ?? '—', r.k ?? '—',
+        ]),
+      },
+    }))
+  }
+
+  if (waterReports.length > 0) {
+    sections.push(createSection({
+      title: 'Water Reports',
+      type:  SECTION_TYPE.TABLE,
+      data: {
+        columns: ['Date', 'Source', 'Lab', 'pH', 'EC', 'SAR'],
+        rows: waterReports.slice(0, 25).map(r => [
+          r.date ?? '—', r.source ?? '—', r.lab ?? '—',
+          r.ph   ?? '—', r.ec     ?? '—', r.sar ?? '—',
+        ]),
+      },
+    }))
+  }
+
+  if (recommendations.length > 0) {
+    sections.push(createSection({
+      title: 'Recommendations',
+      type:  SECTION_TYPE.TABLE,
+      data: {
+        columns: ['Area', 'Priority', 'Summary'],
+        rows: recommendations.slice(0, 25).map(r => [
+          r.area ?? '—', r.priority ?? '—', r.summary ?? '—',
+        ]),
+      },
+    }))
+  }
+
+  return createReport({
+    module:        REPORT_MODULE.AGRONOMY,
+    type:          REPORT_TYPE.NUTRITION_SUMMARY,
+    title,
+    generatedBy:   'plant-nutrition-module',
+    sections,
+    metadata: {
+      dateRange: dateRange ?? null,
+      counts: {
+        soil:   soilReports.length,
+        tissue: tissueReports.length,
+        water:  waterReports.length,
+        recs:   recommendations.length,
+      },
+    },
+    exportFormats: STANDARD_FORMATS,
+  })
+}
+
+// ── Operations: cultural practices history ────────────────────────────────────
+
+// Display labels for practice_type values. Mirrors values produced by the
+// cultural_practices API (practiceType): 'aerification', 'topdressing',
+// 'verticutting', 'rolling', 'sand', 'venting'. Anything outside this set is
+// surfaced under "Other Practices" using its raw practiceType value.
+const PRACTICE_TYPE_LABELS = {
+  aerification: 'Aerification',
+  topdressing:  'Topdressing',
+  verticutting: 'Verticutting',
+  rolling:      'Rolling',
+  sand:         'Sand',
+  venting:      'Venting',
+}
+
+/**
+ * Build a cultural practices history report from the flat practice records
+ * served by /api/cultural-practices (one row per event, keyed by practiceType).
+ * @param {Object[]} practices - cultural_practices records (camelCase API shape)
+ * @param {Object}   [options]
+ * @param {string}   [options.dateRange]
+ * @param {string}   [options.title]
+ */
+export function buildCulturalHistoryReport(practices = [], options = {}) {
+  const { title = 'Cultural Practices History', dateRange } = options
+
+  const byType = {}
+  for (const p of practices) {
+    const k = p?.practiceType ?? 'unspecified'
+    if (!byType[k]) byType[k] = []
+    byType[k].push(p)
+  }
+
+  const total = practices.length
+
+  const summaryFields = {
+    'Total Events': total,
+    'Date Range':   dateRange ?? '—',
+  }
+  for (const [k, list] of Object.entries(byType)) {
+    const label = PRACTICE_TYPE_LABELS[k] ?? k
+    summaryFields[`${label} Events`] = list.length
+  }
+
+  const sections = [
+    createSection({
+      title: 'Summary',
+      type:  SECTION_TYPE.FIELDS,
+      data:  summaryFields,
+    }),
+  ]
+
+  for (const [k, list] of Object.entries(byType)) {
+    if (list.length === 0) continue
+    sections.push(createSection({
+      title: PRACTICE_TYPE_LABELS[k] ?? k,
+      type:  SECTION_TYPE.TABLE,
+      data: {
+        columns: ['Date', 'Area', 'Material', 'Rate', 'Depth', 'Status', 'Recovery'],
+        rows: list.slice(0, 25).map(r => [
+          r.practiceDate    ?? '—',
+          r.targetArea      ?? '—',
+          r.materialUsed    ?? '—',
+          r.materialRate    ?? '—',
+          r.depth           ?? '—',
+          r.status          ?? '—',
+          r.recoveryStatus  ?? '—',
+        ]),
+      },
+    }))
+  }
+
+  return createReport({
+    module:        REPORT_MODULE.OPERATIONS,
+    type:          REPORT_TYPE.CULTURAL_HISTORY,
+    title,
+    generatedBy:   'cultural-practices-module',
+    sections,
+    metadata:      { dateRange: dateRange ?? null, totalEvents: total },
+    exportFormats: STANDARD_FORMATS,
+  })
+}
+
+// ── Disease: full observation log ─────────────────────────────────────────────
+
+/**
+ * Build a full disease observation log report (active + resolved + severity rollup).
+ * Reads the camelCase shape produced by /api/disease — see worker/api/disease.js:
+ * { observedAt, diseaseName, status, severity, location, hole, affectedArea,
+ *   followUpDate, ... }.
+ * @param {Object[]} observations
+ * @param {Object}   [options]
+ * @param {string}   [options.dateRange]
+ * @param {string}   [options.title]
+ */
+export function buildDiseaseLogReport(observations = [], options = {}) {
+  const { title = 'Disease Log', dateRange } = options
+  const active   = observations.filter(o => o.status !== 'resolved')
+  const resolved = observations.filter(o => o.status === 'resolved')
+
+  const bySeverity = {}
+  for (const o of observations) {
+    const k = o.severity ?? 'unspecified'
+    bySeverity[k] = (bySeverity[k] ?? 0) + 1
+  }
+
+  const sections = [
+    createSection({
+      title: 'Summary',
+      type:  SECTION_TYPE.FIELDS,
+      data: {
+        'Total Observations': observations.length,
+        'Active':             active.length,
+        'Resolved':           resolved.length,
+        'Date Range':         dateRange ?? '—',
+      },
+    }),
+  ]
+
+  if (Object.keys(bySeverity).length > 0) {
+    sections.push(createSection({
+      title: 'By Severity',
+      type:  SECTION_TYPE.TABLE,
+      data: {
+        columns: ['Severity', 'Count'],
+        rows:    Object.entries(bySeverity).map(([k, v]) => [k, v]),
+      },
+    }))
+  }
+
+  if (active.length > 0) {
+    sections.push(createSection({
+      title: 'Active Observations',
+      type:  SECTION_TYPE.TABLE,
+      data: {
+        columns: ['Observed', 'Location', 'Disease', 'Severity', 'Status', 'Follow-up'],
+        rows: active.slice(0, 25).map(o => [
+          o.observedAt   ?? '—',
+          o.location     ?? '—',
+          o.diseaseName  ?? '—',
+          o.severity     ?? '—',
+          o.status       ?? '—',
+          o.followUpDate ?? '—',
+        ]),
+      },
+    }))
+  }
+
+  if (resolved.length > 0) {
+    sections.push(createSection({
+      title: 'Resolved Observations',
+      type:  SECTION_TYPE.TABLE,
+      data: {
+        columns: ['Observed', 'Location', 'Disease', 'Severity'],
+        rows: resolved.slice(0, 25).map(o => [
+          o.observedAt  ?? '—',
+          o.location    ?? '—',
+          o.diseaseName ?? '—',
+          o.severity    ?? '—',
+        ]),
+      },
+    }))
+  }
+
+  return createReport({
+    module:        REPORT_MODULE.DISEASE,
+    type:          REPORT_TYPE.DISEASE_LOG,
+    title,
+    generatedBy:   'disease-module',
+    sections,
+    metadata:      { dateRange: dateRange ?? null, observationCount: observations.length },
+    exportFormats: STANDARD_FORMATS,
+  })
+}
+
+// ── Moisture: trend over time ─────────────────────────────────────────────────
+
+/**
+ * Build a moisture trend report from a series of observations.
+ * Reads the camelCase shape produced by /api/moisture — see worker/api/moisture.js:
+ * { observedAt, location, hole, moisturePct, surfaceNote, wiltStress, drySpot, ... }.
+ * @param {Object[]} observations
+ * @param {Object}   [options]
+ * @param {string}   [options.location]   - filter by location (matches observation.location)
+ * @param {string}   [options.dateRange]
+ * @param {string}   [options.title]
+ */
+export function buildMoistureTrendReport(observations = [], options = {}) {
+  const { title = 'Moisture Trend', dateRange, location } = options
+  const filtered = location ? observations.filter(o => o.location === location) : observations
+
+  const values = filtered.map(o => Number(o.moisturePct)).filter(v => Number.isFinite(v))
+  const avg = values.length > 0 ? values.reduce((s, v) => s + v, 0) / values.length : null
+  const min = values.length > 0 ? Math.min(...values) : null
+  const max = values.length > 0 ? Math.max(...values) : null
+
+  const flagged = filtered.filter(o => o.wiltStress || o.drySpot || o.handwaterRec || o.syringeRec)
+
+  const sections = [
+    createSection({
+      title: 'Summary',
+      type:  SECTION_TYPE.FIELDS,
+      data: {
+        'Readings':   filtered.length,
+        'Location':   location  ?? 'All',
+        'Date Range': dateRange ?? '—',
+        'Average %':  avg != null ? avg.toFixed(1) : '—',
+        'Minimum %':  min != null ? min.toFixed(1) : '—',
+        'Maximum %':  max != null ? max.toFixed(1) : '—',
+        'Flagged':    flagged.length,
+      },
+    }),
+  ]
+
+  if (filtered.length > 0) {
+    sections.push(createSection({
+      title: 'Readings',
+      type:  SECTION_TYPE.TABLE,
+      data: {
+        columns: ['Observed', 'Location', 'Hole', 'Moisture %', 'Wilt', 'Dry Spot', 'Handwater', 'Syringe'],
+        rows: filtered.slice(0, 50).map(o => [
+          o.observedAt  ?? '—',
+          o.location    ?? '—',
+          o.hole        ?? '—',
+          o.moisturePct ?? '—',
+          o.wiltStress   ? 'Y' : '—',
+          o.drySpot      ? 'Y' : '—',
+          o.handwaterRec ? 'Y' : '—',
+          o.syringeRec   ? 'Y' : '—',
+        ]),
+      },
+    }))
+  }
+
+  return createReport({
+    module:        REPORT_MODULE.MOISTURE,
+    type:          REPORT_TYPE.MOISTURE_TREND,
+    title,
+    generatedBy:   'moisture-module',
+    sections,
+    metadata: {
+      dateRange:    dateRange ?? null,
+      location:     location  ?? null,
+      readingCount: filtered.length,
+      average:      avg,
+    },
     exportFormats: STANDARD_FORMATS,
   })
 }
