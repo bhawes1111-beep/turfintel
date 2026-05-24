@@ -75,6 +75,90 @@
   border-radius: 999px; padding: 5px 11px; cursor: pointer;
 }
 .recentChip:hover { color: var(--color-text); border-color: var(--color-text-muted); }
+.recentChip[data-active="true"] {
+  background: rgba(74, 158, 74, 0.18);
+  border-color: var(--color-accent);
+  color: var(--color-text);
+}
+
+/* ── Phase 7A.1 location presets (zero-typing primary flow) ─────────────── */
+
+.presetGrid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+}
+@media (max-width: 360px) { .presetGrid { grid-template-columns: repeat(4, 1fr); } }
+
+.presetChip {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 12px 0;
+  cursor: pointer;
+  min-height: 44px;
+  text-align: center;
+}
+.presetChip[data-active="true"] {
+  background: rgba(74, 158, 74, 0.18);
+  border-color: var(--color-accent);
+}
+
+.areaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.areaChip {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 8px 14px;
+  min-height: 36px;
+  cursor: pointer;
+}
+.areaChip[data-active="true"] {
+  background: rgba(74, 158, 74, 0.18);
+  border-color: var(--color-accent);
+}
+
+.otherWrap { display: flex; flex-direction: column; gap: 8px; }
+.linkBtn {
+  align-self: flex-start;
+  font-size: 12px;
+  color: var(--color-accent);
+  background: none;
+  border: none;
+  padding: 4px 0;
+  cursor: pointer;
+}
+.linkBtn:hover { text-decoration: underline; }
+
+.expandLink {
+  align-self: flex-start;
+  margin-top: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-accent);
+  background: none;
+  border: none;
+  padding: 6px 0;
+  cursor: pointer;
+}
+.expandLink:hover { text-decoration: underline; }
+
+.detailsWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
 
 /* Big condition toggles — 2-col grid, large targets. */
 .toggles {

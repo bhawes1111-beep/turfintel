@@ -23,6 +23,10 @@ const ALLOWED_PARENT_TYPES = new Set([
   // Phase 19 — Chemical Import Wizard stores the source label PDF here,
   // keyed to the inventory item id it will be saved against.
   'inventory_label',
+  // Phase 7A.1 — mobile moisture capture may attach a field photo to the
+  // observation row. UI lands in v2; the whitelist is opened now so the
+  // contract is stable.
+  'moisture_observation',
 ])
 
 // Whitelist mirrors what mobile crews are likely to upload. HEIC covers

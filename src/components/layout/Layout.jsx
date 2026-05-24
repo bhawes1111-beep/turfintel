@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import CourseSelector from './CourseSelector'
 import CommandOverlay from '../command/CommandOverlay'
+import MoistureFab from '../moisture/MoistureFab'
 import { Icon } from '../shared/icons'
 import styles from './Layout.module.css'
 
@@ -42,6 +43,7 @@ export default function Layout() {
       </div>
 
       <CommandOverlay />
+      <MoistureFab />
     </div>
   )
 }

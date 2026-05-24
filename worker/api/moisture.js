@@ -21,20 +21,26 @@ function bit(v) { return v ? 1 : 0 }
 function rowToObs(row) {
   if (!row) return null
   return {
-    id:            row.id,
-    courseId:      row.course_id,
-    observedAt:    row.observed_at,
-    observedBy:    row.observed_by,
-    location:      row.location,
-    hole:          row.hole,
-    moisturePct:   row.moisture_pct,
-    surfaceNote:   row.surface_note,
-    wiltStress:    row.wilt_stress === 1,
-    drySpot:       row.dry_spot === 1,
-    handwaterRec:  row.handwater_rec === 1,
-    syringeRec:    row.syringe_rec === 1,
-    notes:         row.notes,
-    createdAt:     row.created_at,
+    id:               row.id,
+    courseId:         row.course_id,
+    observedAt:       row.observed_at,
+    observedBy:       row.observed_by,
+    location:         row.location,
+    hole:             row.hole,
+    moisturePct:      row.moisture_pct,
+    surfaceNote:      row.surface_note,
+    wiltStress:       row.wilt_stress === 1,
+    drySpot:          row.dry_spot === 1,
+    handwaterRec:     row.handwater_rec === 1,
+    syringeRec:       row.syringe_rec === 1,
+    notes:            row.notes,
+    // Phase 7A.1 capture-time provenance. All optional; older rows return null.
+    clientId:         row.client_id         ?? null,
+    clientObservedAt: row.client_observed_at ?? null,
+    lat:              row.lat               ?? null,
+    lng:              row.lng               ?? null,
+    gpsAccuracy:      row.gps_accuracy      ?? null,
+    createdAt:        row.created_at,
   }
 }
 
@@ -98,6 +104,18 @@ export async function createMoisture(env, request) {
     return badRequest('location is required')
   }
 
+  // Phase 7A.1: clientId dedup. If the browser retried a previous submit
+  // (e.g. flaky network on the course), we don't want a duplicate row —
+  // return the prior row so the client's optimistic insert resolves cleanly.
+  const clientId = typeof body.clientId === 'string' && body.clientId.trim() !== ''
+    ? body.clientId.trim() : null
+  if (clientId) {
+    const existing = await env.DB.prepare(
+      'SELECT * FROM moisture_observations WHERE client_id = ?',
+    ).bind(clientId).first()
+    if (existing) return json(rowToObs(existing))
+  }
+
   const id         = body.id ?? generateId('moist')
   const courseId   = resolveCourseId(body)
   const observedAt = body.observedAt ?? new Date().toISOString()
@@ -106,8 +124,9 @@ export async function createMoisture(env, request) {
     INSERT INTO moisture_observations (
       id, course_id, observed_at, observed_by, location, hole,
       moisture_pct, surface_note,
-      wilt_stress, dry_spot, handwater_rec, syringe_rec, notes
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      wilt_stress, dry_spot, handwater_rec, syringe_rec, notes,
+      client_id, client_observed_at, lat, lng, gps_accuracy
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id, courseId, observedAt,
     body.observedBy ?? null,
@@ -117,6 +136,11 @@ export async function createMoisture(env, request) {
     body.surfaceNote ?? null,
     bit(body.wiltStress), bit(body.drySpot), bit(body.handwaterRec), bit(body.syringeRec),
     body.notes ?? null,
+    clientId,
+    typeof body.clientObservedAt === 'string' && body.clientObservedAt ? body.clientObservedAt : null,
+    num(body.lat),
+    num(body.lng),
+    num(body.gpsAccuracy),
   ).run()
 
   return getMoisture(env, id)

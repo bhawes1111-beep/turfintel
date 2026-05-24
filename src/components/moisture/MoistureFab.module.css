@@ -1,0 +1,30 @@
+/* Phase 7A.1 — Mobile moisture FAB. Hidden on desktop (≥ 768px). */
+
+.fab {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .fab {
+    /* Position above iOS/Android safe area; bottom-right thumb zone. */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    right: 16px;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: 1px solid var(--color-accent);
+    background: var(--color-accent);
+    color: #0d1a0d;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    z-index: 900;          /* below modal backdrop (1000), above page chrome */
+    padding: 0;
+  }
+  .fab:active { transform: translateY(1px); }
+}
