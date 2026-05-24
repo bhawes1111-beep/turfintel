@@ -286,14 +286,17 @@ console.log('— Phase 7A.4: moisture photo attachment')
   const sheet = readFileSync('src/components/moisture/MoistureCaptureSheet.jsx', 'utf8')
   assert(/import\s+\{[\s\S]*stagePendingPhoto[\s\S]*\}\s+from/.test(sheet),
                                                 'sheet imports stagePendingPhoto')
-  // The dynamic file picker uses capture="environment" (rear camera) and
-  // accept="image/*" (unsupported browsers fall back to standard picker).
-  assert(/input\.type\s*=\s*['"]file['"]/.test(sheet),
-                                                'sheet creates <input type="file"> dynamically')
-  assert(/input\.accept\s*=\s*['"]image\/\*['"]/.test(sheet),
-                                                'sheet sets accept="image/*"')
-  assert(/input\.capture\s*=\s*['"]environment['"]/.test(sheet),
-                                                'sheet sets capture="environment" (rear camera)')
+  // Phase 7A.6 — picker DOM/camera plumbing moved to the shared
+  // openPhotoPicker helper (see pickPhoto.js); the sheet just delegates.
+  // The capture="environment" + accept="image/*" properties are asserted
+  // in the 7A.6 block below against the helper itself.
+  const pickerSrc = readFileSync('src/utils/media/pickPhoto.js', 'utf8')
+  assert(/input\.type\s*=\s*['"]file['"]/.test(pickerSrc),
+                                                'shared picker creates <input type="file"> dynamically')
+  assert(/input\.accept\s*=\s*['"]image\/\*['"]/.test(pickerSrc),
+                                                'shared picker sets accept="image/*"')
+  assert(/input\.capture\s*=\s*['"]environment['"]/.test(pickerSrc),
+                                                'shared picker sets capture="environment" (rear camera)')
   assert(/stagePendingPhoto\(clientId,\s*file\)/.test(sheet),
                                                 'picked file is staged via stagePendingPhoto')
 
@@ -456,6 +459,91 @@ console.log('— Phase 7A.5: batched attachments + photo chip + viewer')
                                                 'CSS defines .photoChipSmall (Driest variant)')
   assert(/\.priorityTagGroup\b/.test(overviewCss2),
                                                 'CSS defines .priorityTagGroup (chip + tag flex row)')
+}
+
+// ── 6e. Phase 7A.6: add-photo to existing observation ─────────────────────
+console.log('— Phase 7A.6: post-capture photo attach')
+{
+  // Shared picker helper extracted from MoistureCaptureSheet.
+  const picker = readFileSync('src/utils/media/pickPhoto.js', 'utf8')
+  assert(/export\s+function\s+openPhotoPicker/.test(picker),
+                                                'pickPhoto.js exports openPhotoPicker')
+  assert(/input\.capture\s*=\s*['"]environment['"]/.test(picker),
+                                                'openPhotoPicker uses capture="environment"')
+
+  // Sheet was refactored to use the shared helper (no duplicated DOM code).
+  const sheet2 = readFileSync('src/components/moisture/MoistureCaptureSheet.jsx', 'utf8')
+  assert(/import\s+\{\s*openPhotoPicker\s*\}\s+from\s+['"][^'"]*pickPhoto/.test(sheet2),
+                                                'sheet imports openPhotoPicker from shared helper')
+  assert(/openPhotoPicker\(file\s*=>\s*stagePendingPhoto/.test(sheet2),
+                                                'sheet routes picked file to stagePendingPhoto (pre-save staging path)')
+
+  // Store: addPhotoToObservation — direct upload + cache merge + toast.
+  const store2 = readFileSync('src/utils/moisture/moistureStore.js', 'utf8')
+  assert(/export\s+async\s+function\s+addPhotoToObservation/.test(store2),
+                                                'store exports addPhotoToObservation')
+  const addBody = store2.match(/async\s+function\s+addPhotoToObservation[\s\S]*?\n\}/)?.[0]
+  assert(addBody != null,                       'addPhotoToObservation body extractable')
+  if (addBody) {
+    assert(/observationId\.startsWith\(['"]pending-['"]\)/.test(addBody),
+                                                'guards against synthetic pending- ids (must be a real server id)')
+    assert(/parentType:\s*['"]moisture_observation['"]/.test(addBody),
+                                                'uploads under moisture_observation parentType')
+    assert(/parentId:\s*observationId/.test(addBody),
+                                                'uploads parented on the observation id')
+    assert(/attachmentsByParent:\s*nextMap/.test(addBody),
+                                                'hand-merges into the byParent cache (no refetch)')
+    assert(/bridgeToast\(\)\.success\??\.\(['"]Photo attached['"]/.test(addBody),
+                                                'fires the existing "Photo attached" toast')
+  }
+
+  // Overview: empty-state "+ 📷" chip + canEditMoisture gate + click handler.
+  const overview3 = readFileSync('src/pages/Irrigation/tabs/MoistureOverview.jsx', 'utf8')
+  assert(/import\s+\{[^}]*addPhotoToObservation[^}]*\}/.test(overview3),
+                                                'overview imports addPhotoToObservation')
+  assert(/import\s+\{\s*openPhotoPicker\s*\}\s+from\s+['"][^'"]*pickPhoto/.test(overview3),
+                                                'overview imports openPhotoPicker')
+  assert(/import\s+\{\s*useAuth\s*\}/.test(overview3),
+                                                'overview imports useAuth')
+  assert(/can\(['"]canEditMoisture['"]\)/.test(overview3),
+                                                'overview resolves canEditMoisture from auth')
+  // The empty-state chip renders only when count is 0, user can edit, and
+  // row is not pending. All three guards must be present.
+  assert(/canEditMoisture[\s\S]*attachmentsByParent\.get\(o\.id\)\?\.length\s*\?\?\s*0\)\s*===\s*0/.test(overview3),
+                                                'empty-state chip gated on canEditMoisture AND count === 0')
+  assert(/!o\._pending[\s\S]*canEditMoisture[\s\S]*photoChipEmpty/.test(overview3),
+                                                'empty-state chip never renders for pending rows')
+  assert(/className=\{styles\.photoChipEmpty\}/.test(overview3),
+                                                'empty-state chip uses .photoChipEmpty class')
+  assert(/handleAddPhoto\(o\)/.test(overview3),
+                                                'empty-state chip click routes to handleAddPhoto')
+  // Click handler routes the file to addPhotoToObservation.
+  assert(/openPhotoPicker\(file\s*=>\s*\{[\s\S]*addPhotoToObservation\(observation\.id,\s*file\)/.test(overview3),
+                                                'handleAddPhoto wires the picker to addPhotoToObservation(observation.id, file)')
+
+  // Empty-state chip CSS contract.
+  const overviewCss3 = readFileSync('src/pages/Irrigation/tabs/MoistureOverview.module.css', 'utf8')
+  assert(/\.photoChipEmpty\b/.test(overviewCss3),
+                                                'CSS defines .photoChipEmpty')
+  assert(/\.photoChipEmpty\b[\s\S]*?dashed/.test(overviewCss3),
+                                                '.photoChipEmpty uses a dashed border (lower visual weight than view chip)')
+
+  // Viewer: "+ Add another" button + adding state + canEdit rename.
+  const viewer2 = readFileSync('src/components/moisture/MoisturePhotoViewer.jsx', 'utf8')
+  assert(/import\s+\{[^}]*addPhotoToObservation[^}]*\}/.test(viewer2),
+                                                'viewer imports addPhotoToObservation')
+  assert(/import\s+\{\s*openPhotoPicker\s*\}/.test(viewer2),
+                                                'viewer imports openPhotoPicker from shared helper')
+  assert(/\+ Add another/.test(viewer2),       'viewer renders "+ Add another" label')
+  assert(/handleAddAnother/.test(viewer2),     'viewer defines handleAddAnother')
+  // Same permission gate as Delete.
+  assert(/canEdit/.test(viewer2),              'viewer uses canEdit (gates both add + delete)')
+  // After add success, jump cursor to the new (prepended → index 0) photo.
+  assert(/setIndex\(0\)/.test(viewer2),        'viewer advances cursor to the new photo after add')
+
+  // Viewer CSS contract.
+  const viewerCss2 = readFileSync('src/components/moisture/MoisturePhotoViewer.module.css', 'utf8')
+  assert(/\.addBtn\b/.test(viewerCss2),        'CSS defines .addBtn')
 }
 
 // ── 7. Reports + Display Board compatibility ───────────────────────────────

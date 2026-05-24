@@ -110,6 +110,30 @@
 }
 .photoChip:active { transform: translateY(1px); }
 
+/* Phase 7A.6 — empty-state "+ 📷" chip. Lower visual weight than the
+   view chip (no fill, dashed border, muted text) so it reads as
+   "available action" not "content here". Same footprint so the layout
+   doesn't shift once the user adds a photo and the chip swaps to
+   .photoChip. */
+.photoChipEmpty {
+  font-size: 11px; font-weight: 700;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: 1px dashed rgba(74, 158, 74, 0.45);
+  border-radius: 4px;
+  padding: 4px 9px;
+  cursor: pointer;
+  line-height: 1;
+  display: inline-flex; align-items: center; gap: 4px;
+  white-space: nowrap;
+}
+.photoChipEmpty:hover {
+  background: rgba(74, 158, 74, 0.10);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+.photoChipEmpty:active { transform: translateY(1px); }
+
 .priorityTagGroup {
   display: inline-flex; align-items: center; gap: 8px;
   white-space: nowrap;

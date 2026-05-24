@@ -97,12 +97,34 @@
 /* ── Footer action bar ────────────────────────────────────────────────── */
 
 .footer {
-  display: flex; justify-content: flex-end; align-items: center;
+  display: flex; justify-content: flex-end; align-items: center; gap: 8px;
   padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--color-border);
   flex-shrink: 0;
   min-height: 60px;
+  flex-wrap: wrap;       /* phone widths: wrap before truncating */
 }
+
+/* Phase 7A.6 — "+ Add another" action. Same family as the capture sheet's
+   "+ Log another" (ghost green) so the user reads it as "additive, safe"
+   distinct from the destructive red Delete sitting to its right. */
+.addBtn {
+  font-size: 14px; font-weight: 600;
+  color: var(--color-accent);
+  background: transparent;
+  border: 1px solid rgba(74, 158, 74, 0.5);
+  border-radius: 8px;
+  padding: 10px 14px;
+  min-height: 44px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.addBtn:hover:not(:disabled) {
+  background: rgba(74, 158, 74, 0.10);
+  border-color: var(--color-accent);
+}
+.addBtn:active:not(:disabled) { transform: translateY(1px); }
+.addBtn:disabled { opacity: 0.6; cursor: default; }
 
 .deleteBtn {
   font-size: 14px; font-weight: 600;

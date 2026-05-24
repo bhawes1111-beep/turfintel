@@ -22,38 +22,16 @@ import {
   useMoistureData,
 } from '../../utils/moisture/moistureStore'
 import { useToast } from '../../utils/feedback/toastContext'
+import { openPhotoPicker } from '../../utils/media/pickPhoto'
 import styles from './LogMoistureButton.module.css'
 
-// Phase 7A.4 — Open the rear camera on tap. capture="environment" is the
-// spec-compliant hint for the back camera; unsupported browsers degrade
-// to the standard file picker (same UX as the existing DailyBriefing
-// upload path, which never sets capture). Created on-demand so the picker
-// works even after the capture sheet has closed (toast outlives the sheet).
+// Phase 7A.4 — Open the rear camera, stage the picked photo against this
+// row's clientId. Phase 7A.6: the actual DOM/camera plumbing lives in the
+// shared openPhotoPicker helper; this wrapper just routes the file to the
+// pre-save staging path (vs the post-save direct-attach path used by the
+// row chip + viewer).
 function pickPhotoForClientId(clientId) {
-  const input = document.createElement('input')
-  input.type        = 'file'
-  input.accept      = 'image/*'
-  input.capture     = 'environment'
-  input.style.position = 'fixed'
-  input.style.opacity  = '0'
-  input.style.pointerEvents = 'none'
-  input.onchange = () => {
-    const file = input.files && input.files[0]
-    if (file) stagePendingPhoto(clientId, file)
-    // Detach the input on next tick so the change event fully fires first.
-    setTimeout(() => { try { input.remove() } catch { /* noop */ } }, 0)
-  }
-  // Some browsers require the input to be in the DOM for the click to open
-  // the picker; attach it briefly. Removed in onchange (or via cancel below).
-  document.body.appendChild(input)
-  // If the user cancels the picker, browsers don't reliably fire any event;
-  // a one-shot focus listener cleans up after focus returns to the window.
-  const cleanup = () => {
-    setTimeout(() => { try { input.remove() } catch { /* noop */ } }, 1500)
-    window.removeEventListener('focus', cleanup)
-  }
-  window.addEventListener('focus', cleanup)
-  input.click()
+  openPhotoPicker(file => stagePendingPhoto(clientId, file))
 }
 
 // ── Presets ─────────────────────────────────────────────────────────────────

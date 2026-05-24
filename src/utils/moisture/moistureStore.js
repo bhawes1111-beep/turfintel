@@ -425,6 +425,48 @@ export async function deleteMoistureAttachment(attachmentId, observationId) {
   setState({ attachmentsByParent: nextMap })
 }
 
+// ── Phase 7A.6: post-capture photo attach ─────────────────────────────────
+//
+// Phase 7A.4 staged photos before the observation's server id arrived
+// (clientId-keyed). This path is for rows that already exist on the server
+// — the row's `id` is known, so we skip staging and upload directly.
+// Hand-merges the saved attachment into the byParent cache so the chip
+// appears immediately.
+//
+// Used by: the "+ 📷" empty-state chip on Moisture Overview rows, and the
+// "+ Add another" button in the viewer footer. Both call this with the
+// row's REAL id (never a synthetic pending- id).
+
+/**
+ * Upload a photo and attach it to an existing moisture observation row.
+ * Returns the saved attachment on success. Throws on failure so the
+ * caller can show a row-local error toast (the store doesn't dictate UX).
+ *
+ * @param {string} observationId  - the row's real (post-server) id
+ * @param {File}   file
+ * @returns {Promise<Object>}  the saved attachment
+ */
+export async function addPhotoToObservation(observationId, file) {
+  if (!observationId || observationId.startsWith('pending-')) {
+    throw new Error('Photo can only be added once the observation has been saved.')
+  }
+  if (!file) throw new Error('No file provided.')
+  const saved = await uploadAttachment({
+    parentType: 'moisture_observation',
+    parentId:   observationId,
+    file,
+  })
+  // Hand-merge into the cache so the chip updates without a refetch.
+  const nextMap = new Map(state.attachmentsByParent)
+  const list    = nextMap.get(observationId) ?? []
+  nextMap.set(observationId, [saved, ...list])
+  setState({ attachmentsByParent: nextMap })
+  // Same toast as the 7A.4 staged-upload success path — consistent
+  // confirmation regardless of how the photo got attached.
+  bridgeToast().success?.('Photo attached', 2000)
+  return saved
+}
+
 // ── React hook ────────────────────────────────────────────────────────────
 
 function subscribe(cb) {

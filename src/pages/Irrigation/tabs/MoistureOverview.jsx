@@ -12,9 +12,13 @@ import {
   retryPendingObservation,
   retryPendingPhoto,
   dismissPendingObservation,
+  addPhotoToObservation,
 } from '../../../utils/moisture/moistureStore'
 import { useWaterBalance } from '../../../utils/irrigation/waterBalanceStore'
 import { useWeather } from '../../../utils/weather/useWeather'
+import { useAuth } from '../../../context/AuthContext'
+import { useToast } from '../../../utils/feedback/toastContext'
+import { openPhotoPicker } from '../../../utils/media/pickPhoto'
 import { computeWaterBalance } from '../../../utils/irrigation/waterBalance'
 import { computeMoistureIntel, syringeAwareness } from '../../../utils/moisture/moistureIntel'
 import LogMoistureButton from '../../../components/moisture/LogMoistureButton'
@@ -64,6 +68,22 @@ export default function MoistureOverview() {
   const viewerAttachments = viewerObs
     ? (attachmentsByParent.get(viewerObs.id) ?? [])
     : []
+
+  // Phase 7A.6 — "+ 📷" empty-state chip lets the user attach a photo to a
+  // row that doesn't have one yet. Gated on canEditMoisture so read_only
+  // and crew never see it (their FAB is hidden too, same permission floor).
+  const { can } = useAuth()
+  const toast   = useToast()
+  const canEditMoisture = can('canEditMoisture')
+
+  function handleAddPhoto(observation) {
+    if (!observation || !observation.id || observation.id.startsWith('pending-')) return
+    openPhotoPicker(file => {
+      addPhotoToObservation(observation.id, file).catch(err => {
+        toast?.error?.(`Photo upload failed: ${err.message ?? err}`)
+      })
+    })
+  }
 
   function handleDelete(id) { deleteMoistureObservation(id).catch(() => {}) }
 
@@ -214,6 +234,22 @@ export default function MoistureOverview() {
                           title="View photos"
                         >
                           📷 {attachmentsByParent.get(o.id).length}
+                        </button>
+                      )}
+                      {/* Phase 7A.6 — empty-state attach chip. Only when
+                          the row has 0 photos AND the user can edit
+                          moisture. Same slot as the view chip so the row
+                          layout doesn't shift once a photo lands. */}
+                      {!o._pending
+                        && canEditMoisture
+                        && (attachmentsByParent.get(o.id)?.length ?? 0) === 0 && (
+                        <button
+                          type="button"
+                          className={styles.photoChipEmpty}
+                          onClick={() => handleAddPhoto(o)}
+                          title="Add a photo"
+                        >
+                          + 📷
                         </button>
                       )}
                       {/* Observation-level retry (7A.2): row hasn't been
