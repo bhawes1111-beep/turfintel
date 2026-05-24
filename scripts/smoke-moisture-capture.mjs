@@ -123,13 +123,23 @@ console.log('— src/components/moisture/MoistureCaptureSheet.jsx')
   assert(/import\s+\{[\s\S]*submitMoistureObservation[\s\S]*\}\s+from/.test(sheet),
                                                                      'sheet imports submitMoistureObservation')
   assert(!/createMoistureObservation/.test(sheet),                   'sheet does NOT call legacy createMoistureObservation')
-  // handleSave should not be async — closing the modal must not wait on network.
-  const saveMatch = sheet.match(/function\s+handleSave[\s\S]*?\n\s\s\}/)
+  // The submit path must not be async — closing the modal must not wait on
+  // network. Phase 7A.3: handleSave delegates to doSubmit which calls
+  // submitMoistureObservation. Assert both bodies stay sync + no `await`.
+  const submitFnMatch = sheet.match(/function\s+doSubmit\s*\(\s*\)[\s\S]*?\n\s\s\}/)
+  assert(submitFnMatch != null,                                      'doSubmit body extractable')
+  if (submitFnMatch) {
+    assert(!/^\s*async\s+function\s+doSubmit/.test(submitFnMatch[0]), 'doSubmit is NOT async (sync close)')
+    assert(!/\bawait\b/.test(submitFnMatch[0]),                       'doSubmit has no await (no network wait)')
+    assert(/submitMoistureObservation\(/.test(submitFnMatch[0]),     'doSubmit fires submitMoistureObservation')
+  }
+  // handleSave still closes the sheet via onClose after a successful submit.
+  const saveMatch = sheet.match(/function\s+handleSave\s*\(\s*\)[\s\S]*?\n\s\s\}/)
   assert(saveMatch != null,                                          'handleSave body extractable')
   if (saveMatch) {
     assert(!/^\s*async\s+function\s+handleSave/.test(saveMatch[0]),  'handleSave is NOT async (sync close)')
     assert(!/\bawait\b/.test(saveMatch[0]),                           'handleSave has no await (no network wait)')
-    assert(/submitMoistureObservation\(/.test(saveMatch[0]),         'handleSave fires submitMoistureObservation')
+    assert(/doSubmit\(\)/.test(saveMatch[0]),                         'handleSave delegates to doSubmit')
     assert(/onClose\(\)/.test(saveMatch[0]),                          'handleSave closes modal synchronously')
   }
 
@@ -138,6 +148,34 @@ console.log('— src/components/moisture/MoistureCaptureSheet.jsx')
   for (const p of ['Practice Green', 'Putting Green', 'Driving Range']) {
     assert(sheet.includes(`'${p}'`),                                  `sheet includes preset "${p}"`)
   }
+
+  // ── Phase 7A.3 — Save & log another repeat-entry path ──────────────────
+  assert(/handleSaveAndContinue/.test(sheet),                         'sheet defines handleSaveAndContinue')
+  assert(/\+ Log another/.test(sheet),                                'sheet renders "+ Log another" button')
+  assert(/onClick=\{handleSaveAndContinue\}/.test(sheet),             'log-another button is wired to handleSaveAndContinue')
+  // Shared validate/submit so Save and "Log another" can't diverge.
+  assert(/function\s+doSubmit\s*\(/.test(sheet),                      'shared doSubmit() exists')
+  // Save still routes through doSubmit + onClose (close-on-success preserved).
+  const saveBody = sheet.match(/function\s+handleSave\s*\(\s*\)[\s\S]*?\n\s\s\}/)?.[0]
+  assert(saveBody != null && /doSubmit\(\)/.test(saveBody) && /onClose\(\)/.test(saveBody),
+                                                                     'handleSave still routes through doSubmit + onClose')
+  // handleSaveAndContinue clears flags + moisture + note but NOT location.
+  const contBody = sheet.match(/function\s+handleSaveAndContinue\s*\([\s\S]*?\n\s\s\}/)?.[0]
+  assert(contBody != null,                                           'handleSaveAndContinue body extractable')
+  if (contBody) {
+    assert(/setFlags\(\{\}\)/.test(contBody),                         'continue clears flags')
+    assert(/setMoisture\(''\)/.test(contBody),                        'continue clears moisture %')
+    assert(/setNote\(''\)/.test(contBody),                            'continue clears note')
+    assert(!/setLocation\(/.test(contBody),                           'continue does NOT clear location (key UX guarantee)')
+    assert(!/onClose\(/.test(contBody),                               'continue does NOT close the sheet')
+    assert(!/^\s*async\s+function\s+handleSaveAndContinue/.test(contBody),
+                                                                     'continue is sync (no network wait)')
+    assert(!/\bawait\b/.test(contBody),                               'continue has no await (no network block before next capture)')
+  }
+
+  // CSS must define the continue button class.
+  const sheetCss = readFileSync('src/components/moisture/LogMoistureButton.module.css', 'utf8')
+  assert(/\.continueBtn\b/.test(sheetCss),                           'CSS defines .continueBtn')
 
   // The primary flow must NOT auto-focus a text input (that opens the keyboard).
   assert(!/ref={otherInputRef}[\s\S]*autoFocus/.test(sheet),         'sheet does not autoFocus the "Other" text input')

@@ -192,6 +192,7 @@
 .footer {
   display: flex; justify-content: flex-end; gap: 8px;
   padding: 12px 16px; border-top: 1px solid var(--color-border);
+  flex-wrap: wrap;     /* on narrow phones the 3-button row wraps cleanly */
 }
 .cancelBtn {
   font-size: 14px; color: var(--color-text-muted);
@@ -199,10 +200,28 @@
   border-radius: 8px; padding: 10px 16px; cursor: pointer; min-height: 44px;
 }
 .cancelBtn:hover:not(:disabled) { color: var(--color-text); }
+
+/* Phase 7A.3 — "Save & log another" secondary action. Same green family as
+   Save so visually grouped as a save-y action, but ghost-style so Save
+   remains the obvious primary. Sits between Cancel and Save in the footer. */
+.continueBtn {
+  font-size: 14px; font-weight: 600;
+  color: var(--color-accent);
+  background: transparent;
+  border: 1px solid rgba(74, 158, 74, 0.5);
+  border-radius: 8px; padding: 10px 14px; cursor: pointer; min-height: 44px;
+  white-space: nowrap;
+}
+.continueBtn:hover:not(:disabled) {
+  background: rgba(74, 158, 74, 0.10);
+  border-color: var(--color-accent);
+}
+.continueBtn:active:not(:disabled) { transform: translateY(1px); }
+
 .saveBtn {
   font-size: 14px; font-weight: 600; color: #0d1a0d;
   background: var(--color-accent); border: 1px solid var(--color-accent);
   border-radius: 8px; padding: 10px 20px; cursor: pointer; min-height: 44px;
 }
 .saveBtn:hover:not(:disabled) { background: var(--color-accent-hover); }
-.saveBtn:disabled, .cancelBtn:disabled { opacity: 0.6; cursor: default; }
+.saveBtn:disabled, .cancelBtn:disabled, .continueBtn:disabled { opacity: 0.6; cursor: default; }

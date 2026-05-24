@@ -89,11 +89,16 @@ export default function MoistureCaptureSheet({ onClose, recentLocations = [] }) 
     [recentLocations, presetSet],
   )
 
-  function handleSave() {
+  // Phase 7A.3 — shared validate+submit, so Save and "Log another" route
+  // through identical logic. Returns true on success so the caller can
+  // decide whether to close the sheet (Save) or just clear the row inputs
+  // (Log another). Never throws — validation failures set the inline error
+  // and return false; submit itself is fire-and-forget via the store wrapper.
+  function doSubmit() {
     const finalLocation = otherOpen ? otherText.trim() : (location ?? '')
     if (!finalLocation) {
       setError('Pick a location.')
-      return
+      return false
     }
     const anyFlag = FLAGS.some(f => flags[f.key])
     const moistureNum = moisture.trim() !== '' ? Number(moisture) : null
@@ -101,7 +106,7 @@ export default function MoistureCaptureSheet({ onClose, recentLocations = [] }) 
     // a measured %, or a free-text note all count.
     if (!anyFlag && moistureNum == null && note.trim() === '') {
       setError('Tap at least one condition pill.')
-      return
+      return false
     }
 
     submitMoistureObservation({
@@ -116,7 +121,25 @@ export default function MoistureCaptureSheet({ onClose, recentLocations = [] }) 
     })
 
     toast?.success?.(`Logged ${finalLocation}`)
-    onClose()
+    return true
+  }
+
+  function handleSave() {
+    if (doSubmit()) onClose()
+  }
+
+  // Save & log another: submit, keep the sheet open + location selected,
+  // clear everything else so the next observation is one location-confirm-
+  // (already selected) plus one condition-pill tap away. Targets ≤ 3s per
+  // repeat capture during a walking-greens run.
+  function handleSaveAndContinue() {
+    if (!doSubmit()) return
+    setFlags({})
+    setMoisture('')
+    setNote('')
+    setError(null)
+    // Keep `location`, `otherOpen`, `otherText`, `showDetails` as-is so the
+    // user doesn't lose context between captures.
   }
 
   return createPortal(
@@ -281,6 +304,13 @@ export default function MoistureCaptureSheet({ onClose, recentLocations = [] }) 
             onClick={onClose}
           >
             Cancel
+          </button>
+          <button
+            className={styles.continueBtn}
+            onClick={handleSaveAndContinue}
+            title="Save this observation and log another at the same location"
+          >
+            + Log another
           </button>
           <button
             className={styles.saveBtn}
