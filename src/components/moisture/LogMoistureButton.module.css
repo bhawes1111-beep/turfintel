@@ -72,11 +72,15 @@
 .recentChip {
   font-size: 12px; color: var(--color-text-muted);
   background: transparent; border: 1px solid var(--color-border);
-  border-radius: 999px; padding: 5px 11px; cursor: pointer;
+  border-radius: 999px; padding: 8px 12px; cursor: pointer;
+  /* Phase 7A.3 — confidently thumb-tappable. */
+  min-height: 36px;
 }
 .recentChip:hover { color: var(--color-text); border-color: var(--color-text-muted); }
 .recentChip[data-active="true"] {
-  background: rgba(74, 158, 74, 0.18);
+  /* Phase 7A.3 — sunlight contrast: 0.18 → 0.32 alpha so the selected
+     chip stays readable on a green at midday. */
+  background: rgba(74, 158, 74, 0.32);
   border-color: var(--color-accent);
   color: var(--color-text);
 }
@@ -103,8 +107,13 @@
   text-align: center;
 }
 .presetChip[data-active="true"] {
-  background: rgba(74, 158, 74, 0.18);
+  /* Phase 7A.3 — sunlight contrast: 0.18 → 0.32 alpha so the selected
+     chip stays readable on a green at midday. */
+  background: rgba(74, 158, 74, 0.32);
   border-color: var(--color-accent);
+  border-width: 2px;
+  /* Compensate for the +1px border so layout doesn't shift on activation. */
+  padding-block: calc(var(--chip-pad-y, 12px) - 1px);
 }
 
 .areaRow {
@@ -120,13 +129,19 @@
   background: var(--color-bg);
   border: 1px solid var(--color-border);
   border-radius: 999px;
-  padding: 8px 14px;
-  min-height: 36px;
+  padding: 10px 16px;
+  /* Phase 7A.3 — bumped from 36 → 44px to match recommended thumb-tap floor. */
+  min-height: 44px;
   cursor: pointer;
 }
 .areaChip[data-active="true"] {
-  background: rgba(74, 158, 74, 0.18);
+  /* Phase 7A.3 — sunlight contrast: 0.18 → 0.32 alpha so the selected
+     chip stays readable on a green at midday. */
+  background: rgba(74, 158, 74, 0.32);
   border-color: var(--color-accent);
+  border-width: 2px;
+  /* Compensate for the +1px border so layout doesn't shift on activation. */
+  padding-block: calc(var(--chip-pad-y, 12px) - 1px);
 }
 
 .otherWrap { display: flex; flex-direction: column; gap: 8px; }
@@ -179,7 +194,9 @@
 }
 .toggleIcon { font-size: 18px; }
 .toggle[data-active="true"] {
-  background: rgba(74, 158, 74, 0.18);
+  /* Phase 7A.3 — sunlight contrast: 0.18 → 0.32 alpha so the selected
+     chip stays readable on a green at midday. */
+  background: rgba(74, 158, 74, 0.32);
   border-color: var(--color-accent);
   color: var(--color-text);
 }
@@ -191,7 +208,11 @@
 
 .footer {
   display: flex; justify-content: flex-end; gap: 8px;
-  padding: 12px 16px; border-top: 1px solid var(--color-border);
+  /* Phase 7A.3 — add iOS home-indicator safe-area buffer so Save isn't
+     cramped against the bottom edge on iPhones. env() resolves to 0 on
+     non-notched devices, so this is a no-op there. */
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--color-border);
   flex-wrap: wrap;     /* on narrow phones the 3-button row wraps cleanly */
 }
 .cancelBtn {

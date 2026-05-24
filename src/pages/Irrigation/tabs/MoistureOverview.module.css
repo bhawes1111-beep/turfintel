@@ -109,15 +109,21 @@
 }
 
 .retryBadge {
-  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px;
-  color: #fca5a5;
-  background: rgba(239, 68, 68, 0.14);
-  border: 1px solid rgba(239, 68, 68, 0.4);
-  padding: 3px 9px;       /* slightly larger than badges — thumb-tappable */
+  /* Phase 7A.3 — outdoor visibility + thumb-confidence pass:
+     - bg alpha 0.14 → 0.28, border alpha 0.4 → 0.6 (stronger red on a bright
+       screen washes out far less)
+     - text from #fca5a5 → #fecaca (brighter, higher contrast on red bg)
+     - min-height 22 → 36px and padding bumped — confidently tappable
+       without misfires. */
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px;
+  color: #fecaca;
+  background: rgba(239, 68, 68, 0.28);
+  border: 1px solid rgba(239, 68, 68, 0.6);
+  padding: 8px 12px;
   border-radius: 4px;
-  min-height: 22px;
+  min-height: 36px;
   cursor: pointer;
   line-height: 1;
 }
-.retryBadge:hover { background: rgba(239, 68, 68, 0.22); }
+.retryBadge:hover { background: rgba(239, 68, 68, 0.38); }
 .retryBadge:active { transform: translateY(1px); }
