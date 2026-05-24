@@ -4,9 +4,10 @@
 // + the weather/water-balance context. Operational decision support, not
 // analytics — honest empty/partial states, no invented precision.
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
   useMoistureData,
+  useMoistureAttachments,
   deleteMoistureObservation,
   retryPendingObservation,
   retryPendingPhoto,
@@ -17,6 +18,7 @@ import { useWeather } from '../../../utils/weather/useWeather'
 import { computeWaterBalance } from '../../../utils/irrigation/waterBalance'
 import { computeMoistureIntel, syringeAwareness } from '../../../utils/moisture/moistureIntel'
 import LogMoistureButton from '../../../components/moisture/LogMoistureButton'
+import MoisturePhotoViewer from '../../../components/moisture/MoisturePhotoViewer'
 import styles from './MoistureOverview.module.css'
 
 const PRIORITY_COLOR = {
@@ -44,12 +46,24 @@ const FLAG_BADGES = [
 
 export default function MoistureOverview() {
   const { observations, loading, error } = useMoistureData()
+  // Phase 7A.5 — single batched lookup for every moisture-observation
+  // photo attached for the selected course. O(1) per-row chip rendering.
+  const { byParent: attachmentsByParent } = useMoistureAttachments()
   const { balance } = useWaterBalance()
   const { current } = useWeather()
 
   const wb    = useMemo(() => computeWaterBalance(balance), [balance])
   const intel = useMemo(() => computeMoistureIntel(observations, wb), [observations, wb])
   const syringe = useMemo(() => syringeAwareness(current, wb), [current, wb])
+
+  // Phase 7A.5 — viewer is opened by tapping a chip; carries the observation
+  // whose photos to render. The viewer reads attachments from the same
+  // byParent map (kept fresh by useMoistureAttachments), so a delete updates
+  // both the chip and the viewer immediately.
+  const [viewerObs, setViewerObs] = useState(null)
+  const viewerAttachments = viewerObs
+    ? (attachmentsByParent.get(viewerObs.id) ?? [])
+    : []
 
   function handleDelete(id) { deleteMoistureObservation(id).catch(() => {}) }
 
@@ -99,24 +113,42 @@ export default function MoistureOverview() {
           <div className={styles.section}>
             <p className={styles.sectionLabel}>Handwater Priorities</p>
             <ul className={styles.list}>
-              {intel.byLocation.map(loc => (
-                <li key={loc.location} className={styles.priorityItem} data-priority={loc.priority}>
-                  <span className={styles.priorityDot} style={{ background: PRIORITY_COLOR[loc.priority] }} />
-                  <div className={styles.priorityBody}>
-                    <div className={styles.priorityTop}>
-                      <span className={styles.locName}>{loc.location}</span>
-                      <span className={styles.priorityTag} style={{ color: PRIORITY_COLOR[loc.priority] }}>
-                        {loc.priority}
-                      </span>
+              {intel.byLocation.map(loc => {
+                // Phase 7A.5 — chip ties this priority row to the latest
+                // observation's photos (intel groups by location; loc.latest
+                // is the newest matching observation row).
+                const photoCount = (attachmentsByParent.get(loc.latest?.id)?.length ?? 0)
+                return (
+                  <li key={loc.location} className={styles.priorityItem} data-priority={loc.priority}>
+                    <span className={styles.priorityDot} style={{ background: PRIORITY_COLOR[loc.priority] }} />
+                    <div className={styles.priorityBody}>
+                      <div className={styles.priorityTop}>
+                        <span className={styles.locName}>{loc.location}</span>
+                        <span className={styles.priorityTagGroup}>
+                          {photoCount > 0 && (
+                            <button
+                              type="button"
+                              className={styles.photoChip}
+                              onClick={() => setViewerObs(loc.latest)}
+                              title="View photos"
+                            >
+                              📷 {photoCount}
+                            </button>
+                          )}
+                          <span className={styles.priorityTag} style={{ color: PRIORITY_COLOR[loc.priority] }}>
+                            {loc.priority}
+                          </span>
+                        </span>
+                      </div>
+                      <div className={styles.priorityWhy}>
+                        {loc.why}
+                        {loc.moisturePct != null && ` · ${loc.moisturePct}% VWC`}
+                        {` · ${fmtAgo(loc.observedAt)}`}
+                      </div>
                     </div>
-                    <div className={styles.priorityWhy}>
-                      {loc.why}
-                      {loc.moisturePct != null && ` · ${loc.moisturePct}% VWC`}
-                      {` · ${fmtAgo(loc.observedAt)}`}
-                    </div>
-                  </div>
-                </li>
-              ))}
+                  </li>
+                )
+              })}
             </ul>
           </div>
 
@@ -125,12 +157,28 @@ export default function MoistureOverview() {
             <div className={styles.section}>
               <p className={styles.sectionLabel}>Driest Areas (measured)</p>
               <div className={styles.driestRow}>
-                {intel.driest.map(d => (
-                  <div key={d.location} className={styles.driestCard}>
-                    <span className={styles.driestVal}>{d.moisturePct}%</span>
-                    <span className={styles.driestLoc}>{d.location}</span>
-                  </div>
-                ))}
+                {intel.driest.map(d => {
+                  // Phase 7A.5 — driest entries are projections of
+                  // byLocation, so d.latest carries the newest observation
+                  // row id (same lookup as Priorities).
+                  const photoCount = (attachmentsByParent.get(d.latest?.id)?.length ?? 0)
+                  return (
+                    <div key={d.location} className={styles.driestCard}>
+                      <span className={styles.driestVal}>{d.moisturePct}%</span>
+                      <span className={styles.driestLoc}>{d.location}</span>
+                      {photoCount > 0 && (
+                        <button
+                          type="button"
+                          className={styles.photoChipSmall}
+                          onClick={() => setViewerObs(d.latest)}
+                          title="View photos"
+                        >
+                          📷 {photoCount}
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )}
@@ -154,6 +202,20 @@ export default function MoistureOverview() {
                       {FLAG_BADGES.filter(([k]) => o[k]).map(([k, label]) => (
                         <span key={k} className={styles.obsBadge}>{label}</span>
                       ))}
+                      {/* Phase 7A.5 — tap to open the photo viewer. Chip
+                          only renders if this row has ≥1 attachment in the
+                          cached byParent map (pending rows have a synthetic
+                          id and never match). */}
+                      {!o._pending && (attachmentsByParent.get(o.id)?.length ?? 0) > 0 && (
+                        <button
+                          type="button"
+                          className={styles.photoChip}
+                          onClick={() => setViewerObs(o)}
+                          title="View photos"
+                        >
+                          📷 {attachmentsByParent.get(o.id).length}
+                        </button>
+                      )}
                       {/* Observation-level retry (7A.2): row hasn't been
                           successfully saved yet. */}
                       {o._pending && o._error && (
@@ -200,6 +262,11 @@ export default function MoistureOverview() {
           </div>
         </>
       )}
+      <MoisturePhotoViewer
+        observation={viewerObs}
+        attachments={viewerAttachments}
+        onClose={() => setViewerObs(null)}
+      />
     </div>
   )
 }

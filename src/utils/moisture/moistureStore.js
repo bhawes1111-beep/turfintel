@@ -11,7 +11,7 @@ import {
   subscribeCourseChange,
   getSelectedCourseId,
 } from '../courses/courseStore'
-import { uploadAttachment } from '../attachments/attachmentsStore'
+import { uploadAttachment, deleteAttachment } from '../attachments/attachmentsStore'
 import { bridgeToast } from '../feedback/toastBridge'
 
 const API = '/api/moisture'
@@ -21,6 +21,13 @@ let state = {
   loading:      true,
   error:        null,
   lastFetch:    null,
+  // Phase 7A.5 — batched attachment cache. ONE GET /api/attachments
+  // ?parentType=moisture_observation returns every active moisture photo
+  // for the course; we group them by parent_id once so per-row lookup is
+  // O(1) and the page never fans out to N parallel requests.
+  attachmentsByParent: new Map(),  // observationId → Attachment[]
+  attachmentsLoading:  true,
+  attachmentsError:    null,
 }
 
 // Phase 7A.4 — module-scope (NOT React state) staging map for photos picked
@@ -60,7 +67,33 @@ export async function refreshMoisture(opts = {}) {
   }
 }
 
-subscribeCourseChange(() => { if (hasBooted) refreshMoisture() })
+// Phase 7A.5 — single GET that returns every active moisture-observation
+// attachment for the course. We group by parent_id so per-row chip lookups
+// are O(1) and the page never fans out to N parallel /api/attachments calls.
+// Worker endpoint already supports the parentType-only query — no backend
+// change needed; see worker/api/attachments.js listAttachments.
+export async function refreshMoistureAttachments() {
+  setState({ attachmentsLoading: true, attachmentsError: null })
+  try {
+    const url = withCourseScope('/api/attachments') + '&parentType=moisture_observation'
+    const list = await fetchJSON(url)
+    const byParent = new Map()
+    for (const att of list) {
+      const arr = byParent.get(att.parentId) ?? []
+      arr.push(att)
+      byParent.set(att.parentId, arr)
+    }
+    setState({ attachmentsByParent: byParent, attachmentsLoading: false, attachmentsError: null })
+  } catch (err) {
+    setState({ attachmentsLoading: false, attachmentsError: err.message })
+  }
+}
+
+subscribeCourseChange(() => {
+  if (!hasBooted) return
+  refreshMoisture()
+  refreshMoistureAttachments()
+})
 
 // ── Mutations ───────────────────────────────────────────────────────────────
 
@@ -235,18 +268,25 @@ async function uploadStagedPhoto(clientId, observationId) {
   const file = pendingPhotos.get(clientId)
   if (!file) return
   try {
-    await uploadAttachment({
+    const saved = await uploadAttachment({
       parentType: 'moisture_observation',
       parentId:   observationId,
       file,
     })
     pendingPhotos.delete(clientId)
+    // Phase 7A.5 — hand-merge the new attachment into the byParent cache
+    // so the photo chip appears immediately, without an extra round-trip.
+    // The list endpoint orders newest-first; we prepend to match.
+    const nextMap = new Map(state.attachmentsByParent)
+    const list    = nextMap.get(observationId) ?? []
+    nextMap.set(observationId, [saved, ...list])
     setState({
       observations: state.observations.map(o =>
         o.clientId === clientId
           ? { ...o, _photoPending: false, _photoError: null }
           : o,
       ),
+      attachmentsByParent: nextMap,
     })
     // Phase 7A.4 — explicit success ack via the toast bridge so the user
     // knows the photo landed even though the upload was async and the
@@ -364,6 +404,27 @@ export async function deleteMoistureObservation(id) {
   }
 }
 
+// ── Phase 7A.5: attachment delete helper ──────────────────────────────────
+
+/**
+ * Delete a moisture-observation photo. Calls the existing R2-backed
+ * deleteAttachment (soft-deletes the metadata row + hard-deletes the R2
+ * object), then prunes the byParent cache by id so the chip updates
+ * without an extra round-trip.
+ *
+ * @param {string} attachmentId
+ * @param {string} observationId  - the parentId; needed to prune the right Map entry
+ */
+export async function deleteMoistureAttachment(attachmentId, observationId) {
+  await deleteAttachment(attachmentId)
+  const nextMap = new Map(state.attachmentsByParent)
+  const list    = nextMap.get(observationId) ?? []
+  const filtered = list.filter(a => a.id !== attachmentId)
+  if (filtered.length > 0) nextMap.set(observationId, filtered)
+  else                     nextMap.delete(observationId)
+  setState({ attachmentsByParent: nextMap })
+}
+
 // ── React hook ────────────────────────────────────────────────────────────
 
 function subscribe(cb) {
@@ -371,6 +432,7 @@ function subscribe(cb) {
   if (!hasBooted) {
     hasBooted = true
     refreshMoisture({ days: 14 })
+    refreshMoistureAttachments()
   }
   return () => subscribers.delete(cb)
 }
@@ -383,4 +445,23 @@ function getSnapshot() { return state }
  */
 export function useMoistureData() {
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+}
+
+/**
+ * Phase 7A.5 — batched moisture-attachment hook.
+ * Returns { byParent, loading, error } where byParent is a Map from
+ * observationId → Attachment[]. Use byParent.get(o.id) ?? [] in row
+ * renders; lookup is O(1) and the underlying network cost is exactly ONE
+ * GET per page mount + ONE per mutation, regardless of row count.
+ *
+ * Boot side-effect: shares the subscribe() above with useMoistureData, so
+ * the first MoistureOverview render triggers both fetches in parallel.
+ */
+export function useMoistureAttachments() {
+  const s = useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+  return {
+    byParent: s.attachmentsByParent,
+    loading:  s.attachmentsLoading,
+    error:    s.attachmentsError,
+  }
 }

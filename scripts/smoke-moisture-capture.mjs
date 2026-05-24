@@ -235,7 +235,9 @@ console.log('— Phase 7A.4: moisture photo attachment')
 {
   // Store-side: new exports + pendingPhotos map + sendToServer drain.
   const store = readFileSync('src/utils/moisture/moistureStore.js', 'utf8')
-  assert(/import\s+\{\s*uploadAttachment\s*\}\s+from\s+['"]\.\.\/attachments\/attachmentsStore/.test(store),
+  // Phase 7A.5 added deleteAttachment to the same import; allow any
+  // additional named imports from the attachments module.
+  assert(/import\s+\{[^}]*\buploadAttachment\b[^}]*\}\s+from\s+['"]\.\.\/attachments\/attachmentsStore/.test(store),
                                                 'store imports uploadAttachment from R2 pipeline')
   assert(/export\s+function\s+stagePendingPhoto/.test(store),
                                                 'store exports stagePendingPhoto')
@@ -339,6 +341,121 @@ console.log('— Phase 7A.4: moisture photo attachment')
   // synthetic pending- id.
   assert(/!o\._pending\s*&&\s*o\._photoError/.test(overview),
                                                 'photo retry pill gated on !_pending (observation must be saved first)')
+}
+
+// ── 6d. Phase 7A.5: batched attachment cache + chip + viewer ──────────────
+console.log('— Phase 7A.5: batched attachments + photo chip + viewer')
+{
+  const store = readFileSync('src/utils/moisture/moistureStore.js', 'utf8')
+
+  // Store-side: cache + hook + delete helper.
+  assert(/attachmentsByParent:\s*new Map\(\)/.test(store),
+                                                'store state contains attachmentsByParent: new Map()')
+  assert(/export\s+async\s+function\s+refreshMoistureAttachments/.test(store),
+                                                'store exports refreshMoistureAttachments')
+  assert(/export\s+function\s+useMoistureAttachments/.test(store),
+                                                'store exports useMoistureAttachments hook')
+  assert(/export\s+async\s+function\s+deleteMoistureAttachment/.test(store),
+                                                'store exports deleteMoistureAttachment')
+  // The batched fetch uses parentType only (one round-trip per course).
+  const refreshBody = store.match(/async\s+function\s+refreshMoistureAttachments[\s\S]*?\n\}/)?.[0]
+  assert(refreshBody != null,                   'refreshMoistureAttachments body extractable')
+  if (refreshBody) {
+    assert(/parentType=moisture_observation/.test(refreshBody),
+                                                'fetch URL filters by parentType=moisture_observation (batched, not per-row)')
+    assert(/new\s+Map\(\)/.test(refreshBody),    'rebuilds byParent as a fresh Map per refresh (no stale entries)')
+  }
+  // uploadStagedPhoto hand-merges the new attachment into the cache so the
+  // chip appears without an extra round-trip.
+  const uploadBody = store.match(/async\s+function\s+uploadStagedPhoto[\s\S]*?\n\}/)?.[0]
+  assert(uploadBody != null,                    'uploadStagedPhoto body extractable')
+  if (uploadBody) {
+    assert(/const\s+saved\s*=\s*await\s+uploadAttachment/.test(uploadBody),
+                                                'upload captures saved attachment for cache merge')
+    assert(/attachmentsByParent:\s*nextMap/.test(uploadBody),
+                                                'upload merges saved attachment into attachmentsByParent')
+  }
+  // deleteMoistureAttachment prunes the cache without a refetch.
+  const deleteBody = store.match(/async\s+function\s+deleteMoistureAttachment[\s\S]*?\n\}/)?.[0]
+  assert(deleteBody != null,                    'deleteMoistureAttachment body extractable')
+  if (deleteBody) {
+    assert(/await\s+deleteAttachment\(attachmentId\)/.test(deleteBody),
+                                                'delete calls the R2-backed deleteAttachment helper')
+    assert(/nextMap\.delete\(observationId\)/.test(deleteBody),
+                                                'delete removes the parent key when the array empties')
+  }
+  // Boot side-effect: subscribe also fires refreshMoistureAttachments.
+  const subscribeBody = store.match(/function\s+subscribe\s*\(cb\)[\s\S]*?\n\}/)?.[0]
+  assert(subscribeBody != null,                 'subscribe body extractable')
+  if (subscribeBody) {
+    assert(/refreshMoistureAttachments\(\)/.test(subscribeBody),
+                                                'subscribe boot fires refreshMoistureAttachments')
+  }
+  // Course-change handler also fires the attachment refetch.
+  assert(/subscribeCourseChange\(\(\)\s*=>\s*\{[\s\S]*refreshMoistureAttachments\(\)/.test(store),
+                                                'course-change refreshes attachments alongside observations')
+
+  // No per-row useAttachmentsForParent hook in overview — the audit caught
+  // the fan-out, the build avoids it.
+  const overview2 = readFileSync('src/pages/Irrigation/tabs/MoistureOverview.jsx', 'utf8')
+  assert(!/useAttachmentsForParent/.test(overview2),
+                                                'overview does NOT use per-row useAttachmentsForParent (no fan-out)')
+  assert(/useMoistureAttachments/.test(overview2),
+                                                'overview uses the batched useMoistureAttachments hook')
+
+  // Chip rendering — Recent + Priorities + Driest all gated on cache lookup.
+  assert(/attachmentsByParent\.get\(o\.id\)\?\.length/.test(overview2),
+                                                'Recent row reads photo count from cache by observation id')
+  assert(/attachmentsByParent\.get\(loc\.latest\?\.id\)\?\.length/.test(overview2),
+                                                'Priority row reads photo count from latest observation id')
+  assert(/attachmentsByParent\.get\(d\.latest\?\.id\)\?\.length/.test(overview2),
+                                                'Driest card reads photo count from latest observation id')
+  // Pending observations must NOT show a chip (synthetic pending- id can't match).
+  assert(/!o\._pending\s*&&\s*\(attachmentsByParent\.get\(o\.id\)/.test(overview2),
+                                                'Recent chip gated on !_pending so synthetic ids never match')
+  assert(/📷/.test(overview2),                  'chip uses 📷 emoji + count format')
+  assert(/<MoisturePhotoViewer/.test(overview2),
+                                                'overview mounts MoisturePhotoViewer at the bottom')
+  assert(/setViewerObs\(o\)/.test(overview2),   'Recent chip click sets viewer to the observation')
+  assert(/setViewerObs\(loc\.latest\)/.test(overview2),
+                                                'Priority chip click sets viewer to loc.latest')
+
+  // Viewer source contracts.
+  const viewer = readFileSync('src/components/moisture/MoisturePhotoViewer.jsx', 'utf8')
+  assert(/import.*useAuth/.test(viewer),        'viewer imports useAuth for the delete gate')
+  assert(/can\(['"]canEditMoisture['"]\)/.test(viewer),
+                                                'delete button is gated on canEditMoisture')
+  assert(/deleteMoistureAttachment\(/.test(viewer),
+                                                'viewer delete fires the store-level helper (not the raw R2 deleteAttachment)')
+  assert(/window\.confirm\(/.test(viewer),      'delete shows a confirm dialog before firing')
+  // Auto-close after the last photo is removed.
+  assert(/attachments\.length\s*===\s*0[\s\S]*onClose/.test(viewer),
+                                                'viewer auto-closes when attachments empties')
+  // Multi-photo navigation only renders when count > 1.
+  assert(/count\s*>\s*1/.test(viewer),          'prev/next nav is gated on count > 1')
+  // Keyboard support: Esc closes, ←/→ navigate.
+  assert(/e\.key\s*===\s*['"]Escape['"]/.test(viewer),
+                                                'Escape closes the viewer')
+  assert(/ArrowLeft|ArrowRight/.test(viewer),   'arrow keys navigate photos when count > 1')
+  // <img src={att.url}> — uses the R2 stable URL pattern, not IDB blobs.
+  assert(/<img\s+src=\{current\.url\}/.test(viewer),
+                                                'image renders directly from the R2 attachment URL')
+
+  // Viewer CSS contracts.
+  const viewerCss = readFileSync('src/components/moisture/MoisturePhotoViewer.module.css', 'utf8')
+  assert(/\.backdrop\b[\s\S]*position:\s*fixed/.test(viewerCss),
+                                                'backdrop is position: fixed (full-screen overlay)')
+  assert(/safe-area-inset-bottom/.test(viewerCss),
+                                                'footer respects iOS safe-area-inset-bottom')
+  assert(/min-height:\s*44px/.test(viewerCss),  'delete button meets the 44px tap-target floor')
+
+  // Chip CSS contracts.
+  const overviewCss2 = readFileSync('src/pages/Irrigation/tabs/MoistureOverview.module.css', 'utf8')
+  assert(/\.photoChip\b/.test(overviewCss2),    'CSS defines .photoChip')
+  assert(/\.photoChipSmall\b/.test(overviewCss2),
+                                                'CSS defines .photoChipSmall (Driest variant)')
+  assert(/\.priorityTagGroup\b/.test(overviewCss2),
+                                                'CSS defines .priorityTagGroup (chip + tag flex row)')
 }
 
 // ── 7. Reports + Display Board compatibility ───────────────────────────────
