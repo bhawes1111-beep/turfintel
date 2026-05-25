@@ -310,6 +310,190 @@ console.log('— importProductCatalog dry-run end-to-end')
     'edge → pesticide w/o EPA warns but does not reject')
 }
 
+// ── 7. Client store source contracts ────────────────────────────────────────
+console.log('— src/utils/productCatalog/productCatalogStore.js (source)')
+{
+  const src = readFileSync('src/utils/productCatalog/productCatalogStore.js', 'utf8')
+
+  // Public exports the spec requires.
+  const exports = [
+    'useProductCatalog',
+    'refreshProductCatalog',
+    'searchProductCatalog',
+    'getCatalogProductById',
+    'listCatalogCategories',
+    'listCatalogFracGroups',
+    'listCatalogHracGroups',
+    'listCatalogIracGroups',
+    'listCatalogPgrClasses',
+  ]
+  for (const name of exports) {
+    assert(new RegExp(`export\\s+(?:async\\s+)?function\\s+${name}\\b`).test(src)
+        || new RegExp(`export\\s+const\\s+${name}\\b`).test(src),
+      `exports ${name}`)
+  }
+
+  // Session-cookie auth, no key header, no mutation imports.
+  assert(/credentials:\s*['"]same-origin['"]/.test(src),
+    "fetch sends credentials: 'same-origin'")
+  assert(!/['"]x-admin-key['"]\s*:/i.test(src),
+    'no x-admin-key header')
+  assert(!/mutationHeaders|adminKeyHeader/.test(src),
+    'does not import mutation/admin headers')
+
+  // Read-only: no POST/PATCH/DELETE calls.
+  assert(!/method:\s*['"](POST|PATCH|DELETE)['"]/.test(src),
+    'never calls POST/PATCH/DELETE')
+
+  // Globally scoped (no course coupling).
+  assert(!/withCourseScope|subscribeCourseChange|getSelectedCourseId/.test(src),
+    'not coupled to courseStore (global catalog)')
+
+  // Lazy-load via useSyncExternalStore + hasBooted gate.
+  assert(/useSyncExternalStore/.test(src),
+    'uses useSyncExternalStore')
+  assert(/hasBooted/.test(src) && /refreshProductCatalog\(\)/.test(src),
+    'lazy-loads catalog on first subscribe')
+
+  // status='active' default.
+  assert(/status:\s*['"]active['"]/.test(src),
+    "DEFAULT_FETCH_PARAMS pins status='active'")
+
+  // Hits the right endpoint.
+  assert(/['"]\/api\/product-catalog['"]/.test(src),
+    'API constant is /api/product-catalog')
+}
+
+// ── 8. Client store behavior (dynamic import + __TEST seam) ─────────────────
+console.log('— productCatalogStore behavior (cache + filters)')
+{
+  // We can dynamic-import the ESM store directly — no React renderer needed
+  // for the filter / lookup paths. The __TEST seam seeds the cache without
+  // touching fetch.
+  const mod = await import('../src/utils/productCatalog/productCatalogStore.js')
+
+  const fixtures = [
+    {
+      id: 'pc-a', productName: 'Alpha Fungicide', brandOwner: 'Brand A',
+      manufacturer: 'Mfr A', epaNumber: '1-1', category: 'fungicide',
+      fracGroup: '11', hracGroup: null, iracGroup: null, pgrClass: null,
+      chemicalClass: 'strobilurin', activeIngredients: [{ name: 'Azoxystrobin', percentage: 50 }],
+      fertilizerAnalysis: null, rates: [], targets: ['dollar spot', 'brown patch'],
+      turfSites: [], restrictedUse: false, signalWord: 'Caution',
+      reiHours: 4, phiHours: null, labelUrl: null, notes: null,
+      status: 'active', isActive: true, source: 'seed-import', sourceVersion: 'v1',
+      createdAt: '2026-01-01', updatedAt: '2026-01-01',
+    },
+    {
+      id: 'pc-b', productName: 'Bravo Herbicide', brandOwner: 'Brand B',
+      manufacturer: 'Mfr B', epaNumber: '2-2', category: 'herbicide',
+      fracGroup: null, hracGroup: '3', iracGroup: null, pgrClass: null,
+      chemicalClass: 'dinitroaniline', activeIngredients: [{ name: 'Prodiamine', percentage: 40 }],
+      fertilizerAnalysis: null, rates: [], targets: ['crabgrass'],
+      turfSites: [], restrictedUse: false, signalWord: 'Caution',
+      reiHours: 12, phiHours: null, labelUrl: null, notes: null,
+      status: 'active', isActive: true, source: 'seed-import', sourceVersion: 'v1',
+      createdAt: '2026-01-01', updatedAt: '2026-01-01',
+    },
+    {
+      id: 'pc-c', productName: 'Charlie PGR', brandOwner: 'Brand C',
+      manufacturer: 'Mfr C', epaNumber: '3-3', category: 'pgr',
+      fracGroup: null, hracGroup: null, iracGroup: null, pgrClass: 'GA inhibitor',
+      chemicalClass: 'cyclohexanedione', activeIngredients: [{ name: 'Trinexapac-ethyl', percentage: 11 }],
+      fertilizerAnalysis: null, rates: [], targets: [],
+      turfSites: [], restrictedUse: false, signalWord: 'Caution',
+      reiHours: 12, phiHours: null, labelUrl: null, notes: null,
+      status: 'active', isActive: true, source: 'seed-import', sourceVersion: 'v1',
+      createdAt: '2026-01-01', updatedAt: '2026-01-01',
+    },
+    {
+      id: 'pc-d', productName: 'Delta Old', brandOwner: 'Brand D',
+      manufacturer: 'Mfr D', epaNumber: '4-4', category: 'fungicide',
+      fracGroup: '11', hracGroup: null, iracGroup: null, pgrClass: null,
+      chemicalClass: 'strobilurin', activeIngredients: [],
+      fertilizerAnalysis: null, rates: [], targets: ['leaf spot'],
+      turfSites: [], restrictedUse: false, signalWord: 'Caution',
+      reiHours: 4, phiHours: null, labelUrl: null, notes: null,
+      // Discontinued — important: search default should hide this.
+      status: 'discontinued', isActive: false, source: 'seed-import', sourceVersion: 'v1',
+      createdAt: '2026-01-01', updatedAt: '2026-01-01',
+    },
+  ]
+
+  mod.__TEST.reset()
+  mod.__TEST.setCache(fixtures)
+
+  // getCatalogProductById
+  assert(mod.getCatalogProductById('pc-a')?.productName === 'Alpha Fungicide',
+    'getCatalogProductById returns cached row')
+  assert(mod.getCatalogProductById('pc-missing') === null,
+    'getCatalogProductById returns null for unknown id')
+  assert(mod.getCatalogProductById('') === null,
+    'getCatalogProductById returns null for empty id')
+
+  // searchProductCatalog — default hides non-active rows.
+  const allActive = mod.searchProductCatalog('')
+  assert(allActive.length === 3,
+    `empty q → 3 active rows (hides Delta discontinued)`, allActive.map(p => p.id))
+  assert(!allActive.find(p => p.id === 'pc-d'),
+    'Delta (discontinued) excluded by default status filter')
+
+  // status: null → no status filter (returns discontinued too).
+  const allRows = mod.searchProductCatalog('', { status: null })
+  assert(allRows.length === 4,
+    'status: null → returns every cached row including discontinued')
+
+  // Free-text search across denormalized fields.
+  const crabgrass = mod.searchProductCatalog('crabgrass')
+  assert(crabgrass.length === 1 && crabgrass[0].id === 'pc-b',
+    "q='crabgrass' → only the herbicide that targets it")
+  const azoxy = mod.searchProductCatalog('azoxystrobin')
+  assert(azoxy.length === 1 && azoxy[0].id === 'pc-a',
+    "q='azoxystrobin' → matches by active-ingredient name")
+  const mfrA = mod.searchProductCatalog('mfr a')
+  assert(mfrA.length === 1 && mfrA[0].id === 'pc-a',
+    "q='mfr a' → matches by manufacturer")
+
+  // category filter (case-insensitive).
+  const cats = mod.searchProductCatalog('', { category: 'Fungicide' })
+  assert(cats.length === 1 && cats[0].id === 'pc-a',
+    "category='Fungicide' (case-insensitive) → 1 active fungicide")
+
+  // FRAC / HRAC filters are exact-match strings.
+  const frac11 = mod.searchProductCatalog('', { frac: '11' })
+  assert(frac11.length === 1 && frac11[0].id === 'pc-a',
+    "frac='11' active-only → 1 row (Delta hidden)")
+  const hrac3 = mod.searchProductCatalog('', { hrac: '3' })
+  assert(hrac3.length === 1 && hrac3[0].id === 'pc-b', "hrac='3' → 1 row")
+  const pgr = mod.searchProductCatalog('', { pgr: 'GA inhibitor' })
+  assert(pgr.length === 1 && pgr[0].id === 'pc-c', "pgr='GA inhibitor' → 1 row")
+  const irac28 = mod.searchProductCatalog('', { irac: '28' })
+  assert(irac28.length === 0, "irac='28' → no rows in fixture")
+
+  // Combined AND filters.
+  const combined = mod.searchProductCatalog('', { category: 'fungicide', status: null, frac: '11' })
+  assert(combined.length === 2,
+    'category=fungicide + status=null + frac=11 → 2 rows (Alpha + Delta)',
+    combined.map(p => p.id))
+
+  // Distinct lists — built from cache, sorted, no nulls.
+  const categories = mod.listCatalogCategories()
+  assert(categories.length === 3 && categories.includes('fungicide')
+    && categories.includes('herbicide') && categories.includes('pgr'),
+    'listCatalogCategories includes all 3 distinct values', categories)
+  const fracs = mod.listCatalogFracGroups()
+  assert(fracs.length === 1 && fracs[0] === '11',
+    'listCatalogFracGroups dedupes Alpha + Delta → ["11"]', fracs)
+  const hracs = mod.listCatalogHracGroups()
+  assert(hracs.length === 1 && hracs[0] === '3', 'listCatalogHracGroups → ["3"]')
+  const pgrs = mod.listCatalogPgrClasses()
+  assert(pgrs.length === 1 && pgrs[0] === 'GA inhibitor', 'listCatalogPgrClasses → ["GA inhibitor"]')
+  const iracs = mod.listCatalogIracGroups()
+  assert(iracs.length === 0, 'listCatalogIracGroups → [] (nothing in fixture)')
+
+  mod.__TEST.reset()
+}
+
 // ── Result ──────────────────────────────────────────────────────────────────
 console.log(`\n${passed} passed, ${failed} failed`)
 process.exit(failed === 0 ? 0 : 1)

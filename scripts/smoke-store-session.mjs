@@ -49,6 +49,8 @@ const MIGRATED = [
   'src/utils/auth/usersStore.js',
   // Phase 7B.1 — Turf Health Observation Foundation (modeled on moisture).
   'src/utils/turfHealth/turfHealthStore.js',
+  // Phase 7C.1 — Product catalog (global, read-only).
+  'src/utils/productCatalog/productCatalogStore.js',
 ]
 
 // ── Per migrated store: session creds, no key header, no hardcoded key ──────
