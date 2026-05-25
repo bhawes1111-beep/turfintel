@@ -1,0 +1,348 @@
+{
+  "version": "v1",
+  "generatedAt": "2026-05-25",
+  "source": "hand-curated reference set sourced from publicly-available EPA registrations and manufacturer label PDFs (FIFRA Section 3 master labels)",
+  "notes": "Conservative v1 seed for Phase 7C.1. Every row is a well-known turf product whose EPA #, FRAC/HRAC/IRAC group, REI/PHI, and signal word are documented on the manufacturer's master label. Rates/targets are representative label entries; not an exhaustive label transcription. Where a field is uncertain it is null rather than guessed. Fertilizer rows have no EPA # (non-FIFRA) and use fertilizer_analysis instead of active_ingredients. Catalog is read-only in 7C.1; user-edit/curation lands in 7C.2+.",
+  "products": [
+    {
+      "product_name": "Barricade 4FL",
+      "brand_owner": "Syngenta",
+      "manufacturer": "Syngenta",
+      "epa_number": "100-1139",
+      "formulation": "4 FL",
+      "category": "herbicide",
+      "hrac_group": "3",
+      "chemical_class": "dinitroaniline",
+      "active_ingredients": [{ "name": "Prodiamine", "percentage": 40.7 }],
+      "rates": [
+        { "rate": "0.65 fl oz", "unit": "fl oz/1000 ft²", "interval": "preemergent, single app" },
+        { "rate": "1.5 fl oz", "unit": "fl oz/1000 ft²", "interval": "preemergent, split app" }
+      ],
+      "targets": ["crabgrass", "goosegrass", "Poa annua", "spurge", "henbit", "chickweed"],
+      "turf_sites": ["greens", "tees", "fairways", "roughs"],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": 12,
+      "phi_hours": null,
+      "label_url": "https://www.syngenta-us.com/labels/barricade-4fl",
+      "notes": "Liquid prodiamine for season-long preemergent grassy/broadleaf control."
+    },
+    {
+      "product_name": "Tenacity",
+      "brand_owner": "Syngenta",
+      "manufacturer": "Syngenta",
+      "epa_number": "100-1267",
+      "formulation": "4 SC",
+      "category": "herbicide",
+      "hrac_group": "27",
+      "chemical_class": "triketone (HPPD inhibitor)",
+      "active_ingredients": [{ "name": "Mesotrione", "percentage": 40.0 }],
+      "rates": [
+        { "rate": "4-8 fl oz", "unit": "fl oz/acre", "interval": "post-emergent, repeat 2-3 weeks" },
+        { "rate": "5-10 fl oz", "unit": "fl oz/acre", "interval": "at seeding" }
+      ],
+      "targets": ["crabgrass", "nimblewill", "creeping bentgrass (in cool-season turf)", "yellow nutsedge", "clover"],
+      "turf_sites": ["fairways", "roughs", "tees"],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": 12,
+      "phi_hours": null,
+      "label_url": "https://www.syngenta-us.com/labels/tenacity",
+      "notes": "Selective post-emergent and safe at seeding for many cool-season grasses. Causes temporary white bleaching of susceptible weeds."
+    },
+    {
+      "product_name": "Instrata II",
+      "brand_owner": "Syngenta",
+      "manufacturer": "Syngenta",
+      "epa_number": "100-1572",
+      "formulation": "SE",
+      "category": "fungicide",
+      "frac_group": "3 + 11 + M5",
+      "chemical_class": "triazole + strobilurin + chlorothalonil",
+      "active_ingredients": [
+        { "name": "Chlorothalonil", "percentage": 21.6 },
+        { "name": "Propiconazole", "percentage": 2.6 },
+        { "name": "Fludioxonil", "percentage": 1.04 }
+      ],
+      "rates": [
+        { "rate": "4.3-5.8 fl oz", "unit": "fl oz/1000 ft²", "interval": "preventive, 14-28 day" }
+      ],
+      "targets": ["dollar spot", "brown patch", "pythium blight", "snow mold", "anthracnose", "leaf spot"],
+      "turf_sites": ["greens", "tees", "fairways"],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": 12,
+      "phi_hours": null,
+      "label_url": "https://www.syngenta-us.com/labels/instrata-ii",
+      "notes": "Three-way fungicide premix; common dollar-spot + snow-mold rotation partner."
+    },
+    {
+      "product_name": "PGF Complete 16-4-8",
+      "brand_owner": "PGF Products",
+      "manufacturer": "PGF Products",
+      "epa_number": null,
+      "formulation": "homogeneous granule",
+      "category": "fertilizer",
+      "chemical_class": "N-P-K with micronutrients",
+      "fertilizer_analysis": "16-4-8",
+      "rates": [
+        { "rate": "5 lb", "unit": "lb/1000 ft²", "interval": "every 6-8 weeks" }
+      ],
+      "targets": [],
+      "turf_sites": ["fairways", "roughs", "tees"],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.pgfproducts.com/labels/pgf-complete-16-4-8",
+      "notes": "Balanced N-P-K with iron and micros. Common all-purpose fertility on home/commercial turf; mixed-grass tolerant."
+    },
+    {
+      "product_name": "Primo Maxx",
+      "brand_owner": "Syngenta",
+      "manufacturer": "Syngenta",
+      "epa_number": "100-937",
+      "formulation": "1 SC",
+      "category": "pgr",
+      "pgr_class": "GA inhibitor (Type II)",
+      "chemical_class": "cyclohexanedione",
+      "active_ingredients": [{ "name": "Trinexapac-ethyl", "percentage": 11.3 }],
+      "rates": [
+        { "rate": "0.125-0.25 fl oz", "unit": "fl oz/1000 ft²", "interval": "every 14-28 days" }
+      ],
+      "targets": [],
+      "turf_sites": ["greens", "tees", "fairways", "roughs"],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": 12,
+      "phi_hours": null,
+      "label_url": "https://www.syngenta-us.com/labels/primo-maxx",
+      "notes": "Class A growth regulator; suppresses vertical growth, improves density and stress tolerance."
+    },
+    {
+      "product_name": "Heritage",
+      "brand_owner": "Syngenta",
+      "manufacturer": "Syngenta",
+      "epa_number": "100-1093",
+      "formulation": "50 WG",
+      "category": "fungicide",
+      "frac_group": "11",
+      "chemical_class": "strobilurin (QoI)",
+      "active_ingredients": [{ "name": "Azoxystrobin", "percentage": 50.0 }],
+      "rates": [
+        { "rate": "0.2-0.4 oz", "unit": "oz/1000 ft²", "interval": "14-28 day preventive" }
+      ],
+      "targets": ["brown patch", "pythium", "summer patch", "take-all patch", "anthracnose", "fairy ring"],
+      "turf_sites": ["greens", "tees", "fairways"],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": 4,
+      "phi_hours": null,
+      "label_url": "https://www.syngenta-us.com/labels/heritage",
+      "notes": "Systemic strobilurin; resistance management requires rotation with non-Group-11 modes."
+    },
+    {
+      "product_name": "Daconil Action",
+      "brand_owner": "Syngenta",
+      "manufacturer": "Syngenta",
+      "epa_number": "100-1456",
+      "formulation": "SC",
+      "category": "fungicide",
+      "frac_group": "M5 + P 07",
+      "chemical_class": "chloronitrile + benzothiadiazole",
+      "active_ingredients": [
+        { "name": "Chlorothalonil", "percentage": 22.5 },
+        { "name": "Acibenzolar-S-methyl", "percentage": 0.65 }
+      ],
+      "rates": [
+        { "rate": "3.6 fl oz", "unit": "fl oz/1000 ft²", "interval": "7-14 day preventive" }
+      ],
+      "targets": ["dollar spot", "brown patch", "leaf spot", "anthracnose", "rust"],
+      "turf_sites": ["greens", "tees", "fairways"],
+      "restricted_use": false,
+      "signal_word": "Warning",
+      "rei_hours": 12,
+      "phi_hours": null,
+      "label_url": "https://www.syngenta-us.com/labels/daconil-action",
+      "notes": "Contact chlorothalonil with SAR activator (acibenzolar) for resistance-management plus host defense."
+    },
+    {
+      "product_name": "Headway G",
+      "brand_owner": "Syngenta",
+      "manufacturer": "Syngenta",
+      "epa_number": "100-1326",
+      "formulation": "G",
+      "category": "fungicide",
+      "frac_group": "3 + 11",
+      "chemical_class": "triazole + strobilurin",
+      "active_ingredients": [
+        { "name": "Azoxystrobin", "percentage": 0.31 },
+        { "name": "Propiconazole", "percentage": 0.75 }
+      ],
+      "rates": [
+        { "rate": "3.0 lb", "unit": "lb/1000 ft²", "interval": "preventive 14-28 day" }
+      ],
+      "targets": ["brown patch", "dollar spot", "summer patch", "anthracnose"],
+      "turf_sites": ["greens", "tees", "fairways", "roughs"],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": 12,
+      "phi_hours": null,
+      "label_url": "https://www.syngenta-us.com/labels/headway-g",
+      "notes": "Granular two-way preventive; convenient for crews without spray equipment on that day."
+    },
+    {
+      "product_name": "Acelepryn",
+      "brand_owner": "Syngenta",
+      "manufacturer": "Syngenta",
+      "epa_number": "100-1489",
+      "formulation": "1.67 SC",
+      "category": "insecticide",
+      "irac_group": "28",
+      "chemical_class": "anthranilic diamide",
+      "active_ingredients": [{ "name": "Chlorantraniliprole", "percentage": 18.4 }],
+      "rates": [
+        { "rate": "0.184-0.367 fl oz", "unit": "fl oz/1000 ft²", "interval": "season-long, single app" }
+      ],
+      "targets": ["white grubs", "billbugs", "annual bluegrass weevil", "caterpillars (cutworm/armyworm/sod webworm)"],
+      "turf_sites": ["greens", "tees", "fairways", "roughs"],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": 4,
+      "phi_hours": null,
+      "label_url": "https://www.syngenta-us.com/labels/acelepryn",
+      "notes": "Reduced-risk insecticide; bee-safe label language; one of the lowest mammalian toxicity profiles in turf."
+    },
+    {
+      "product_name": "Dimension 2EW",
+      "brand_owner": "Corteva",
+      "manufacturer": "Corteva",
+      "epa_number": "62719-542",
+      "formulation": "2 EW",
+      "category": "herbicide",
+      "hrac_group": "3",
+      "chemical_class": "dinitroaniline",
+      "active_ingredients": [{ "name": "Dithiopyr", "percentage": 24.0 }],
+      "rates": [
+        { "rate": "0.25-0.5 fl oz", "unit": "fl oz/1000 ft²", "interval": "preemergent, early-postemergent" }
+      ],
+      "targets": ["crabgrass", "goosegrass", "spurge", "oxalis", "Poa annua"],
+      "turf_sites": ["fairways", "roughs", "tees"],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": 24,
+      "phi_hours": null,
+      "label_url": "https://www.corteva.us/labels/dimension-2ew",
+      "notes": "Has tip-burn-stage early-postemergent activity on crabgrass that prodiamine lacks."
+    },
+    {
+      "product_name": "Specticle FLO",
+      "brand_owner": "Bayer",
+      "manufacturer": "Envu",
+      "epa_number": "432-1516",
+      "formulation": "FLO",
+      "category": "herbicide",
+      "hrac_group": "13",
+      "chemical_class": "isoxazolidinone",
+      "active_ingredients": [{ "name": "Indaziflam", "percentage": 19.05 }],
+      "rates": [
+        { "rate": "4.5-7.0 fl oz", "unit": "fl oz/acre", "interval": "preemergent, season-long" }
+      ],
+      "targets": ["crabgrass", "goosegrass", "Poa annua", "broadleaf weeds"],
+      "turf_sites": ["fairways", "roughs"],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": 12,
+      "phi_hours": null,
+      "label_url": "https://www.envu.com/labels/specticle-flo",
+      "notes": "Long-residual PRE; not for use on greens or recently seeded turf. Warm-season tolerant; cool-season turf has tighter use restrictions."
+    },
+    {
+      "product_name": "Ronstar G",
+      "brand_owner": "Bayer",
+      "manufacturer": "Envu",
+      "epa_number": "432-888",
+      "formulation": "G",
+      "category": "herbicide",
+      "hrac_group": "14",
+      "chemical_class": "oxadiazole (PPO inhibitor)",
+      "active_ingredients": [{ "name": "Oxadiazon", "percentage": 2.0 }],
+      "rates": [
+        { "rate": "100-200 lb", "unit": "lb/acre", "interval": "preemergent" }
+      ],
+      "targets": ["crabgrass", "goosegrass", "spurge"],
+      "turf_sites": ["fairways", "roughs", "tees"],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": 12,
+      "phi_hours": null,
+      "label_url": "https://www.envu.com/labels/ronstar-g",
+      "notes": "Granular PRE safe on bentgrass when applied dry; do NOT water in immediately. Excellent goosegrass control."
+    },
+    {
+      "product_name": "Civitas Turf Defense",
+      "brand_owner": "Intelligro",
+      "manufacturer": "Intelligro",
+      "epa_number": "84289-1",
+      "formulation": "EC + pigment kit",
+      "category": "fungicide",
+      "frac_group": "NC",
+      "chemical_class": "isoparaffin oil (biorational)",
+      "active_ingredients": [{ "name": "Mineral oil (isoparaffin)", "percentage": 64.5 }],
+      "rates": [
+        { "rate": "5.5-11 fl oz", "unit": "fl oz/1000 ft²", "interval": "14 day preventive" }
+      ],
+      "targets": ["dollar spot", "anthracnose", "leaf spot", "general turf vigor"],
+      "turf_sites": ["greens", "tees", "fairways"],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": 4,
+      "phi_hours": null,
+      "label_url": "https://www.civitasturf.com/labels/civitas-turf-defense",
+      "notes": "Biorational with no FRAC group; used as a rotation partner for resistance management."
+    },
+    {
+      "product_name": "Roundup PROMAX",
+      "brand_owner": "Bayer",
+      "manufacturer": "Bayer",
+      "epa_number": "524-579",
+      "formulation": "SL",
+      "category": "herbicide",
+      "hrac_group": "9",
+      "chemical_class": "glycine (EPSP-synthase inhibitor)",
+      "active_ingredients": [{ "name": "Glyphosate (potassium salt)", "percentage": 48.7 }],
+      "rates": [
+        { "rate": "0.4-2.0 fl oz", "unit": "fl oz/1000 ft²", "interval": "non-selective spot/renovation" }
+      ],
+      "targets": ["broadleaf weeds", "grassy weeds", "perennial weeds", "warm-season grasses (dormant cool-season)"],
+      "turf_sites": ["fairways", "roughs"],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": 4,
+      "phi_hours": null,
+      "label_url": "https://www.environmentalscience.bayer.us/labels/roundup-promax",
+      "notes": "Non-selective; use only for spot treatment, renovation, or dormant warm-season turf cleanup."
+    },
+    {
+      "product_name": "Milorganite",
+      "brand_owner": "Milwaukee Metropolitan Sewerage District",
+      "manufacturer": "Milorganite",
+      "epa_number": null,
+      "formulation": "granule",
+      "category": "fertilizer",
+      "chemical_class": "biosolid organic-N",
+      "fertilizer_analysis": "6-4-0",
+      "rates": [
+        { "rate": "16 lb", "unit": "lb/1000 ft²", "interval": "every 6-10 weeks" }
+      ],
+      "targets": [],
+      "turf_sites": ["fairways", "roughs", "tees"],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.milorganite.com/labels",
+      "notes": "Heat-dried biosolid; ~85% slow-release organic-N plus 2.5% iron. Low burn potential."
+    }
+  ]
+}

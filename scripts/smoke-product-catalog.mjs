@@ -12,7 +12,10 @@
 //   - Worker routes wired in worker/index.js for the 3 GET endpoints
 //   - rowToProduct returns the camelCase client contract
 
-import { readFileSync } from 'fs'
+import { readFileSync, writeFileSync, mkdtempSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
+import { spawnSync } from 'child_process'
 
 let passed = 0, failed = 0
 function assert(cond, label, ctx) {
@@ -161,6 +164,150 @@ console.log('— worker/index.js (route wiring)')
     'no PATCH handler in catalog block')
   assert(!/method\s*===\s*['"]DELETE['"]/.test(catalogBlock),
     'no DELETE handler in catalog block')
+}
+
+// ── 4. Seed dataset (Phase 7C.1 Commit 2) ───────────────────────────────────
+console.log('— worker/seeds/product_catalog_v1.json (seed shape)')
+{
+  const raw = readFileSync('worker/seeds/product_catalog_v1.json', 'utf8')
+  let seed
+  try { seed = JSON.parse(raw) }
+  catch (e) {
+    assert(false, `seed file is valid JSON (${e.message})`)
+    seed = { products: [] }
+  }
+  assert(seed.version === 'v1',                        "seed declares version 'v1'")
+  assert(Array.isArray(seed.products),                 'seed.products is an array')
+  assert(seed.products.length >= 10,                   `seed has ≥10 products (have ${seed.products.length})`)
+
+  // Required sample products (per Phase 7C.1 Commit 2 verification spec).
+  const names = seed.products.map(p => p.product_name)
+  const samples = ['Barricade 4FL', 'Tenacity', 'PGF Complete 16-4-8']
+  for (const s of samples) {
+    assert(names.includes(s), `seed includes sample '${s}'`)
+  }
+  // Instrata family — original 'Instrata' was discontinued; current product is 'Instrata II'.
+  assert(names.some(n => /^instrata/i.test(n)), 'seed includes an Instrata-family product')
+
+  // Every row has the required fields the import script validates against.
+  const ALLOWED_CATEGORIES = new Set(['herbicide', 'fungicide', 'insecticide', 'pgr', 'fertilizer', 'biostimulant'])
+  let goodRows = 0, badCategory = 0, missingName = 0
+  for (const p of seed.products) {
+    if (!p.product_name) { missingName++; continue }
+    if (!ALLOWED_CATEGORIES.has(p.category)) { badCategory++; continue }
+    goodRows++
+  }
+  assert(missingName === 0,                            'every seed row has product_name')
+  assert(badCategory  === 0,                           'every seed row has a valid category')
+  assert(goodRows === seed.products.length,            'every seed row passes import validation')
+
+  // Pesticide rows should carry an EPA number; fertilizer/biostimulant exempt.
+  const pesticideNoEpa = seed.products.filter(p =>
+    p.category !== 'fertilizer' && p.category !== 'biostimulant' && !p.epa_number)
+  assert(pesticideNoEpa.length === 0,
+    `pesticide rows carry EPA numbers (missing: ${pesticideNoEpa.map(p => p.product_name).join(', ') || 'none'})`)
+
+  // Fertilizer rows must have fertilizer_analysis populated.
+  for (const p of seed.products) {
+    if (p.category !== 'fertilizer') continue
+    assert(typeof p.fertilizer_analysis === 'string' && p.fertilizer_analysis.trim() !== '',
+      `fertilizer '${p.product_name}' has fertilizer_analysis`)
+  }
+}
+
+// ── 5. Import script source contracts ───────────────────────────────────────
+console.log('— scripts/importProductCatalog.mjs (source contracts)')
+{
+  const src = readFileSync('scripts/importProductCatalog.mjs', 'utf8')
+
+  // Idempotent insert path.
+  assert(/INSERT OR REPLACE INTO product_catalog/.test(src),
+    'uses INSERT OR REPLACE (idempotent)')
+  // Stable ID derivation: name + EPA when present.
+  assert(/function\s+makeId\s*\(/.test(src) && /pc-\$\{slug\}-\$\{epa\}/.test(src),
+    'makeId derives stable PK from name + EPA')
+  // search_text populated.
+  assert(/function\s+buildSearchText\s*\(/.test(src),
+    'builds search_text blob')
+  assert(/sqlString\(searchText\)/.test(src),
+    'search_text written to row')
+  // JSON columns serialized.
+  assert(/sqlJson\(ai\)/.test(src),         'active_ingredients_json serialized')
+  assert(/sqlJson\(rates\)/.test(src),      'rates_json serialized')
+  assert(/sqlJson\(targets\)/.test(src),    'targets_json serialized')
+  assert(/sqlJson\(turfSites\)/.test(src),  'turf_sites_json serialized')
+  // Provenance.
+  assert(/sqlString\(['"]seed-import['"]\)/.test(src), "source = 'seed-import'")
+  assert(/sqlString\(['"]v1['"]\)/.test(src),          "source_version = 'v1'")
+  // Strict category validation.
+  assert(/ALLOWED_CATEGORIES\s*=\s*new Set\(/.test(src),
+    'validates category against ALLOWED_CATEGORIES set')
+  // Logs the 3 counters the spec asks for.
+  assert(/inserted/.test(src) && /skipped/.test(src) && /warnings/.test(src),
+    'logs inserted / skipped / warnings counts')
+  // Must NOT touch inventory_items in Commit 2. Allow the word in comments
+  // (we DO discuss why we're not touching it) — only flag actual SQL.
+  assert(!/(INSERT|UPDATE|DELETE|ALTER|DROP|FROM)\s+inventory_items/i.test(src),
+    'does NOT issue SQL against inventory_items (linkage is a later commit)')
+}
+
+// ── 6. Import script behavioral smoke (dry-run, no DB) ──────────────────────
+console.log('— importProductCatalog dry-run end-to-end')
+{
+  function runImport(args) {
+    const res = spawnSync(process.execPath,
+      ['scripts/importProductCatalog.mjs', '--dry-run', ...args],
+      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+    return { code: res.status, stdout: res.stdout ?? '', stderr: res.stderr ?? '' }
+  }
+
+  // 6a. Real seed → expected count + summary line.
+  const real = runImport([])
+  assert(real.code === 0,                              'real seed dry-run exits 0')
+  assert(/15 inserted, 0 skipped, 0 warnings/.test(real.stdout),
+    'real seed → 15 inserted, 0 skipped, 0 warnings', real.stdout.split('\n').slice(-3).join(' | '))
+  assert(/pc-barricade-4fl-100-1139/.test(real.stdout),
+    'real seed → emits Barricade ID pc-barricade-4fl-100-1139')
+  assert(/pc-tenacity-100-1267/.test(real.stdout),
+    'real seed → emits Tenacity ID pc-tenacity-100-1267')
+  assert(/pc-instrata-ii-100-1572/.test(real.stdout),
+    'real seed → emits Instrata II ID pc-instrata-ii-100-1572')
+  assert(/pc-pgf-complete-16-4-8/.test(real.stdout),
+    'real seed → emits PGF Complete ID pc-pgf-complete-16-4-8 (no EPA)')
+
+  // 6b. Synthetic edge cases — bad category, duplicate, valid row.
+  const dir  = mkdtempSync(join(tmpdir(), 'pc-smoke-'))
+  const path = join(dir, 'edge.json')
+  writeFileSync(path, JSON.stringify({
+    version: 'v1',
+    products: [
+      // Valid baseline.
+      { product_name: 'Smoke Valid', category: 'fungicide', epa_number: '99-1',
+        active_ingredients: [{ name: 'Whatever', percentage: 1 }], rates: [], targets: [] },
+      // Invalid category → rejected.
+      { product_name: 'Smoke Bad Cat', category: 'banjo', epa_number: '99-2' },
+      // Duplicate id (same name + EPA as the first) → second skipped.
+      { product_name: 'Smoke Valid', category: 'fungicide', epa_number: '99-1' },
+      // Missing name → rejected.
+      { category: 'fungicide', epa_number: '99-3' },
+      // Pesticide with no EPA → kept, but warns.
+      { product_name: 'Smoke No EPA', category: 'herbicide' },
+    ],
+  }, null, 2), 'utf8')
+
+  const edge = runImport(['--seed', path])
+  assert(edge.code === 0,                              'edge dry-run exits 0')
+  assert(/2 inserted, 3 skipped/.test(edge.stdout),
+    'edge → 2 inserted (Smoke Valid + Smoke No EPA), 3 skipped',
+    edge.stdout.split('\n').slice(-5).join(' | '))
+  assert(/skip\s+Smoke Bad Cat\s+→ invalid category/.test(edge.stdout),
+    'edge → bad category rejected with reason')
+  assert(/skip\s+Smoke Valid\s+→ duplicate id/.test(edge.stdout),
+    'edge → duplicate id detected and skipped')
+  assert(/skip\s+\(no name\)\s+→ missing product_name/.test(edge.stdout),
+    'edge → missing product_name rejected')
+  assert(/warn\s+Smoke No EPA: pesticide-category row has no epa_number/.test(edge.stdout),
+    'edge → pesticide w/o EPA warns but does not reject')
 }
 
 // ── Result ──────────────────────────────────────────────────────────────────
