@@ -1,0 +1,44 @@
+/* Phase 7B.1 — Mobile Turf Health FAB. Hidden on desktop (≥ 768px).
+   Same accent + dimensions as MoistureFab so the two read as a family.
+   Distinguished by:
+     - icon: 🌱 vs 💧
+     - position: when both render on /dashboard, this one stacks ABOVE
+       the moisture FAB (data-stacked="true" applies the offset). */
+
+.fab {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .fab {
+    /* Default (non-dashboard) position: bottom-right thumb zone, same as
+       the moisture FAB on its own routes. Either FAB can sit here when
+       it's the only one visible (/turf-health/* in our case). */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    right: 16px;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: 1px solid var(--color-accent);
+    background: var(--color-accent);
+    color: #0d1a0d;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    z-index: 900;          /* below modal backdrop (1000), above page chrome */
+    padding: 0;
+  }
+  .fab:active { transform: translateY(1px); }
+
+  /* /dashboard: stack ABOVE the moisture FAB. 56px (moisture FAB) +
+     16px gap + 16px base offset = move up by 72px. Result: both FABs
+     reachable one-handed, neither overlaps the other. */
+  .fab[data-stacked="true"] {
+    bottom: calc(16px + 56px + 16px + env(safe-area-inset-bottom, 0px));
+  }
+}

@@ -181,6 +181,170 @@ console.log('— canEditTurfHealth in both permission files')
   }
 }
 
+// ── 6. Capture UX (Commit 4) ──────────────────────────────────────────────
+console.log('— TurfHealthCaptureSheet (Commit 4)')
+{
+  const sheet = readFileSync('src/components/turfHealth/TurfHealthCaptureSheet.jsx', 'utf8')
+
+  // Imports through the store, not the legacy/disease/moisture stores.
+  assert(/import\s+\{[^}]*submitTurfHealthObservation[^}]*\}\s+from\s+['"][^'"]*turfHealth\/turfHealthStore/.test(sheet),
+                                                'sheet imports submitTurfHealthObservation')
+  assert(/import\s+\{[^}]*stagePendingPhoto[^}]*\}\s+from\s+['"][^'"]*turfHealth\/turfHealthStore/.test(sheet),
+                                                'sheet imports stagePendingPhoto from TURF HEALTH store (not moisture)')
+  assert(!/from\s+['"][^'"]*moisture\/moistureStore/.test(sheet),
+                                                'sheet does NOT import the moisture store')
+  // Shared picker.
+  assert(/import\s+\{\s*openPhotoPicker\s*\}\s+from\s+['"][^'"]*media\/pickPhoto/.test(sheet),
+                                                'sheet uses the shared openPhotoPicker helper')
+
+  // The 12 v1 health types must all be present in the sheet's preset list
+  // (the same set the Worker validates against).
+  for (const t of [
+    'morning-shade', 'afternoon-shade', 'all-day-shade', 'poor-airflow',
+    'wet-pocket', 'weak-bermuda', 'slow-recovery', 'algae-moss',
+    'chronic-wilt', 'localized-dry-spot', 'traffic-stress', 'scalping-thin',
+  ]) {
+    assert(sheet.includes(`'${t}'`),            `sheet preset includes "${t}"`)
+  }
+
+  // Severity vocabulary mirrors the Worker.
+  for (const sev of ['low', 'moderate', 'high']) {
+    assert(sheet.includes(`'${sev}'`),          `sheet severity includes "${sev}"`)
+  }
+
+  // Location presets: same vocabulary as moisture for muscle memory.
+  assert(/Array\.from\(\{\s*length:\s*18\s*\}/.test(sheet),
+                                                'sheet declares 18 green presets (matches moisture vocabulary)')
+  for (const p of ['Practice Green', 'Putting Green', 'Driving Range']) {
+    assert(sheet.includes(`'${p}'`),            `sheet includes location preset "${p}"`)
+  }
+
+  // doSubmit must validate all three required fields and return the optimistic row.
+  const submitFn = sheet.match(/function\s+doSubmit\s*\(\s*\)[\s\S]*?\n\s\s\}/)?.[0]
+  assert(submitFn != null,                      'doSubmit body extractable')
+  if (submitFn) {
+    assert(!/^\s*async\s+function\s+doSubmit/.test(submitFn),
+                                                'doSubmit is NOT async (no network wait)')
+    assert(!/\bawait\b/.test(submitFn),         'doSubmit has no await')
+    assert(/Pick a location/.test(submitFn),    'doSubmit validates location')
+    assert(/Pick a type/.test(submitFn),        'doSubmit validates healthType')
+    assert(/Pick a severity/.test(submitFn),    'doSubmit validates severity')
+    assert(/submitTurfHealthObservation\(/.test(submitFn),
+                                                'doSubmit fires submitTurfHealthObservation')
+  }
+
+  // Save shows the photo-action toast; Log another does NOT.
+  const saveFn = sheet.match(/function\s+handleSave\s*\(\s*\)[\s\S]*?\n\s\s\}/)?.[0]
+  assert(saveFn != null,                        'handleSave body extractable')
+  if (saveFn) {
+    assert(!/^\s*async\s+function\s+handleSave/.test(saveFn),
+                                                'handleSave is NOT async')
+    assert(!/\bawait\b/.test(saveFn),           'handleSave has no await')
+    assert(/duration:\s*6000/.test(saveFn),     'Save toast extends to 6s for photo action')
+    assert(/label:\s*['"]?\+ Add photo['"]?/.test(saveFn),
+                                                'Save toast carries "+ Add photo" action')
+    assert(/pickPhotoForClientId\(row\.clientId\)/.test(saveFn),
+                                                'photo action stages against the row clientId')
+    assert(/onClose\(\)/.test(saveFn),          'Save closes the sheet synchronously')
+  }
+  const contFn = sheet.match(/function\s+handleSaveAndContinue\s*\(\s*\)[\s\S]*?\n\s\s\}/)?.[0]
+  assert(contFn != null,                        'handleSaveAndContinue body extractable')
+  if (contFn) {
+    assert(!/pickPhotoForClientId|\+ Add photo|action:\s*\{/.test(contFn),
+                                                'Log another toast has NO photo action (repeat-entry stays fast)')
+    assert(/setHealthType\(null\)/.test(contFn),'continue clears healthType')
+    assert(/setSeverity\(null\)/.test(contFn),  'continue clears severity')
+    assert(/setNote\(''\)/.test(contFn),        'continue clears note')
+    assert(!/setLocation\(/.test(contFn),       'continue does NOT clear location (key UX guarantee)')
+    assert(!/onClose\(/.test(contFn),           'continue does NOT close the sheet')
+  }
+
+  // No autofocus on inputs (zero-typing primary flow).
+  assert(!/autoFocus/.test(sheet),              'sheet has no autoFocus prop anywhere (keyboard never required)')
+  // Other input focuses only when explicitly opened.
+  assert(/otherOpen[\s\S]*otherInputRef\.current\?\.focus/.test(sheet),
+                                                '"Other" input focuses only after explicit tap')
+
+  // CSS contracts.
+  const sheetCss = readFileSync('src/components/turfHealth/TurfHealthCaptureSheet.module.css', 'utf8')
+  assert(/\.typeGrid\b/.test(sheetCss),         'CSS defines .typeGrid (12-pill grid)')
+  assert(/\.typeChip\b/.test(sheetCss),         'CSS defines .typeChip')
+  assert(/\.severityRow\b/.test(sheetCss),      'CSS defines .severityRow')
+  assert(/\.severityChip\b/.test(sheetCss),     'CSS defines .severityChip')
+  assert(/data-level="low"/.test(sheetCss) && /data-level="moderate"/.test(sheetCss) && /data-level="high"/.test(sheetCss),
+                                                'severity chip CSS tints active state by level (low/moderate/high)')
+  assert(/safe-area-inset-bottom/.test(sheetCss),
+                                                'footer respects iOS safe-area-inset-bottom')
+  assert(/min-height:\s*44px/.test(sheetCss),   'CSS has tap targets at the 44px floor')
+}
+
+// ── 7. TurfHealthFab (Commit 4) ───────────────────────────────────────────
+console.log('— TurfHealthFab (Commit 4)')
+{
+  const fab = readFileSync('src/components/turfHealth/TurfHealthFab.jsx', 'utf8')
+  assert(/can\(['"]canEditTurfHealth['"]\)/.test(fab),
+                                                'FAB gated on canEditTurfHealth')
+  assert(/useFabVisibility\(['"]turfHealth['"]\)/.test(fab),
+                                                'FAB consumes the route-aware visibility hook')
+  assert(/TurfHealthCaptureSheet/.test(fab),    'FAB opens the TurfHealthCaptureSheet')
+  // null when not visible OR no permission.
+  assert(/if\s*\(!can\(['"]canEditTurfHealth['"]\)\)\s+return null/.test(fab),
+                                                'FAB returns null when permission denied')
+  assert(/if\s*\(!visible\)\s+return null/.test(fab),
+                                                'FAB returns null when not on a visible route')
+  // data-stacked on dashboard.
+  assert(/data-stacked=\{onDashboard\s*\?\s*['"]true['"]\s*:\s*['"]false['"]\}/.test(fab),
+                                                'FAB carries data-stacked on /dashboard so CSS can offset above moisture FAB')
+
+  const fabCss = readFileSync('src/components/turfHealth/TurfHealthFab.module.css', 'utf8')
+  assert(/\.fab\s*\{[\s\S]*display:\s*none/.test(fabCss),
+                                                'FAB hidden by default (desktop)')
+  assert(/@media\s*\(max-width:\s*767px\)/.test(fabCss),
+                                                'FAB visible only on ≤ 767px viewports')
+  assert(/safe-area-inset-bottom/.test(fabCss), 'FAB respects iOS safe-area')
+  assert(/\.fab\[data-stacked="true"\]/.test(fabCss),
+                                                'CSS defines stacked variant offset')
+  // The stacked offset must clear the 56px moisture FAB + 16px gap.
+  assert(/calc\(16px\s*\+\s*56px\s*\+\s*16px\s*\+\s*env\(safe-area-inset-bottom/.test(fabCss),
+                                                'stacked offset = 16 + 56 + 16 + safe-area (clears moisture FAB)')
+}
+
+// ── 8. Route-aware FAB visibility hook (Commit 4) ─────────────────────────
+console.log('— useFabVisibility (Commit 4)')
+{
+  const hook = readFileSync('src/utils/ui/useFabVisibility.js', 'utf8')
+  assert(/export\s+function\s+useFabVisibility/.test(hook),
+                                                'exports useFabVisibility')
+  assert(/useLocation/.test(hook),              'reads route via react-router useLocation')
+  // The single source of truth for which FAB shows where.
+  assert(/moisture:\s*\[\s*['"]\/dashboard['"]\s*,\s*['"]\/irrigation['"]\s*\]/.test(hook),
+                                                'moisture FAB visible on /dashboard + /irrigation')
+  assert(/turfHealth:\s*\[\s*['"]\/dashboard['"]\s*,\s*['"]\/turf-health['"]\s*\]/.test(hook),
+                                                'turfHealth FAB visible on /dashboard + /turf-health')
+  // matchesAny does prefix matching, not naive substring matching.
+  assert(/startsWith\(p\s*\+\s*['"]\/['"]/.test(hook),
+                                                'prefix match uses startsWith(p + "/") to avoid /irrigation-foo collisions')
+}
+
+// ── 9. MoistureFab is now route-aware (Commit 4 regression guard) ─────────
+console.log('— MoistureFab route-awareness (no global rendering)')
+{
+  const mfab = readFileSync('src/components/moisture/MoistureFab.jsx', 'utf8')
+  assert(/useFabVisibility\(['"]moisture['"]\)/.test(mfab),
+                                                'MoistureFab consumes the route-aware visibility hook')
+  assert(/if\s*\(!visible\)\s+return null/.test(mfab),
+                                                'MoistureFab returns null when not on a visible route')
+}
+
+// ── 10. Layout mounts BOTH FABs (Commit 4) ────────────────────────────────
+console.log('— Layout mounts both FABs')
+{
+  const layout = readFileSync('src/components/layout/Layout.jsx', 'utf8')
+  assert(/<MoistureFab\s*\/>/.test(layout),     'Layout mounts MoistureFab')
+  assert(/<TurfHealthFab\s*\/>/.test(layout),   'Layout mounts TurfHealthFab')
+  assert(/import\s+TurfHealthFab/.test(layout), 'Layout imports TurfHealthFab')
+}
+
 // ── Result ──────────────────────────────────────────────────────────────────
 console.log(`\n${passed} passed, ${failed} failed`)
 process.exit(failed === 0 ? 0 : 1)

@@ -4,6 +4,7 @@ import Sidebar from './Sidebar'
 import CourseSelector from './CourseSelector'
 import CommandOverlay from '../command/CommandOverlay'
 import MoistureFab from '../moisture/MoistureFab'
+import TurfHealthFab from '../turfHealth/TurfHealthFab'
 import { Icon } from '../shared/icons'
 import styles from './Layout.module.css'
 
@@ -43,7 +44,13 @@ export default function Layout() {
       </div>
 
       <CommandOverlay />
+      {/* Phase 7B.1 — Both FABs honor route-aware visibility via
+          useFabVisibility, so MoistureFab shows on /irrigation/* +
+          /dashboard, TurfHealthFab shows on /turf-health/* + /dashboard.
+          When both are visible (only on /dashboard) the Turf Health FAB
+          stacks above the Moisture FAB. */}
       <MoistureFab />
+      <TurfHealthFab />
     </div>
   )
 }

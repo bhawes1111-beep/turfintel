@@ -1,0 +1,251 @@
+/* Phase 7B.1 — Turf Health capture sheet.
+   Shell + location + footer rules mirror LogMoistureButton.module.css
+   verbatim so the layout, spacing, breakpoints, contrast pass, and
+   safe-area handling stay in lockstep with the proven moisture sheet.
+   Only the type grid + severity row are new. */
+
+/* ── Modal shell (mirror of moisture sheet) ───────────────────────────── */
+
+.backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex; align-items: flex-end; justify-content: center;
+  z-index: 1000; padding: 16px;
+}
+@media (min-width: 640px) { .backdrop { align-items: center; } }
+
+.modal {
+  width: 100%; max-width: 460px;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  display: flex; flex-direction: column;
+  max-height: 90vh;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; border-bottom: 1px solid var(--color-border);
+}
+.headerTitle { font-size: 15px; font-weight: 700; color: var(--color-text); }
+.closeBtn {
+  background: none; border: none; color: var(--color-text-muted);
+  font-size: 16px; cursor: pointer; padding: 4px 8px; border-radius: 6px;
+}
+.closeBtn:hover { color: var(--color-text); background: var(--color-card-hover); }
+
+.body { padding: 14px 16px; overflow-y: auto; }
+
+.fieldLabel {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.5px; color: var(--color-text-muted);
+  margin: 12px 0 6px;
+}
+.fieldLabel:first-child { margin-top: 0; }
+.optional { font-weight: 500; text-transform: none; letter-spacing: 0; }
+
+.input {
+  width: 100%; box-sizing: border-box;
+  font-size: 15px; color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 8px; padding: 11px 12px;
+  font-family: inherit;
+}
+.input:focus { outline: none; border-color: var(--color-accent); }
+
+/* ── Location presets (mirror of moisture) ─────────────────────────────── */
+
+.presetGrid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+}
+@media (max-width: 360px) { .presetGrid { grid-template-columns: repeat(4, 1fr); } }
+
+.presetChip {
+  font-size: 14px; font-weight: 600;
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 12px 0;
+  cursor: pointer;
+  min-height: 44px;
+  text-align: center;
+}
+.presetChip[data-active="true"] {
+  background: rgba(74, 158, 74, 0.32);
+  border-color: var(--color-accent);
+  color: var(--color-text);
+}
+
+.areaRow {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;
+}
+.areaChip {
+  font-size: 13px; font-weight: 600;
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 10px 16px;
+  min-height: 44px;
+  cursor: pointer;
+}
+.areaChip[data-active="true"] {
+  background: rgba(74, 158, 74, 0.32);
+  border-color: var(--color-accent);
+  color: var(--color-text);
+}
+
+.recentRow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.recentChip {
+  font-size: 12px; color: var(--color-text-muted);
+  background: transparent; border: 1px solid var(--color-border);
+  border-radius: 999px; padding: 8px 12px; cursor: pointer;
+  min-height: 36px;
+}
+.recentChip:hover { color: var(--color-text); border-color: var(--color-text-muted); }
+.recentChip[data-active="true"] {
+  background: rgba(74, 158, 74, 0.32);
+  border-color: var(--color-accent);
+  color: var(--color-text);
+}
+
+.otherWrap { display: flex; flex-direction: column; gap: 8px; }
+.linkBtn {
+  align-self: flex-start;
+  font-size: 12px; color: var(--color-accent);
+  background: none; border: none;
+  padding: 4px 0; cursor: pointer;
+}
+.linkBtn:hover { text-decoration: underline; }
+
+/* ── NEW: Turf Health type grid (3-col grid × 4 rows = 12 pills) ────────
+   Larger tap targets than moisture's flag toggles because users will be
+   single-selecting (not toggling on/off) — confidence matters more than
+   visual density. 3 columns at 360px viewport ≈ 100px per pill. */
+
+.typeGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+@media (max-width: 360px) { .typeGrid { grid-template-columns: repeat(2, 1fr); } }
+
+.typeChip {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px;
+  font-size: 12px; font-weight: 600;
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 10px 6px;
+  cursor: pointer;
+  min-height: 64px;
+  text-align: center;
+  line-height: 1.2;
+}
+.typeIcon { font-size: 20px; line-height: 1; }
+.typeChip[data-active="true"] {
+  background: rgba(74, 158, 74, 0.32);
+  border-color: var(--color-accent);
+  color: var(--color-text);
+}
+.typeChip:active { transform: translateY(1px); }
+
+/* ── NEW: Severity row — 3 chips, color-tinted by level for sunlight ──── */
+
+.severityRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.severityChip {
+  font-size: 13px; font-weight: 700;
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 12px 0;
+  cursor: pointer;
+  min-height: 48px;
+  text-align: center;
+}
+.severityChip:active { transform: translateY(1px); }
+
+/* Active-state coloring by level — same green family for the field but
+   tinted by severity so the chosen chip reads clearly at midday. */
+.severityChip[data-active="true"][data-level="low"] {
+  background: rgba(74, 158, 74, 0.32);
+  border-color: var(--color-accent);
+}
+.severityChip[data-active="true"][data-level="moderate"] {
+  background: rgba(251, 191, 36, 0.32);
+  border-color: rgba(251, 191, 36, 0.7);
+  color: #fde68a;
+}
+.severityChip[data-active="true"][data-level="high"] {
+  background: rgba(239, 68, 68, 0.28);
+  border-color: rgba(239, 68, 68, 0.7);
+  color: #fecaca;
+}
+
+/* ── Optional note (collapsed) ─────────────────────────────────────────── */
+
+.expandLink {
+  align-self: flex-start;
+  margin-top: 12px;
+  font-size: 13px; font-weight: 600;
+  color: var(--color-accent);
+  background: none; border: none;
+  padding: 6px 0; cursor: pointer;
+}
+.expandLink:hover { text-decoration: underline; }
+
+.detailsWrap { display: flex; flex-direction: column; gap: 0; }
+
+.error { font-size: 12px; color: #e07070; margin-top: 10px; }
+
+/* ── Footer (mirror of moisture sheet with safe-area inset) ──────────── */
+
+.footer {
+  display: flex; justify-content: flex-end; gap: 8px;
+  /* iOS home-indicator safe-area buffer — env() resolves to 0 elsewhere. */
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--color-border);
+  flex-wrap: wrap;
+}
+.cancelBtn {
+  font-size: 14px; color: var(--color-text-muted);
+  background: transparent; border: 1px solid var(--color-border);
+  border-radius: 8px; padding: 10px 16px; cursor: pointer; min-height: 44px;
+}
+.cancelBtn:hover:not(:disabled) { color: var(--color-text); }
+
+.continueBtn {
+  font-size: 14px; font-weight: 600;
+  color: var(--color-accent);
+  background: transparent;
+  border: 1px solid rgba(74, 158, 74, 0.5);
+  border-radius: 8px; padding: 10px 14px; cursor: pointer; min-height: 44px;
+  white-space: nowrap;
+}
+.continueBtn:hover:not(:disabled) {
+  background: rgba(74, 158, 74, 0.10);
+  border-color: var(--color-accent);
+}
+.continueBtn:active:not(:disabled) { transform: translateY(1px); }
+
+.saveBtn {
+  font-size: 14px; font-weight: 600; color: #0d1a0d;
+  background: var(--color-accent); border: 1px solid var(--color-accent);
+  border-radius: 8px; padding: 10px 20px; cursor: pointer; min-height: 44px;
+}
+.saveBtn:hover:not(:disabled) { background: var(--color-accent-hover); }
+.saveBtn:disabled, .cancelBtn:disabled, .continueBtn:disabled {
+  opacity: 0.6; cursor: default;
+}
