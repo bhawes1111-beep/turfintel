@@ -341,19 +341,53 @@ export function buildSprayIntelligenceReport(input = {}) {
 
   const sections = buildSprayReportSections(summary)
 
+  // Phase 7E (3/?) — stable export-metadata contract. These keys are
+  // versioned so downstream PDF/Excel/external consumers can rely on a
+  // predictable shape. Bump exportVersion when fields change semantics.
+  const generatedAt = new Date(now).toISOString()
+  const metadata = {
+    // Identification / versioning.
+    exportVersion: 1,
+    reportKind:    REPORT_TYPE.SPRAY_INTELLIGENCE,
+    generatedBy:   'TurfIntel',
+    generatedAt,
+    dateRange,
+
+    // Content surfaces.
+    totals:        summary.totals,
+    lookback:      { rotationDays: rotationLookbackDays, intervalDays: intervalLookbackDays },
+    notices,
+    disclaimer:    DISCLAIMER,
+
+    // Print-only opt-in extras consumed by reportFormatter.buildPrintDocument.
+    // Generic reports won't carry this object so their print output is
+    // unchanged. Each field is a plain string / array of plain strings —
+    // safe to JSON-serialize, safe to escape into HTML.
+    printExtras: {
+      subtitle: 'Read-only spray intelligence summary',
+      summary: [
+        ['Sprays reviewed',      summary.totals.spraysReviewed],
+        ['Products reviewed',    summary.totals.productsReviewed],
+        ['With intelligence',    summary.totals.productsWithIntel],
+        ['Missing intelligence', summary.totals.missingIntelCount],
+        ['Restricted-use',       summary.totals.restrictedUseCount],
+        ['Repeated groups',      summary.totals.repeatedGroupCount],
+        ['Interval matches',     summary.totals.intervalMatchCount],
+      ],
+      notices,
+      disclaimer:  DISCLAIMER,
+      // Footer line for printed output — stewardship copy + generated-at.
+      footerLeft:  'TurfIntel · Spray Intelligence',
+      footerRight: `Generated ${generatedAt}`,
+    },
+  }
+
   const envelope = createReport({
     module:        REPORT_MODULE.SPRAY,
     type:          REPORT_TYPE.SPRAY_INTELLIGENCE,
     title:         'Spray Intelligence Report',
     sections,
-    metadata: {
-      dateRange,
-      generatedAt:   new Date(now).toISOString(),
-      totals:        summary.totals,
-      lookback:      { rotationDays: rotationLookbackDays, intervalDays: intervalLookbackDays },
-      notices,
-      disclaimer:    DISCLAIMER,
-    },
+    metadata,
   })
 
   // Convenient shape exposing both the envelope and the model

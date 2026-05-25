@@ -322,3 +322,34 @@
     justify-content: center;
   }
 }
+
+/* Phase 7E (3/?) — modal-direct print path. The canonical print flow
+   opens a dedicated print window (see exportUtils.triggerPrint), so the
+   modal itself is rarely printed. But if a user hits Ctrl/Cmd-P with
+   the modal open we hide the controls (close button + actions strip)
+   so they don't appear in the printed output. */
+@media print {
+  .rpClose,
+  .rpActions {
+    display: none !important;
+  }
+  .rpOverlay {
+    position: static !important;
+    background: #fff !important;
+  }
+  .rpPanel {
+    box-shadow: none !important;
+    border: 0 !important;
+    max-height: none !important;
+    background: #fff !important;
+    color: #111 !important;
+  }
+  .rpHeader {
+    background: #fff !important;
+    color: #111 !important;
+  }
+  .rpTitle,
+  .rpMeta {
+    color: #111 !important;
+  }
+}
