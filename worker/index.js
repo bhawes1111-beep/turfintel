@@ -178,6 +178,10 @@ import {
   deleteTurfHealth,
 } from './api/turfHealth.js'
 import {
+  listProductCatalog,
+  getProductCatalog,
+} from './api/productCatalog.js'
+import {
   bootstrapAdmin,
   login,
   logout,
@@ -520,6 +524,41 @@ async function handleApi(request, env, url, ctx) {
     if (method === 'GET')    return getTurfHealth(env, id)
     if (method === 'PATCH')  return updateTurfHealth(env, id, request)
     if (method === 'DELETE') return deleteTurfHealth(env, id)
+  }
+
+  // ── /api/product-catalog ──────────────────────────────────────────────
+  // Phase 7C.1 — read-only global product catalog. No mutations in v1.
+  // /search is matched BEFORE /:id so 'search' isn't consumed as an id.
+  if (pathname === '/api/product-catalog') {
+    if (method === 'GET') {
+      const q        = url.searchParams.get('q')        || null
+      const category = url.searchParams.get('category') || null
+      const status   = url.searchParams.get('status')   || null
+      const frac     = url.searchParams.get('frac')     || null
+      const hrac     = url.searchParams.get('hrac')     || null
+      const irac     = url.searchParams.get('irac')     || null
+      const pgr      = url.searchParams.get('pgr')      || null
+      const limit    = url.searchParams.get('limit')    || null
+      return listProductCatalog(env, { q, category, status, frac, hrac, irac, pgr, limit })
+    }
+  }
+  if (pathname === '/api/product-catalog/search') {
+    if (method === 'GET') {
+      const q        = url.searchParams.get('q')        || null
+      const category = url.searchParams.get('category') || null
+      const status   = url.searchParams.get('status')   || null
+      const frac     = url.searchParams.get('frac')     || null
+      const hrac     = url.searchParams.get('hrac')     || null
+      const irac     = url.searchParams.get('irac')     || null
+      const pgr      = url.searchParams.get('pgr')      || null
+      const limit    = url.searchParams.get('limit')    || null
+      return listProductCatalog(env, { q, category, status, frac, hrac, irac, pgr, limit })
+    }
+  }
+  const pcMatch = pathname.match(/^\/api\/product-catalog\/([^/]+)$/)
+  if (pcMatch) {
+    const id = decodeURIComponent(pcMatch[1])
+    if (method === 'GET') return getProductCatalog(env, id)
   }
 
   // ── /api/users ────────────────────────────────────────────────────────
