@@ -18,6 +18,7 @@ import {
   buildMoistureTrendReport,
   buildTurfHealthSummaryReport,
 } from './reportBuilder.js'
+import { buildSprayIntelligenceReport } from './builders/sprayIntelligenceReport.js'
 import { REPORT_MODULE } from './reportSchemas.js'
 
 /**
@@ -107,6 +108,22 @@ export const REPORT_DEFS = [
     build: ({ moistureObservations }) =>
       buildMoistureTrendReport(moistureObservations, {
         title: 'Moisture Trend',
+      }),
+  },
+
+  // ── Spray ────────────────────────────────────────────────────────────────
+  // Phase 7E (1/?) — Spray Intelligence report (chemistry / rotation /
+  // interval awareness). Read-only; reuses the same Phase 7D helpers
+  // that power the live Spray Builder panels.
+  {
+    id:       'spray-intelligence',
+    module:   REPORT_MODULE.SPRAY,
+    title:    'Spray Intelligence',
+    desc:     'Read-only awareness report for chemistry groups, rotation, intervals, and missing intelligence.',
+    requires: ['sprays', 'inventoryProducts', 'catalogProducts', 'labelsByItemId'],
+    build: ({ sprays, inventoryProducts, catalogProducts, labelsByItemId }) =>
+      buildSprayIntelligenceReport({
+        sprays, inventoryProducts, catalogProducts, labelsByItemId,
       }),
   },
 

@@ -96,6 +96,10 @@ function fromCatalog(catalogProduct) {
     signalWord: catalogProduct.signalWord ?? null,
     reiHours:   catalogProduct.reiHours   ?? null,
     phiHours:   catalogProduct.phiHours   ?? null,
+    // Phase 7E (1/?) — pass RUP through so downstream awareness panels
+    // (and the Spray Intelligence report) can show "restricted-use
+    // present" without re-querying the catalog.
+    restrictedUse: catalogProduct.restrictedUse === true,
     rates:      Array.isArray(catalogProduct.rates) ? catalogProduct.rates : [],
     labelUrl:   catalogProduct.labelUrl   ?? null,
   }

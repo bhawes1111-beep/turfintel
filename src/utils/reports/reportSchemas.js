@@ -25,6 +25,8 @@ export const REPORT_TYPE = {
   DISEASE_LOG:          'disease-log',
   MOISTURE_TREND:       'moisture-trend',
   TURF_HEALTH_SUMMARY:  'turf-health-summary',
+  // Phase 7E — Spray Intelligence (chemistry / rotation / interval awareness).
+  SPRAY_INTELLIGENCE:   'spray-intelligence',
 }
 
 export const EXPORT_FORMAT = {

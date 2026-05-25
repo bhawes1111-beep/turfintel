@@ -12,6 +12,13 @@ import { useWeather } from '../../utils/weather/useWeather'
 import { useConditionLogs } from '../../utils/conditionLog/conditionLogStore'
 import { useSelectedCourse } from '../../utils/courses/courseStore'
 import { buildMorningBrief } from '../../utils/operations/morningBrief'
+// Phase 7E (1/?) — Spray Intelligence report wiring. Bundle keys
+// 'sprays', 'inventoryProducts', 'catalogProducts', and 'labelsByItemId'
+// feed the new Spray Intelligence report def.
+import { useSpraysData } from '../../utils/sprays/spraysStore'
+import { useInventoryData } from '../../utils/inventory/inventoryStore'
+import { useProductCatalog } from '../../utils/productCatalog/productCatalogStore'
+import { useImportedLabels } from '../../utils/inventory/labelImportStore'
 import styles from './Reports.module.css'
 
 /**
@@ -37,6 +44,11 @@ export default function Reports() {
   const weather          = useWeather()
   const conditionLogs    = useConditionLogs()
   const selectedCourse   = useSelectedCourse()
+  // Phase 7E (1/?) — inputs for Spray Intelligence report.
+  const sprays           = useSpraysData()
+  const inventory        = useInventoryData()
+  const catalog          = useProductCatalog()
+  const importedLabels   = useImportedLabels()
 
   const [activeReport, setActiveReport] = useState(null)
 
@@ -90,8 +102,36 @@ export default function Reports() {
       ? { loading: turfHealth.loading, error: turfHealth.error }
       : (turfHealth.observations ?? []),
 
+    // Phase 7E (1/?) — Spray Intelligence report inputs. Each bundle
+    // key independently surfaces { loading, error } so a single slow
+    // store doesn't block adjacent reports' cards.
+    sprays: sprays.loading || sprays.error
+      ? { loading: sprays.loading, error: sprays.error }
+      : (sprays.records ?? []),
+
+    inventoryProducts: inventory.loading || inventory.error
+      ? { loading: inventory.loading, error: inventory.error }
+      : (inventory.items ?? []),
+
+    catalogProducts: catalog.loading || catalog.error
+      ? { loading: catalog.loading, error: catalog.error }
+      : (catalog.products ?? []),
+
+    labelsByItemId: importedLabels.loading || importedLabels.error
+      ? { loading: importedLabels.loading, error: importedLabels.error }
+      : (() => {
+          // Same indexing the live Spray Builder uses — keep the shape
+          // identical so the helper resolver finds rows consistently.
+          const out = {}
+          for (const lbl of importedLabels.labels ?? []) {
+            if (lbl?.inventoryItemId) out[lbl.inventoryItemId] = lbl
+          }
+          return out
+        })(),
+
     morningBrief,
-  }), [equipment, cultural, nutrition, disease, moisture, turfHealth, morningBrief])
+  }), [equipment, cultural, nutrition, disease, moisture, turfHealth,
+       sprays, inventory, catalog, importedLabels, morningBrief])
 
   const courseInfo = useMemo(() => ({
     name:           selectedCourse?.name ?? selectedCourse?.shortName ?? '',
