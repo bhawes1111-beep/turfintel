@@ -1,0 +1,425 @@
+/* Phase 7E (2/?) — Spray Intelligence preview styles.
+   Scoped to the custom preview component. Mobile-first; print-friendly
+   via the @media print rules at the bottom of the file. */
+
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 4px;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────── */
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 10px;
+}
+
+.title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.meta {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* ── Summary tiles ──────────────────────────────────────────────────── */
+
+.tilesSection {
+  margin: 0;
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.tile {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left-width: 3px;
+}
+
+.tileValue {
+  font-size: 22px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+  line-height: 1.1;
+}
+
+.tileLabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.55);
+  margin-top: 2px;
+}
+
+.tile_ok       { border-left-color: rgba(78, 203, 78, 0.65); }
+.tile_warn     { border-left-color: rgba(220, 180, 60, 0.65); }
+.tile_caution  { border-left-color: rgba(255, 160, 100, 0.65); }
+.tile_muted    { border-left-color: rgba(255, 255, 255, 0.2);  }
+.tile_neutral  { border-left-color: rgba(100, 150, 220, 0.5);  }
+
+/* ── Section card ──────────────────────────────────────────────────── */
+
+.section {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sectionTitle {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ── Chip row ─────────────────────────────────────────────────────── */
+
+.chipRow {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chipRowLabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.5);
+  min-width: 110px;
+}
+
+.chipRowValues {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.chip_frac { background: rgba(200,100,100,0.12); color: #f08c8c; border-color: rgba(200,100,100,0.35); }
+.chip_hrac { background: rgba(100,180,100,0.12); color: #8cd48c; border-color: rgba(100,180,100,0.35); }
+.chip_irac { background: rgba(200,160,80,0.12);  color: #e0c070; border-color: rgba(200,160,80,0.35); }
+.chip_pgr  { background: rgba(160,100,200,0.12); color: #c897e3; border-color: rgba(160,100,200,0.35); }
+
+.chipRepeat {
+  border-style: dashed;
+}
+
+/* ── Key/value block ──────────────────────────────────────────────── */
+
+.kv {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 12px;
+  row-gap: 4px;
+  margin: 4px 0 0;
+  font-size: 13px;
+}
+
+.kvRow {
+  display: contents;
+}
+
+.kvLabel {
+  color: rgba(255, 255, 255, 0.55);
+  margin: 0;
+}
+
+.kvValue {
+  color: rgba(255, 255, 255, 0.92);
+  margin: 0;
+}
+
+.kv_warn .kvValue    { color: #e0a060; }
+.kv_caution .kvValue { color: #e8c660; }
+
+/* ── Interval list ────────────────────────────────────────────────── */
+
+.intervalList,
+.missingList,
+.noticeList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.intervalItem {
+  display: grid;
+  grid-template-columns: minmax(60px, max-content) 1fr max-content;
+  gap: 4px 10px;
+  align-items: baseline;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.intervalKind {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.intervalKindProduct {
+  background: rgba(80, 140, 200, 0.15);
+  color: #9ec5ec;
+  border: 1px solid rgba(80, 140, 200, 0.35);
+}
+
+.intervalKindGroup {
+  background: rgba(200, 100, 100, 0.15);
+  color: #f08c8c;
+  border: 1px solid rgba(200, 100, 100, 0.35);
+}
+
+.intervalMatch {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.intervalSince {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+  text-align: right;
+}
+
+.intervalDate {
+  grid-column: 2 / span 2;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.intervalSpray {
+  grid-column: 2 / span 2;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+  font-style: italic;
+}
+
+/* ── Missing-intelligence list ────────────────────────────────────── */
+
+.missingItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(220, 180, 60, 0.06);
+  border: 1px solid rgba(220, 180, 60, 0.25);
+  border-left: 3px solid rgba(220, 180, 60, 0.65);
+}
+
+.missingHeader {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.missingDate {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.missingSpray {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.missingMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.missingCount {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.missingReason {
+  font-size: 11px;
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.empty {
+  margin: 4px 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
+}
+
+/* ── Notices ──────────────────────────────────────────────────────── */
+
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.noticeIcon {
+  flex: 0 0 auto;
+  opacity: 0.8;
+  width: 14px;
+  text-align: center;
+}
+
+.noticeText {
+  flex: 1 1 auto;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.notice_warning { background: rgba(220, 180, 60, 0.08); color: #e0a060; }
+.notice_caution { background: rgba(220, 180, 60, 0.04); color: #e8c660; }
+.notice_info    { /* default neutral */ }
+
+/* ── Disclaimer ───────────────────────────────────────────────────── */
+
+.disclaimer {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.55;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.disclaimer p {
+  margin: 0;
+}
+
+/* ── Mobile (default is mobile-first; only adjust the tile grid) ───── */
+
+@media (max-width: 600px) {
+  .preview { padding: 0; }
+  .tiles {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .chipRowLabel {
+    min-width: auto;
+    width: 100%;
+  }
+  .intervalItem {
+    grid-template-columns: 1fr;
+  }
+  .intervalSince,
+  .intervalDate,
+  .intervalSpray {
+    grid-column: auto;
+    text-align: left;
+  }
+  .header { padding-bottom: 6px; }
+  .title  { font-size: 16px; }
+}
+
+/* ── Print ──────────────────────────────────────────────────────────
+   The Reports modal already injects the report into a print window via
+   ReportActions; we provide on-screen-print fallbacks too so a user
+   pressing Ctrl/Cmd-P on the open modal gets a clean print. Dark UI
+   surfaces are flipped to light + black ink. */
+
+@media print {
+  .preview {
+    color: #111;
+    background: #fff;
+    gap: 10px;
+  }
+  .header,
+  .section,
+  .tile,
+  .intervalItem,
+  .missingItem,
+  .notice {
+    background: #fff !important;
+    border-color: #ccc !important;
+    color: #111 !important;
+    box-shadow: none !important;
+  }
+  .title,
+  .sectionTitle,
+  .tileValue,
+  .missingSpray,
+  .intervalMatch,
+  .kvValue { color: #111 !important; }
+  .subtitle,
+  .meta,
+  .tileLabel,
+  .chipRowLabel,
+  .intervalSince,
+  .intervalDate,
+  .intervalSpray,
+  .missingDate,
+  .missingCount,
+  .missingReason,
+  .noticeText,
+  .empty,
+  .disclaimer,
+  .kvLabel { color: #444 !important; }
+  .chip,
+  .intervalKind {
+    background: #fff !important;
+    color: #111 !important;
+    border-color: #888 !important;
+  }
+  /* Prevent rows / cards from splitting across pages. */
+  .section,
+  .intervalItem,
+  .missingItem { break-inside: avoid; page-break-inside: avoid; }
+}

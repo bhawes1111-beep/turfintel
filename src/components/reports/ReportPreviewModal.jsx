@@ -1,7 +1,17 @@
 import { useEffect, useCallback } from 'react'
-import { SECTION_TYPE } from '../../utils/reports/reportSchemas'
+import { SECTION_TYPE, REPORT_TYPE } from '../../utils/reports/reportSchemas'
 import ReportActions from './ReportActions'
+import SprayIntelligencePreview from './SprayIntelligencePreview'
 import styles from './reports.module.css'
+
+// Phase 7E (2/?) — per-report custom-preview dispatcher. Any report
+// whose `type` appears as a key in CUSTOM_PREVIEWS renders via the
+// mapped component instead of the generic FIELDS/TABLE/TEXT path.
+// Falls through to the existing renderer for every other report so
+// adding a custom preview is opt-in per report.
+const CUSTOM_PREVIEWS = {
+  [REPORT_TYPE.SPRAY_INTELLIGENCE]: SprayIntelligencePreview,
+}
 
 /**
  * Lightbox-style modal for previewing a TurfReport.
@@ -66,51 +76,61 @@ export default function ReportPreviewModal({ report, onClose, courseInfo = {} })
         {/* ── Body ─────────────────────────────────────────────────────────── */}
         <div className={styles.rpBody}>
 
-          {report.sections.map((section, i) => (
-            <div key={i} className={styles.rpSection}>
-              <p className={styles.rpSectionTitle}>{section.title}</p>
+          {(() => {
+            const CustomPreview = CUSTOM_PREVIEWS[report.type]
+            if (CustomPreview) {
+              // Custom preview takes over the body region but the modal
+              // shell, header, attachments strip, and ReportActions stay
+              // exactly the same so export buttons + print continue to
+              // work uniformly.
+              return <CustomPreview report={report} />
+            }
+            return report.sections.map((section, i) => (
+              <div key={i} className={styles.rpSection}>
+                <p className={styles.rpSectionTitle}>{section.title}</p>
 
-              {section.type === SECTION_TYPE.FIELDS && (
-                <div className={styles.rpFieldGrid}>
-                  {Object.entries(section.data).map(([label, value]) => (
-                    <div key={label} className={styles.rpField}>
-                      <span className={styles.rpFieldLabel}>{label}</span>
-                      <span className={styles.rpFieldValue}>{value ?? '—'}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
+                {section.type === SECTION_TYPE.FIELDS && (
+                  <div className={styles.rpFieldGrid}>
+                    {Object.entries(section.data).map(([label, value]) => (
+                      <div key={label} className={styles.rpField}>
+                        <span className={styles.rpFieldLabel}>{label}</span>
+                        <span className={styles.rpFieldValue}>{value ?? '—'}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
-              {section.type === SECTION_TYPE.TABLE && (
-                <div className={styles.rpTableWrap}>
-                  <table className={styles.rpTable}>
-                    <thead>
-                      <tr>
-                        {section.data.columns.map(col => (
-                          <th key={col} className={styles.rpTableHead}>{col}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {section.data.rows.map((row, ri) => (
-                        <tr key={ri} className={styles.rpTableRow}>
-                          {row.map((cell, ci) => (
-                            <td key={ci} className={styles.rpTableCell}>
-                              {cell ?? '—'}
-                            </td>
+                {section.type === SECTION_TYPE.TABLE && (
+                  <div className={styles.rpTableWrap}>
+                    <table className={styles.rpTable}>
+                      <thead>
+                        <tr>
+                          {section.data.columns.map(col => (
+                            <th key={col} className={styles.rpTableHead}>{col}</th>
                           ))}
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                      </thead>
+                      <tbody>
+                        {section.data.rows.map((row, ri) => (
+                          <tr key={ri} className={styles.rpTableRow}>
+                            {row.map((cell, ci) => (
+                              <td key={ci} className={styles.rpTableCell}>
+                                {cell ?? '—'}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
 
-              {section.type === SECTION_TYPE.TEXT && (
-                <p className={styles.rpText}>{section.data}</p>
-              )}
-            </div>
-          ))}
+                {section.type === SECTION_TYPE.TEXT && (
+                  <p className={styles.rpText}>{section.data}</p>
+                )}
+              </div>
+            ))
+          })()}
 
           {/* ── Attachments strip ──────────────────────────────────────────── */}
           {report.attachments?.length > 0 && (
