@@ -1,0 +1,284 @@
+/* Phase 7C.2 (1/?) — CatalogLinkPicker modal styles.
+   Modal with backdrop, scoped to this component. Mobile-first: tall and
+   scrollable, dual-pane stacked, full-width buttons. */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.modal {
+  background: #181b21;
+  color: rgba(255, 255, 255, 0.92);
+  width: min(720px, 100%);
+  max-height: calc(100vh - 32px);
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.title {
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.45;
+}
+
+.closeBtn {
+  background: transparent;
+  border: 0;
+  color: rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+  font-size: 18px;
+  padding: 4px 8px;
+  line-height: 1;
+}
+.closeBtn:hover { color: rgba(255, 255, 255, 0.85); }
+
+.errorBanner {
+  margin: 8px 20px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(220, 60, 60, 0.12);
+  color: #ff9999;
+  font-size: 13px;
+  border: 1px solid rgba(220, 60, 60, 0.3);
+}
+
+/* ── Search panel ──────────────────────────────────────────────────────── */
+
+.toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 20px 8px;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: inherit;
+  font-size: 14px;
+}
+.searchInput:focus {
+  outline: none;
+  border-color: rgba(100, 150, 220, 0.5);
+}
+
+.filterGroup {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.filterGroupLabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.45);
+  margin-right: 4px;
+}
+.filterBtn {
+  padding: 3px 10px;
+  font-size: 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.75);
+  cursor: pointer;
+}
+.filterBtn:hover { background: rgba(255, 255, 255, 0.08); }
+.filterBtnActive {
+  background: rgba(100, 150, 220, 0.2);
+  border-color: rgba(100, 150, 220, 0.5);
+  color: #cfe2ff;
+}
+
+.resultSummary {
+  padding: 4px 20px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.resultList {
+  list-style: none;
+  margin: 0;
+  padding: 0 20px 16px;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.resultList li { margin-bottom: 6px; }
+
+.empty {
+  padding: 16px 0;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 13px;
+}
+
+.resultBtn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: inherit;
+  cursor: pointer;
+}
+.resultBtn:hover, .resultBtn:focus-visible {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(100, 150, 220, 0.4);
+  outline: none;
+}
+
+.resultMain { display: flex; flex-direction: column; min-width: 0; }
+.resultName { font-size: 14px; font-weight: 500; }
+.resultSub  { font-size: 12px; color: rgba(255, 255, 255, 0.55); }
+
+.resultCategory {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: rgba(100, 150, 220, 0.15);
+  color: rgba(160, 200, 255, 0.95);
+  border: 1px solid rgba(100, 150, 220, 0.3);
+}
+
+/* ── Confirmation panel ─────────────────────────────────────────────────── */
+
+.confirmBody {
+  padding: 16px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.confirmEmpty {
+  padding: 24px 20px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+}
+
+.confirmCard {
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.confirmName { margin: 0 0 4px; font-size: 16px; font-weight: 600; }
+.confirmSub  { font-size: 12px; color: rgba(255, 255, 255, 0.55); margin-bottom: 10px; }
+
+.confirmGrid {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 12px;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+.confirmLabel { color: rgba(255, 255, 255, 0.55); }
+.confirmValue { color: rgba(255, 255, 255, 0.92); }
+
+.confirmChips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+.chipFrac { background: rgba(200,100,100,0.12); color: #f08c8c; border-color: rgba(200,100,100,0.35); }
+.chipHrac { background: rgba(100,180,100,0.12); color: #8cd48c; border-color: rgba(100,180,100,0.35); }
+.chipIrac { background: rgba(200,160,80,0.12);  color: #e0c070; border-color: rgba(200,160,80,0.35); }
+.chipPgr  { background: rgba(160,100,200,0.12); color: #c897e3; border-color: rgba(160,100,200,0.35); }
+.chipRup  { background: rgba(220,60,60,0.18);   color: #ff8080; border-color: rgba(220,60,60,0.45); }
+
+.disclaimer {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.5;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.btnSecondary,
+.btnPrimary {
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+}
+
+.btnSecondary {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.8);
+}
+.btnSecondary:hover { background: rgba(255, 255, 255, 0.06); }
+.btnSecondary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btnPrimary {
+  background: rgba(100, 150, 220, 0.25);
+  border-color: rgba(100, 150, 220, 0.6);
+  color: #e0eeff;
+}
+.btnPrimary:hover  { background: rgba(100, 150, 220, 0.35); }
+.btnPrimary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+@media (max-width: 600px) {
+  .resultBtn {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  .resultCategory { align-self: flex-start; }
+}

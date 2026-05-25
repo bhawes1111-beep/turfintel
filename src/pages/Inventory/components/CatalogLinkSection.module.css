@@ -1,0 +1,93 @@
+/* Phase 7C.2 (1/?) — Catalog Link section inside the Products detail drawer.
+   Read-only stewardship surface; not a full modal. */
+
+.empty,
+.linked,
+.stale {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.helper {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.5;
+}
+
+.linkedSummary {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(100, 150, 220, 0.08);
+  border: 1px solid rgba(100, 150, 220, 0.25);
+}
+
+.linkedName {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+}
+.linkedSub {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 2px;
+}
+.linkedFk {
+  margin-top: 6px;
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.stale .linkedFk { margin-top: 4px; }
+
+.stale {
+  /* Subtle yellow tint to distinguish from a healthy link without
+     screaming about it — the FK is just an intelligence link, not
+     an integrity-critical FK. */
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(220, 180, 60, 0.06);
+  border: 1px solid rgba(220, 180, 60, 0.25);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.btnPrimary {
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  background: rgba(100, 150, 220, 0.25);
+  border: 1px solid rgba(100, 150, 220, 0.6);
+  color: #e0eeff;
+  cursor: pointer;
+}
+.btnPrimary:hover { background: rgba(100, 150, 220, 0.35); }
+
+.btnSecondary {
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+}
+.btnSecondary:hover { background: rgba(255, 255, 255, 0.1); }
+
+.btnDanger {
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  background: rgba(220, 60, 60, 0.1);
+  border: 1px solid rgba(220, 60, 60, 0.3);
+  color: #ff9999;
+  cursor: pointer;
+}
+.btnDanger:hover { background: rgba(220, 60, 60, 0.18); }

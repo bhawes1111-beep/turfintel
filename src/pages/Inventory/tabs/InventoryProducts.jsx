@@ -1,11 +1,14 @@
 import { useState, useMemo } from 'react'
-import { useInventoryData } from '../../../utils/inventory/inventoryStore'
+import { useInventoryData, setInventoryCatalogLink } from '../../../utils/inventory/inventoryStore'
+import { useProductCatalog, getCatalogProductById } from '../../../utils/productCatalog/productCatalogStore'
 import { EmptyState } from '../../../components/shared/EmptyState'
 import WorkspaceSection from '../../../components/shared/WorkspaceSection'
 import SideDrawer from '../../../components/primitives/SideDrawer'
 import StatusBoard from '../../../components/primitives/StatusBoard'
 import CatalogChip from '../components/CatalogChip'
+import CatalogLinkPicker from '../components/CatalogLinkPicker'
 import styles from '../Inventory.module.css'
+import linkStyles from '../components/CatalogLinkSection.module.css'
 
 const STOCK_FILTERS = ['All', 'Good', 'Low', 'Critical', 'Out of Stock']
 
@@ -29,6 +32,10 @@ const SORT_STATUS = { out: 0, critical: 1, low: 2, good: 3 }
 
 export default function InventoryProducts({ initialSelectedId = null, onOpenCatalog } = {}) {
   const { items } = useInventoryData()
+  // Phase 7C.2 (1/?) — subscribe so the drawer's "current link" summary
+  // re-renders when the catalog cache settles.
+  useProductCatalog()
+  const [pickerOpen, setPickerOpen] = useState(false)
   // Products tab shows the merged products + chemicals view (matches the
   // pre-5.2 OperationsContext.state.inventoryProducts behavior).
   const inventoryProducts = useMemo(
@@ -251,6 +258,16 @@ export default function InventoryProducts({ initialSelectedId = null, onOpenCata
                   </div>
                 </section>
 
+                {/* Catalog Link (Phase 7C.2) */}
+                <CatalogLinkSection
+                  inventoryItem={selected}
+                  onOpenPicker={() => setPickerOpen(true)}
+                  onUnlink={async () => {
+                    try { await setInventoryCatalogLink(selected.id, null) }
+                    catch (e) { /* surfaced by store error state */ }
+                  }}
+                />
+
                 {/* Stock Information */}
                 <section className={styles.ipModalSection}>
                   <h3 className={styles.ipModalSectionTitle}>Stock Information</h3>
@@ -371,6 +388,104 @@ export default function InventoryProducts({ initialSelectedId = null, onOpenCata
         )
       })()}
 
+      {pickerOpen && selected && (
+        <CatalogLinkPicker
+          inventoryItem={selected}
+          initialProductCatalogId={selected.productCatalogId ?? null}
+          onCancel={() => setPickerOpen(false)}
+          onConfirm={async (productCatalogId) => {
+            await setInventoryCatalogLink(selected.id, productCatalogId)
+            setPickerOpen(false)
+          }}
+        />
+      )}
+
     </div>
+  )
+}
+
+// Phase 7C.2 (1/?) — In-drawer "Catalog Link" stewardship surface.
+// Three states:
+//   1. Unlinked        → "Link catalog intelligence" CTA + helper text.
+//   2. Linked + cached → shows the linked product summary + Change / Unlink.
+//   3. Linked + stale  → shows the raw FK with a warning + Change / Unlink.
+// All three avoid claiming any change to stock or product records.
+function CatalogLinkSection({ inventoryItem, onOpenPicker, onUnlink }) {
+  const fk     = inventoryItem.productCatalogId ?? null
+  const linked = fk ? getCatalogProductById(fk) : null
+
+  return (
+    <section className={styles.ipModalSection}>
+      <h3 className={styles.ipModalSectionTitle}>Catalog Link</h3>
+
+      {!fk && (
+        <div className={linkStyles.empty}>
+          <p className={linkStyles.helper}>
+            This inventory item has no catalog intelligence attached
+            (FRAC/HRAC/IRAC, REI, label URL). Linking is optional and
+            does not change stock or product records.
+          </p>
+          <button
+            type="button"
+            className={linkStyles.btnPrimary}
+            onClick={onOpenPicker}
+          >📋 Link catalog intelligence</button>
+        </div>
+      )}
+
+      {fk && linked && (
+        <div className={linkStyles.linked}>
+          <div className={linkStyles.linkedSummary}>
+            <div>
+              <div className={linkStyles.linkedName}>{linked.productName}</div>
+              <div className={linkStyles.linkedSub}>
+                {linked.category}
+                {linked.fracGroup && ` · FRAC ${linked.fracGroup}`}
+                {linked.hracGroup && ` · HRAC ${linked.hracGroup}`}
+                {linked.iracGroup && ` · IRAC ${linked.iracGroup}`}
+                {linked.pgrClass  && ` · PGR ${linked.pgrClass}`}
+              </div>
+              <div className={linkStyles.linkedFk}>id: {fk}</div>
+            </div>
+          </div>
+          <div className={linkStyles.actions}>
+            <button
+              type="button"
+              className={linkStyles.btnSecondary}
+              onClick={onOpenPicker}
+            >Change link</button>
+            <button
+              type="button"
+              className={linkStyles.btnDanger}
+              onClick={onUnlink}
+              title="Inventory stock remains unchanged."
+            >Remove catalog link</button>
+          </div>
+        </div>
+      )}
+
+      {fk && !linked && (
+        <div className={linkStyles.stale}>
+          <p className={linkStyles.helper}>
+            <strong>Linked catalog row not found.</strong> This may be a
+            catalog row that was removed or hasn't loaded yet. The link
+            does not affect inventory stock.
+          </p>
+          <div className={linkStyles.linkedFk}>id: {fk}</div>
+          <div className={linkStyles.actions}>
+            <button
+              type="button"
+              className={linkStyles.btnSecondary}
+              onClick={onOpenPicker}
+            >Change link</button>
+            <button
+              type="button"
+              className={linkStyles.btnDanger}
+              onClick={onUnlink}
+            >Remove catalog link</button>
+          </div>
+        </div>
+      )}
+    </section>
   )
 }

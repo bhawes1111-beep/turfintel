@@ -957,6 +957,382 @@ console.log('— BuildSpraySheet wires catalog-first lookup')
     'save payload does not echo productCatalogId/catalogId (catalog stays read-only)')
 }
 
+// ── 12. Phase 7C.2 (1/?) — manual catalog-link foundation ──────────────────
+
+console.log('— worker/api/inventory.js (catalog-link handler shape)')
+{
+  const src = readFileSync('worker/api/inventory.js', 'utf8')
+
+  // Narrow handler exists and is exported.
+  assert(/export\s+async\s+function\s+patchInventoryCatalogLink\s*\(/.test(src),
+    'exports patchInventoryCatalogLink')
+
+  // Validates body shape — must include productCatalogId key, even if null.
+  assert(/hasOwnProperty\.call\(body,\s*['"]productCatalogId['"]\)/.test(src),
+    'handler enforces presence of productCatalogId key in body')
+
+  // Validates inventory row exists before writing.
+  assert(/SELECT\s+id\s+FROM\s+inventory_items\s+WHERE\s+id\s*=\s*\?/.test(src),
+    'handler verifies inventory item exists')
+
+  // Validates catalog row exists when productCatalogId is non-null.
+  assert(/SELECT\s+id\s+FROM\s+product_catalog\s+WHERE\s+id\s*=\s*\?/.test(src),
+    'handler verifies product_catalog row exists when linking')
+
+  // Writes ONLY product_catalog_id (+ updated_at). Never any other column.
+  // Anchor on the catalog-link handler so we don't grab the generic
+  // updateInventory()'s UPDATE (which uses ${sets.join(', ')}).
+  const handlerBlock = src.match(
+    /async function patchInventoryCatalogLink[\s\S]*?\n\}\s*\n/,
+  )?.[0] ?? ''
+  const updateBlock = handlerBlock.match(/UPDATE inventory_items[\s\S]*?WHERE id = \?/)?.[0] ?? ''
+  const updateBlockNorm = updateBlock.replace(/\s+/g, ' ')
+  assert(updateBlock.length > 0,                              'UPDATE statement present (in catalog-link handler)')
+  assert(/SET product_catalog_id = \?,/.test(updateBlockNorm),
+    'UPDATE sets product_catalog_id only (+ updated_at)')
+  assert(!/UPDATE product_catalog/i.test(src),
+    'handler does NOT write to product_catalog (catalog stays read-only)')
+
+  // MUTABLE_COLUMNS must NOT have grown to include the catalog FK —
+  // that would re-open the bulk-edit surface we explicitly avoided.
+  const mut = src.match(/MUTABLE_COLUMNS\s*=\s*\{[\s\S]*?\}/)?.[0] ?? ''
+  assert(!/productCatalogId/.test(mut),
+    'MUTABLE_COLUMNS still excludes productCatalogId (narrow endpoint preserved)')
+}
+
+console.log('— worker/index.js (route wired before /api/inventory/:id)')
+{
+  const idx = readFileSync('worker/index.js', 'utf8')
+
+  // Import surfaces the handler.
+  assert(/patchInventoryCatalogLink/.test(idx),
+    'index imports patchInventoryCatalogLink')
+
+  // /catalog-link route present.
+  assert(/\/\^\\\/api\\\/inventory\\\/\(\[\^\/\]\+\)\\\/catalog-link\$\//.test(idx),
+    'route regex: /api/inventory/:id/catalog-link')
+
+  // Must precede the generic /api/inventory/:id regex.
+  const catLinkPos = idx.search(/\/\^\\\/api\\\/inventory\\\/\(\[\^\/\]\+\)\\\/catalog-link\$\//)
+  const idRegexPos = idx.search(/\/\^\\\/api\\\/inventory\\\/\(\[\^\/\]\+\)\$\//)
+  assert(catLinkPos > 0 && idRegexPos > 0 && catLinkPos < idRegexPos,
+    '/catalog-link regex matched BEFORE the generic /api/inventory/:id regex')
+
+  // PATCH only — no GET/POST/DELETE wired on this route.
+  const catalogLinkBlock = idx.match(/invCatLinkMatch[\s\S]{0,400}?\}/)?.[0] ?? ''
+  assert(/method\s*===\s*['"]PATCH['"]/.test(catalogLinkBlock),
+    'PATCH method wired on /catalog-link')
+  assert(!/method\s*===\s*['"]GET['"]/.test(catalogLinkBlock)
+      && !/method\s*===\s*['"]POST['"]/.test(catalogLinkBlock)
+      && !/method\s*===\s*['"]DELETE['"]/.test(catalogLinkBlock),
+    'no GET/POST/DELETE on /catalog-link (narrow endpoint)')
+}
+
+console.log('— patchInventoryCatalogLink behavior (in-process D1 stub)')
+{
+  const { patchInventoryCatalogLink } =
+    await import('../worker/api/inventory.js')
+
+  // Minimal D1 stub. Each .prepare() returns an object that exposes
+  // .bind() + .first()/.run(). We dispatch off the SQL prefix.
+  function makeDB(spec) {
+    const log = []
+    return {
+      DB: {
+        prepare(sql) {
+          const trimmed = sql.replace(/\s+/g, ' ').trim()
+          log.push(trimmed)
+          return {
+            bind(...binds) {
+              return {
+                async first() {
+                  if (/SELECT id FROM inventory_items/i.test(trimmed)) {
+                    return spec.inventoryRow ?? null
+                  }
+                  if (/SELECT id FROM product_catalog/i.test(trimmed)) {
+                    return spec.catalogRow ?? null
+                  }
+                  return null
+                },
+                async run() {
+                  return {
+                    success: true,
+                    meta: { changes: spec.updateChanges ?? 1 },
+                    binds,
+                  }
+                },
+              }
+            },
+          }
+        },
+      },
+      log,
+    }
+  }
+
+  function makeReq(body) {
+    return new Request('http://test.local/x', {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(body),
+    })
+  }
+
+  async function readBody(res) {
+    const text = await res.text()
+    try { return { status: res.status, body: JSON.parse(text) } }
+    catch { return { status: res.status, body: text } }
+  }
+
+  // (a) happy path: valid inventory + valid catalog id → 200 + getInventory(...) path
+  {
+    const env = makeDB({
+      inventoryRow: { id: 'inv-1' },
+      catalogRow:   { id: 'pc-tenacity-100-1267' },
+      // Subsequent getInventory() will issue another prepare; our stub
+      // returns null for unknown SELECTs, which makes the response a
+      // 404 from notFound. Easier to assert the SQL path than the body.
+    })
+    const res = await patchInventoryCatalogLink(env, 'inv-1',
+      makeReq({ productCatalogId: 'pc-tenacity-100-1267' }))
+    assert(res instanceof Response,                'handler returns a Response')
+    // Confirm the validation+write path was executed in order.
+    const sqls = env.log.join(' || ')
+    assert(/SELECT id FROM inventory_items WHERE id = \?/i.test(sqls),
+      'happy: validated inventory row exists')
+    assert(/SELECT id FROM product_catalog WHERE id = \?/i.test(sqls),
+      'happy: validated catalog row exists')
+    assert(/UPDATE inventory_items SET product_catalog_id = \?,/i.test(sqls),
+      'happy: ran UPDATE on inventory_items.product_catalog_id')
+    assert(!/UPDATE product_catalog/i.test(sqls),
+      'happy: product_catalog never written to')
+  }
+
+  // (b) unlink: productCatalogId=null → skips catalog SELECT, runs UPDATE with null
+  {
+    const env = makeDB({ inventoryRow: { id: 'inv-1' } })
+    const res = await patchInventoryCatalogLink(env, 'inv-1',
+      makeReq({ productCatalogId: null }))
+    assert(res instanceof Response,                'unlink: returns a Response')
+    const sqls = env.log.join(' || ')
+    assert(!/SELECT id FROM product_catalog/i.test(sqls),
+      'unlink: did NOT query product_catalog (no FK to validate)')
+    assert(/UPDATE inventory_items SET product_catalog_id = \?,/i.test(sqls),
+      'unlink: ran UPDATE setting product_catalog_id to null')
+  }
+
+  // (c) reject unknown productCatalogId → 400 Unknown
+  {
+    const env = makeDB({
+      inventoryRow: { id: 'inv-1' },
+      catalogRow:   null,   // not found in product_catalog
+    })
+    const res = await patchInventoryCatalogLink(env, 'inv-1',
+      makeReq({ productCatalogId: 'pc-does-not-exist' }))
+    const { status, body } = await readBody(res)
+    assert(status === 400,                         'unknown id → 400', { status })
+    assert(typeof body === 'object' && /Unknown productCatalogId/.test(body.error ?? ''),
+      'unknown id → error message names the bad id')
+    const sqls = env.log.join(' || ')
+    assert(!/UPDATE inventory_items/i.test(sqls),
+      'unknown id: no UPDATE issued (validate-then-write)')
+  }
+
+  // (d) reject body missing productCatalogId key → 400
+  {
+    const env = makeDB({ inventoryRow: { id: 'inv-1' } })
+    const res = await patchInventoryCatalogLink(env, 'inv-1', makeReq({}))
+    const { status, body } = await readBody(res)
+    assert(status === 400,                         'missing key → 400')
+    assert(/productCatalogId/.test(body.error ?? ''),
+      'missing key → error mentions productCatalogId')
+  }
+
+  // (e) reject when inventory row missing → 404
+  {
+    const env = makeDB({ inventoryRow: null })
+    const res = await patchInventoryCatalogLink(env, 'inv-missing',
+      makeReq({ productCatalogId: 'pc-tenacity-100-1267' }))
+    const { status, body } = await readBody(res)
+    assert(status === 404,                         'unknown inventory → 404')
+    assert(/Inventory item not found/i.test(body.error ?? ''),
+      'unknown inventory → error names the resource')
+    const sqls = env.log.join(' || ')
+    assert(!/UPDATE inventory_items/i.test(sqls),
+      'unknown inventory: no UPDATE issued')
+  }
+
+  // (f) empty string productCatalogId is treated as unlink (defensive)
+  {
+    const env = makeDB({ inventoryRow: { id: 'inv-1' } })
+    await patchInventoryCatalogLink(env, 'inv-1', makeReq({ productCatalogId: '' }))
+    const sqls = env.log.join(' || ')
+    assert(!/SELECT id FROM product_catalog/i.test(sqls),
+      'empty-string id treated as unlink (no catalog lookup)')
+    assert(/UPDATE inventory_items SET product_catalog_id = \?,/i.test(sqls),
+      'empty-string id still issues UPDATE')
+  }
+
+  // (g) 503 when DB binding is absent
+  {
+    const res = await patchInventoryCatalogLink({ /* no .DB */ }, 'inv-1',
+      makeReq({ productCatalogId: 'pc-x' }))
+    const { status, body } = await readBody(res)
+    assert(status === 503,                         'no D1 → 503')
+    assert(/D1 not configured/i.test(body.error ?? ''),
+      'no D1 → message names the cause')
+  }
+}
+
+console.log('— inventoryStore.setInventoryCatalogLink (client)')
+{
+  const src = readFileSync('src/utils/inventory/inventoryStore.js', 'utf8')
+  assert(/export\s+async\s+function\s+setInventoryCatalogLink\s*\(\s*id\s*,\s*productCatalogId\s*\)/.test(src),
+    'exports setInventoryCatalogLink(id, productCatalogId)')
+  // Hits the narrow route (not the generic PATCH /api/inventory/:id).
+  assert(/\/catalog-link/.test(src),
+    'uses /catalog-link sub-resource (not generic inventory PATCH)')
+  assert(/method:\s*['"]PATCH['"]/.test(src),
+    'uses PATCH')
+  // Optimistic — local row updated before the await.
+  assert(/setState\([\s\S]*?items:[\s\S]*?productCatalogId/.test(src),
+    'optimistically updates productCatalogId locally before the fetch')
+  // Rollback path on error.
+  assert(/setState\(\s*\{\s*items:\s*prev\s*,\s*error/.test(src),
+    'rolls back to prev items on error')
+  // Accepts null to unlink.
+  assert(/productCatalogId\s*===\s*null/.test(src) || /===\s*null\s*\|\|\s*productCatalogId\s*===\s*['"]['"]/.test(src),
+    'treats null/empty as unlink intent')
+}
+
+console.log('— CatalogLinkPicker (modal contracts)')
+{
+  const src = readFileSync('src/pages/Inventory/components/CatalogLinkPicker.jsx', 'utf8')
+
+  // Two-step UX guard.
+  assert(/'search'\s*\|\s*'confirm'|step\s*===\s*['"]search['"]/.test(src),
+    'two-step UX: search → confirm before linking')
+  // Reuses the store helpers, no parallel fetch.
+  assert(/from\s+['"][^'"]*productCatalog\/productCatalogStore['"]/.test(src),
+    'reuses productCatalogStore (no new fetch path)')
+  for (const fn of ['useProductCatalog', 'searchProductCatalog', 'getCatalogProductById']) {
+    assert(new RegExp(`\\b${fn}\\b`).test(src), `imports ${fn}`)
+  }
+  // Filter dimensions per spec.
+  for (const fn of [
+    'listCatalogCategories', 'listCatalogFracGroups', 'listCatalogHracGroups',
+    'listCatalogIracGroups', 'listCatalogPgrClasses',
+  ]) {
+    assert(new RegExp(`\\b${fn}\\b`).test(src), `picker uses ${fn}`)
+  }
+  // Confirmation card surfaces the required fields.
+  assert(/productName/.test(src) && /category/.test(src),
+    'confirmation surfaces name + category')
+  assert(/activeIngredients/.test(src) || /aiText/.test(src),
+    'confirmation surfaces active ingredients')
+  for (const grp of ['fracGroup', 'hracGroup', 'iracGroup', 'pgrClass']) {
+    assert(new RegExp(`\\b${grp}\\b`).test(src),
+      `confirmation surfaces ${grp}`)
+  }
+  // Stewardship wording.
+  assert(/does not change inventory stock/i.test(src),
+    "wording: 'does not change inventory stock'")
+  assert(/Link this product|Link catalog intelligence/.test(src),
+    'CTA wording per spec')
+
+  // Forbidden: no fetch, no Add-to-Inventory shortcut.
+  assert(!/fetch\(/.test(src),
+    'picker does not call fetch() directly (delegates to onConfirm)')
+  assert(!/Add to Inventory/i.test(src),
+    'picker has no Add-to-Inventory CTA')
+  // Picker never writes to product_catalog.
+  assert(!/['"]\/api\/product-catalog['"][^\n]{0,160}method:\s*['"](POST|PATCH|DELETE)/.test(src),
+    'picker never mutates product_catalog')
+}
+
+console.log('— InventoryProducts wires link controls')
+{
+  const src = readFileSync('src/pages/Inventory/tabs/InventoryProducts.jsx', 'utf8')
+  assert(/setInventoryCatalogLink/.test(src),
+    'uses setInventoryCatalogLink')
+  assert(/<CatalogLinkPicker\b/.test(src),
+    'renders <CatalogLinkPicker>')
+  assert(/<CatalogLinkSection\b/.test(src),
+    'renders <CatalogLinkSection>')
+  // Unlink calls setInventoryCatalogLink(..., null).
+  assert(/setInventoryCatalogLink\([^)]*,\s*null\s*\)/.test(src),
+    'unlink calls setInventoryCatalogLink(..., null)')
+  // Stewardship copy on unlink hint.
+  assert(/Remove catalog link/.test(src),
+    'unlink CTA labeled "Remove catalog link"')
+  assert(/Inventory stock remains unchanged|does not change/i.test(src),
+    'inventory-stock-unchanged copy present near the link surface')
+}
+
+console.log('— Forbidden surfaces (Commit 7C.2/1 scope)')
+{
+  // No Add-to-Inventory workflow anywhere new.
+  for (const path of [
+    'src/pages/Inventory/components/CatalogLinkPicker.jsx',
+    'src/pages/Inventory/components/CatalogLinkSection.module.css',
+    'src/pages/Inventory/tabs/InventoryProducts.jsx',
+    'worker/api/inventory.js',
+  ]) {
+    const src = readFileSync(path, 'utf8')
+    assert(!/Add to Inventory/i.test(src),
+      `${path.split('/').pop()}: no "Add to Inventory" CTA`)
+  }
+  // No catalog write route added.
+  const idx = readFileSync('worker/index.js', 'utf8')
+  assert(!/['"]\/api\/product-catalog['"][^\n]{0,200}(POST|PATCH|DELETE)/.test(idx)
+      && !/(POST|PATCH|DELETE)[^\n]{0,80}['"]\/api\/product-catalog['"]/.test(idx),
+    'no POST/PATCH/DELETE wired on /api/product-catalog')
+}
+
+console.log('— Resolver fallthrough on unlink')
+{
+  // Re-import resolver and reuse the same fixtures shape. When the
+  // inventory row has productCatalogId=null, resolver must drop back to
+  // name-match → label → legacy. Already covered earlier but lock the
+  // exact "unlink restores fallback" contract here for documentation.
+  const { resolveSprayProductIntel } =
+    await import('../src/utils/productCatalog/resolveSprayProductIntel.js')
+
+  const catalogProducts = [{
+    id: 'pc-heritage-100-1093', productName: 'Heritage', category: 'fungicide',
+    fracGroup: '11', activeIngredients: [{ name: 'Azoxystrobin', percentage: 50 }],
+    rates: [], reiHours: 4,
+  }]
+  const linkedRow   = { id: 'inv-x', name: 'Heritage', kind: 'chemical', productCatalogId: 'pc-heritage-100-1093' }
+  const unlinkedRow = { id: 'inv-x', name: 'Heritage', kind: 'chemical', productCatalogId: null }
+
+  const a = resolveSprayProductIntel(
+    { name: 'Heritage', inventoryItemId: 'inv-x' },
+    { inventoryProducts: [linkedRow],   catalogProducts, labelsByItemId: {} })
+  assert(a.source === 'catalog' && a.catalogId === 'pc-heritage-100-1093',
+    'linked → explicit FK wins (catalog source)')
+
+  const b = resolveSprayProductIntel(
+    { name: 'Heritage', inventoryItemId: 'inv-x' },
+    { inventoryProducts: [unlinkedRow], catalogProducts, labelsByItemId: {} })
+  // Name-match still resolves to catalog because the catalog has a
+  // 'Heritage' row by name; this is the documented fallthrough. The
+  // important guarantee here is the FK path is not taken (catalogId
+  // null in legacy/label, or set by name-match — either way the link
+  // we explicitly removed isn't being silently re-applied as a FK).
+  assert(b.source === 'catalog',
+    'unlinked → name-match fallthrough still finds catalog row (Tier 1b)')
+  assert(b.catalogId === 'pc-heritage-100-1093',
+    'unlinked → catalogId comes from name match (not from a phantom FK)')
+
+  // And when the catalog drops out entirely, unlinked + no label → legacy.
+  const c = resolveSprayProductIntel(
+    { name: 'Heritage', inventoryItemId: 'inv-x' },
+    { inventoryProducts: [unlinkedRow], catalogProducts: [], labelsByItemId: {} })
+  assert(c.source === 'legacy',
+    'unlinked + catalog empty + no label → legacy (no fake intelligence)')
+}
+
 // ── Result ──────────────────────────────────────────────────────────────────
 console.log(`\n${passed} passed, ${failed} failed`)
 process.exit(failed === 0 ? 0 : 1)

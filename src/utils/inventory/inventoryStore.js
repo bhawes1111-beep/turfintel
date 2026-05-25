@@ -78,6 +78,40 @@ export async function patchInventory(id, updates) {
   }
 }
 
+// Phase 7C.2 (1/?) — Manual catalog-link control.
+//
+// Narrow client wrapper around PATCH /api/inventory/:id/catalog-link.
+// Optimistic: patches the local row's productCatalogId first so the
+// 📋 chip and Spray Builder resolver flip immediately; on error we
+// roll back and surface the message. Pass `null` to unlink.
+//
+// Kept distinct from patchInventory() on purpose — link is not a form
+// field, it's a stewardship action with its own validation server-side.
+export async function setInventoryCatalogLink(id, productCatalogId) {
+  const next = productCatalogId === null || productCatalogId === ''
+    ? null
+    : String(productCatalogId)
+  const prev = state.items
+  setState({
+    items: prev.map(i => i.id === id ? { ...i, productCatalogId: next } : i),
+  })
+  try {
+    const saved = await fetchJSON(
+      `${API.items}/${encodeURIComponent(id)}/catalog-link`,
+      {
+        method:  'PATCH',
+        headers: mutationHeaders(),
+        body:    JSON.stringify({ productCatalogId: next }),
+      },
+    )
+    setState({ items: state.items.map(i => i.id === id ? saved : i) })
+    return saved
+  } catch (err) {
+    setState({ items: prev, error: err.message })
+    throw err
+  }
+}
+
 export async function createInventory(payload) {
   try {
     const saved = await fetchJSON(API.items, {

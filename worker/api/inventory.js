@@ -178,6 +178,65 @@ export async function updateInventory(env, id, request) {
   return getInventory(env, id)
 }
 
+// ── Phase 7C.2 (1/?) — narrow catalog-link patch ───────────────────────────
+//
+// PATCH /api/inventory/:id/catalog-link
+// Body: { productCatalogId: string | null }
+//
+// The ONE write path into inventory_items.product_catalog_id. Lives off
+// MUTABLE_COLUMNS on purpose:
+//   - keeps the generic PATCH /api/inventory/:id handler small and
+//     unchanged (the catalog FK was never intended as a bulk-editable
+//     field on the item form);
+//   - lets us validate the productCatalogId against product_catalog
+//     before persisting — so a typo'd id can't orphan an inventory row;
+//   - keeps the spec's "single narrow endpoint" requirement explicit.
+//
+// Read-only product_catalog stays read-only: this handler runs a SELECT
+// against it (to validate existence) but never writes.
+export async function patchInventoryCatalogLink(env, id, request) {
+  if (!env.DB) return json({ error: 'D1 not configured' }, 503)
+  const body = await readJson(request)
+
+  // Body must include the key, even if null. Defending against an empty
+  // PATCH that would silently no-op the link.
+  if (!Object.prototype.hasOwnProperty.call(body, 'productCatalogId')) {
+    return badRequest("Body must include 'productCatalogId' (string | null)")
+  }
+  const raw = body.productCatalogId
+  const productCatalogId = (raw === null || raw === '') ? null
+    : typeof raw === 'string' ? raw.trim() || null
+    : null
+
+  // Inventory row must exist (course scoping continues to flow via the
+  // FK on the row itself — we don't widen the read here).
+  const inv = await env.DB.prepare(
+    'SELECT id FROM inventory_items WHERE id = ?',
+  ).bind(id).first()
+  if (!inv) return notFound('Inventory item not found')
+
+  // If linking (not unlinking), require the catalog row to exist. This
+  // is the hard guarantee against stale/typo'd FKs landing in the DB.
+  if (productCatalogId !== null) {
+    const cat = await env.DB.prepare(
+      'SELECT id FROM product_catalog WHERE id = ?',
+    ).bind(productCatalogId).first()
+    if (!cat) return badRequest(`Unknown productCatalogId: ${productCatalogId}`)
+  }
+
+  const result = await env.DB.prepare(
+    `UPDATE inventory_items
+       SET product_catalog_id = ?,
+           updated_at         = datetime('now')
+     WHERE id = ?`,
+  ).bind(productCatalogId, id).run()
+
+  if (!result.success || result.meta.changes === 0) {
+    return notFound('Inventory item not found')
+  }
+  return getInventory(env, id)
+}
+
 // Phase 27D — cascade cleanup on delete.
 //
 // inventory_product_labels and operational_attachments don't have FK

@@ -34,6 +34,7 @@ import {
   deleteInventory,
   listInventoryUsage,
   recordInventoryUsage,
+  patchInventoryCatalogLink,
 } from './api/inventory.js'
 import {
   extractLabelDraft,
@@ -646,6 +647,16 @@ async function handleApi(request, env, url, ctx) {
   }
   if (pathname === '/api/inventory/import-label/labels') {
     if (method === 'GET')  return listImportedLabels(env, courseId)
+  }
+
+  // ── /api/inventory/:id/catalog-link (Phase 7C.2) ──────────────────────
+  // Must precede /api/inventory/:id so 'catalog-link' isn't consumed as
+  // a sub-id. PATCH only — narrow controlled link/unlink endpoint that
+  // validates productCatalogId against product_catalog before writing.
+  const invCatLinkMatch = pathname.match(/^\/api\/inventory\/([^/]+)\/catalog-link$/)
+  if (invCatLinkMatch) {
+    const id = decodeURIComponent(invCatLinkMatch[1])
+    if (method === 'PATCH') return patchInventoryCatalogLink(env, id, request)
   }
 
   // ── /api/inventory/:id ────────────────────────────────────────────────
