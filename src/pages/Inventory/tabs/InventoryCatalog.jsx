@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import WorkspaceSection from '../../../components/shared/WorkspaceSection'
 import { EmptyState } from '../../../components/shared/EmptyState'
 import SideDrawer from '../../../components/primitives/SideDrawer'
@@ -25,7 +25,7 @@ import styles   from './InventoryCatalog.module.css'
 
 const ALL = 'All'
 
-export default function InventoryCatalog() {
+export default function InventoryCatalog({ initialSelectedId = null, onConsumeSeed } = {}) {
   const { products, loading, error } = useProductCatalog()
 
   const [search,   setSearch]   = useState('')
@@ -34,7 +34,21 @@ export default function InventoryCatalog() {
   const [hrac,     setHrac]     = useState(ALL)
   const [irac,     setIrac]     = useState(ALL)
   const [pgr,      setPgr]      = useState(ALL)
-  const [selectedId, setSelectedId] = useState(null)
+  const [selectedId, setSelectedId] = useState(initialSelectedId)
+
+  // Phase 7C.1 (5/6) — if the parent passes a seed id (e.g. after the user
+  // clicks a 📋 chip on Chemicals/Fertilizer/Products), open that row's
+  // drawer. Consume the seed so re-clicking the chip while the drawer is
+  // already open doesn't fight the user's manual close. The effect is
+  // idempotent — only fires when initialSelectedId changes.
+  useEffect(() => {
+    if (initialSelectedId) {
+      setSelectedId(initialSelectedId)
+      onConsumeSeed?.()
+    }
+    // onConsumeSeed is a stable identity callback from the parent; omitting
+    // it from deps would still be safe, but lint prefers the explicit dep.
+  }, [initialSelectedId, onConsumeSeed])
 
   const categories = useMemo(() => [ALL, ...listCatalogCategories()], [products])
   const fracGroups = useMemo(() => [ALL, ...listCatalogFracGroups()], [products])

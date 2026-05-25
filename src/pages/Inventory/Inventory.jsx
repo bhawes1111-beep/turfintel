@@ -32,6 +32,17 @@ export default function Inventory() {
   const seedProduct = location.state?.productId ?? null
   const [activeTab, setActiveTab] = useState(seedTab)
   const [wizardOpen, setWizardOpen] = useState(false)
+  // Phase 7C.1 (5/6) — when an inventory tab's 📋 Catalog chip is clicked,
+  // we (a) switch to the Catalog tab and (b) tell that tab which catalog
+  // row to open in its detail drawer. Two-piece local state beats a global
+  // modal/portal — the Catalog tab already owns the drawer-rendering code,
+  // so we just seed its selection.
+  const [catalogSeedId, setCatalogSeedId] = useState(null)
+  function openCatalogProduct(productCatalogId) {
+    if (!productCatalogId) return
+    setCatalogSeedId(productCatalogId)
+    setActiveTab('Catalog')
+  }
 
   return (
     <PageShell
@@ -74,14 +85,14 @@ export default function Inventory() {
       )}
 
       {activeTab === 'Overview'         && <InventoryOverview />}
-      {activeTab === 'Products'         && <InventoryProducts initialSelectedId={seedProduct} />}
-      {activeTab === 'Chemicals'        && <InventoryChemicals />}
-      {activeTab === 'Fertilizer'       && <InventoryFertilizer />}
+      {activeTab === 'Products'         && <InventoryProducts initialSelectedId={seedProduct} onOpenCatalog={openCatalogProduct} />}
+      {activeTab === 'Chemicals'        && <InventoryChemicals onOpenCatalog={openCatalogProduct} />}
+      {activeTab === 'Fertilizer'       && <InventoryFertilizer onOpenCatalog={openCatalogProduct} />}
       {activeTab === 'Parts'            && <InventoryParts />}
       {activeTab === 'Fuel'             && <InventoryFuel />}
       {activeTab === 'Low Stock'        && <InventoryLowStock />}
       {activeTab === 'Purchase History' && <InventoryPurchaseHistory />}
-      {activeTab === 'Catalog'          && <InventoryCatalog />}
+      {activeTab === 'Catalog'          && <InventoryCatalog initialSelectedId={catalogSeedId} onConsumeSeed={() => setCatalogSeedId(null)} />}
     </PageShell>
   )
 }

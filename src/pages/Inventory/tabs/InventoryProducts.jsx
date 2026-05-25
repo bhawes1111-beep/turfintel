@@ -4,6 +4,7 @@ import { EmptyState } from '../../../components/shared/EmptyState'
 import WorkspaceSection from '../../../components/shared/WorkspaceSection'
 import SideDrawer from '../../../components/primitives/SideDrawer'
 import StatusBoard from '../../../components/primitives/StatusBoard'
+import CatalogChip from '../components/CatalogChip'
 import styles from '../Inventory.module.css'
 
 const STOCK_FILTERS = ['All', 'Good', 'Low', 'Critical', 'Out of Stock']
@@ -26,7 +27,7 @@ const FILTER_KEY = { 'Good': 'good', 'Low': 'low', 'Critical': 'critical', 'Out 
 
 const SORT_STATUS = { out: 0, critical: 1, low: 2, good: 3 }
 
-export default function InventoryProducts({ initialSelectedId = null }) {
+export default function InventoryProducts({ initialSelectedId = null, onOpenCatalog } = {}) {
   const { items } = useInventoryData()
   // Products tab shows the merged products + chemicals view (matches the
   // pre-5.2 OperationsContext.state.inventoryProducts behavior).
@@ -167,6 +168,7 @@ export default function InventoryProducts({ initialSelectedId = null }) {
                   <div className={styles.ipCardTitle}>
                     <span className={styles.ipCardName}>{p.name}</span>
                     <span className={styles.ipCategoryPill}>{p.category}</span>
+                    <CatalogChip productCatalogId={p.productCatalogId} onOpen={onOpenCatalog} />
                   </div>
                   <div className={styles.ipCardSub}>
                     <span className={styles.ipCardLocation}>{p.location}</span>

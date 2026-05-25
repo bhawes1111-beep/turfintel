@@ -37,6 +37,12 @@ export function rowToItem(row) {
     currentLevel:  row.current_level,
     lastFill:      row.last_fill,
     relatedUsage,
+    // Phase 7C.1 (5/6) — read-only catalog linkage. The column was added
+    // by migration 0043 and is nullable; not in MUTABLE_COLUMNS because
+    // no UI / API path can write it in this phase (no manual link wizard,
+    // no auto-link). Surfacing it lets the inventory tabs render the
+    // 📋 Catalog chip on rows whose import already populated it.
+    productCatalogId: row.product_catalog_id ?? null,
     courseId:     row.course_id,
     createdAt:    row.created_at,
     updatedAt:    row.updated_at,

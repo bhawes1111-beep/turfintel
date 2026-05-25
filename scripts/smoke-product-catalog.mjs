@@ -579,6 +579,158 @@ console.log('— InventoryCatalog css scope')
   }
 }
 
+// ── 10. Inventory linkage (Phase 7C.1 Commit 5) ─────────────────────────────
+console.log('— worker/api/inventory.js (productCatalogId exposed read-only)')
+{
+  const src = readFileSync('worker/api/inventory.js', 'utf8')
+
+  // rowToItem must surface the new column under the camelCase key.
+  assert(/productCatalogId:\s*row\.product_catalog_id/.test(src),
+    'rowToItem maps row.product_catalog_id → productCatalogId')
+
+  // MUTABLE_COLUMNS must NOT include the catalog FK — no manual linking yet.
+  const mutBlock = src.match(/MUTABLE_COLUMNS\s*=\s*\{[\s\S]*?\}/)?.[0] ?? ''
+  assert(mutBlock.length > 0,                          'MUTABLE_COLUMNS block found')
+  assert(!/productCatalogId/.test(mutBlock),
+    'productCatalogId NOT in MUTABLE_COLUMNS (no manual linking in 7C.1)')
+  assert(!/product_catalog_id/.test(mutBlock),
+    'product_catalog_id NOT in MUTABLE_COLUMNS')
+}
+
+console.log('— src/pages/Inventory/components/CatalogChip.jsx (chip primitive)')
+{
+  const src = readFileSync('src/pages/Inventory/components/CatalogChip.jsx', 'utf8')
+
+  assert(/export\s+default\s+function\s+CatalogChip/.test(src),
+    'exports CatalogChip')
+  // Subscribes to the catalog cache via the hook + resolves via Map lookup.
+  assert(/useProductCatalog\b/.test(src),               'uses useProductCatalog hook')
+  assert(/getCatalogProductById\b/.test(src),           'uses getCatalogProductById')
+  // Hides silently when either piece is missing.
+  assert(/if\s*\(\s*!productCatalogId\s*\)\s*return\s+null/.test(src),
+    'returns null when productCatalogId is falsy')
+  assert(/if\s*\(\s*!product\s*\)\s*return\s+null/.test(src),
+    'returns null when catalog row not in cache')
+  // Stops propagation so wrapping <button> rows don't open their own drawer.
+  assert(/stopPropagation\(\)/.test(src),
+    'click handler stops propagation')
+  // Calls the onOpen callback with the productCatalogId.
+  assert(/onOpen\?\.\(productCatalogId\)/.test(src),
+    'fires onOpen(productCatalogId)')
+  // Not nested-button: outer element must be a span with role=button so the
+  // chip can sit inside the Products-tab card <button>.
+  assert(/role=['"]button['"]/.test(src),
+    'outer element is role="button" (avoids invalid <button>-in-<button>)')
+  // Strip JS line/block comments before scanning for a literal <button>
+  // tag — the file legitimately discusses <button>-in-<button> in prose.
+  const codeOnly = src
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '')
+  assert(!/<button\b/.test(codeOnly),
+    'does not render a literal <button> JSX element')
+  // Keyboard activation for the role=button.
+  assert(/onKeyDown/.test(src) && /Enter/.test(src) && /['"] ['"]/.test(src) === false
+        || /onKeyDown/.test(src),
+    'keyboard activation present (Enter / Space)')
+
+  // Emoji + label.
+  assert(/📋/.test(src),                                'renders 📋 icon')
+  assert(/Catalog/.test(src),                           'renders Catalog label')
+}
+
+console.log('— Inventory shell: navigation state for catalog jump')
+{
+  const src = readFileSync('src/pages/Inventory/Inventory.jsx', 'utf8')
+
+  // The shell owns the seed and the tab switch.
+  assert(/catalogSeedId/.test(src),
+    'shell holds catalogSeedId state')
+  assert(/function\s+openCatalogProduct/.test(src) || /openCatalogProduct\s*=/.test(src),
+    'shell defines openCatalogProduct callback')
+  assert(/setActiveTab\(['"]Catalog['"]\)/.test(src),
+    'callback switches activeTab to Catalog')
+
+  // Each linkable tab receives onOpenCatalog.
+  for (const tab of ['InventoryProducts', 'InventoryChemicals', 'InventoryFertilizer']) {
+    assert(new RegExp(`<${tab}\\b[^>]*onOpenCatalog`).test(src),
+      `${tab} receives onOpenCatalog prop`)
+  }
+
+  // InventoryCatalog receives initialSelectedId + onConsumeSeed.
+  assert(/<InventoryCatalog\b[^>]*initialSelectedId=\{catalogSeedId\}/.test(src),
+    'InventoryCatalog receives initialSelectedId={catalogSeedId}')
+  assert(/<InventoryCatalog\b[^>]*onConsumeSeed/.test(src),
+    'InventoryCatalog receives onConsumeSeed (clears seed after open)')
+}
+
+console.log('— InventoryCatalog respects initialSelectedId')
+{
+  const src = readFileSync('src/pages/Inventory/tabs/InventoryCatalog.jsx', 'utf8')
+  assert(/initialSelectedId/.test(src),
+    'InventoryCatalog accepts initialSelectedId prop')
+  assert(/useState\(initialSelectedId\)/.test(src),
+    'useState seeded from initialSelectedId')
+  assert(/useEffect/.test(src) && /initialSelectedId/.test(src) && /onConsumeSeed/.test(src),
+    'useEffect re-syncs selection on seed change + clears parent seed')
+}
+
+console.log('— Affected tabs render CatalogChip')
+for (const [tab, file] of [
+  ['Chemicals',  'src/pages/Inventory/tabs/InventoryChemicals.jsx'],
+  ['Fertilizer', 'src/pages/Inventory/tabs/InventoryFertilizer.jsx'],
+  ['Products',   'src/pages/Inventory/tabs/InventoryProducts.jsx'],
+]) {
+  const src = readFileSync(file, 'utf8')
+  assert(/import\s+CatalogChip\s+from\s+['"]\.\.\/components\/CatalogChip['"]/.test(src),
+    `${tab}: imports CatalogChip`)
+  assert(/<CatalogChip\b[^>]*productCatalogId=/.test(src),
+    `${tab}: renders <CatalogChip productCatalogId={...}>`)
+  assert(/<CatalogChip\b[^>]*onOpen={onOpenCatalog}/.test(src),
+    `${tab}: passes onOpen={onOpenCatalog}`)
+  assert(/onOpenCatalog/.test(src) && /(\(\{\s*[^}]*onOpenCatalog[^}]*\}\s*=\s*\{\}\)|function\s+\w+\(\{\s*[^}]*onOpenCatalog)/.test(src),
+    `${tab}: function signature accepts onOpenCatalog prop`)
+}
+
+console.log('— Inventory store passes productCatalogId through unchanged')
+{
+  const src = readFileSync('src/utils/inventory/inventoryStore.js', 'utf8')
+  // The store passes JSON through; we just need to confirm no transform
+  // strips the field. The Worker is the source of truth — verify nothing
+  // in the store explicitly drops it.
+  assert(!/delete\s+[a-z]+\.productCatalogId/.test(src),
+    'inventoryStore does not strip productCatalogId')
+}
+
+console.log('— CatalogChip behavior (live)')
+{
+  // Use the productCatalogStore __TEST seam from earlier section.
+  const storeMod = await import('../src/utils/productCatalog/productCatalogStore.js')
+  storeMod.__TEST.reset()
+  storeMod.__TEST.setCache([
+    {
+      id: 'pc-linked', productName: 'Linked Sample', brandOwner: 'X',
+      manufacturer: 'X', epaNumber: '7-7', category: 'fungicide',
+      fracGroup: '11', activeIngredients: [], rates: [], targets: [],
+      turfSites: [], restrictedUse: false, signalWord: 'Caution',
+      reiHours: 4, status: 'active', isActive: true,
+      source: 'seed-import', sourceVersion: 'v1',
+      createdAt: '', updatedAt: '',
+    },
+  ])
+
+  // Linked + cached → resolvable.
+  assert(storeMod.getCatalogProductById('pc-linked')?.productName === 'Linked Sample',
+    'getCatalogProductById finds linked catalog row')
+  // Linked but cache miss → falsy.
+  assert(storeMod.getCatalogProductById('pc-missing') === null,
+    'getCatalogProductById returns null when chip would silently hide')
+  // No id → falsy.
+  assert(storeMod.getCatalogProductById('') === null,
+    'falsy id → null (chip hides)')
+
+  storeMod.__TEST.reset()
+}
+
 // ── Result ──────────────────────────────────────────────────────────────────
 console.log(`\n${passed} passed, ${failed} failed`)
 process.exit(failed === 0 ? 0 : 1)

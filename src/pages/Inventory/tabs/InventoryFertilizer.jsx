@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { useInventoryData } from '../../../utils/inventory/inventoryStore'
 import { EmptyState } from '../../../components/shared/EmptyState'
 import WorkspaceSection from '../../../components/shared/WorkspaceSection'
+import CatalogChip from '../components/CatalogChip'
 import styles from '../Inventory.module.css'
 
 function stockStatus(quantity, reorderLevel) {
@@ -13,7 +14,7 @@ function stockStatus(quantity, reorderLevel) {
 const STATUS_LABEL = { ok: 'In Stock', low: 'Low Stock', critical: 'Out of Stock' }
 const STATUS_CLASS = { ok: styles.stockOk, low: styles.stockLow, critical: styles.stockCritical }
 
-export default function InventoryFertilizer() {
+export default function InventoryFertilizer({ onOpenCatalog } = {}) {
   const { items } = useInventoryData()
   const fertilizers = useMemo(() => items.filter(i => i.kind === 'fertilizer'), [items])
   const [search, setSearch] = useState('')
@@ -64,8 +65,11 @@ export default function InventoryFertilizer() {
               <div key={f.id} className={styles.card}>
                 <div className={styles.cardTop}>
                   <span className={styles.cardName}>{f.name}</span>
-                  <span className={`${styles.stockBadge} ${STATUS_CLASS[status]}`}>
-                    {STATUS_LABEL[status]}
+                  <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+                    <CatalogChip productCatalogId={f.productCatalogId} onOpen={onOpenCatalog} />
+                    <span className={`${styles.stockBadge} ${STATUS_CLASS[status]}`}>
+                      {STATUS_LABEL[status]}
+                    </span>
                   </span>
                 </div>
                 <div className={styles.cardMeta}>

@@ -9,6 +9,7 @@ import {
   PhiBadge,
   GroupBadge,
 } from '../../../components/shared/LabelBadges'
+import CatalogChip from '../components/CatalogChip'
 import styles from '../Inventory.module.css'
 
 const TYPES = ['All', 'Fungicide', 'Herbicide', 'Insecticide', 'PGR']
@@ -22,7 +23,7 @@ function stockStatus(quantity, reorderLevel) {
 const STATUS_LABEL = { ok: 'In Stock', low: 'Low Stock', critical: 'Out of Stock' }
 const STATUS_CLASS = { ok: styles.stockOk, low: styles.stockLow, critical: styles.stockCritical }
 
-export default function InventoryChemicals() {
+export default function InventoryChemicals({ onOpenCatalog } = {}) {
   const { items } = useInventoryData()
   const { labels } = useImportedLabels()
   const chemicals = useMemo(() => items.filter(i => i.kind === 'chemical'), [items])
@@ -96,8 +97,11 @@ export default function InventoryChemicals() {
               <div key={c.id} className={styles.card}>
                 <div className={styles.cardTop}>
                   <span className={styles.cardName}>{c.name}</span>
-                  <span className={`${styles.stockBadge} ${STATUS_CLASS[status]}`}>
-                    {STATUS_LABEL[status]}
+                  <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+                    <CatalogChip productCatalogId={c.productCatalogId} onOpen={onOpenCatalog} />
+                    <span className={`${styles.stockBadge} ${STATUS_CLASS[status]}`}>
+                      {STATUS_LABEL[status]}
+                    </span>
                   </span>
                 </div>
                 <div className={styles.cardMeta}>

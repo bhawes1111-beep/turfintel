@@ -1,0 +1,35 @@
+/* Phase 7C.1 (5/6) — CatalogChip styles.
+   Visually distinct from inventory's stock badges (which are quantity/
+   severity-coded) so 'linked to catalog' reads as a separate dimension.
+   Same blue-ish hue family as the catalog tab's category pill. */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  background: rgba(100, 150, 220, 0.12);
+  color: rgba(160, 200, 255, 0.95);
+  border: 1px solid rgba(100, 150, 220, 0.3);
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.chip:hover,
+.chip:focus-visible {
+  background: rgba(100, 150, 220, 0.22);
+  border-color: rgba(100, 150, 220, 0.5);
+  outline: none;
+}
+
+.icon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.label {
+  letter-spacing: 0.02em;
+}
