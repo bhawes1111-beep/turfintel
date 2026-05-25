@@ -528,6 +528,128 @@ console.log('— no PDF / AI / recommendation language in new files')
   }
 }
 
+// ── 9. Phase 7F (2/?) — Manual planner UI behavior ────────────────────────
+console.log('— SprayProgramPlanner.jsx usable UI (Phase 7F.2)')
+{
+  const src = readFileSync('src/pages/Spray/tabs/SprayProgramPlanner.jsx', 'utf8')
+
+  // Imports all 8 store functions per spec.
+  for (const fn of [
+    'useSprayPrograms',
+    'createSprayProgram',
+    'updateSprayProgram',
+    'archiveSprayProgram',
+    'listSprayProgramItems',
+    'createSprayProgramItem',
+    'updateSprayProgramItem',
+    'deleteSprayProgramItem',
+  ]) {
+    assert(new RegExp(`\\b${fn}\\b`).test(src),
+      `tab imports ${fn}`)
+  }
+
+  // Master/detail surface: there's a layout container plus a detail area.
+  assert(/className=\{styles\.layout\}/.test(src),
+    'renders master/detail layout container')
+  assert(/className=\{styles\.master\}/.test(src) &&
+         /className=\{styles\.detail\}/.test(src),
+    'renders both master + detail panes')
+
+  // Selected-program detail block.
+  assert(/styles\.detailHeader/.test(src),
+    'renders selected-program detail header')
+
+  // Item list.
+  assert(/itemList/.test(src) && /itemCard/.test(src),
+    'renders planned-item list with cards')
+
+  // Item form.
+  assert(/function\s+ItemForm\b/.test(src),
+    'declares ItemForm component')
+  // All required item fields per spec.
+  const itemFieldsRequired = [
+    'targetArea', 'plannedStartDate', 'plannedEndDate', 'plannedWindowLabel',
+    'productName', 'inventoryItemId', 'productCatalogId',
+    'rateValue', 'rateUnit', 'carrierVolumeValue', 'carrierVolumeUnit',
+    'applicationNotes', 'status', 'sortOrder',
+  ]
+  for (const f of itemFieldsRequired) {
+    assert(new RegExp(`\\b${f}\\b`).test(src),
+      `item form binds field ${f}`)
+  }
+
+  // Program-edit + archive actions.
+  assert(/Edit program/.test(src),  'renders "Edit program" button')
+  assert(/Archive/.test(src),       'renders "Archive" button')
+
+  // Item edit + remove actions.
+  assert(/startEditItem/.test(src), 'declares startEditItem')
+  assert(/removeItem/.test(src),    'declares removeItem')
+  assert(/Add item/.test(src),      'renders "Add item" button')
+  assert(/Remove/.test(src),        'renders item Remove button')
+
+  // Call routing: ensure each handler reaches the right store fn.
+  assert(/createSprayProgram\(\{[\s\S]*?status:\s*['"]draft['"]/.test(src),
+    'create program defaults to status: draft')
+  assert(/updateSprayProgram\(selected\.id,\s*\{/.test(src),
+    'update program calls updateSprayProgram(selected.id, ...)')
+  assert(/archiveSprayProgram\(selected\.id\)/.test(src),
+    'archive calls archiveSprayProgram(selected.id)')
+  assert(/listSprayProgramItems\(selectedId\)/.test(src),
+    'detail effect calls listSprayProgramItems(selectedId)')
+  assert(/createSprayProgramItem\(selectedId,\s*payload\)/.test(src),
+    'new item calls createSprayProgramItem(selectedId, payload)')
+  assert(/updateSprayProgramItem\(editingItemId,\s*payload\)/.test(src),
+    'edit item calls updateSprayProgramItem(editingItemId, payload)')
+  assert(/deleteSprayProgramItem\(item\.id\)/.test(src),
+    'remove item calls deleteSprayProgramItem(item.id)')
+
+  // Empty-state copy per spec.
+  assert(/No spray programs yet/.test(src),
+    'copy: "No spray programs yet."')
+  assert(/Create a program to plan future applications/.test(src),
+    'copy: "Create a program to plan future applications"')
+  assert(/No planned items yet/.test(src),
+    'copy: "No planned items yet."')
+  assert(/Add the first product or application window/.test(src),
+    'copy: "Add the first product or application window"')
+
+  // Boundary copy per spec — all three lines present.
+  for (const line of [
+    'Planned programs do not deduct inventory.',
+    'Planned items do not create completed spray records.',
+    'Catalog links are for read-only intelligence.',
+  ]) {
+    assert(src.includes(line), `boundary copy: "${line}"`)
+  }
+
+  // Code-only forbidden surfaces (architectural prose may discuss what
+  // we don't build — comments are stripped before the scan).
+  const codeOnly = src
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '')
+  // No spray-record creation path.
+  assert(!/createSpray\s*\(/.test(codeOnly),
+    'tab never calls createSpray(...)')
+  assert(!/recordInventoryUsage/.test(codeOnly),
+    'tab never calls recordInventoryUsage (no inventory deduction)')
+  // No linkedSprayRecordId write — the field is never on a payload.
+  assert(!/linkedSprayRecordId/.test(codeOnly),
+    'tab never writes linkedSprayRecordId in any payload')
+  // No /api/product-catalog mutation.
+  assert(!/['"]\/api\/product-catalog['"][^\n]{0,200}(POST|PATCH|DELETE)/.test(codeOnly),
+    'tab never POSTs/PATCHes/DELETEs /api/product-catalog')
+  // No PDF / AI / extract pipeline.
+  assert(!/PDF|\bAI\b|extract|llm|gpt/i.test(codeOnly),
+    'tab has no PDF / AI / extract wording (code-only)')
+  // Mobile-first guard: CSS module still carries the breakpoint.
+  const css = readFileSync('src/pages/Spray/tabs/SprayProgramPlanner.module.css', 'utf8')
+  assert(/@media\s*\(min-width:\s*\d+px\)/.test(css),
+    'CSS still has mobile-first min-width breakpoint')
+  assert(/\.master\b/.test(css) && /\.detail\b/.test(css) && /\.itemCard\b/.test(css),
+    'CSS defines master/detail/itemCard classes')
+}
+
 // ── Result ─────────────────────────────────────────────────────────────────
 console.log(`\n${passed} passed, ${failed} failed`)
 process.exit(failed === 0 ? 0 : 1)

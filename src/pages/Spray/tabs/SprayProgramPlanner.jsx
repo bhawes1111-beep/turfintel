@@ -1,67 +1,270 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import WorkspaceSection from '../../../components/shared/WorkspaceSection'
 import { EmptyState } from '../../../components/shared/EmptyState'
 import {
   useSprayPrograms,
   createSprayProgram,
+  updateSprayProgram,
+  archiveSprayProgram,
+  listSprayProgramItems,
+  createSprayProgramItem,
+  updateSprayProgramItem,
+  deleteSprayProgramItem,
 } from '../../../utils/sprayPrograms/sprayProgramStore'
 import styles from './SprayProgramPlanner.module.css'
 
-// Phase 7F (1/?) — Spray Program Planner tab shell.
+// Phase 7F (2/?) — Manual Spray Program Planner UI.
 //
-// Minimal surface for the new data model:
-//   - lists active/draft programs from sprayProgramStore
-//   - empty-state "No spray programs yet." + "Create program" CTA
-//   - bare-bones create form (name + program type + season year + notes)
+// Master/detail surface over the Phase 7F.1 data model:
+//   - left/top: program list with create form (drawer-style inline)
+//   - right/bottom: selected-program detail with planned-item list
+//     and a compact item form
 //
-// Out of scope for this commit:
-//   - per-program detail view / item editor
-//   - PDF upload, AI extraction, structured import
-//   - calendar scheduling, inventory deduction, spray-record linkage
-//
-// Programs are read-only intelligence-adjacent intent — they do not
-// affect inventory or spray records.
+// Read-only intelligence boundary: this tab never writes
+// linked_spray_record_id, never deducts inventory, never creates a
+// spray_records row, and never touches product_catalog. The optional
+// inventoryItemId / productCatalogId fields are typed in by hand for
+// now — a picker UX lands in a later commit.
 
 const PROGRAM_TYPES = ['greens', 'tees', 'fairways', 'rough', 'landscape', 'custom']
+const PROGRAM_STATUSES = ['draft', 'active', 'archived']
+const ITEM_STATUSES    = ['planned', 'completed', 'skipped', 'canceled']
+const RATE_UNITS       = ['oz/1000 sq ft', 'oz/acre', 'fl oz/1000 sq ft', 'fl oz/acre', 'gal/acre', 'lb/1000 sq ft', 'lb/acre']
+const CARRIER_UNITS    = ['gal/acre', 'gal/1000 sq ft']
+
+const PLANNING_BOUNDARY_COPY = [
+  'Planned programs do not deduct inventory.',
+  'Planned items do not create completed spray records.',
+  'Catalog links are for read-only intelligence.',
+]
+
+const EMPTY_PROGRAM_FORM = () => ({
+  name: '', programType: 'greens',
+  seasonYear: new Date().getFullYear(), notes: '',
+})
+const EMPTY_ITEM_FORM = () => ({
+  targetArea: '', plannedStartDate: '', plannedEndDate: '',
+  plannedWindowLabel: '', productName: '',
+  inventoryItemId: '', productCatalogId: '',
+  rateValue: '', rateUnit: 'oz/1000 sq ft',
+  carrierVolumeValue: '', carrierVolumeUnit: 'gal/acre',
+  applicationNotes: '', status: 'planned', sortOrder: 0,
+})
 
 export default function SprayProgramPlanner() {
-  const { programs, loading, error } = useSprayPrograms()
-  const [creating, setCreating] = useState(false)
-  const [form, setForm] = useState({
-    name: '', programType: 'greens', seasonYear: new Date().getFullYear(), notes: '',
-  })
-  const [submitting, setSubmitting] = useState(false)
-  const [submitErr, setSubmitErr] = useState(null)
+  const { programs, itemsByProgramId, loading, error } = useSprayPrograms()
 
-  async function handleSubmit(e) {
+  // ── Program-level state ──────────────────────────────────────────────
+  const [selectedId, setSelectedId] = useState(null)
+  const [creatingProgram, setCreatingProgram] = useState(false)
+  const [programForm, setProgramForm] = useState(EMPTY_PROGRAM_FORM)
+  const [editingProgram, setEditingProgram] = useState(false)
+  const [programErr, setProgramErr] = useState(null)
+  const [programSubmitting, setProgramSubmitting] = useState(false)
+
+  // ── Item-level state ─────────────────────────────────────────────────
+  const [itemForm, setItemForm] = useState(EMPTY_ITEM_FORM)
+  const [editingItemId, setEditingItemId] = useState(null)   // null|'new'|<id>
+  const [itemErr, setItemErr] = useState(null)
+  const [itemSubmitting, setItemSubmitting] = useState(false)
+  const [itemsLoading, setItemsLoading] = useState(false)
+
+  const selected = programs.find(p => p.id === selectedId) ?? null
+  const items    = selectedId ? (itemsByProgramId[selectedId] ?? []) : []
+
+  // Auto-load items for the selected program (lazy per-program cache
+  // in the store).
+  useEffect(() => {
+    if (!selectedId) return
+    let cancelled = false
+    setItemsLoading(true)
+    listSprayProgramItems(selectedId)
+      .catch(() => { /* surfaced via store error */ })
+      .finally(() => { if (!cancelled) setItemsLoading(false) })
+    return () => { cancelled = true }
+  }, [selectedId])
+
+  // Whenever the user picks a different program, drop any half-edited
+  // item form so we don't carry stale state across details.
+  useEffect(() => {
+    setEditingItemId(null)
+    setItemForm(EMPTY_ITEM_FORM())
+    setItemErr(null)
+    setEditingProgram(false)
+    setProgramErr(null)
+  }, [selectedId])
+
+  // ── Program handlers ─────────────────────────────────────────────────
+  async function submitNewProgram(e) {
     e.preventDefault()
-    if (!form.name.trim()) return
-    setSubmitting(true)
-    setSubmitErr(null)
+    if (!programForm.name.trim()) return
+    setProgramSubmitting(true)
+    setProgramErr(null)
     try {
-      await createSprayProgram({
-        name:        form.name.trim(),
-        programType: form.programType,
-        seasonYear:  Number.parseInt(form.seasonYear, 10) || null,
-        notes:       form.notes.trim() || null,
+      const saved = await createSprayProgram({
+        name:        programForm.name.trim(),
+        programType: programForm.programType,
+        seasonYear:  Number.parseInt(programForm.seasonYear, 10) || null,
+        notes:       programForm.notes.trim() || null,
         status:      'draft',
         source:      'manual',
       })
-      setForm({ name: '', programType: 'greens', seasonYear: new Date().getFullYear(), notes: '' })
-      setCreating(false)
+      setProgramForm(EMPTY_PROGRAM_FORM())
+      setCreatingProgram(false)
+      setSelectedId(saved?.id ?? null)
     } catch (err) {
-      setSubmitErr(err.message || 'Could not create program')
+      setProgramErr(err.message || 'Could not create program')
     } finally {
-      setSubmitting(false)
+      setProgramSubmitting(false)
     }
   }
 
+  function startEditProgram() {
+    if (!selected) return
+    setProgramForm({
+      name:        selected.name ?? '',
+      programType: selected.programType ?? 'greens',
+      seasonYear:  selected.seasonYear ?? new Date().getFullYear(),
+      notes:       selected.notes ?? '',
+      status:      selected.status ?? 'draft',
+    })
+    setEditingProgram(true)
+    setProgramErr(null)
+  }
+
+  async function submitEditProgram(e) {
+    e.preventDefault()
+    if (!selected) return
+    if (!programForm.name.trim()) return
+    setProgramSubmitting(true)
+    setProgramErr(null)
+    try {
+      await updateSprayProgram(selected.id, {
+        name:        programForm.name.trim(),
+        programType: programForm.programType,
+        seasonYear:  Number.parseInt(programForm.seasonYear, 10) || null,
+        notes:       programForm.notes.trim() || null,
+        status:      programForm.status ?? selected.status,
+      })
+      setEditingProgram(false)
+    } catch (err) {
+      setProgramErr(err.message || 'Could not update program')
+    } finally {
+      setProgramSubmitting(false)
+    }
+  }
+
+  async function handleArchive() {
+    if (!selected) return
+    const ok = typeof window !== 'undefined'
+      ? window.confirm(`Archive "${selected.name}"? Programs can be reactivated later.`)
+      : true
+    if (!ok) return
+    try {
+      await archiveSprayProgram(selected.id)
+      setSelectedId(null)
+    } catch (err) {
+      setProgramErr(err.message || 'Could not archive program')
+    }
+  }
+
+  // ── Item handlers ────────────────────────────────────────────────────
+  function startNewItem() {
+    setItemForm({ ...EMPTY_ITEM_FORM(), sortOrder: items.length })
+    setEditingItemId('new')
+    setItemErr(null)
+  }
+
+  function startEditItem(item) {
+    setItemForm({
+      targetArea:         item.targetArea         ?? '',
+      plannedStartDate:   item.plannedStartDate   ?? '',
+      plannedEndDate:     item.plannedEndDate     ?? '',
+      plannedWindowLabel: item.plannedWindowLabel ?? '',
+      productName:        item.productName        ?? '',
+      inventoryItemId:    item.inventoryItemId    ?? '',
+      productCatalogId:   item.productCatalogId   ?? '',
+      rateValue:          item.rateValue          ?? '',
+      rateUnit:           item.rateUnit           ?? 'oz/1000 sq ft',
+      carrierVolumeValue: item.carrierVolumeValue ?? '',
+      carrierVolumeUnit:  item.carrierVolumeUnit  ?? 'gal/acre',
+      applicationNotes:   item.applicationNotes   ?? '',
+      status:             item.status             ?? 'planned',
+      sortOrder:          item.sortOrder          ?? 0,
+    })
+    setEditingItemId(item.id)
+    setItemErr(null)
+  }
+
+  function cancelItemEdit() {
+    setEditingItemId(null)
+    setItemForm(EMPTY_ITEM_FORM())
+    setItemErr(null)
+  }
+
+  function buildItemPayload() {
+    const rv = parseFloat(itemForm.rateValue)
+    const cv = parseFloat(itemForm.carrierVolumeValue)
+    const so = parseInt(itemForm.sortOrder, 10)
+    return {
+      targetArea:         itemForm.targetArea.trim()         || null,
+      plannedStartDate:   itemForm.plannedStartDate          || null,
+      plannedEndDate:     itemForm.plannedEndDate            || null,
+      plannedWindowLabel: itemForm.plannedWindowLabel.trim() || null,
+      productName:        itemForm.productName.trim()        || null,
+      inventoryItemId:    itemForm.inventoryItemId.trim()    || null,
+      productCatalogId:   itemForm.productCatalogId.trim()   || null,
+      rateValue:          Number.isFinite(rv) ? rv : null,
+      rateUnit:           itemForm.rateUnit                  || null,
+      carrierVolumeValue: Number.isFinite(cv) ? cv : null,
+      carrierVolumeUnit:  itemForm.carrierVolumeUnit         || null,
+      applicationNotes:   itemForm.applicationNotes.trim()   || null,
+      status:             itemForm.status                    || 'planned',
+      sortOrder:          Number.isFinite(so) ? so : 0,
+    }
+  }
+
+  async function submitItem(e) {
+    e.preventDefault()
+    if (!selectedId) return
+    setItemSubmitting(true)
+    setItemErr(null)
+    try {
+      const payload = buildItemPayload()
+      if (editingItemId === 'new') {
+        await createSprayProgramItem(selectedId, payload)
+      } else {
+        await updateSprayProgramItem(editingItemId, payload)
+      }
+      cancelItemEdit()
+    } catch (err) {
+      setItemErr(err.message || 'Could not save item')
+    } finally {
+      setItemSubmitting(false)
+    }
+  }
+
+  async function removeItem(item) {
+    const ok = typeof window !== 'undefined'
+      ? window.confirm(`Remove "${item.productName ?? 'this item'}"?`)
+      : true
+    if (!ok) return
+    try {
+      await deleteSprayProgramItem(item.id)
+    } catch (err) {
+      setItemErr(err.message || 'Could not delete item')
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
   return (
     <div className={styles.tabContent}>
       <WorkspaceSection
         title="Spray Program Planner"
         subtitle="Plan upcoming spray programs. Programs hold intent only — they do not deduct inventory or create spray records."
       >
+        <PlanningBoundaryNote />
+
         {error && (
           <EmptyState
             title="Could not load spray programs."
@@ -73,128 +276,547 @@ export default function SprayProgramPlanner() {
           <EmptyState compact title="Loading programs…" />
         )}
 
-        {!error && !loading && programs.length === 0 && !creating && (
+        {!error && !loading && programs.length === 0 && !creatingProgram && (
           <EmptyState
             title="No spray programs yet."
-            description="A spray program is a reusable plan: products, target areas, and planned windows. Inventory and spray records remain untouched until you log a completed application."
+            description="Create a program to plan future applications."
           >
             <button
               type="button"
               className={styles.btnPrimary}
-              onClick={() => setCreating(true)}
+              onClick={() => setCreatingProgram(true)}
             >
               + Create program
             </button>
           </EmptyState>
         )}
 
-        {!error && programs.length > 0 && (
-          <>
-            <div className={styles.toolbarRow}>
-              <span className={styles.countLabel}>
-                {programs.length} program{programs.length !== 1 ? 's' : ''}
-              </span>
-              {!creating && (
-                <button
-                  type="button"
-                  className={styles.btnPrimary}
-                  onClick={() => setCreating(true)}
-                >
-                  + Create program
-                </button>
+        {!error && (programs.length > 0 || creatingProgram) && (
+          <div className={styles.layout}>
+            {/* ── Master: program list ─────────────────────────────── */}
+            <div className={styles.master}>
+              <div className={styles.toolbarRow}>
+                <span className={styles.countLabel}>
+                  {programs.length} program{programs.length !== 1 ? 's' : ''}
+                </span>
+                {!creatingProgram && (
+                  <button
+                    type="button"
+                    className={styles.btnPrimary}
+                    onClick={() => {
+                      setProgramForm(EMPTY_PROGRAM_FORM())
+                      setCreatingProgram(true)
+                      setProgramErr(null)
+                    }}
+                  >
+                    + New
+                  </button>
+                )}
+              </div>
+
+              {creatingProgram && (
+                <ProgramForm
+                  title="New spray program"
+                  form={programForm}
+                  setForm={setProgramForm}
+                  onSubmit={submitNewProgram}
+                  onCancel={() => { setCreatingProgram(false); setProgramErr(null) }}
+                  submitting={programSubmitting}
+                  submitErr={programErr}
+                  showStatus={false}
+                />
+              )}
+
+              <ul className={styles.programList}>
+                {programs.map(p => {
+                  const itemCount = (itemsByProgramId[p.id] ?? []).length
+                  const isSel = p.id === selectedId
+                  return (
+                    <li key={p.id}>
+                      <button
+                        type="button"
+                        className={`${styles.programCard} ${isSel ? styles.programCardSel : ''} ${p._pending ? styles.pending : ''}`}
+                        onClick={() => setSelectedId(p.id)}
+                        aria-current={isSel ? 'true' : undefined}
+                      >
+                        <div className={styles.programMain}>
+                          <span className={styles.programName}>{p.name}</span>
+                          <span className={styles.programMeta}>
+                            {p.programType && <span className={styles.programType}>{p.programType}</span>}
+                            {p.seasonYear && <span> · {p.seasonYear}</span>}
+                            <span className={styles[`programStatus_${p.status}`] ?? ''}> · {p.status}</span>
+                            {p.source && <span> · {p.source}</span>}
+                          </span>
+                          <div className={styles.programSub}>
+                            <span>{itemCount} item{itemCount !== 1 ? 's' : ''}</span>
+                            {p.updatedAt && (
+                              <span className={styles.programDate}>
+                                · updated {p.updatedAt.slice(0, 10)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+
+            {/* ── Detail: items + edit ─────────────────────────────── */}
+            <div className={styles.detail}>
+              {!selected ? (
+                <EmptyState
+                  compact
+                  title="Select a program"
+                  description="Choose a program from the list to view planned items."
+                />
+              ) : editingProgram ? (
+                <ProgramForm
+                  title={`Edit "${selected.name}"`}
+                  form={programForm}
+                  setForm={setProgramForm}
+                  onSubmit={submitEditProgram}
+                  onCancel={() => { setEditingProgram(false); setProgramErr(null) }}
+                  submitting={programSubmitting}
+                  submitErr={programErr}
+                  showStatus
+                />
+              ) : (
+                <>
+                  <div className={styles.detailHeader}>
+                    <div>
+                      <h3 className={styles.detailTitle}>{selected.name}</h3>
+                      <p className={styles.detailMeta}>
+                        {selected.programType ?? '—'} ·{' '}
+                        {selected.seasonYear ?? '—'} ·{' '}
+                        <span className={styles[`programStatus_${selected.status}`] ?? ''}>
+                          {selected.status}
+                        </span>
+                        {selected.archivedAt && (
+                          <span> · archived {selected.archivedAt.slice(0, 10)}</span>
+                        )}
+                      </p>
+                      {selected.notes && (
+                        <p className={styles.detailNotes}>{selected.notes}</p>
+                      )}
+                    </div>
+                    <div className={styles.detailActions}>
+                      <button
+                        type="button"
+                        className={styles.btnSecondary}
+                        onClick={startEditProgram}
+                      >
+                        Edit program
+                      </button>
+                      {selected.status !== 'archived' && (
+                        <button
+                          type="button"
+                          className={styles.btnDanger}
+                          onClick={handleArchive}
+                          title="Programs can be reactivated later."
+                        >
+                          Archive
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className={styles.itemsSection}>
+                    <div className={styles.toolbarRow}>
+                      <span className={styles.sectionLabel}>Planned items</span>
+                      {editingItemId == null && (
+                        <button
+                          type="button"
+                          className={styles.btnPrimary}
+                          onClick={startNewItem}
+                        >
+                          + Add item
+                        </button>
+                      )}
+                    </div>
+
+                    {editingItemId != null && (
+                      <ItemForm
+                        title={editingItemId === 'new' ? 'New planned item' : 'Edit planned item'}
+                        form={itemForm}
+                        setForm={setItemForm}
+                        onSubmit={submitItem}
+                        onCancel={cancelItemEdit}
+                        submitting={itemSubmitting}
+                        submitErr={itemErr}
+                      />
+                    )}
+
+                    {itemsLoading && items.length === 0 && (
+                      <p className={styles.dimNote}>Loading items…</p>
+                    )}
+
+                    {!itemsLoading && items.length === 0 && editingItemId == null && (
+                      <EmptyState
+                        compact
+                        title="No planned items yet."
+                        description="Add the first product or application window."
+                      />
+                    )}
+
+                    {items.length > 0 && (
+                      <ul className={styles.itemList}>
+                        {items.map(item => (
+                          <li
+                            key={item.id}
+                            className={`${styles.itemCard} ${item._pending ? styles.pending : ''}`}
+                          >
+                            <div className={styles.itemMain}>
+                              <div className={styles.itemTitleRow}>
+                                <span className={styles.itemProduct}>
+                                  {item.productName ?? '(no product)'}
+                                </span>
+                                <span className={styles[`itemStatus_${item.status}`] ?? styles.itemStatus}>
+                                  {item.status}
+                                </span>
+                              </div>
+                              <div className={styles.itemMeta}>
+                                {item.targetArea && <span>📍 {item.targetArea}</span>}
+                                {item.plannedWindowLabel && (
+                                  <span>🗓 {item.plannedWindowLabel}</span>
+                                )}
+                                {(item.plannedStartDate || item.plannedEndDate) && (
+                                  <span>
+                                    {item.plannedStartDate ?? '?'}
+                                    {item.plannedEndDate ? ` → ${item.plannedEndDate}` : ''}
+                                  </span>
+                                )}
+                              </div>
+                              {(item.rateValue != null || item.carrierVolumeValue != null) && (
+                                <div className={styles.itemMeta}>
+                                  {item.rateValue != null && (
+                                    <span>Rate: {item.rateValue} {item.rateUnit ?? ''}</span>
+                                  )}
+                                  {item.carrierVolumeValue != null && (
+                                    <span>Carrier: {item.carrierVolumeValue} {item.carrierVolumeUnit ?? ''}</span>
+                                  )}
+                                </div>
+                              )}
+                              {(item.inventoryItemId || item.productCatalogId) && (
+                                <div className={styles.itemLinks}>
+                                  {item.inventoryItemId && (
+                                    <span className={styles.linkChip} title="Linked inventory item">
+                                      📦 inv {item.inventoryItemId.slice(0, 12)}
+                                    </span>
+                                  )}
+                                  {item.productCatalogId && (
+                                    <span className={styles.linkChip} title="Linked catalog product (read-only)">
+                                      📋 catalog {item.productCatalogId.slice(0, 12)}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                              {item.applicationNotes && (
+                                <p className={styles.itemNotes}>{item.applicationNotes}</p>
+                              )}
+                            </div>
+                            <div className={styles.itemActions}>
+                              <button
+                                type="button"
+                                className={styles.btnGhost}
+                                onClick={() => startEditItem(item)}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                className={styles.btnDangerGhost}
+                                onClick={() => removeItem(item)}
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </>
               )}
             </div>
-            <ul className={styles.programList}>
-              {programs.map(p => (
-                <li key={p.id} className={`${styles.programCard} ${p._pending ? styles.pending : ''}`}>
-                  <div className={styles.programMain}>
-                    <span className={styles.programName}>{p.name}</span>
-                    <span className={styles.programMeta}>
-                      {p.programType && <span className={styles.programType}>{p.programType}</span>}
-                      {p.seasonYear && <span> · {p.seasonYear}</span>}
-                      <span className={styles[`programStatus_${p.status}`]}> · {p.status}</span>
-                    </span>
-                    {p.notes && <p className={styles.programNotes}>{p.notes}</p>}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-
-        {creating && (
-          <form className={styles.createForm} onSubmit={handleSubmit}>
-            <h3 className={styles.createTitle}>New spray program</h3>
-            <p className={styles.createHint}>
-              Programs hold intent only. No inventory will be deducted and no spray records will be created.
-            </p>
-            <div className={styles.formRow}>
-              <label className={styles.formLabel}>
-                Program name <span aria-hidden className={styles.req}>*</span>
-                <input
-                  type="text"
-                  className={styles.formInput}
-                  value={form.name}
-                  onChange={e => setForm({ ...form, name: e.target.value })}
-                  required
-                  autoFocus
-                  placeholder="e.g. 2026 Greens Fungicide Program"
-                />
-              </label>
-            </div>
-            <div className={styles.formRow}>
-              <label className={styles.formLabel}>
-                Program type
-                <select
-                  className={styles.formInput}
-                  value={form.programType}
-                  onChange={e => setForm({ ...form, programType: e.target.value })}
-                >
-                  {PROGRAM_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
-              </label>
-              <label className={styles.formLabel}>
-                Season year
-                <input
-                  type="number"
-                  className={styles.formInput}
-                  value={form.seasonYear}
-                  onChange={e => setForm({ ...form, seasonYear: e.target.value })}
-                />
-              </label>
-            </div>
-            <div className={styles.formRow}>
-              <label className={styles.formLabel}>
-                Notes
-                <textarea
-                  className={`${styles.formInput} ${styles.formTextarea}`}
-                  value={form.notes}
-                  onChange={e => setForm({ ...form, notes: e.target.value })}
-                  rows={2}
-                />
-              </label>
-            </div>
-            {submitErr && <p className={styles.errorBanner}>{submitErr}</p>}
-            <div className={styles.formActions}>
-              <button
-                type="button"
-                className={styles.btnSecondary}
-                onClick={() => { setCreating(false); setSubmitErr(null) }}
-                disabled={submitting}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className={styles.btnPrimary}
-                disabled={submitting || !form.name.trim()}
-              >
-                {submitting ? 'Creating…' : 'Create program'}
-              </button>
-            </div>
-          </form>
+          </div>
         )}
       </WorkspaceSection>
     </div>
+  )
+}
+
+// ── Sub-components ─────────────────────────────────────────────────────
+
+function PlanningBoundaryNote() {
+  return (
+    <p className={styles.boundaryNote}>
+      {PLANNING_BOUNDARY_COPY.join(' ')}
+    </p>
+  )
+}
+
+function ProgramForm({ title, form, setForm, onSubmit, onCancel, submitting, submitErr, showStatus }) {
+  return (
+    <form className={styles.createForm} onSubmit={onSubmit}>
+      <h4 className={styles.createTitle}>{title}</h4>
+      <p className={styles.createHint}>
+        Programs hold intent only. No inventory will be deducted and no spray records will be created.
+      </p>
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>
+          Program name <span aria-hidden className={styles.req}>*</span>
+          <input
+            type="text"
+            className={styles.formInput}
+            value={form.name}
+            onChange={e => setForm({ ...form, name: e.target.value })}
+            required
+            placeholder="e.g. 2026 Greens Fungicide Program"
+          />
+        </label>
+      </div>
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>
+          Program type
+          <select
+            className={styles.formInput}
+            value={form.programType}
+            onChange={e => setForm({ ...form, programType: e.target.value })}
+          >
+            {PROGRAM_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </label>
+        <label className={styles.formLabel}>
+          Season year
+          <input
+            type="number"
+            className={styles.formInput}
+            value={form.seasonYear}
+            onChange={e => setForm({ ...form, seasonYear: e.target.value })}
+          />
+        </label>
+        {showStatus && (
+          <label className={styles.formLabel}>
+            Status
+            <select
+              className={styles.formInput}
+              value={form.status ?? 'draft'}
+              onChange={e => setForm({ ...form, status: e.target.value })}
+            >
+              {PROGRAM_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </label>
+        )}
+      </div>
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>
+          Notes
+          <textarea
+            className={`${styles.formInput} ${styles.formTextarea}`}
+            value={form.notes}
+            onChange={e => setForm({ ...form, notes: e.target.value })}
+            rows={2}
+          />
+        </label>
+      </div>
+      {submitErr && <p className={styles.errorBanner}>{submitErr}</p>}
+      <div className={styles.formActions}>
+        <button
+          type="button"
+          className={styles.btnSecondary}
+          onClick={onCancel}
+          disabled={submitting}
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          className={styles.btnPrimary}
+          disabled={submitting || !form.name.trim()}
+        >
+          {submitting ? 'Saving…' : 'Save program'}
+        </button>
+      </div>
+    </form>
+  )
+}
+
+function ItemForm({ title, form, setForm, onSubmit, onCancel, submitting, submitErr }) {
+  function set(field, value) { setForm({ ...form, [field]: value }) }
+  return (
+    <form className={styles.createForm} onSubmit={onSubmit}>
+      <h4 className={styles.createTitle}>{title}</h4>
+      <p className={styles.createHint}>
+        Planned items do not create spray records and do not deduct inventory. Optional links are typed by id for now (picker UX lands later).
+      </p>
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>
+          Product name
+          <input
+            type="text"
+            className={styles.formInput}
+            value={form.productName}
+            onChange={e => set('productName', e.target.value)}
+            placeholder="e.g. Heritage 50WG"
+          />
+        </label>
+        <label className={styles.formLabel}>
+          Target area
+          <input
+            type="text"
+            className={styles.formInput}
+            value={form.targetArea}
+            onChange={e => set('targetArea', e.target.value)}
+            placeholder="e.g. Greens"
+          />
+        </label>
+      </div>
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>
+          Planned start
+          <input
+            type="date"
+            className={styles.formInput}
+            value={form.plannedStartDate}
+            onChange={e => set('plannedStartDate', e.target.value)}
+          />
+        </label>
+        <label className={styles.formLabel}>
+          Planned end
+          <input
+            type="date"
+            className={styles.formInput}
+            value={form.plannedEndDate}
+            onChange={e => set('plannedEndDate', e.target.value)}
+          />
+        </label>
+        <label className={styles.formLabel}>
+          Window label
+          <input
+            type="text"
+            className={styles.formInput}
+            value={form.plannedWindowLabel}
+            onChange={e => set('plannedWindowLabel', e.target.value)}
+            placeholder="e.g. Pre-emergent 1st app"
+          />
+        </label>
+      </div>
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>
+          Rate
+          <input
+            type="number"
+            step="0.01"
+            className={styles.formInput}
+            value={form.rateValue}
+            onChange={e => set('rateValue', e.target.value)}
+          />
+        </label>
+        <label className={styles.formLabel}>
+          Rate unit
+          <select
+            className={styles.formInput}
+            value={form.rateUnit}
+            onChange={e => set('rateUnit', e.target.value)}
+          >
+            {RATE_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+          </select>
+        </label>
+        <label className={styles.formLabel}>
+          Carrier
+          <input
+            type="number"
+            step="0.1"
+            className={styles.formInput}
+            value={form.carrierVolumeValue}
+            onChange={e => set('carrierVolumeValue', e.target.value)}
+          />
+        </label>
+        <label className={styles.formLabel}>
+          Carrier unit
+          <select
+            className={styles.formInput}
+            value={form.carrierVolumeUnit}
+            onChange={e => set('carrierVolumeUnit', e.target.value)}
+          >
+            {CARRIER_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+          </select>
+        </label>
+      </div>
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>
+          Inventory item id (optional)
+          <input
+            type="text"
+            className={styles.formInput}
+            value={form.inventoryItemId}
+            onChange={e => set('inventoryItemId', e.target.value)}
+            placeholder="inv-..."
+          />
+        </label>
+        <label className={styles.formLabel}>
+          Catalog product id (optional, read-only intelligence)
+          <input
+            type="text"
+            className={styles.formInput}
+            value={form.productCatalogId}
+            onChange={e => set('productCatalogId', e.target.value)}
+            placeholder="pc-..."
+          />
+        </label>
+      </div>
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>
+          Status
+          <select
+            className={styles.formInput}
+            value={form.status}
+            onChange={e => set('status', e.target.value)}
+          >
+            {ITEM_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </label>
+        <label className={styles.formLabel}>
+          Sort order
+          <input
+            type="number"
+            className={styles.formInput}
+            value={form.sortOrder}
+            onChange={e => set('sortOrder', e.target.value)}
+          />
+        </label>
+      </div>
+      <div className={styles.formRow}>
+        <label className={styles.formLabel}>
+          Notes
+          <textarea
+            className={`${styles.formInput} ${styles.formTextarea}`}
+            value={form.applicationNotes}
+            onChange={e => set('applicationNotes', e.target.value)}
+            rows={2}
+          />
+        </label>
+      </div>
+      {submitErr && <p className={styles.errorBanner}>{submitErr}</p>}
+      <div className={styles.formActions}>
+        <button
+          type="button"
+          className={styles.btnSecondary}
+          onClick={onCancel}
+          disabled={submitting}
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          className={styles.btnPrimary}
+          disabled={submitting}
+        >
+          {submitting ? 'Saving…' : 'Save item'}
+        </button>
+      </div>
+    </form>
   )
 }

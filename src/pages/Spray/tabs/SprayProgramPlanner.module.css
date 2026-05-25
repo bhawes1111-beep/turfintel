@@ -1,7 +1,53 @@
-/* Phase 7F (1/?) — Spray Program Planner tab shell styles.
+/* Phase 7F (1–2/?) — Spray Program Planner styles.
    Mobile-first; scoped to this tab. */
 
 .tabContent { display: block; }
+
+.boundaryNote {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: rgba(100, 150, 220, 0.08);
+  border: 1px solid rgba(100, 150, 220, 0.25);
+  color: rgba(160, 200, 255, 0.95);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* ── Master/detail layout ─────────────────────────────────────────────
+   Mobile: master stacked above detail.
+   ≥ 900px: side-by-side (master 320px / detail flex). */
+
+.layout {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+@media (min-width: 900px) {
+  .layout {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+  .master { flex: 0 0 320px; }
+  .detail { flex: 1 1 auto; min-width: 0; }
+}
+
+.master { display: flex; flex-direction: column; gap: 8px; }
+.detail { display: flex; flex-direction: column; gap: 10px;
+          padding: 12px 14px;
+          border-radius: 10px;
+          background: rgba(255, 255, 255, 0.025);
+          border: 1px solid rgba(255, 255, 255, 0.06); }
+
+.sectionLabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.dimNote { font-size: 12px; color: rgba(255, 255, 255, 0.55); margin: 4px 0; }
 
 .toolbarRow {
   display: flex;
@@ -33,9 +79,35 @@
   display: flex;
   align-items: flex-start;
   gap: 12px;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.programCard:hover,
+.programCard:focus-visible {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.16);
+  outline: none;
+}
+
+.programCardSel {
+  background: rgba(100, 150, 220, 0.12);
+  border-color: rgba(100, 150, 220, 0.4);
 }
 
 .pending { opacity: 0.6; border-style: dashed; }
+
+.programSub {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.programDate { color: rgba(255, 255, 255, 0.45); }
 
 .programMain { flex: 1 1 auto; min-width: 0; }
 
@@ -174,3 +246,175 @@
 }
 .btnSecondary:hover { background: rgba(255, 255, 255, 0.1); }
 .btnSecondary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Detail header ──────────────────────────────────────────────────── */
+
+.detailHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.detailTitle {
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.detailMeta {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.detailNotes {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.65);
+  line-height: 1.5;
+}
+
+.detailActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* ── Items ─────────────────────────────────────────────────────────── */
+
+.itemsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.itemList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.itemCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@media (min-width: 720px) {
+  .itemCard { flex-direction: row; align-items: flex-start; }
+  .itemMain    { flex: 1 1 auto; min-width: 0; }
+  .itemActions { flex: 0 0 auto; }
+}
+
+.itemTitleRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.itemProduct {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.itemStatus,
+.itemStatus_planned,
+.itemStatus_completed,
+.itemStatus_skipped,
+.itemStatus_canceled {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+}
+.itemStatus_planned   { color: rgba(160, 200, 255, 0.95); border-color: rgba(100, 150, 220, 0.3); background: rgba(100, 150, 220, 0.12); }
+.itemStatus_completed { color: #8ed68e; border-color: rgba(78, 203, 78, 0.3);    background: rgba(78, 203, 78, 0.12); }
+.itemStatus_skipped   { color: rgba(255, 255, 255, 0.6); }
+.itemStatus_canceled  { color: #ff9999; border-color: rgba(220, 60, 60, 0.3);    background: rgba(220, 60, 60, 0.1); }
+
+.itemMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.itemLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.linkChip {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.itemNotes {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.5;
+}
+
+.itemActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.btnGhost,
+.btnDanger,
+.btnDangerGhost {
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.btnGhost {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.75);
+}
+.btnGhost:hover { background: rgba(255, 255, 255, 0.06); color: rgba(255, 255, 255, 0.9); }
+
+.btnDanger {
+  background: rgba(220, 60, 60, 0.12);
+  color: #ff9999;
+  border-color: rgba(220, 60, 60, 0.3);
+}
+.btnDanger:hover { background: rgba(220, 60, 60, 0.2); }
+
+.btnDangerGhost {
+  background: transparent;
+  color: #ff9999;
+  border-color: rgba(220, 60, 60, 0.3);
+}
+.btnDangerGhost:hover { background: rgba(220, 60, 60, 0.1); }
