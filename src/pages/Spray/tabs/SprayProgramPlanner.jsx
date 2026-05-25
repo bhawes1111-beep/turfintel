@@ -17,6 +17,7 @@ import { useProductCatalog, getCatalogProductById } from '../../../utils/product
 import { useImportedLabels } from '../../../utils/inventory/labelImportStore'
 import { useSpraysData } from '../../../utils/sprays/spraysStore'
 import { resolveProgramItemIntel } from '../../../utils/sprayPrograms/resolveProgramItemIntel'
+import { buildPlanActualComparison } from '../../../utils/sprayPrograms/planActualComparison'
 import InventoryPickerModal       from './components/InventoryPickerModal'
 import ProductCatalogPickerModal  from './components/ProductCatalogPickerModal'
 import CompletedSprayPickerModal  from './components/CompletedSprayPickerModal'
@@ -720,6 +721,7 @@ function CompletedLinkSummary({ item, linkedSpray, onClear }) {
           <p className={styles.completedLinkBoundary}>
             Linking connects this planned item to an existing completed spray record. This does not create a spray record. This does not deduct inventory. Completed records remain unchanged.
           </p>
+          <PlanVsActualBlock item={item} linkedSpray={linkedSpray} />
         </div>
         <button
           type="button"
@@ -1135,6 +1137,33 @@ function PickerSlot({ label, hint, onPick, onClear, selected, rawId }) {
       ) : (
         <div className={styles.pickerCardEmpty}>No link selected.</div>
       )}
+    </div>
+  )
+}
+
+// Phase 7F (5/?) — Plan vs Actual comparison chips. Pure-render block
+// that surfaces the helper's neutral-language summary inline on a
+// linked planned item card. The helper itself never writes; this
+// component just reads its output.
+function PlanVsActualBlock({ item, linkedSpray }) {
+  const result = useMemo(
+    () => buildPlanActualComparison(item, linkedSpray),
+    [item, linkedSpray],
+  )
+  if (!result?.linked) return null
+  if (!Array.isArray(result.summary) || result.summary.length === 0) return null
+
+  return (
+    <div className={styles.planActualBlock}>
+      <div className={styles.planActualHeader}>Plan vs Actual</div>
+      <ul className={styles.planActualList}>
+        {result.summary.map((n, i) => (
+          <li key={`${n.label}-${i}`} className={styles.planActualItem}>
+            <span className={styles.planActualChipLabel}>{n.label}</span>
+            <span className={styles.planActualChipValue}>{n.value}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }

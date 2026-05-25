@@ -1298,6 +1298,357 @@ console.log('— planner CSS adds linked-summary classes')
   }
 }
 
+// ── 12. Phase 7F (5/?) — Plan vs Actual comparison ─────────────────────────
+console.log('— planActualComparison.js (helper source)')
+{
+  const src = readFileSync('src/utils/sprayPrograms/planActualComparison.js', 'utf8')
+
+  for (const name of [
+    'buildPlanActualComparison',
+    'comparePlannedActualDate',
+    'comparePlannedActualProduct',
+    'comparePlannedActualArea',
+    'comparePlannedActualRate',
+    'summarizePlanActualComparison',
+  ]) {
+    assert(new RegExp(`export\\s+function\\s+${name}\\b`).test(src),
+      `exports ${name}`)
+  }
+
+  // Purity (code-only — comments may discuss what we explicitly avoid).
+  const codeOnly = src
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '')
+
+  assert(!/from\s+['"]react['"]/.test(codeOnly),     'helper does not import react')
+  assert(!/fetch\(/.test(codeOnly),                   'helper does not call fetch()')
+  assert(!/from\s+['"][^'"]*Store(\.js)?['"]/.test(codeOnly),
+    'helper does not import any *Store module')
+  assert(!/method:\s*['"](POST|PATCH|DELETE)['"]/.test(codeOnly),
+    'helper does not issue mutations')
+
+  // No recommendation / judgment vocabulary. The disclaimer-line allow-
+  // list isn't needed here — none of these words belong in the helper.
+  for (const word of [
+    'recommend', 'correct', 'incorrect', 'pass', 'fail',
+    'score', 'grade', 'safe', 'unsafe',
+  ]) {
+    assert(!new RegExp(`\\b${word}\\b`, 'i').test(codeOnly),
+      `no "${word}" wording in helper code`)
+  }
+}
+
+console.log('— buildPlanActualComparison behavior')
+{
+  const mod = await import('../src/utils/sprayPrograms/planActualComparison.js')
+
+  // ── Defensive cases ────────────────────────────────────────────
+  {
+    const empty = mod.buildPlanActualComparison(null, null)
+    assert(empty.linked === false && empty.summary.length === 0,
+      'null inputs → linked:false, no summary')
+  }
+
+  // ── Date: inside window ───────────────────────────────────────
+  {
+    const planned = { plannedStartDate: '2026-06-01', plannedEndDate: '2026-06-07' }
+    const actual  = { date: '2026-06-03', products: [] }
+    const d = mod.comparePlannedActualDate(planned, actual)
+    assert(d.status === 'inside-window', 'inside window detected')
+    assert(d.dayOffset === 0,            'inside-window dayOffset === 0')
+  }
+
+  // ── Date: outside window — early + late ───────────────────────
+  {
+    const planned = { plannedStartDate: '2026-06-01', plannedEndDate: '2026-06-07' }
+    const early   = mod.comparePlannedActualDate(planned, { date: '2026-05-28' })
+    assert(early.status === 'outside-window' && early.dayOffset === -4,
+      'early outside: dayOffset -4', early.dayOffset)
+    const late    = mod.comparePlannedActualDate(planned, { date: '2026-06-10' })
+    assert(late.status === 'outside-window' && late.dayOffset === 3,
+      'late outside: dayOffset 3', late.dayOffset)
+  }
+
+  // ── Date: single-anchor (start only) → treated as 1-day window ─
+  {
+    const planned = { plannedStartDate: '2026-06-05' }
+    const onDay   = mod.comparePlannedActualDate(planned, { date: '2026-06-05' })
+    assert(onDay.status === 'inside-window' && onDay.dayOffset === 0,
+      'single-anchor exact match → inside-window')
+    const off     = mod.comparePlannedActualDate(planned, { date: '2026-06-07' })
+    assert(off.status === 'outside-window' && off.dayOffset === 2,
+      'single-anchor +2 days → outside-window +2')
+  }
+
+  // ── Date: missing planned / missing actual ─────────────────────
+  {
+    const noPlan = mod.comparePlannedActualDate({}, { date: '2026-06-01' })
+    assert(noPlan.status === 'missing-planned',  'no planned dates → missing-planned')
+    const noAct  = mod.comparePlannedActualDate({ plannedStartDate: '2026-06-01' }, {})
+    assert(noAct.status === 'missing-actual',    'no actual date → missing-actual')
+  }
+
+  // ── Date: invalid date strings do not throw ───────────────────
+  {
+    const bad = mod.comparePlannedActualDate(
+      { plannedStartDate: 'banana', plannedEndDate: '2026-06-07' },
+      { date: 'not-a-date' },
+    )
+    assert(bad.status === 'missing-actual', 'invalid actual date → missing-actual, no throw')
+    const bad2 = mod.comparePlannedActualDate(
+      { plannedStartDate: 'banana', plannedEndDate: 'also-bad' },
+      { date: '2026-06-05' },
+    )
+    assert(bad2.status === 'missing-planned',
+      'all invalid planned dates → missing-planned, no throw')
+  }
+
+  // ── Product: match by inventoryItemId ─────────────────────────
+  {
+    const r = mod.comparePlannedActualProduct(
+      { productName: 'Heritage', inventoryItemId: 'inv-A' },
+      { products: [{ name: 'Heritage 50WG', inventoryItemId: 'inv-A' }] },
+    )
+    assert(r.status === 'match', 'match by inventoryItemId')
+  }
+
+  // ── Product: match by normalized name ─────────────────────────
+  {
+    const r = mod.comparePlannedActualProduct(
+      { productName: 'Barricade 4FL' },
+      { products: [{ name: 'BARRICADE 4FL' }] },
+    )
+    assert(r.status === 'match', 'match by normalized name (case-insensitive)')
+  }
+
+  // ── Product: NO fuzzy match ───────────────────────────────────
+  {
+    const r = mod.comparePlannedActualProduct(
+      { productName: 'Heritage' },
+      { products: [{ name: 'Heritage G' }] },
+    )
+    assert(r.status === 'different',
+      'no fuzzy match: "Heritage" ≠ "Heritage G"')
+  }
+
+  // ── Product: any-match wins when multiple actuals ─────────────
+  {
+    const r = mod.comparePlannedActualProduct(
+      { productName: 'Primo Maxx' },
+      { products: [{ name: 'Heritage' }, { name: 'Primo Maxx' }] },
+    )
+    assert(r.status === 'match', 'multiple actuals → any-match wins')
+    assert(Array.isArray(r.actual) && r.actual.length === 2,
+      'actual list surfaces all completed product names')
+  }
+
+  // ── Product: missing planned / missing actual ─────────────────
+  {
+    const noPlan = mod.comparePlannedActualProduct({}, { products: [{ name: 'X' }] })
+    assert(noPlan.status === 'missing-planned', 'no planned product → missing-planned')
+    const noAct  = mod.comparePlannedActualProduct({ productName: 'X' }, { products: [] })
+    assert(noAct.status === 'missing-actual',   'no actual products → missing-actual')
+  }
+
+  // ── Area: exact match (case-insensitive + whitespace) ─────────
+  {
+    const r = mod.comparePlannedActualArea(
+      { targetArea: 'Greens' }, { area: 'GREENS' },
+    )
+    assert(r.status === 'match', 'area exact match (case-insensitive)')
+    const r2 = mod.comparePlannedActualArea(
+      { targetArea: 'Greens' }, { area: 'Tees' },
+    )
+    assert(r2.status === 'different', 'area different')
+    const noPlan = mod.comparePlannedActualArea({}, { area: 'Greens' })
+    assert(noPlan.status === 'missing-planned', 'area missing-planned')
+    const noAct  = mod.comparePlannedActualArea({ targetArea: 'Greens' }, {})
+    assert(noAct.status === 'missing-actual', 'area missing-actual')
+  }
+
+  // ── Rate: exact match ─────────────────────────────────────────
+  {
+    const r = mod.comparePlannedActualRate(
+      { productName: 'Heritage', rateValue: 3.2, rateUnit: 'oz/1000 sq ft' },
+      { products: [{ name: 'Heritage', rate: '3.2 oz / 1,000 sq ft' }] },
+    )
+    assert(r.status === 'match', 'rate exact match (value + normalized unit)')
+  }
+
+  // ── Rate: numeric mismatch → different ────────────────────────
+  {
+    const r = mod.comparePlannedActualRate(
+      { productName: 'Heritage', rateValue: 3.2, rateUnit: 'oz/1000 sq ft' },
+      { products: [{ name: 'Heritage', rate: '4.0 oz / 1,000 sq ft' }] },
+    )
+    assert(r.status === 'different', 'rate different on numeric mismatch')
+  }
+
+  // ── Rate: not-compared when actual rate is unparsable ─────────
+  {
+    const r = mod.comparePlannedActualRate(
+      { productName: 'Heritage', rateValue: 3.2, rateUnit: 'oz/1000 sq ft' },
+      { products: [{ name: 'Heritage', rate: 'see label' }] },
+    )
+    assert(r.status === 'not-compared',
+      'unparsable actual rate → not-compared')
+  }
+
+  // ── Rate: not-compared when no matching actual product ────────
+  {
+    const r = mod.comparePlannedActualRate(
+      { productName: 'Heritage', rateValue: 3.2, rateUnit: 'oz/1000 sq ft' },
+      { products: [{ name: 'Other Product', rate: '3.2 oz / 1,000 sq ft' }] },
+    )
+    assert(r.status === 'not-compared',
+      'no matching actual product → not-compared')
+  }
+
+  // ── Rate: missing-planned / missing-actual ────────────────────
+  {
+    const r = mod.comparePlannedActualRate(
+      { productName: 'Heritage' },
+      { products: [{ name: 'Heritage', rate: '3.2 oz / 1,000 sq ft' }] },
+    )
+    assert(r.status === 'missing-planned',
+      'no planned rateValue → missing-planned')
+    const r2 = mod.comparePlannedActualRate(
+      { productName: 'Heritage', rateValue: 3.2, rateUnit: 'oz/1000 sq ft' },
+      { products: [] },
+    )
+    assert(r2.status === 'missing-actual',
+      'no actual products → missing-actual')
+  }
+
+  // ── Summary copy: no judgment vocabulary ──────────────────────
+  {
+    const planned = {
+      plannedStartDate: '2026-06-01', plannedEndDate: '2026-06-07',
+      productName: 'Heritage', targetArea: 'Greens',
+      rateValue: 3.2, rateUnit: 'oz/1000 sq ft',
+    }
+    const actual = {
+      date: '2026-06-03',
+      area: 'Greens',
+      products: [{ name: 'Heritage', rate: '3.2 oz / 1,000 sq ft' }],
+    }
+    const out = mod.buildPlanActualComparison(planned, actual)
+    assert(out.linked === true && out.summary.length === 4,
+      'happy path: 4 summary chips (Date/Product/Area/Rate)')
+    const text = out.summary.map(s => `${s.label} ${s.value}`).join(' | ')
+    for (const word of ['recommend', 'correct', 'incorrect', 'pass', 'fail',
+                        'score', 'grade', 'safe', 'unsafe']) {
+      assert(!new RegExp(`\\b${word}\\b`, 'i').test(text),
+        `summary copy avoids "${word}"`)
+    }
+    assert(/Completed inside planned window/.test(text),
+      'date copy: "Completed inside planned window"')
+    assert(/Planned product appears in completed record/.test(text),
+      'product copy: "Planned product appears in completed record"')
+    assert(/Area matches recorded application/.test(text),
+      'area copy: "Area matches recorded application"')
+  }
+
+  // ── "Different" / "Rate not compared" copy phrasing ───────────
+  {
+    const planned = {
+      plannedStartDate: '2026-06-01', plannedEndDate: '2026-06-07',
+      productName: 'Heritage', targetArea: 'Greens',
+      rateValue: 3.2, rateUnit: 'oz/1000 sq ft',
+    }
+    const actual  = {
+      date: '2026-06-15',
+      area:  'Tees',
+      products: [{ name: 'Other Product', rate: 'see label' }],
+    }
+    const out = mod.buildPlanActualComparison(planned, actual)
+    const text = out.summary.map(s => `${s.label} ${s.value}`).join(' | ')
+    assert(/Completed outside planned window/.test(text),
+      'date copy: "Completed outside planned window"')
+    assert(/\(\d+ day/.test(text),
+      'date copy includes the day-offset count')
+    assert(/Different recorded product/.test(text),
+      'product copy: "Different recorded product"')
+    assert(/Area differs from recorded application/.test(text),
+      'area copy: "Area differs from recorded application"')
+    assert(/Rate not compared/.test(text),
+      'rate copy: "Rate not compared"')
+  }
+
+  // ── Purity: inputs never mutated ──────────────────────────────
+  {
+    const planned = { plannedStartDate: '2026-06-01', plannedEndDate: '2026-06-07',
+      productName: 'Heritage', targetArea: 'Greens',
+      rateValue: 3.2, rateUnit: 'oz/1000 sq ft' }
+    const actual  = { date: '2026-06-03', area: 'Greens',
+      products: [{ name: 'Heritage', rate: '3.2 oz / 1,000 sq ft' }] }
+    const before = JSON.stringify({ planned, actual })
+    mod.buildPlanActualComparison(planned, actual)
+    mod.comparePlannedActualDate(planned, actual)
+    mod.comparePlannedActualProduct(planned, actual)
+    mod.comparePlannedActualArea(planned, actual)
+    mod.comparePlannedActualRate(planned, actual)
+    assert(JSON.stringify({ planned, actual }) === before,
+      'helper does not mutate planned or actual inputs')
+  }
+}
+
+console.log('— Planner renders Plan vs Actual block only when linked spray resolves')
+{
+  const src = readFileSync('src/pages/Spray/tabs/SprayProgramPlanner.jsx', 'utf8')
+  assert(/from\s+['"][^'"]*planActualComparison(\.js)?['"]/.test(src),
+    'planner imports planActualComparison')
+  assert(/<PlanVsActualBlock\b/.test(src),
+    'planner renders <PlanVsActualBlock>')
+  assert(/function\s+PlanVsActualBlock\b/.test(src),
+    'planner declares PlanVsActualBlock component')
+
+  // The block is conditional: only inside the linked-cached branch of
+  // CompletedLinkSummary. The stale branch should NOT mount it.
+  const cachedBranch = src.match(/styles\.completedLink\}>[\s\S]*?Clear completed link/)?.[0] ?? ''
+  const staleBranch  = src.match(/styles\.completedLinkStale\}[\s\S]*?Clear completed link/)?.[0] ?? ''
+  assert(/<PlanVsActualBlock\b/.test(cachedBranch),
+    'PlanVsActualBlock mounted inside the linked-cached branch')
+  assert(!/<PlanVsActualBlock\b/.test(staleBranch),
+    'PlanVsActualBlock NOT mounted inside the stale branch')
+
+  // useMemo over buildPlanActualComparison so chips re-derive only on
+  // item or linkedSpray change.
+  assert(/buildPlanActualComparison\(item,\s*linkedSpray\)/.test(src),
+    'PlanVsActualBlock calls buildPlanActualComparison(item, linkedSpray)')
+
+  // Block content stays neutral — same forbidden list as the helper.
+  const codeOnly = src
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '')
+  // "recommend" is allowed via existing boundary copy ("does not
+  // recommend") in unrelated panels but NOT in the PlanVsActualBlock.
+  const block = codeOnly.match(/function\s+PlanVsActualBlock[\s\S]*?\n\}/)?.[0] ?? ''
+  for (const word of ['recommend', 'correct', 'incorrect', 'pass', 'fail',
+                      'score', 'grade', 'safe', 'unsafe']) {
+    assert(!new RegExp(`\\b${word}\\b`, 'i').test(block),
+      `PlanVsActualBlock avoids "${word}"`)
+  }
+
+  // No new D1 / inventory / catalog / spray-record write paths added
+  // on the planner side as part of this commit.
+  assert(!/createSpray\s*\(/.test(codeOnly),
+    'planner still never calls createSpray(...)')
+  assert(!/recordInventoryUsage/.test(codeOnly),
+    'planner still never calls recordInventoryUsage')
+  assert(!/['"]\/api\/product-catalog['"][^\n]{0,200}(POST|PATCH|DELETE)/.test(codeOnly),
+    'planner still never POSTs/PATCHes/DELETEs /api/product-catalog')
+}
+
+console.log('— Plan vs Actual CSS classes')
+{
+  const css = readFileSync('src/pages/Spray/tabs/SprayProgramPlanner.module.css', 'utf8')
+  for (const cls of ['planActualBlock', 'planActualHeader', 'planActualList',
+                     'planActualItem', 'planActualChipLabel', 'planActualChipValue']) {
+    assert(new RegExp(`\\.${cls}\\b`).test(css), `CSS defines .${cls}`)
+  }
+}
+
 // ── Result ─────────────────────────────────────────────────────────────────
 console.log(`\n${passed} passed, ${failed} failed`)
 process.exit(failed === 0 ? 0 : 1)
