@@ -16,6 +16,7 @@ import {
   buildCulturalHistoryReport,
   buildDiseaseLogReport,
   buildMoistureTrendReport,
+  buildTurfHealthSummaryReport,
 } from './reportBuilder.js'
 import { REPORT_MODULE } from './reportSchemas.js'
 
@@ -106,6 +107,21 @@ export const REPORT_DEFS = [
     build: ({ moistureObservations }) =>
       buildMoistureTrendReport(moistureObservations, {
         title: 'Moisture Trend',
+      }),
+  },
+
+  // ── Turf Health ───────────────────────────────────────────────────────────
+  // Phase 7B.1 — shade / airflow / weak turf / chronic stress. Read-only;
+  // the builder is pure JS over the observation rows from /api/turf-health.
+  {
+    id:       'turf-health-summary',
+    module:   REPORT_MODULE.TURF_HEALTH,
+    title:    'Turf Health Summary',
+    desc:     'Shade, airflow, weak-turf, and chronic-stress observations — counts, severity rollup, by-type rollup, active issues, and a recent-observations table.',
+    requires: ['turfHealthObservations'],
+    build: ({ turfHealthObservations }) =>
+      buildTurfHealthSummaryReport(turfHealthObservations, {
+        title: 'Turf Health Summary',
       }),
   },
 ]

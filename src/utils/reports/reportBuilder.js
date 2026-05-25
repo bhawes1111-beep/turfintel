@@ -6,6 +6,7 @@ import {
   EXPORT_FORMAT,
   SECTION_TYPE,
 } from './reportSchemas.js'
+import { HEALTH_TYPE_LABELS, SEVERITY_LABELS } from '../turfHealth/healthTypes.js'
 
 // Duplicated here to keep reports/ self-contained — no coupling to Irrigation page
 const ISSUE_TYPE_LABELS = {
@@ -884,6 +885,174 @@ export function buildMoistureTrendReport(observations = [], options = {}) {
       location:     location  ?? null,
       readingCount: filtered.length,
       average:      avg,
+    },
+    exportFormats: STANDARD_FORMATS,
+  })
+}
+
+// ── Turf Health: shade / airflow / weak-turf / chronic-stress summary ────
+
+// Severity display ordering for the "By Severity" rollup table.
+const TURF_HEALTH_SEVERITY_ORDER = ['high', 'moderate', 'low']
+
+/**
+ * Build a Turf Health summary report from the observation rows served by
+ * /api/turf-health (see worker/api/turfHealth.js for the camelCase shape).
+ *
+ * Sections:
+ *   1. Summary       — total / active+monitoring / high-severity (open) /
+ *                      resolved / dateRange
+ *   2. By Severity   — TABLE rollup, ordered high → moderate → low
+ *   3. By Type       — TABLE rollup grouped by healthType, human-labeled,
+ *                      sorted by count descending
+ *   4. Active Issues — TABLE of status=active|monitoring rows, severity-
+ *                      sorted then date-desc (matches the workspace)
+ *   5. Recent Observations — TABLE of the newest rows (limit applied),
+ *                      regardless of status
+ *
+ * @param {Object[]} observations
+ * @param {Object}   [options]
+ * @param {string}   [options.dateRange]
+ * @param {string}   [options.title]
+ * @param {number}   [options.activeLimit]   - default 25
+ * @param {number}   [options.recentLimit]   - default 25
+ */
+export function buildTurfHealthSummaryReport(observations = [], options = {}) {
+  const {
+    title = 'Turf Health Summary',
+    dateRange,
+    activeLimit = 25,
+    recentLimit = 25,
+  } = options
+
+  const active   = observations.filter(o => o.status === 'active' || o.status === 'monitoring')
+  const resolved = observations.filter(o => o.status === 'resolved')
+  const highOpen = observations.filter(o => o.severity === 'high' && o.status !== 'resolved')
+
+  // Severity rollup over EVERY observation (matches disease report convention).
+  const bySeverity = {}
+  for (const o of observations) {
+    const k = o.severity ?? 'unspecified'
+    bySeverity[k] = (bySeverity[k] ?? 0) + 1
+  }
+
+  // Type rollup over open observations only — fits the "what's currently
+  // wrong with the course" use case. Resolved entries are historical.
+  const byType = {}
+  for (const o of observations) {
+    if (o.status === 'resolved') continue
+    if (!o.healthType) continue
+    byType[o.healthType] = (byType[o.healthType] ?? 0) + 1
+  }
+  const typeRows = Object.entries(byType)
+    .sort((a, b) => b[1] - a[1])
+    .map(([k, v]) => [HEALTH_TYPE_LABELS[k] ?? k, v])
+
+  const severityRows = TURF_HEALTH_SEVERITY_ORDER
+    .filter(k => bySeverity[k] != null)
+    .map(k => [SEVERITY_LABELS[k] ?? k, bySeverity[k]])
+  // Surface any unrecognised severities (e.g. "unspecified") at the end so
+  // we don't silently drop rows.
+  for (const [k, v] of Object.entries(bySeverity)) {
+    if (TURF_HEALTH_SEVERITY_ORDER.includes(k)) continue
+    severityRows.push([SEVERITY_LABELS[k] ?? k, v])
+  }
+
+  const sections = [
+    createSection({
+      title: 'Summary',
+      type:  SECTION_TYPE.FIELDS,
+      data: {
+        'Total Observations':  observations.length,
+        'Active / Monitoring': active.length,
+        'High Severity (open)': highOpen.length,
+        'Resolved':            resolved.length,
+        'Date Range':          dateRange ?? '—',
+      },
+    }),
+  ]
+
+  if (severityRows.length > 0) {
+    sections.push(createSection({
+      title: 'By Severity',
+      type:  SECTION_TYPE.TABLE,
+      data: {
+        columns: ['Severity', 'Count'],
+        rows:    severityRows,
+      },
+    }))
+  }
+
+  if (typeRows.length > 0) {
+    sections.push(createSection({
+      title: 'By Type (open)',
+      type:  SECTION_TYPE.TABLE,
+      data: {
+        columns: ['Type', 'Count'],
+        rows:    typeRows,
+      },
+    }))
+  }
+
+  if (active.length > 0) {
+    // Severity-sorted then newest first — matches the Active Issues tab.
+    const activeSorted = [...active].sort((a, b) => {
+      const sa = TURF_HEALTH_SEVERITY_ORDER.indexOf(a.severity)
+      const sb = TURF_HEALTH_SEVERITY_ORDER.indexOf(b.severity)
+      const saa = sa < 0 ? 99 : sa
+      const sbb = sb < 0 ? 99 : sb
+      if (saa !== sbb) return saa - sbb
+      return (b.observedAt ?? '').localeCompare(a.observedAt ?? '')
+    })
+    sections.push(createSection({
+      title: 'Active Issues',
+      type:  SECTION_TYPE.TABLE,
+      data: {
+        columns: ['Observed', 'Location', 'Type', 'Severity', 'Status', 'Notes'],
+        rows: activeSorted.slice(0, activeLimit).map(o => [
+          o.observedAt                                  ?? '—',
+          o.location                                    ?? '—',
+          HEALTH_TYPE_LABELS[o.healthType] ?? o.healthType ?? '—',
+          SEVERITY_LABELS[o.severity]      ?? o.severity   ?? '—',
+          o.status                                      ?? '—',
+          o.surfaceNote ?? o.notes                      ?? '—',
+        ]),
+      },
+    }))
+  }
+
+  if (observations.length > 0) {
+    // Newest-first slice — matches the Recent Observations tab.
+    const recentSorted = [...observations].sort((a, b) =>
+      (b.observedAt ?? '').localeCompare(a.observedAt ?? ''),
+    )
+    sections.push(createSection({
+      title: 'Recent Observations',
+      type:  SECTION_TYPE.TABLE,
+      data: {
+        columns: ['Observed', 'Location', 'Type', 'Severity', 'Status'],
+        rows: recentSorted.slice(0, recentLimit).map(o => [
+          o.observedAt                                  ?? '—',
+          o.location                                    ?? '—',
+          HEALTH_TYPE_LABELS[o.healthType] ?? o.healthType ?? '—',
+          SEVERITY_LABELS[o.severity]      ?? o.severity   ?? '—',
+          o.status                                      ?? '—',
+        ]),
+      },
+    }))
+  }
+
+  return createReport({
+    module:        REPORT_MODULE.TURF_HEALTH,
+    type:          REPORT_TYPE.TURF_HEALTH_SUMMARY,
+    title,
+    generatedBy:   'turf-health-module',
+    sections,
+    metadata: {
+      dateRange:        dateRange ?? null,
+      observationCount: observations.length,
+      activeCount:      active.length,
+      highOpenCount:    highOpen.length,
     },
     exportFormats: STANDARD_FORMATS,
   })

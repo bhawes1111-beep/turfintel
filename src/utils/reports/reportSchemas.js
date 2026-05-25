@@ -1,11 +1,15 @@
 export const REPORT_MODULE = {
-  IRRIGATION: 'irrigation',
-  SPRAY:      'spray',
-  EQUIPMENT:  'equipment',
-  DISEASE:    'disease',
-  OPERATIONS: 'operations',
-  AGRONOMY:   'agronomy',
-  MOISTURE:   'moisture',
+  IRRIGATION:  'irrigation',
+  SPRAY:       'spray',
+  EQUIPMENT:   'equipment',
+  DISEASE:     'disease',
+  OPERATIONS:  'operations',
+  AGRONOMY:    'agronomy',
+  MOISTURE:    'moisture',
+  // Phase 7B.1 — Turf Health vertical (shade, airflow, weak turf, chronic
+  // stress). Peer to disease + moisture in the registry; its own column on
+  // the Reports hub.
+  TURF_HEALTH: 'turf-health',
 }
 
 export const REPORT_TYPE = {
@@ -20,6 +24,7 @@ export const REPORT_TYPE = {
   CULTURAL_HISTORY:     'cultural-history',
   DISEASE_LOG:          'disease-log',
   MOISTURE_TREND:       'moisture-trend',
+  TURF_HEALTH_SUMMARY:  'turf-health-summary',
 }
 
 export const EXPORT_FORMAT = {

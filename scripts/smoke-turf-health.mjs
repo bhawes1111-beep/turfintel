@@ -460,6 +460,37 @@ console.log('— route + sidebar wiring (Commit 5)')
   assert(navOrder != null,                      'Turf Health appears after Agronomy in the NAV_TREE order')
 }
 
+// ── 13. Reports registry + bundle wiring (Commit 6) ──────────────────────
+console.log('— Reports registry + bundle wiring (Commit 6)')
+{
+  const schemas = readFileSync('src/utils/reports/reportSchemas.js', 'utf8')
+  assert(/TURF_HEALTH:\s*['"]turf-health['"]/.test(schemas),
+                                                'schemas declare REPORT_MODULE.TURF_HEALTH')
+  assert(/TURF_HEALTH_SUMMARY:\s*['"]turf-health-summary['"]/.test(schemas),
+                                                'schemas declare REPORT_TYPE.TURF_HEALTH_SUMMARY')
+
+  const builder = readFileSync('src/utils/reports/reportBuilder.js', 'utf8')
+  assert(/export\s+function\s+buildTurfHealthSummaryReport/.test(builder),
+                                                'reportBuilder exports buildTurfHealthSummaryReport')
+  // Builder imports the shared labels so the report shows human text.
+  assert(/import\s+\{[^}]*HEALTH_TYPE_LABELS[^}]*\}\s+from\s+['"][^'"]*turfHealth\/healthTypes/.test(builder),
+                                                'builder imports HEALTH_TYPE_LABELS from shared module')
+
+  // Registry includes the entry with the right module + bundle key.
+  const defs = readFileSync('src/utils/reports/reportDefs.js', 'utf8')
+  assert(/id:\s*['"]turf-health-summary['"][\s\S]*module:\s*REPORT_MODULE\.TURF_HEALTH/.test(defs),
+                                                'reportDefs entry uses correct id + module')
+  assert(/requires:\s*\[\s*['"]turfHealthObservations['"]\s*\]/.test(defs),
+                                                'reportDefs entry requires turfHealthObservations')
+
+  // Reports.jsx threads the bundle key in.
+  const hub = readFileSync('src/pages/Reports/Reports.jsx', 'utf8')
+  assert(/import\s+\{\s*useTurfHealthData\s*\}\s+from\s+['"][^'"]*turfHealth\/turfHealthStore/.test(hub),
+                                                'Reports.jsx imports useTurfHealthData')
+  assert(/turfHealthObservations:\s*turfHealth\.loading\s*\|\|\s*turfHealth\.error/.test(hub),
+                                                'Reports.jsx bundle handles loading/error for turfHealthObservations')
+}
+
 // ── Result ──────────────────────────────────────────────────────────────────
 console.log(`\n${passed} passed, ${failed} failed`)
 process.exit(failed === 0 ? 0 : 1)

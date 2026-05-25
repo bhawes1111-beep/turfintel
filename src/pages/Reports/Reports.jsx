@@ -7,6 +7,7 @@ import { useCulturalPractices } from '../../utils/culturalPractices/culturalPrac
 import { useNutritionData } from '../../utils/nutrition/nutritionStore'
 import { useDisease } from '../../utils/disease/diseaseStore'
 import { useMoistureData } from '../../utils/moisture/moistureStore'
+import { useTurfHealthData } from '../../utils/turfHealth/turfHealthStore'
 import { useWeather } from '../../utils/weather/useWeather'
 import { useConditionLogs } from '../../utils/conditionLog/conditionLogStore'
 import { useSelectedCourse } from '../../utils/courses/courseStore'
@@ -32,6 +33,7 @@ export default function Reports() {
   const nutrition        = useNutritionData()
   const disease          = useDisease()
   const moisture         = useMoistureData()
+  const turfHealth       = useTurfHealthData()
   const weather          = useWeather()
   const conditionLogs    = useConditionLogs()
   const selectedCourse   = useSelectedCourse()
@@ -84,8 +86,12 @@ export default function Reports() {
       ? { loading: moisture.loading, error: moisture.error }
       : (moisture.observations ?? []),
 
+    turfHealthObservations: turfHealth.loading || turfHealth.error
+      ? { loading: turfHealth.loading, error: turfHealth.error }
+      : (turfHealth.observations ?? []),
+
     morningBrief,
-  }), [equipment, cultural, nutrition, disease, moisture, morningBrief])
+  }), [equipment, cultural, nutrition, disease, moisture, turfHealth, morningBrief])
 
   const courseInfo = useMemo(() => ({
     name:           selectedCourse?.name ?? selectedCourse?.shortName ?? '',

@@ -13,12 +13,14 @@ import {
   buildCulturalHistoryReport,
   buildDiseaseLogReport,
   buildMoistureTrendReport,
+  buildTurfHealthSummaryReport,
 } from '../src/utils/reports/reportBuilder.js'
 import {
   REPORT_MODULE,
   REPORT_TYPE,
   SECTION_TYPE,
 } from '../src/utils/reports/reportSchemas.js'
+import { readFileSync } from 'fs'
 
 let passed = 0, failed = 0
 function assert(cond, label, ctx) {
@@ -166,6 +168,108 @@ console.log('— buildMoistureTrendReport')
   assert(populated.metadata.location     === 'Green 1', 'moisture-trend: location in metadata')
   assert(populated.metadata.readingCount === 2,         'moisture-trend: filtered to location', populated.metadata.readingCount)
   assert(Math.abs(populated.metadata.average - 20.25) < 0.01, 'moisture-trend: average correct', populated.metadata.average)
+}
+
+// ── 7. Turf Health Summary (Phase 7B.1) ─────────────────────────────────────
+// Fixtures mirror the /api/turf-health shape — see worker/api/turfHealth.js
+// for the camelCase rowToObs contract (observedAt, location, healthType,
+// severity, status, ...).
+console.log('— buildTurfHealthSummaryReport')
+{
+  const empty = buildTurfHealthSummaryReport()
+  assertEnvelope(empty, REPORT_MODULE.TURF_HEALTH, REPORT_TYPE.TURF_HEALTH_SUMMARY, 'turf-health empty')
+  assert(empty.metadata.observationCount === 0, 'turf-health empty: observationCount = 0')
+  assert(empty.metadata.activeCount      === 0, 'turf-health empty: activeCount = 0')
+  assert(empty.metadata.highOpenCount    === 0, 'turf-health empty: highOpenCount = 0')
+
+  const populated = buildTurfHealthSummaryReport([
+    { observedAt: '2026-05-22', location: 'Green 4',  healthType: 'poor-airflow',       severity: 'high',     status: 'active',     surfaceNote: 'no breeze in the back of green' },
+    { observedAt: '2026-05-20', location: 'Green 7',  healthType: 'morning-shade',      severity: 'moderate', status: 'monitoring' },
+    { observedAt: '2026-05-18', location: 'Green 12', healthType: 'traffic-stress',     severity: 'low',      status: 'active'     },
+    { observedAt: '2026-05-15', location: 'Green 4',  healthType: 'poor-airflow',       severity: 'moderate', status: 'resolved'   },
+    { observedAt: '2026-05-10', location: 'Green 7',  healthType: 'morning-shade',      severity: 'high',     status: 'active'     },
+  ], { dateRange: '2026-05-10 – 2026-05-22' })
+  assertEnvelope(populated, REPORT_MODULE.TURF_HEALTH, REPORT_TYPE.TURF_HEALTH_SUMMARY, 'turf-health populated')
+
+  // All 5 sections present in the right order/intent.
+  assert(populated.sections[0].title === 'Summary',
+                                                'turf-health: Summary is the first section')
+  const titles = populated.sections.map(s => s.title)
+  assert(titles.includes('By Severity'),         'turf-health: includes By Severity')
+  assert(titles.includes('By Type (open)'),      'turf-health: includes By Type (open)')
+  assert(titles.includes('Active Issues'),       'turf-health: includes Active Issues')
+  assert(titles.includes('Recent Observations'), 'turf-health: includes Recent Observations')
+
+  // Summary counts match the fixture.
+  const summary = populated.sections.find(s => s.title === 'Summary').data
+  assert(summary['Total Observations']  === 5, 'turf-health: total observations = 5')
+  assert(summary['Active / Monitoring'] === 4, 'turf-health: active+monitoring = 4 (3 active + 1 monitoring)')
+  assert(summary['High Severity (open)'] === 2, 'turf-health: high-severity open = 2')
+  assert(summary['Resolved']            === 1, 'turf-health: resolved = 1')
+
+  // metadata mirrors the summary.
+  assert(populated.metadata.observationCount === 5, 'turf-health: metadata.observationCount = 5')
+  assert(populated.metadata.activeCount      === 4, 'turf-health: metadata.activeCount = 4')
+  assert(populated.metadata.highOpenCount    === 2, 'turf-health: metadata.highOpenCount = 2')
+
+  // Severity rollup ordered high → moderate → low.
+  const sevRows = populated.sections.find(s => s.title === 'By Severity').data.rows
+  assert(sevRows[0][0] === 'High',     'turf-health: severity rollup orders High first', sevRows)
+  assert(sevRows[0][1] === 2,          'turf-health: severity High count = 2')
+  // The "moderate" rung exists but a row might be resolved, so a moderate
+  // row could end up as 2 (1 active + 1 resolved) — we count all observations
+  // for the severity rollup (matches disease report convention).
+  assert(sevRows.some(r => r[0] === 'Moderate'), 'turf-health: severity rollup includes Moderate')
+  assert(sevRows.some(r => r[0] === 'Low'),      'turf-health: severity rollup includes Low')
+
+  // Type rollup uses human-readable labels (not raw keys).
+  const typeRows = populated.sections.find(s => s.title === 'By Type (open)').data.rows
+  assert(typeRows.some(r => r[0] === 'Poor airflow'),   'turf-health: type rollup labels keys (Poor airflow)')
+  assert(typeRows.some(r => r[0] === 'Morning shade'),  'turf-health: type rollup labels keys (Morning shade)')
+  assert(typeRows.some(r => r[0] === 'Traffic'),        'turf-health: type rollup labels keys (Traffic)')
+  // resolved entries excluded from type rollup — the resolved Green 4
+  // poor-airflow is NOT double-counted alongside the active one.
+  const poorAirflowRow = typeRows.find(r => r[0] === 'Poor airflow')
+  assert(poorAirflowRow && poorAirflowRow[1] === 1, 'turf-health: type rollup excludes resolved (poor-airflow=1, not 2)')
+
+  // Active Issues table: present, severity-sorted (high first), labels mapped.
+  const activeRows = populated.sections.find(s => s.title === 'Active Issues').data.rows
+  assert(activeRows.length === 4,                      'turf-health: active issues = 4 rows')
+  assert(activeRows[0][3] === 'High',                  'turf-health: active issues sorted by severity (high first)')
+  // The active-issues columns are [Observed, Location, Type, Severity, Status, Notes].
+  assert(activeRows[0][2] === 'Poor airflow',          'turf-health: active row maps healthType to label')
+
+  // Recent Observations table: newest-first, all 5 rows included.
+  const recentRows = populated.sections.find(s => s.title === 'Recent Observations').data.rows
+  assert(recentRows.length === 5,                      'turf-health: recent includes all (including resolved)')
+  assert(recentRows[0][0] === '2026-05-22',            'turf-health: recent ordered newest-first')
+
+  // Title from options.
+  const titled = buildTurfHealthSummaryReport([], { title: 'Custom Title' })
+  assert(titled.title === 'Custom Title',              'turf-health: title respects options.title')
+}
+
+// ── 8. Registry entry (Phase 7B.1) ──────────────────────────────────────────
+console.log('— reportDefs registry: turf-health-summary entry')
+{
+  // The registry must include the new entry so the Reports hub auto-renders
+  // a card for it. Source-grep — the registry is data, not behavior.
+  const defs = readFileSync('src/utils/reports/reportDefs.js', 'utf8')
+  assert(/buildTurfHealthSummaryReport/.test(defs),
+                                                'reportDefs imports buildTurfHealthSummaryReport')
+  assert(/id:\s*['"]turf-health-summary['"]/.test(defs),
+                                                'registry includes id="turf-health-summary"')
+  assert(/module:\s*REPORT_MODULE\.TURF_HEALTH/.test(defs),
+                                                'registry uses REPORT_MODULE.TURF_HEALTH')
+  assert(/requires:\s*\[\s*['"]turfHealthObservations['"]\s*\]/.test(defs),
+                                                'registry requires turfHealthObservations bundle key')
+
+  // The Reports hub must thread the new bundle key in.
+  const reportsHub = readFileSync('src/pages/Reports/Reports.jsx', 'utf8')
+  assert(/import\s+\{\s*useTurfHealthData\s*\}/.test(reportsHub),
+                                                'Reports.jsx imports useTurfHealthData')
+  assert(/turfHealthObservations:/.test(reportsHub),
+                                                'Reports.jsx wires turfHealthObservations into the bundle')
 }
 
 // ── Result ──────────────────────────────────────────────────────────────────
