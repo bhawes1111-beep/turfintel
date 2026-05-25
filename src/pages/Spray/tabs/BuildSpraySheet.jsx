@@ -29,6 +29,7 @@ import { useImportedLabels } from '../../../utils/inventory/labelImportStore'
 import { useProductCatalog } from '../../../utils/productCatalog/productCatalogStore'
 import { resolveSprayProductIntel } from '../../../utils/productCatalog/resolveSprayProductIntel'
 import { buildSprayIntelligence } from '../../../utils/productCatalog/sprayIntelligence'
+import { buildSprayRotationAwareness } from '../../../utils/productCatalog/sprayRotationAwareness'
 import { useCrewData } from '../../../utils/crew/crewStore'
 import { createCalendarEvent } from '../../../utils/calendar/calendarStore'
 import { createAlert } from '../../../utils/alerts/alertsStore'
@@ -460,6 +461,24 @@ export default function BuildSpraySheet() {
   const sprayIntel = useMemo(
     () => buildSprayIntelligence(enrichedRows),
     [enrichedRows],
+  )
+
+  // Phase 7D (2/?) — Rotation Awareness. Pure helper; we inject a
+  // resolver closure so the helper itself stays free of store/network
+  // imports. The closure reuses the same catalog-first 3-tier resolver
+  // already in place for today's tank rows.
+  const rotationAwareness = useMemo(
+    () => buildSprayRotationAwareness(enrichedRows, sprayHistory ?? [], {
+      lookbackDays: 30,
+      maxHistoryItems: 10,
+      resolveProductIntel: (productLike) =>
+        resolveSprayProductIntel(productLike, {
+          inventoryProducts,
+          catalogProducts,
+          labelsByItemId,
+        }),
+    }),
+    [enrichedRows, sprayHistory, inventoryProducts, catalogProducts, labelsByItemId],
   )
 
   const chemAnalysis = useMemo(() => {
@@ -1211,6 +1230,10 @@ export default function BuildSpraySheet() {
               <SprayIntelligencePanel intel={sprayIntel} />
             </SummarySection>
 
+            <SummarySection label="Rotation Awareness">
+              <SprayRotationAwarenessPanel awareness={rotationAwareness} />
+            </SummarySection>
+
             {summary.unitMismatches.length > 0 && (
               <div className={styles.naInsufficientCard} role="alert">
                 <strong>Unit mismatch.</strong> {summary.unitMismatches.length === 1
@@ -1348,6 +1371,121 @@ function noticeIcon(type) {
     case 'caution': return '•'
     default:        return '·'
   }
+}
+
+// Phase 7D (2/?) — Rotation Awareness panel. Read-only comparison
+// against recent spray history. Awareness only — never prescribes a
+// rotation, never says safe/unsafe, never blocks save. Mobile-first
+// stacked layout via inline styles, matching SprayIntelligencePanel.
+function SprayRotationAwarenessPanel({ awareness }) {
+  if (!awareness) return null
+
+  const r = awareness.repeatedGroups
+  const hasRepeats =
+    r.frac.length + r.hrac.length + r.irac.length + r.pgr.length > 0
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <p style={{ margin: 0, fontSize: 11, color: 'rgba(255,255,255,0.55)', lineHeight: 1.45 }}>
+        Read-only comparison against recent spray history. Repeated
+        groups are shown for awareness only. This does not recommend a
+        treatment.
+      </p>
+
+      {hasRepeats ? (
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline' }}>
+          {r.frac.length > 0 && (
+            <RepeatedChip label="Repeated FRAC" values={r.frac} tone="frac" />
+          )}
+          {r.hrac.length > 0 && (
+            <RepeatedChip label="Repeated HRAC" values={r.hrac} tone="hrac" />
+          )}
+          {r.irac.length > 0 && (
+            <RepeatedChip label="Repeated IRAC" values={r.irac} tone="irac" />
+          )}
+          {r.pgr.length > 0 && (
+            <RepeatedChip label="Repeated PGR"  values={r.pgr}  tone="pgr"  />
+          )}
+        </div>
+      ) : (
+        <p style={{ margin: 0, fontSize: 11, color: 'rgba(255,255,255,0.55)' }}>
+          No repeated groups detected vs the last {awareness.lookbackDays} day{awareness.lookbackDays !== 1 ? 's' : ''}.
+        </p>
+      )}
+
+      {awareness.notices.length > 0 && (
+        <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+          {awareness.notices.map(n => (
+            <li
+              key={`${n.type}-${n.label}`}
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 6,
+                fontSize: 12,
+                lineHeight: 1.5,
+                margin: '2px 0',
+                color: noticeColor(n.type),
+              }}
+            >
+              <span style={{ flex: '0 0 auto', opacity: 0.8 }}>{noticeIcon(n.type)}</span>
+              <span style={{ flex: '1 1 auto' }}>
+                <strong style={{ fontWeight: 600 }}>{n.label}:</strong> {n.value}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {awareness.recentExposure.length > 0 && (
+        <details style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)' }}>
+          <summary style={{ cursor: 'pointer', userSelect: 'none' }}>
+            Recent sprays ({awareness.recentExposure.length})
+          </summary>
+          <ul style={{ listStyle: 'none', margin: '4px 0 0', padding: 0 }}>
+            {awareness.recentExposure.map(e => (
+              <li key={e.id} style={{ margin: '4px 0', lineHeight: 1.4 }}>
+                <span style={{ opacity: 0.7 }}>{e.date}</span>
+                {e.sprayName && <span> · {e.sprayName}</span>}
+                <div style={{ marginTop: 2, opacity: 0.85 }}>
+                  {e.groups.frac.length > 0 && <span>FRAC {e.groups.frac.join(', ')} </span>}
+                  {e.groups.hrac.length > 0 && <span>HRAC {e.groups.hrac.join(', ')} </span>}
+                  {e.groups.irac.length > 0 && <span>IRAC {e.groups.irac.join(', ')} </span>}
+                  {e.groups.pgr.length  > 0 && <span>PGR {e.groups.pgr.join(', ')} </span>}
+                  {e.missingIntelCount > 0 && (
+                    <span style={{ color: '#e0a060' }}>
+                      · {e.missingIntelCount} missing intel
+                    </span>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </div>
+  )
+}
+
+function RepeatedChip({ label, values, tone }) {
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'baseline',
+        padding: '2px 8px',
+        borderRadius: 999,
+        fontSize: 11,
+        marginRight: 4,
+        marginBottom: 4,
+        ...intelChipTone(tone),
+      }}
+      title={`${label}: ${values.join(', ')}`}
+    >
+      <span style={{ opacity: 0.65, marginRight: 4, fontWeight: 400 }}>{label}</span>
+      {values.join(', ')}
+    </span>
+  )
 }
 
 // Phase 7C.1 (6/6) — Read-only product-intelligence chips. Rendered
