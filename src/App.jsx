@@ -21,6 +21,7 @@ import Budget from './pages/Budget/Budget'
 import Inventory from './pages/Inventory/Inventory'
 import Equipment  from './pages/Equipment/Equipment'
 import Irrigation from './pages/Irrigation/Irrigation'
+import TurfHealth from './pages/TurfHealth/TurfHealth'
 import Settings   from './pages/Settings/Settings'
 import Activity   from './pages/Activity/Activity'
 import CourseMapPreview from './pages/CourseMapPreview/CourseMapPreview'
@@ -74,6 +75,10 @@ export default function App() {
           <Route path="inventory/*" element={<Inventory />} />
           <Route path="equipment/*"  element={<Equipment />} />
           <Route path="irrigation/*" element={<Irrigation />} />
+          {/* Phase 7B.1 — Turf Health workspace. Visible to anyone with
+              a session; capture/edit/delete actions inside are gated on
+              canEditTurfHealth via the FAB + row action handlers. */}
+          <Route path="turf-health/*" element={<TurfHealth />} />
           <Route path="settings/*"   element={<Settings />} />
           <Route path="activity/*"  element={<Activity />} />
           <Route path="course-map"  element={<CourseMapPreview />} />

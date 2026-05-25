@@ -205,6 +205,16 @@ const ICONS = {
       <line x1="20" y1="10" x2="18" y2="11"/>
     </SVG>
   ),
+  // Phase 7B.1 — Turf Health. Two-blade leaf motif, distinct from the
+  // existing agronomy/plant-nutrition icons (which are root/leaf-cluster
+  // shaped). Reads as "ground-level shoot" — the vertical's focus.
+  'turf-health': (
+    <SVG>
+      <path d="M12 22V12"/>
+      <path d="M12 12c-4 0-7-3-7-7 4 0 7 3 7 7Z"/>
+      <path d="M12 12c4 0 7-3 7-7-4 0-7 3-7 7Z"/>
+    </SVG>
+  ),
 }
 
 /* ── Navigation tree ──────────────────────────────────────────────────────
@@ -242,6 +252,10 @@ const NAV_TREE = [
   { id: 'display-board', label: 'Display Board',       icon: 'display',    to: '/display-board' },
   { id: 'employees',     label: 'Employee Management', icon: 'crew',       to: '/employees'     },
   { id: 'agronomy',   label: 'Agronomy',            icon: 'agronomy',   to: '/disease'    },
+  // Phase 7B.1 — Turf Health vertical (shade, airflow, weak turf, chronic
+  // stress). Peer to Disease / Plant Nutrition / Cultural Practices; lives
+  // at top level so the FAB-routed capture flow has a workspace home.
+  { id: 'turf-health', label: 'Turf Health', icon: 'turf-health', to: '/turf-health' },
   { id: 'sprays',     label: 'Sprays',     icon: 'spray',      to: '/spray'      },
   { id: 'irrigation', label: 'Irrigation', icon: 'irrigation', to: '/irrigation' },
   { id: 'equipment',  label: 'Equipment',  icon: 'equipment',  to: '/equipment'  },

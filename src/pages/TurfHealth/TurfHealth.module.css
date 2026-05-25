@@ -1,0 +1,281 @@
+/* Phase 7B.1 — Turf Health workspace.
+   Mobile-first, operational. Mirrors MoistureOverview spacing and chip
+   shapes so the two verticals read as siblings. Distinct visual identity
+   comes from the type icons + severity dot palette, not from a separate
+   chrome. */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.subSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sectionLabel {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.error {
+  font-size: 12px;
+  color: #e07070;
+  margin: 0 0 12px 0;
+}
+
+.empty {
+  font-size: 14px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  padding: 16px 0;
+}
+.emptyHint {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-top: 8px;
+}
+
+/* ── Overview stat cards ───────────────────────────────────────────────── */
+
+.statsRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.statCard {
+  display: flex;
+  flex-direction: column;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.statValue {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.statLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 4px;
+}
+.statLabelMuted { color: var(--color-text-muted); }
+
+/* ── By-type list ───────────────────────────────────────────────────────── */
+
+.typeList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.typeRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+.typeIcon { font-size: 18px; line-height: 1; }
+.typeLabel { flex: 1; font-size: 13px; color: var(--color-text); }
+.typeCount {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-accent);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Observation rows ──────────────────────────────────────────────────── */
+
+.obsList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.obsItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.obsItem[data-pending="true"] {
+  border-left: 3px solid rgba(251, 191, 36, 0.55);
+}
+
+.severityDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-top: 6px;
+  flex: 0 0 auto;
+}
+
+.obsMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.obsHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.obsLoc {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+.obsType {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.obsMeta {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.obsSeverity {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.obsStatus {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.obsTime { font-variant-numeric: tabular-nums; }
+.obsNote {
+  font-size: 12px;
+  color: var(--color-text);
+  font-style: italic;
+  margin: 2px 0 0 0;
+}
+
+.obsBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+/* ── Chips (photo + retry + saving) — same shapes as MoistureOverview ─── */
+
+.photoChip {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-accent);
+  background: rgba(74, 158, 74, 0.16);
+  border: 1px solid rgba(74, 158, 74, 0.45);
+  border-radius: 4px;
+  padding: 4px 9px;
+  cursor: pointer;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.photoChip:hover {
+  background: rgba(74, 158, 74, 0.26);
+  border-color: var(--color-accent);
+}
+.photoChip:active { transform: translateY(1px); }
+
+.photoChipEmpty {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: 1px dashed rgba(74, 158, 74, 0.45);
+  border-radius: 4px;
+  padding: 4px 9px;
+  cursor: pointer;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.photoChipEmpty:hover {
+  background: rgba(74, 158, 74, 0.10);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+.photoChipEmpty:active { transform: translateY(1px); }
+
+.savingBadge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--color-text-muted);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--color-border);
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+
+.retryBadge {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: #fecaca;
+  background: rgba(239, 68, 68, 0.28);
+  border: 1px solid rgba(239, 68, 68, 0.6);
+  padding: 8px 12px;
+  border-radius: 4px;
+  min-height: 36px;
+  cursor: pointer;
+  line-height: 1;
+}
+.retryBadge:hover { background: rgba(239, 68, 68, 0.38); }
+.retryBadge:active { transform: translateY(1px); }
+
+.obsDel {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 6px;
+  flex: 0 0 auto;
+}
+.obsDel:hover { color: #e07070; }

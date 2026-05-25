@@ -345,6 +345,121 @@ console.log('— Layout mounts both FABs')
   assert(/import\s+TurfHealthFab/.test(layout), 'Layout imports TurfHealthFab')
 }
 
+// ── 11. Workspace + route + sidebar (Commit 5) ────────────────────────────
+console.log('— /turf-health workspace (Commit 5)')
+{
+  // healthTypes shared metadata.
+  const meta = readFileSync('src/utils/turfHealth/healthTypes.js', 'utf8')
+  assert(/HEALTH_TYPE_LABELS/.test(meta),       'healthTypes exports HEALTH_TYPE_LABELS')
+  assert(/SEVERITY_ORDER\s*=\s*\{\s*high:\s*0,\s*moderate:\s*1,\s*low:\s*2\s*\}/.test(meta),
+                                                'healthTypes exports SEVERITY_ORDER (high=0)')
+  // Label map covers all 12 types — drift between this and the Worker's
+  // ALLOWED_HEALTH_TYPES would be silent UI noise.
+  for (const t of [
+    'morning-shade', 'afternoon-shade', 'all-day-shade', 'poor-airflow',
+    'wet-pocket', 'weak-bermuda', 'slow-recovery', 'algae-moss',
+    'chronic-wilt', 'localized-dry-spot', 'traffic-stress', 'scalping-thin',
+  ]) {
+    assert(new RegExp(`['"]${t}['"]\\s*:`).test(meta),
+                                                `healthTypes labels include "${t}"`)
+  }
+
+  // Workspace shell.
+  const page = readFileSync('src/pages/TurfHealth/TurfHealth.jsx', 'utf8')
+  assert(/import\s+PageShell/.test(page),       'TurfHealth uses PageShell')
+  assert(/title="Turf Health"/.test(page),     'PageShell title is "Turf Health"')
+  // Three tabs declared in order.
+  assert(/TABS\s*=\s*\['Overview',\s*'Active Issues',\s*'Recent Observations'\]/.test(page),
+                                                'TABS in declared order: Overview / Active Issues / Recent Observations')
+  // Hooks are the new turf-health ones, not the moisture ones.
+  assert(/useTurfHealthData\b/.test(page),     'workspace consumes useTurfHealthData')
+  assert(/useTurfHealthAttachments\b/.test(page),
+                                                'workspace consumes useTurfHealthAttachments')
+  assert(!/useMoistureData|useMoistureAttachments/.test(page),
+                                                'workspace does NOT consume moisture hooks')
+
+  // Active Issues: severity-sorted, status=active|monitoring only.
+  const activeBlock = page.match(/function\s+ActiveIssues[\s\S]*?\n\}/)?.[0]
+  assert(activeBlock != null,                   'ActiveIssues sub-component extractable')
+  if (activeBlock) {
+    assert(/status === 'active'\s*\|\|\s*o\.status === 'monitoring'/.test(activeBlock),
+                                                'Active Issues filters status=active|monitoring')
+    assert(/SEVERITY_ORDER\[a\.severity\]/.test(activeBlock),
+                                                'Active Issues sorts by SEVERITY_ORDER')
+    assert(/!o\._pending/.test(activeBlock),    'Active Issues excludes pending rows')
+  }
+
+  // Recent Observations: pending/retry/photo support + delete permission gate.
+  const recentBlock = page.match(/function\s+RecentObservations[\s\S]*?\n\}/)?.[0]
+  assert(recentBlock != null,                   'RecentObservations sub-component extractable')
+  if (recentBlock) {
+    assert(/canEditTurfHealth/.test(recentBlock),
+                                                'Recent tab reads canEditTurfHealth permission')
+    assert(/dismissPendingObservation\(o\.clientId\)/.test(recentBlock),
+                                                'Recent tab dismisses pending rows by clientId (not real DELETE)')
+    assert(/deleteTurfHealthObservation\(o\.id\)/.test(recentBlock),
+                                                'Recent tab deletes real rows via deleteTurfHealthObservation')
+    assert(/openPhotoPicker\(/.test(recentBlock),
+                                                'Recent tab uses shared photo picker')
+    assert(/addPhotoToObservation\(/.test(recentBlock),
+                                                'Recent tab attaches photos via addPhotoToObservation')
+  }
+
+  // ObservationRow internals: pending border, retry pills (obs + photo),
+  // photo chip, empty-state chip (gated on onAddPhoto). These patterns are
+  // unique enough in the workspace file that we grep the whole source.
+  assert(/retryPendingObservation\(obs\.clientId\)/.test(page),
+                                                'row wires obs retry to retryPendingObservation')
+  assert(/retryPendingPhoto\(obs\.clientId\)/.test(page),
+                                                'row wires photo retry to retryPendingPhoto')
+  assert(/!obs\._pending\s*&&\s*obs\._photoError/.test(page),
+                                                'photo retry gated on !pending')
+  assert(/styles\.photoChip\b/.test(page),     'row renders styles.photoChip when photos exist')
+  assert(/styles\.photoChipEmpty\b/.test(page),
+                                                'row renders styles.photoChipEmpty when 0 photos + canEdit')
+  // Empty-state chip only when permission granted AND no photo (onAddPhoto
+  // is the handler that is only passed when canEdit is true).
+  assert(/photoCount === 0\s*&&\s*onAddPhoto/.test(page),
+                                                'empty chip gated on photoCount===0 && onAddPhoto handler')
+
+  // Photo viewer wired and turf-health-specific.
+  const viewer = readFileSync('src/components/turfHealth/TurfHealthPhotoViewer.jsx', 'utf8')
+  assert(/canEditTurfHealth/.test(viewer),     'viewer gates Delete/Add on canEditTurfHealth')
+  assert(/deleteTurfHealthAttachment/.test(viewer),
+                                                'viewer deletes via deleteTurfHealthAttachment (not moisture\'s)')
+  assert(/addPhotoToObservation/.test(viewer),  'viewer adds via addPhotoToObservation (turfHealthStore)')
+
+  // CSS module exists with the chip + retry classes used by the row.
+  const css = readFileSync('src/pages/TurfHealth/TurfHealth.module.css', 'utf8')
+  for (const cls of ['photoChip', 'photoChipEmpty', 'retryBadge', 'savingBadge', 'severityDot', 'statCard']) {
+    assert(new RegExp(`\\.${cls}\\b`).test(css), `CSS defines .${cls}`)
+  }
+}
+
+// ── 12. Route + sidebar (Commit 5) ────────────────────────────────────────
+console.log('— route + sidebar wiring (Commit 5)')
+{
+  const app = readFileSync('src/App.jsx', 'utf8')
+  assert(/import\s+TurfHealth\s+from\s+['"]\.\/pages\/TurfHealth\/TurfHealth['"]/.test(app),
+                                                'App.jsx imports TurfHealth')
+  assert(/<Route\s+path="turf-health\/\*"\s+element=\{<TurfHealth\s*\/>\}\s*\/>/.test(app),
+                                                'App.jsx mounts /turf-health/* → <TurfHealth/>')
+  // The workspace is viewable by anyone with a session — no
+  // RequireAuth permission= wrapper on the route itself.
+  assert(!/<Route\s+path="turf-health\/\*"\s+element=\{<RequireAuth/.test(app),
+                                                'route NOT wrapped in RequireAuth permission= (view is open; edit gates live inside)')
+
+  const sidebar = readFileSync('src/components/layout/Sidebar.jsx', 'utf8')
+  assert(/'turf-health':\s*\(/.test(sidebar),  'Sidebar declares the turf-health SVG icon')
+  assert(/id:\s*'turf-health'[\s\S]*to:\s*'\/turf-health'/.test(sidebar),
+                                                'Sidebar NAV_TREE includes { id: "turf-health", to: "/turf-health" }')
+  assert(/label:\s*'Turf Health'/.test(sidebar),
+                                                'Sidebar entry labelled "Turf Health"')
+  // Slotted after agronomy (per audit recommendation).
+  const navOrder = sidebar.match(/id:\s*'agronomy'[\s\S]*?id:\s*'turf-health'/)
+  assert(navOrder != null,                      'Turf Health appears after Agronomy in the NAV_TREE order')
+}
+
 // ── Result ──────────────────────────────────────────────────────────────────
 console.log(`\n${passed} passed, ${failed} failed`)
 process.exit(failed === 0 ? 0 : 1)
