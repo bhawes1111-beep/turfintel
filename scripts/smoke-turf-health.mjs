@@ -491,6 +491,49 @@ console.log('— Reports registry + bundle wiring (Commit 6)')
                                                 'Reports.jsx bundle handles loading/error for turfHealthObservations')
 }
 
+// ── 14. Phase 7B.2 (1/6) — orientation column + Worker validation ─────────
+console.log('— Phase 7B.2: orientation column + Worker validation')
+{
+  // Migration 0042 declares the column.
+  const mig = readFileSync('worker/migrations/0042_turf_health_orientation.sql', 'utf8')
+  assert(/ALTER TABLE turf_health_observations ADD COLUMN orientation TEXT/.test(mig),
+                                                'migration 0042 adds orientation TEXT')
+
+  // Worker validates strictly against the 4 cardinals.
+  const api = readFileSync('worker/api/turfHealth.js', 'utf8')
+  assert(/ALLOWED_ORIENTATIONS\s*=\s*new Set\(\[\s*['"]north['"]\s*,\s*['"]south['"]\s*,\s*['"]east['"]\s*,\s*['"]west['"]\s*\]\)/.test(api),
+                                                'Worker declares ALLOWED_ORIENTATIONS = {north, south, east, west}')
+  assert(/function\s+coerceOrientation/.test(api),
+                                                'Worker has coerceOrientation helper')
+
+  // rowToObs returns orientation.
+  assert(/orientation:\s*row\.orientation/.test(api),
+                                                'rowToObs returns orientation')
+
+  // INSERT includes the column in the list AND the bound values.
+  const createBody = api.match(/export\s+async\s+function\s+createTurfHealth[\s\S]*?\n\}/)?.[0]
+  assert(createBody != null,                    'createTurfHealth body extractable')
+  if (createBody) {
+    assert(/INSERT INTO turf_health_observations[\s\S]*orientation[\s\S]*VALUES/i.test(createBody),
+                                                'INSERT includes the orientation column')
+    assert(/coerceOrientation\(body\.orientation\)/.test(createBody),
+                                                'create coerces orientation strictly')
+    assert(/orientation must be one of/.test(createBody),
+                                                'create rejects unknown orientation with 400')
+  }
+
+  // PATCH path handles orientation (empty string / null clears; junk 400s).
+  const updateBody = api.match(/export\s+async\s+function\s+updateTurfHealth[\s\S]*?\n\}/)?.[0]
+  assert(updateBody != null,                    'updateTurfHealth body extractable')
+  if (updateBody) {
+    assert(/Invalid orientation/.test(updateBody),
+                                                'PATCH rejects junk orientation values')
+    // The TEXT_COLUMNS map must list orientation so it's a patchable field.
+    assert(/orientation:\s*['"]orientation['"]/.test(api),
+                                                'TEXT_COLUMNS map lists orientation')
+  }
+}
+
 // ── Result ──────────────────────────────────────────────────────────────────
 console.log(`\n${passed} passed, ${failed} failed`)
 process.exit(failed === 0 ? 0 : 1)

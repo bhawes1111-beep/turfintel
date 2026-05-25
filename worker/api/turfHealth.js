@@ -44,6 +44,11 @@ const KNOWN_AREA_TYPES = new Set([
   'green', 'tee', 'fairway', 'approach', 'rough', 'bunker', 'cart-path', 'other',
 ])
 
+// Phase 7B.2 — Orientation (optional). Strictly validated so the column
+// stays clean for future spatial/sun-angle analytics. Anything else gets
+// rejected with a 400; capture sheet only ever sends one of these four.
+const ALLOWED_ORIENTATIONS = new Set(['north', 'south', 'east', 'west'])
+
 function num(v) {
   if (typeof v === 'number' && Number.isFinite(v)) return v
   if (typeof v === 'string' && v.trim() !== '') {
@@ -52,9 +57,10 @@ function num(v) {
   return null
 }
 
-function coerceSeverity(v)   { return typeof v === 'string' && ALLOWED_SEVERITY.has(v)   ? v : null }
-function coerceStatus(v)     { return typeof v === 'string' && ALLOWED_STATUS.has(v)     ? v : null }
-function coerceHealthType(v) { return typeof v === 'string' && ALLOWED_HEALTH_TYPES.has(v) ? v : null }
+function coerceSeverity(v)    { return typeof v === 'string' && ALLOWED_SEVERITY.has(v)    ? v : null }
+function coerceStatus(v)      { return typeof v === 'string' && ALLOWED_STATUS.has(v)      ? v : null }
+function coerceHealthType(v)  { return typeof v === 'string' && ALLOWED_HEALTH_TYPES.has(v) ? v : null }
+function coerceOrientation(v) { return typeof v === 'string' && ALLOWED_ORIENTATIONS.has(v) ? v : null }
 function coerceAreaType(v) {
   if (typeof v !== 'string' || v.trim() === '') return null
   const norm = v.trim().toLowerCase()
@@ -92,6 +98,8 @@ function rowToObs(row) {
     tags:             parseTags(row.tags_json),
     status:           row.status,
     followUpDate:     row.follow_up_date,
+    // Phase 7B.2 — optional orientation (N/S/E/W).
+    orientation:      row.orientation       ?? null,
     // Capture-time provenance (Phase 7A.1 pattern).
     clientId:         row.client_id         ?? null,
     clientObservedAt: row.client_observed_at ?? null,
@@ -117,6 +125,7 @@ const TEXT_COLUMNS = {
   surfaceNote:   'surface_note',
   notes:         'notes',
   followUpDate:  'follow_up_date',
+  orientation:   'orientation',
 }
 
 // ── List + Get ──────────────────────────────────────────────────────────────
@@ -189,13 +198,25 @@ export async function createTurfHealth(env, request) {
   const areaType   = coerceAreaType(body.areaType)
   const tagsJson   = tagsToJson(body.tags)
 
+  // Phase 7B.2 — orientation is optional. When supplied, it MUST match the
+  // ALLOWED_ORIENTATIONS set; junk is rejected with a 400 so the column
+  // stays clean.
+  let orientation = null
+  if (body.orientation != null && body.orientation !== '') {
+    orientation = coerceOrientation(body.orientation)
+    if (orientation === null) {
+      return badRequest(`orientation must be one of: ${[...ALLOWED_ORIENTATIONS].join(', ')}`)
+    }
+  }
+
   await env.DB.prepare(`
     INSERT INTO turf_health_observations (
       id, course_id, observed_at, observed_by,
       location, hole, area_type, health_type, severity,
       surface_note, notes, tags_json, status, follow_up_date,
+      orientation,
       client_id, client_observed_at, lat, lng, gps_accuracy
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id, courseId, observedAt, body.observedBy ?? null,
     body.location.trim(),
@@ -208,6 +229,7 @@ export async function createTurfHealth(env, request) {
     tagsJson,
     status,
     body.followUpDate ?? null,
+    orientation,
     clientId,
     typeof body.clientObservedAt === 'string' && body.clientObservedAt ? body.clientObservedAt : null,
     num(body.lat),
@@ -241,6 +263,16 @@ export async function updateTurfHealth(env, id, request) {
       if (v === '') return badRequest('location cannot be empty')
     }
     if (apiKey === 'areaType') v = coerceAreaType(v)
+    if (apiKey === 'orientation') {
+      // Phase 7B.2 — allow PATCH to clear orientation by passing "" or null,
+      // OR set it to one of the four cardinals. Anything else is a 400.
+      if (v == null || v === '') {
+        v = null
+      } else {
+        v = coerceOrientation(v)
+        if (v === null) return badRequest(`Invalid orientation "${body.orientation}"`)
+      }
+    }
     sets.push(`${col} = ?`); binds.push(v)
   }
   if (Object.prototype.hasOwnProperty.call(body, 'hole')) {
