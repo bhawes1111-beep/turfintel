@@ -30,6 +30,7 @@ import { useProductCatalog } from '../../../utils/productCatalog/productCatalogS
 import { resolveSprayProductIntel } from '../../../utils/productCatalog/resolveSprayProductIntel'
 import { buildSprayIntelligence } from '../../../utils/productCatalog/sprayIntelligence'
 import { buildSprayRotationAwareness } from '../../../utils/productCatalog/sprayRotationAwareness'
+import { buildSprayIntervalAwareness } from '../../../utils/productCatalog/sprayIntervalAwareness'
 import { useCrewData } from '../../../utils/crew/crewStore'
 import { createCalendarEvent } from '../../../utils/calendar/calendarStore'
 import { createAlert } from '../../../utils/alerts/alertsStore'
@@ -471,6 +472,25 @@ export default function BuildSpraySheet() {
     () => buildSprayRotationAwareness(enrichedRows, sprayHistory ?? [], {
       lookbackDays: 30,
       maxHistoryItems: 10,
+      resolveProductIntel: (productLike) =>
+        resolveSprayProductIntel(productLike, {
+          inventoryProducts,
+          catalogProducts,
+          labelsByItemId,
+        }),
+    }),
+    [enrichedRows, sprayHistory, inventoryProducts, catalogProducts, labelsByItemId],
+  )
+
+  // Phase 7D (3/?) — Application Interval Awareness. Same injected
+  // resolver pattern as Rotation Awareness so the helper itself stays
+  // free of store/network coupling. Wider lookback than rotation
+  // (45 vs 30 days) because interval awareness specifically cares about
+  // "when was the last time" rather than "what's still active".
+  const intervalAwareness = useMemo(
+    () => buildSprayIntervalAwareness(enrichedRows, sprayHistory ?? [], {
+      lookbackDays: 45,
+      maxMatches: 8,
       resolveProductIntel: (productLike) =>
         resolveSprayProductIntel(productLike, {
           inventoryProducts,
@@ -1234,6 +1254,10 @@ export default function BuildSpraySheet() {
               <SprayRotationAwarenessPanel awareness={rotationAwareness} />
             </SummarySection>
 
+            <SummarySection label="Interval Awareness">
+              <SprayIntervalAwarenessPanel awareness={intervalAwareness} />
+            </SummarySection>
+
             {summary.unitMismatches.length > 0 && (
               <div className={styles.naInsufficientCard} role="alert">
                 <strong>Unit mismatch.</strong> {summary.unitMismatches.length === 1
@@ -1484,6 +1508,130 @@ function RepeatedChip({ label, values, tone }) {
     >
       <span style={{ opacity: 0.65, marginRight: 4, fontWeight: 400 }}>{label}</span>
       {values.join(', ')}
+    </span>
+  )
+}
+
+// Phase 7D (3/?) — Application Interval Awareness panel. Read-only
+// comparison against recent recorded applications. Awareness only —
+// never prescribes, never blocks save, never says safe/unsafe.
+function SprayIntervalAwarenessPanel({ awareness }) {
+  if (!awareness) return null
+
+  const productCount = awareness.productMatches.length
+  const groupCount   = awareness.groupMatches.length
+  const closest = [...awareness.productMatches, ...awareness.groupMatches]
+    .filter(m => typeof m.daysSince === 'number')
+    .sort((a, b) => a.daysSince - b.daysSince)[0] ?? null
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <p style={{ margin: 0, fontSize: 11, color: 'rgba(255,255,255,0.55)', lineHeight: 1.45 }}>
+        Read-only comparison against recent recorded applications.
+        Recent matches are shown for awareness only. This does not
+        recommend a treatment.
+      </p>
+
+      {(productCount > 0 || groupCount > 0) ? (
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline' }}>
+          {productCount > 0 && (
+            <IntervalChip
+              label="Product matches"
+              value={String(productCount)}
+              tone="rei"
+              title="Same product applied within the lookback window"
+            />
+          )}
+          {groupCount > 0 && (
+            <IntervalChip
+              label="Group matches"
+              value={String(groupCount)}
+              tone="frac"
+              title="Same FRAC/HRAC/IRAC/PGR group appeared in the lookback window"
+            />
+          )}
+          {closest && (
+            <IntervalChip
+              label="Closest"
+              value={closest.daysSince === 0 ? 'today' : `${closest.daysSince} day${closest.daysSince !== 1 ? 's' : ''} ago`}
+              tone="signal"
+            />
+          )}
+        </div>
+      ) : (
+        <p style={{ margin: 0, fontSize: 11, color: 'rgba(255,255,255,0.55)' }}>
+          No recent matches in the last {awareness.lookbackDays} day{awareness.lookbackDays !== 1 ? 's' : ''}.
+        </p>
+      )}
+
+      {awareness.notices.length > 0 && (
+        <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+          {awareness.notices.map(n => (
+            <li
+              key={`${n.type}-${n.label}-${n.value}`}
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 6,
+                fontSize: 12,
+                lineHeight: 1.5,
+                margin: '2px 0',
+                color: noticeColor(n.type),
+              }}
+            >
+              <span style={{ flex: '0 0 auto', opacity: 0.8 }}>{noticeIcon(n.type)}</span>
+              <span style={{ flex: '1 1 auto' }}>
+                <strong style={{ fontWeight: 600 }}>{n.label}:</strong> {n.value}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {(productCount > 0 || groupCount > 0) && (
+        <details style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)' }}>
+          <summary style={{ cursor: 'pointer', userSelect: 'none' }}>
+            Match details
+          </summary>
+          <ul style={{ listStyle: 'none', margin: '4px 0 0', padding: 0 }}>
+            {awareness.productMatches.map(m => (
+              <li key={`p-${m.sprayId ?? m.productName}-${m.lastAppliedDate}`} style={{ margin: '4px 0', lineHeight: 1.4 }}>
+                <span style={{ opacity: 0.85 }}>{m.productName}</span>
+                <span style={{ opacity: 0.6 }}> · {m.lastAppliedDate}</span>
+                {m.sprayName && <span style={{ opacity: 0.6 }}> · {m.sprayName}</span>}
+              </li>
+            ))}
+            {awareness.groupMatches.map(m => (
+              <li key={`g-${m.groupType}-${m.group}-${m.lastAppliedDate}`} style={{ margin: '4px 0', lineHeight: 1.4 }}>
+                <span style={{ opacity: 0.85 }}>{m.groupType} {m.group}</span>
+                <span style={{ opacity: 0.6 }}> · {m.lastAppliedDate}</span>
+                {m.sprayName && <span style={{ opacity: 0.6 }}> · {m.sprayName}</span>}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </div>
+  )
+}
+
+function IntervalChip({ label, value, tone, title }) {
+  return (
+    <span
+      title={title}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'baseline',
+        padding: '2px 8px',
+        borderRadius: 999,
+        fontSize: 11,
+        marginRight: 4,
+        marginBottom: 4,
+        ...intelChipTone(tone),
+      }}
+    >
+      <span style={{ opacity: 0.65, marginRight: 4, fontWeight: 400 }}>{label}</span>
+      {value}
     </span>
   )
 }
