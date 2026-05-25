@@ -346,6 +346,71 @@ export async function updateSprayProgramItem(env, itemId, request) {
   return getSprayProgramItem(env, itemId)
 }
 
+// ── Phase 7F (4/?) — narrow completed-record link patch ───────────────────
+//
+// PATCH /api/spray-program-items/:itemId/completed-link
+// Body: { linkedSprayRecordId: string | null }
+//
+// The ONE write path for linked_spray_record_id. Mirror of Phase 7C.2's
+// inventory-catalog-link endpoint: a separate narrow surface so the
+// generic PATCH /api/spray-program-items/:id never accepts this field,
+// and so the validator can guarantee the target spray_records row
+// exists (and shares the same course scope) before writing.
+//
+// Strict invariants:
+//   - item exists
+//   - linkedSprayRecordId is null OR a valid spray_records.id
+//   - linked spray record must share course_id with the program item
+//   - DOES NOT create or mutate spray_records
+//   - DOES NOT deduct inventory or write inventory_usage
+//   - DOES NOT flip item.status — that's a deliberate future-commit
+//     decision; this commit ONLY updates linked_spray_record_id.
+export async function patchSprayProgramItemCompletedLink(env, itemId, request) {
+  if (!env.DB) return json({ error: 'D1 not configured' }, 503)
+  const body = await readJson(request)
+
+  if (!Object.prototype.hasOwnProperty.call(body, 'linkedSprayRecordId')) {
+    return badRequest("Body must include 'linkedSprayRecordId' (string | null)")
+  }
+  const raw = body.linkedSprayRecordId
+  const linkedId = (raw === null || raw === '')   ? null
+    : typeof raw === 'string' ? raw.trim() || null
+    : null
+
+  // Item must exist; capture course_id for the cross-course check below.
+  const item = await env.DB.prepare(
+    'SELECT id, course_id FROM spray_program_items WHERE id = ?',
+  ).bind(itemId).first()
+  if (!item) return notFound('Spray program item not found')
+
+  // Linking: target spray must exist AND must not be soft-deleted AND
+  // must share course scope (when the item carries one).
+  if (linkedId !== null) {
+    const rec = await env.DB.prepare(
+      'SELECT id, course_id, deleted_at FROM spray_records WHERE id = ?',
+    ).bind(linkedId).first()
+    if (!rec) return badRequest(`Unknown linkedSprayRecordId: ${linkedId}`)
+    if (rec.deleted_at) {
+      return badRequest(`Spray record ${linkedId} is soft-deleted`)
+    }
+    if (item.course_id && rec.course_id && item.course_id !== rec.course_id) {
+      return badRequest('Linked spray record belongs to a different course')
+    }
+  }
+
+  const result = await env.DB.prepare(`
+    UPDATE spray_program_items
+       SET linked_spray_record_id = ?,
+           updated_at             = datetime('now')
+     WHERE id = ?
+  `).bind(linkedId, itemId).run()
+
+  if (!result.success || result.meta.changes === 0) {
+    return notFound('Spray program item not found')
+  }
+  return getSprayProgramItem(env, itemId)
+}
+
 export async function deleteSprayProgramItem(env, itemId) {
   if (!env.DB) return json({ error: 'D1 not configured' }, 503)
   const result = await env.DB.prepare(

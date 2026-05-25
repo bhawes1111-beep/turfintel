@@ -58,6 +58,7 @@ import {
   createSprayProgramItem,
   updateSprayProgramItem,
   deleteSprayProgramItem,
+  patchSprayProgramItemCompletedLink,
 } from './api/sprayPrograms.js'
 import {
   listCalendarEvents,
@@ -721,6 +722,17 @@ async function handleApi(request, env, url, ctx) {
     if (method === 'GET')    return getSprayProgram(env, id)
     if (method === 'PATCH')  return updateSprayProgram(env, id, request)
     if (method === 'DELETE') return archiveSprayProgram(env, id)
+  }
+
+  // ── /api/spray-program-items/:itemId/completed-link (Phase 7F.4) ──────
+  // Must precede the generic /:itemId route so 'completed-link' isn't
+  // consumed as a sub-id. Narrow controlled link/unlink endpoint that
+  // validates the target spray_records row exists (and shares course
+  // scope) before writing linked_spray_record_id.
+  const sprogItemLinkMatch = pathname.match(/^\/api\/spray-program-items\/([^/]+)\/completed-link$/)
+  if (sprogItemLinkMatch) {
+    const id = decodeURIComponent(sprogItemLinkMatch[1])
+    if (method === 'PATCH') return patchSprayProgramItemCompletedLink(env, id, request)
   }
 
   // ── /api/spray-program-items/:itemId ──────────────────────────────────

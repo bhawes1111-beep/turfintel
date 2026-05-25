@@ -556,3 +556,73 @@
   font-style: italic;
   color: rgba(255, 255, 255, 0.45);
 }
+
+/* ── Linked-completed-spray summary (Phase 7F.4) ───────────────────── */
+
+.completedLink,
+.completedLinkStale {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border-radius: 8px;
+}
+
+.completedLink {
+  background: rgba(78, 203, 78, 0.08);
+  border: 1px solid rgba(78, 203, 78, 0.3);
+}
+.completedLinkStale {
+  background: rgba(220, 180, 60, 0.06);
+  border: 1px solid rgba(220, 180, 60, 0.3);
+}
+
+.completedLinkMain { flex: 1 1 auto; min-width: 0; }
+
+.completedLinkBadge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: rgba(78, 203, 78, 0.18);
+  color: #8ed68e;
+  border: 1px solid rgba(78, 203, 78, 0.4);
+  margin-bottom: 4px;
+}
+.completedLinkStale .completedLinkBadge {
+  background: rgba(220, 180, 60, 0.15);
+  color: #e0c070;
+  border-color: rgba(220, 180, 60, 0.4);
+}
+
+.completedLinkTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+}
+.completedLinkSub {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.65);
+  margin-top: 1px;
+}
+
+.completedLinkFk {
+  margin-top: 4px;
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.completedLinkBoundary {
+  margin: 6px 0 0;
+  font-size: 11px;
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.55);
+  line-height: 1.45;
+}

@@ -280,6 +280,76 @@ export async function updateSprayProgramItem(itemId, patch) {
 }
 
 /**
+ * Phase 7F (4/?) — Manual plan-vs-actual link.
+ *
+ * Narrow client wrapper around the dedicated completed-link endpoint:
+ *   PATCH /api/spray-program-items/:itemId/completed-link
+ *   body: { linkedSprayRecordId: string | null }
+ *
+ * Optimistic — patches the local item's linkedSprayRecordId immediately
+ * so the linked-summary card flips without waiting on the network.
+ * Rolls back on error. NEVER calls createSpray or recordInventoryUsage:
+ * this only re-points an existing planned item at an existing completed
+ * spray_records row. Null clears the link.
+ */
+export async function setProgramItemCompletedLink(itemId, linkedSprayRecordId) {
+  const next = linkedSprayRecordId === null || linkedSprayRecordId === ''
+    ? null
+    : String(linkedSprayRecordId)
+
+  // Find the item's program bucket so we can patch / roll back the
+  // right per-program cache slice.
+  let programId = null
+  for (const pid of Object.keys(state.itemsByProgramId)) {
+    if ((state.itemsByProgramId[pid] ?? []).some(i => i.id === itemId)) {
+      programId = pid
+      break
+    }
+  }
+  const prevItems = programId ? state.itemsByProgramId[programId] : null
+  if (programId) {
+    setState({
+      itemsByProgramId: {
+        ...state.itemsByProgramId,
+        [programId]: prevItems.map(i =>
+          i.id === itemId ? { ...i, linkedSprayRecordId: next } : i,
+        ),
+      },
+    })
+  }
+
+  try {
+    const saved = await fetchJSON(
+      `${API.programItem}/${encodeURIComponent(itemId)}/completed-link`,
+      {
+        method:  'PATCH',
+        headers: mutationHeaders(),
+        body:    JSON.stringify({ linkedSprayRecordId: next }),
+      },
+    )
+    if (programId) {
+      setState({
+        itemsByProgramId: {
+          ...state.itemsByProgramId,
+          [programId]: (state.itemsByProgramId[programId] ?? []).map(i =>
+            i.id === itemId ? saved : i,
+          ),
+        },
+      })
+    }
+    return saved
+  } catch (err) {
+    if (programId && prevItems) {
+      setState({
+        itemsByProgramId: { ...state.itemsByProgramId, [programId]: prevItems },
+      })
+    }
+    setState({ error: err.message })
+    throw err
+  }
+}
+
+/**
  * Hard-delete a program item (the items don't carry audit obligations).
  */
 export async function deleteSprayProgramItem(itemId) {

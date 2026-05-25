@@ -633,9 +633,16 @@ console.log('— SprayProgramPlanner.jsx usable UI (Phase 7F.2)')
     'tab never calls createSpray(...)')
   assert(!/recordInventoryUsage/.test(codeOnly),
     'tab never calls recordInventoryUsage (no inventory deduction)')
-  // No linkedSprayRecordId write — the field is never on a payload.
-  assert(!/linkedSprayRecordId/.test(codeOnly),
-    'tab never writes linkedSprayRecordId in any payload')
+  // No linkedSprayRecordId on the GENERIC item create/update payload.
+  // The narrow Phase 7F.4 endpoint legitimately writes the field via
+  // setProgramItemCompletedLink — that path is scoped separately.
+  const buildPayloadBlock = src.match(
+    /function\s+buildItemPayload\s*\([\s\S]*?\n\s{2}\}/,
+  )?.[0] ?? ''
+  assert(buildPayloadBlock.length > 0 || !/linkedSprayRecordId/.test(codeOnly),
+    'buildItemPayload function present (or no linkedSprayRecordId anywhere)')
+  assert(!/linkedSprayRecordId/.test(buildPayloadBlock),
+    'generic item create/update payload (buildItemPayload) does NOT carry linkedSprayRecordId')
   // No /api/product-catalog mutation.
   assert(!/['"]\/api\/product-catalog['"][^\n]{0,200}(POST|PATCH|DELETE)/.test(codeOnly),
     'tab never POSTs/PATCHes/DELETEs /api/product-catalog')
@@ -861,8 +868,14 @@ console.log('— SprayProgramPlanner wires pickers + intel chips')
     'planner never calls createSpray(...)')
   assert(!/recordInventoryUsage/.test(codeOnly),
     'planner never calls recordInventoryUsage')
-  assert(!/linkedSprayRecordId/.test(codeOnly),
-    'planner never writes linkedSprayRecordId')
+  // The planner now legitimately reads + writes linkedSprayRecordId
+  // via the narrow Phase 7F.4 endpoint. Generic item POST/PATCH still
+  // doesn't carry it — verified separately against buildItemPayload.
+  const plannerPayloadBlock = src.match(
+    /function\s+buildItemPayload\s*\([\s\S]*?\n\s{2}\}/,
+  )?.[0] ?? ''
+  assert(!/linkedSprayRecordId/.test(plannerPayloadBlock),
+    'buildItemPayload still excludes linkedSprayRecordId (generic write path stays narrow)')
   assert(!/['"]\/api\/product-catalog['"][^\n]{0,200}(POST|PATCH|DELETE)/.test(codeOnly),
     'planner never POSTs/PATCHes/DELETEs /api/product-catalog')
   assert(!/Add to Inventory/i.test(codeOnly),
@@ -890,6 +903,399 @@ console.log('— planner CSS adds picker + intel chip classes')
   // Mobile-first guard preserved.
   assert(/@media\s*\(min-width:\s*\d+px\)/.test(css),
     'CSS keeps mobile-first @media (min-width: …) breakpoint')
+}
+
+// ── 11. Phase 7F (4/?) — completed-link foundation ────────────────────────
+console.log('— worker/api/sprayPrograms.js (completed-link handler)')
+{
+  const src = readFileSync('worker/api/sprayPrograms.js', 'utf8')
+
+  assert(/export\s+async\s+function\s+patchSprayProgramItemCompletedLink\s*\(/.test(src),
+    'exports patchSprayProgramItemCompletedLink')
+
+  // Body shape gate: presence of linkedSprayRecordId is required.
+  assert(/hasOwnProperty\.call\(body,\s*['"]linkedSprayRecordId['"]\)/.test(src),
+    "handler requires body to include 'linkedSprayRecordId' key")
+
+  // Validates target item.
+  assert(/SELECT id, course_id FROM spray_program_items WHERE id = \?/i.test(src),
+    'handler validates item exists + captures course_id')
+
+  // Validates target spray record AND its course scope AND not-deleted.
+  assert(/SELECT id, course_id, deleted_at FROM spray_records WHERE id = \?/i.test(src),
+    'handler validates spray_records target (id, course, deleted_at)')
+  assert(/Unknown linkedSprayRecordId/.test(src),
+    'handler rejects unknown linked id with explicit message')
+  assert(/is soft-deleted/.test(src),
+    'handler rejects soft-deleted spray records')
+  assert(/different course/.test(src),
+    'handler rejects cross-course linkage')
+
+  // UPDATE narrow: linked_spray_record_id only.
+  const handlerBlock = src.match(
+    /async function patchSprayProgramItemCompletedLink[\s\S]*?\n\}\s*\n/,
+  )?.[0] ?? ''
+  const updateBlock  = handlerBlock.match(/UPDATE spray_program_items[\s\S]*?WHERE id = \?/)?.[0] ?? ''
+  const updateBlockNorm = updateBlock.replace(/\s+/g, ' ')
+  assert(/SET linked_spray_record_id = \?,/.test(updateBlockNorm),
+    'narrow UPDATE sets linked_spray_record_id only (+ updated_at)')
+
+  // No side-effects: no spray_records writes, no inventory_items writes.
+  assert(!/UPDATE\s+spray_records/i.test(handlerBlock),
+    'completed-link handler never UPDATEs spray_records')
+  assert(!/INSERT\s+INTO\s+spray_records/i.test(handlerBlock),
+    'completed-link handler never INSERTs INTO spray_records')
+  assert(!/UPDATE\s+inventory_items/i.test(handlerBlock),
+    'completed-link handler never UPDATEs inventory_items')
+  assert(!/INSERT\s+INTO\s+inventory_items/i.test(handlerBlock),
+    'completed-link handler never INSERTs INTO inventory_items')
+  assert(!/UPDATE\s+product_catalog/i.test(handlerBlock),
+    'completed-link handler never UPDATEs product_catalog')
+
+  // ITEM_MUTABLE still excludes linkedSprayRecordId.
+  const itemMut = src.match(/ITEM_MUTABLE\s*=\s*\{[\s\S]*?\}/)?.[0] ?? ''
+  assert(itemMut.length > 0, 'ITEM_MUTABLE map still present')
+  assert(!/linkedSprayRecordId/.test(itemMut),
+    'ITEM_MUTABLE STILL excludes linkedSprayRecordId (narrow endpoint preserved)')
+}
+
+console.log('— worker/index.js wires /completed-link route')
+{
+  const idx = readFileSync('worker/index.js', 'utf8')
+
+  assert(/patchSprayProgramItemCompletedLink/.test(idx),
+    'index imports patchSprayProgramItemCompletedLink')
+  assert(/\/\^\\\/api\\\/spray-program-items\\\/\(\[\^\/\]\+\)\\\/completed-link\$\//.test(idx),
+    'regex: /api/spray-program-items/:itemId/completed-link')
+
+  // /completed-link must precede the generic /:itemId regex.
+  const linkPos    = idx.search(/\/\^\\\/api\\\/spray-program-items\\\/\(\[\^\/\]\+\)\\\/completed-link\$\//)
+  const genericPos = idx.search(/\/\^\\\/api\\\/spray-program-items\\\/\(\[\^\/\]\+\)\$\//)
+  assert(linkPos > 0 && genericPos > 0 && linkPos < genericPos,
+    '/completed-link regex appears BEFORE generic /:itemId regex')
+
+  // PATCH-only — no other verbs wired on /completed-link.
+  const linkBlock = idx.match(/sprogItemLinkMatch[\s\S]{0,400}?\}/)?.[0] ?? ''
+  assert(/method\s*===\s*['"]PATCH['"]/.test(linkBlock),
+    'PATCH wired on /completed-link')
+  assert(!/method\s*===\s*['"]GET['"]/.test(linkBlock)
+      && !/method\s*===\s*['"]POST['"]/.test(linkBlock)
+      && !/method\s*===\s*['"]DELETE['"]/.test(linkBlock),
+    'no GET/POST/DELETE on /completed-link (narrow endpoint)')
+}
+
+console.log('— patchSprayProgramItemCompletedLink behavior (D1 stub)')
+{
+  const api = await import('../worker/api/sprayPrograms.js')
+
+  function makeDB(spec) {
+    const log = []
+    return {
+      DB: {
+        prepare(sql) {
+          const trimmed = sql.replace(/\s+/g, ' ').trim()
+          log.push(trimmed)
+          return {
+            bind(...binds) {
+              return {
+                async first() {
+                  if (/SELECT id, course_id FROM spray_program_items/i.test(trimmed)) {
+                    return spec.itemRow ?? null
+                  }
+                  if (/SELECT id, course_id, deleted_at FROM spray_records/i.test(trimmed)) {
+                    return spec.recordRow ?? null
+                  }
+                  if (/SELECT \* FROM spray_program_items/i.test(trimmed)) {
+                    return spec.itemFull ?? null
+                  }
+                  return null
+                },
+                async all() { return { results: [] } },
+                async run() {
+                  return { success: true, meta: { changes: spec.updateChanges ?? 1 }, binds }
+                },
+              }
+            },
+          }
+        },
+      },
+      log,
+    }
+  }
+  function makeReq(body) {
+    return new Request('http://test.local/x', {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body:    body == null ? undefined : JSON.stringify(body),
+    })
+  }
+  async function readBody(res) {
+    const text = await res.text()
+    try { return { status: res.status, body: JSON.parse(text) } }
+    catch { return { status: res.status, body: text } }
+  }
+
+  // (a) Happy path: link a valid record in the same course.
+  {
+    const env = makeDB({
+      itemRow:   { id: 'i1', course_id: 'c1' },
+      recordRow: { id: 's1', course_id: 'c1', deleted_at: null },
+      itemFull:  { id: 'i1', program_id: 'p1', course_id: 'c1',
+                   linked_spray_record_id: 's1', status: 'planned',
+                   sort_order: 0, created_at: '', updated_at: '' },
+    })
+    const res = await api.patchSprayProgramItemCompletedLink(env, 'i1',
+      makeReq({ linkedSprayRecordId: 's1' }))
+    assert(res instanceof Response, 'happy: returns a Response')
+    const sqls = env.log.join(' || ')
+    assert(/SELECT id, course_id FROM spray_program_items/i.test(sqls),
+      'happy: validated item')
+    assert(/SELECT id, course_id, deleted_at FROM spray_records/i.test(sqls),
+      'happy: validated spray record')
+    assert(/UPDATE spray_program_items SET linked_spray_record_id = \?,/i.test(sqls),
+      'happy: UPDATE sets linked_spray_record_id only')
+    assert(!/UPDATE spray_records/i.test(sqls)
+        && !/INSERT INTO spray_records/i.test(sqls),
+      'happy: spray_records never written to')
+    assert(!/UPDATE inventory_items/i.test(sqls)
+        && !/INSERT INTO inventory_items/i.test(sqls),
+      'happy: inventory_items never written to')
+    assert(!/UPDATE product_catalog/i.test(sqls),
+      'happy: product_catalog never mutated')
+  }
+
+  // (b) Unlink: null id skips spray_records SELECT, runs UPDATE with null.
+  {
+    const env = makeDB({ itemRow: { id: 'i1', course_id: 'c1' } })
+    await api.patchSprayProgramItemCompletedLink(env, 'i1',
+      makeReq({ linkedSprayRecordId: null }))
+    const sqls = env.log.join(' || ')
+    assert(!/SELECT id, course_id, deleted_at FROM spray_records/i.test(sqls),
+      'unlink: skipped spray_records validation (no FK to validate)')
+    assert(/UPDATE spray_program_items SET linked_spray_record_id = \?,/i.test(sqls),
+      'unlink: UPDATE ran setting link to null')
+  }
+
+  // (c) Reject unknown spray id → 400; no UPDATE issued.
+  {
+    const env = makeDB({
+      itemRow:   { id: 'i1', course_id: 'c1' },
+      recordRow: null,
+    })
+    const res = await api.patchSprayProgramItemCompletedLink(env, 'i1',
+      makeReq({ linkedSprayRecordId: 's-missing' }))
+    const { status, body } = await readBody(res)
+    assert(status === 400 && /Unknown linkedSprayRecordId/i.test(body.error ?? ''),
+      'unknown spray id → 400 with explicit message')
+    const sqls = env.log.join(' || ')
+    assert(!/UPDATE spray_program_items/i.test(sqls),
+      'unknown id: no UPDATE issued (validate-then-write)')
+  }
+
+  // (d) Reject soft-deleted spray → 400.
+  {
+    const env = makeDB({
+      itemRow:   { id: 'i1', course_id: 'c1' },
+      recordRow: { id: 's1', course_id: 'c1', deleted_at: '2026-05-25T00:00:00Z' },
+    })
+    const res = await api.patchSprayProgramItemCompletedLink(env, 'i1',
+      makeReq({ linkedSprayRecordId: 's1' }))
+    const { status, body } = await readBody(res)
+    assert(status === 400 && /soft-deleted/i.test(body.error ?? ''),
+      'soft-deleted spray → 400')
+  }
+
+  // (e) Reject cross-course linkage → 400.
+  {
+    const env = makeDB({
+      itemRow:   { id: 'i1', course_id: 'c1' },
+      recordRow: { id: 's1', course_id: 'c2', deleted_at: null },
+    })
+    const res = await api.patchSprayProgramItemCompletedLink(env, 'i1',
+      makeReq({ linkedSprayRecordId: 's1' }))
+    const { status, body } = await readBody(res)
+    assert(status === 400 && /different course/i.test(body.error ?? ''),
+      'cross-course spray → 400')
+  }
+
+  // (f) Missing key in body → 400.
+  {
+    const env = makeDB({ itemRow: { id: 'i1', course_id: 'c1' } })
+    const res = await api.patchSprayProgramItemCompletedLink(env, 'i1', makeReq({}))
+    const { status, body } = await readBody(res)
+    assert(status === 400 && /linkedSprayRecordId/.test(body.error ?? ''),
+      'missing body key → 400')
+  }
+
+  // (g) Unknown item → 404.
+  {
+    const env = makeDB({ itemRow: null })
+    const res = await api.patchSprayProgramItemCompletedLink(env, 'i-missing',
+      makeReq({ linkedSprayRecordId: 's1' }))
+    const { status } = await readBody(res)
+    assert(status === 404, 'unknown item → 404')
+  }
+
+  // (h) Empty-string id treated as unlink.
+  {
+    const env = makeDB({ itemRow: { id: 'i1', course_id: 'c1' } })
+    await api.patchSprayProgramItemCompletedLink(env, 'i1',
+      makeReq({ linkedSprayRecordId: '' }))
+    const sqls = env.log.join(' || ')
+    assert(!/SELECT id, course_id, deleted_at FROM spray_records/i.test(sqls),
+      'empty-string id treated as unlink (no spray_records lookup)')
+    assert(/UPDATE spray_program_items SET linked_spray_record_id = \?,/i.test(sqls),
+      'empty-string id still issues UPDATE')
+  }
+
+  // (i) No D1 binding → 503.
+  {
+    const res = await api.patchSprayProgramItemCompletedLink({ /* no .DB */ }, 'i1',
+      makeReq({ linkedSprayRecordId: 's1' }))
+    const { status, body } = await readBody(res)
+    assert(status === 503 && /D1 not configured/i.test(body.error ?? ''),
+      'no DB → 503')
+  }
+}
+
+console.log('— sprayProgramStore.setProgramItemCompletedLink')
+{
+  const src = readFileSync('src/utils/sprayPrograms/sprayProgramStore.js', 'utf8')
+  assert(/export\s+async\s+function\s+setProgramItemCompletedLink\s*\(\s*itemId\s*,\s*linkedSprayRecordId\s*\)/.test(src),
+    'exports setProgramItemCompletedLink(itemId, linkedSprayRecordId)')
+  // Hits the narrow sub-resource (not the generic PATCH item route).
+  assert(/\/completed-link/.test(src),
+    "store uses '/completed-link' sub-resource")
+  assert(/method:\s*['"]PATCH['"]/.test(src),
+    'store uses PATCH')
+  // Null/empty → unlink.
+  assert(/linkedSprayRecordId\s*===\s*null\s*\|\|\s*linkedSprayRecordId\s*===\s*['"]['"]/.test(src),
+    'store coerces null / empty string into unlink')
+  // Optimistic + rollback.
+  assert(/setState\([\s\S]*?itemsByProgramId:[\s\S]*?\[programId\]:\s*prevItems\.map/.test(src),
+    'optimistic patch applied to itemsByProgramId before fetch')
+  assert(/setState\(\s*\{\s*itemsByProgramId:\s*\{\s*\.\.\.state\.itemsByProgramId,\s*\[programId\]:\s*prevItems\s*\}/.test(src),
+    'rollback restores prevItems on error')
+  // No spray-creation or inventory-deduction call paths.
+  const codeOnly = src
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '')
+  assert(!/createSpray\s*\(/.test(codeOnly),
+    'store never calls createSpray(...)')
+  assert(!/recordInventoryUsage/.test(codeOnly),
+    'store never calls recordInventoryUsage')
+}
+
+console.log('— CompletedSprayPickerModal source')
+{
+  const src = readFileSync('src/pages/Spray/tabs/components/CompletedSprayPickerModal.jsx', 'utf8')
+  const codeOnly = src
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '')
+
+  assert(/export\s+default\s+function\s+CompletedSprayPickerModal\b/.test(src),
+    'default exports CompletedSprayPickerModal')
+  assert(/useSpraysData/.test(src),
+    'reads from useSpraysData')
+  assert(/onSelect\s*\(\s*rec\s*\)/.test(src),
+    'invokes onSelect(rec) when a row is chosen')
+  // Search dimensions.
+  assert(/applicationName/.test(src), 'search includes applicationName')
+  assert(/date/.test(src),            'search includes date')
+  assert(/area/.test(src),            'search includes area')
+  assert(/p\?\.name/.test(src) || /products\[/.test(src),
+    'search walks product names')
+  // Soft-deleted records excluded.
+  assert(/deletedAt|status\s*!==\s*['"]deleted['"]/.test(src),
+    'filters out soft-deleted records')
+  // Boundary copy (all four lines). JSX text nodes wrap across lines,
+  // so we normalize whitespace before checking.
+  const srcNorm = src.replace(/\s+/g, ' ')
+  for (const phrase of [
+    'Linking connects this planned item to an existing completed spray record',
+    'This does not create a spray record',
+    'This does not deduct inventory',
+    'Completed records remain unchanged',
+  ]) {
+    assert(srcNorm.includes(phrase), `copy includes: "${phrase}"`)
+  }
+  // No mutation paths.
+  assert(!/method:\s*['"](POST|PATCH|DELETE)['"]/.test(codeOnly),
+    'picker does not POST/PATCH/DELETE')
+  assert(!/createSpray\s*\(/.test(codeOnly),
+    'picker does not call createSpray(...)')
+  assert(!/recordInventoryUsage/.test(codeOnly),
+    'picker does not call recordInventoryUsage')
+  // No catalog mutation.
+  assert(!/['"]\/api\/product-catalog['"][^\n]{0,160}(POST|PATCH|DELETE)/.test(codeOnly),
+    'picker never mutates /api/product-catalog')
+  // No Add-to-Inventory.
+  assert(!/Add to Inventory/i.test(codeOnly),
+    'no Add-to-Inventory CTA in picker')
+}
+
+console.log('— Planner wires completed-link picker + summary + actions')
+{
+  const src = readFileSync('src/pages/Spray/tabs/SprayProgramPlanner.jsx', 'utf8')
+
+  // Imports.
+  assert(/setProgramItemCompletedLink/.test(src),
+    'planner imports setProgramItemCompletedLink')
+  assert(/useSpraysData/.test(src),
+    'planner subscribes to useSpraysData')
+  assert(/CompletedSprayPickerModal/.test(src),
+    'planner imports CompletedSprayPickerModal')
+
+  // Picker mounted with onSelect → commitCompletedLink.
+  assert(/<CompletedSprayPickerModal\b[\s\S]*?onSelect=\{commitCompletedLink\}/.test(src),
+    'planner mounts <CompletedSprayPickerModal onSelect={commitCompletedLink}>')
+
+  // Actions on item card.
+  assert(/Link completed spray/.test(src),  '"Link completed spray" action present')
+  assert(/Change completed spray/.test(src),'"Change completed spray" action present')
+  assert(/Clear completed link/.test(src),  '"Clear completed link" action present')
+
+  // commitCompletedLink calls the store.
+  assert(/setProgramItemCompletedLink\(\s*completedLinkItem\.id\s*,\s*sprayRecord\.id\s*\)/.test(src),
+    'commitCompletedLink calls setProgramItemCompletedLink(itemId, sprayRecord.id)')
+  // clearCompletedLink passes null.
+  assert(/setProgramItemCompletedLink\(\s*item\.id\s*,\s*null\s*\)/.test(src),
+    'clearCompletedLink calls setProgramItemCompletedLink(item.id, null)')
+
+  // Linked-summary component.
+  assert(/function\s+CompletedLinkSummary\b/.test(src),
+    'declares CompletedLinkSummary component')
+
+  // Stewardship boundary copy on the planner side. JSX text wraps, so
+  // we normalize whitespace before checking.
+  const plannerNorm = src.replace(/\s+/g, ' ')
+  for (const phrase of [
+    'Linking connects this planned item to an existing completed spray record',
+    'This does not create a spray record',
+    'This does not deduct inventory',
+    'Completed records remain unchanged',
+  ]) {
+    assert(plannerNorm.includes(phrase), `planner boundary copy: "${phrase}"`)
+  }
+
+  // No createSpray / no inventory deduction call paths added.
+  const codeOnly = src
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '')
+  assert(!/createSpray\s*\(/.test(codeOnly),
+    'planner never calls createSpray(...)')
+  assert(!/recordInventoryUsage/.test(codeOnly),
+    'planner never calls recordInventoryUsage')
+  assert(!/['"]\/api\/product-catalog['"][^\n]{0,200}(POST|PATCH|DELETE)/.test(codeOnly),
+    'planner never POSTs/PATCHes/DELETEs /api/product-catalog')
+}
+
+console.log('— planner CSS adds linked-summary classes')
+{
+  const css = readFileSync('src/pages/Spray/tabs/SprayProgramPlanner.module.css', 'utf8')
+  for (const cls of ['completedLink', 'completedLinkStale', 'completedLinkBadge', 'completedLinkTitle', 'completedLinkBoundary']) {
+    assert(new RegExp(`\\.${cls}\\b`).test(css), `CSS defines .${cls}`)
+  }
 }
 
 // ── Result ─────────────────────────────────────────────────────────────────

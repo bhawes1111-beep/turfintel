@@ -10,13 +10,16 @@ import {
   createSprayProgramItem,
   updateSprayProgramItem,
   deleteSprayProgramItem,
+  setProgramItemCompletedLink,
 } from '../../../utils/sprayPrograms/sprayProgramStore'
 import { useInventoryData } from '../../../utils/inventory/inventoryStore'
 import { useProductCatalog, getCatalogProductById } from '../../../utils/productCatalog/productCatalogStore'
 import { useImportedLabels } from '../../../utils/inventory/labelImportStore'
+import { useSpraysData } from '../../../utils/sprays/spraysStore'
 import { resolveProgramItemIntel } from '../../../utils/sprayPrograms/resolveProgramItemIntel'
-import InventoryPickerModal     from './components/InventoryPickerModal'
-import ProductCatalogPickerModal from './components/ProductCatalogPickerModal'
+import InventoryPickerModal       from './components/InventoryPickerModal'
+import ProductCatalogPickerModal  from './components/ProductCatalogPickerModal'
+import CompletedSprayPickerModal  from './components/CompletedSprayPickerModal'
 import styles from './SprayProgramPlanner.module.css'
 
 // Phase 7F (2/?) — Manual Spray Program Planner UI.
@@ -65,6 +68,15 @@ export default function SprayProgramPlanner() {
   const { items: inventoryItems }   = useInventoryData()
   const { products: catalogProducts } = useProductCatalog()
   const { labels: importedLabels }  = useImportedLabels()
+  // Phase 7F (4/?) — completed-spray records for plan-vs-actual linking.
+  const { records: sprayRecords }    = useSpraysData()
+  // Quick lookup so the linked-summary card on an item resolves
+  // without a second pass.
+  const sprayRecordsById = useMemo(() => {
+    const out = {}
+    for (const r of sprayRecords ?? []) if (r?.id) out[r.id] = r
+    return out
+  }, [sprayRecords])
   const labelsByItemId = useMemo(() => {
     const out = {}
     for (const lbl of importedLabels ?? []) {
@@ -94,6 +106,10 @@ export default function SprayProgramPlanner() {
   const [itemsLoading, setItemsLoading] = useState(false)
   // Phase 7F (3/?) — picker visibility. Only one picker open at a time.
   const [pickerOpen, setPickerOpen] = useState(null)  // null | 'inventory' | 'catalog'
+  // Phase 7F (4/?) — completed-spray picker is scoped to the item being
+  // linked, so we track the active item id alongside the modal state.
+  const [completedLinkItem, setCompletedLinkItem] = useState(null) // null | program item row
+  const [completedLinkErr,  setCompletedLinkErr]  = useState(null)
 
   const selected = programs.find(p => p.id === selectedId) ?? null
   const items    = selectedId ? (itemsByProgramId[selectedId] ?? []) : []
@@ -279,6 +295,35 @@ export default function SprayProgramPlanner() {
       await deleteSprayProgramItem(item.id)
     } catch (err) {
       setItemErr(err.message || 'Could not delete item')
+    }
+  }
+
+  // ── Phase 7F (4/?) — completed-record link handlers ────────────────
+  function openCompletedLinkPicker(item) {
+    setCompletedLinkErr(null)
+    setCompletedLinkItem(item)
+  }
+  function closeCompletedLinkPicker() {
+    setCompletedLinkItem(null)
+  }
+  async function commitCompletedLink(sprayRecord) {
+    if (!completedLinkItem) return
+    try {
+      await setProgramItemCompletedLink(completedLinkItem.id, sprayRecord.id)
+      setCompletedLinkItem(null)
+    } catch (err) {
+      setCompletedLinkErr(err.message || 'Could not link spray record')
+    }
+  }
+  async function clearCompletedLink(item) {
+    const ok = typeof window !== 'undefined'
+      ? window.confirm('Remove the link to this completed spray record? Completed records remain unchanged.')
+      : true
+    if (!ok) return
+    try {
+      await setProgramItemCompletedLink(item.id, null)
+    } catch (err) {
+      setItemErr(err.message || 'Could not clear link')
     }
   }
 
@@ -496,8 +541,13 @@ export default function SprayProgramPlanner() {
                             key={item.id}
                             item={item}
                             intelContext={intelContext}
+                            linkedSpray={item.linkedSprayRecordId
+                              ? sprayRecordsById[item.linkedSprayRecordId] ?? null
+                              : null}
                             onEdit={() => startEditItem(item)}
                             onRemove={() => removeItem(item)}
+                            onLinkCompleted={() => openCompletedLinkPicker(item)}
+                            onClearCompleted={() => clearCompletedLink(item)}
                           />
                         ))}
                       </ul>
@@ -542,6 +592,15 @@ export default function SprayProgramPlanner() {
           }}
         />
       )}
+      {completedLinkItem && (
+        <CompletedSprayPickerModal
+          onCancel={closeCompletedLinkPicker}
+          onSelect={commitCompletedLink}
+        />
+      )}
+      {completedLinkErr && (
+        <p className={styles.errorBanner} role="alert">{completedLinkErr}</p>
+      )}
     </div>
   )
 }
@@ -549,7 +608,7 @@ export default function SprayProgramPlanner() {
 // Phase 7F (3/?) — one item row, with intel chips resolved from the
 // catalog-first 3-tier resolver. Pure render; chips are derived, not
 // persisted.
-function ItemRow({ item, intelContext, onEdit, onRemove }) {
+function ItemRow({ item, intelContext, linkedSpray, onEdit, onRemove, onLinkCompleted, onClearCompleted }) {
   const intel = useMemo(
     () => resolveProgramItemIntel(item, intelContext),
     [item, intelContext],
@@ -613,16 +672,79 @@ function ItemRow({ item, intelContext, onEdit, onRemove }) {
         {item.applicationNotes && (
           <p className={styles.itemNotes}>{item.applicationNotes}</p>
         )}
+
+        {/* Phase 7F (4/?) — plan-vs-actual: linked completed spray. */}
+        <CompletedLinkSummary
+          item={item}
+          linkedSpray={linkedSpray}
+          onClear={onClearCompleted}
+        />
       </div>
       <div className={styles.itemActions}>
         <button type="button" className={styles.btnGhost} onClick={onEdit}>
           Edit
+        </button>
+        <button type="button" className={styles.btnGhost} onClick={onLinkCompleted}>
+          {item.linkedSprayRecordId ? 'Change completed spray' : 'Link completed spray'}
         </button>
         <button type="button" className={styles.btnDangerGhost} onClick={onRemove}>
           Remove
         </button>
       </div>
     </li>
+  )
+}
+
+// Phase 7F (4/?) — Linked completed-spray summary on a planned item.
+// Three states:
+//   1. No linkedSprayRecordId       → nothing.
+//   2. Linked + record in cache     → green summary card + Clear button.
+//   3. Linked + cache miss          → yellow stale-id warning + Clear button.
+function CompletedLinkSummary({ item, linkedSpray, onClear }) {
+  const fk = item?.linkedSprayRecordId ?? null
+  if (!fk) return null
+
+  if (linkedSpray) {
+    const productCount = Array.isArray(linkedSpray.products) ? linkedSpray.products.length : 0
+    return (
+      <div className={styles.completedLink}>
+        <div className={styles.completedLinkMain}>
+          <span className={styles.completedLinkBadge}>Linked completed record</span>
+          <div className={styles.completedLinkTitle}>
+            {linkedSpray.applicationName ?? '(unnamed spray)'}
+          </div>
+          <div className={styles.completedLinkSub}>
+            {[linkedSpray.date, linkedSpray.area].filter(Boolean).join(' · ')}
+            {productCount > 0 && ` · ${productCount} product${productCount !== 1 ? 's' : ''}`}
+          </div>
+          <p className={styles.completedLinkBoundary}>
+            Linking connects this planned item to an existing completed spray record. This does not create a spray record. This does not deduct inventory. Completed records remain unchanged.
+          </p>
+        </div>
+        <button
+          type="button"
+          className={styles.btnDangerGhost}
+          onClick={onClear}
+        >Clear completed link</button>
+      </div>
+    )
+  }
+
+  return (
+    <div className={styles.completedLinkStale}>
+      <div className={styles.completedLinkMain}>
+        <span className={styles.completedLinkBadge}>Linked completed record</span>
+        <div className={styles.completedLinkSub}>
+          Linked spray record not currently cached. The link does not create or modify a spray record.
+        </div>
+        <div className={styles.completedLinkFk}>id: {fk}</div>
+      </div>
+      <button
+        type="button"
+        className={styles.btnDangerGhost}
+        onClick={onClear}
+      >Clear completed link</button>
+    </div>
   )
 }
 
