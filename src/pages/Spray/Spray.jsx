@@ -9,9 +9,13 @@ import PlannedPrograms       from './tabs/PlannedPrograms'
 import MixCalculator         from './tabs/MixCalculator'
 import SprayReports          from './tabs/SprayReports'
 import ProgramIntelligence   from './tabs/ProgramIntelligence'
+// Phase 7F (1/?) — Spray Program Planner shell over the new
+// spray_programs / spray_program_items data model. Distinct from the
+// legacy 'Planned Programs' tab which predates the model.
+import SprayProgramPlanner   from './tabs/SprayProgramPlanner'
 import workspace from '../../styles/workspace.module.css'
 
-const TABS = ['Overview', 'Spray Calendar', 'New Application', 'Spray Records', 'Planned Programs', 'Mix Calculator', 'Reports', 'Program Intelligence']
+const TABS = ['Overview', 'Spray Calendar', 'New Application', 'Spray Records', 'Planned Programs', 'Program Planner', 'Mix Calculator', 'Reports', 'Program Intelligence']
 
 /**
  * Sprays workspace — canonical TurfIntel workspace pattern (Phase 2.2 pilot).
@@ -52,6 +56,7 @@ export default function Spray() {
       {activeTab === 'New Application'       && <BuildSpraySheet />}
       {activeTab === 'Spray Records'         && <SprayRecords />}
       {activeTab === 'Planned Programs'      && <PlannedPrograms />}
+      {activeTab === 'Program Planner'       && <SprayProgramPlanner />}
       {activeTab === 'Mix Calculator'        && <MixCalculator />}
       {activeTab === 'Reports'               && <SprayReports />}
       {activeTab === 'Program Intelligence'  && <ProgramIntelligence />}

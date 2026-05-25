@@ -49,6 +49,17 @@ import {
   deleteSpray,
 } from './api/sprays.js'
 import {
+  listSprayPrograms,
+  getSprayProgram,
+  createSprayProgram,
+  updateSprayProgram,
+  archiveSprayProgram,
+  listSprayProgramItems,
+  createSprayProgramItem,
+  updateSprayProgramItem,
+  deleteSprayProgramItem,
+} from './api/sprayPrograms.js'
+import {
   listCalendarEvents,
   getCalendarEvent,
   createCalendarEvent,
@@ -681,6 +692,46 @@ async function handleApi(request, env, url, ctx) {
     if (method === 'GET')    return getSpray(env, id)
     if (method === 'PATCH')  return updateSpray(env, id, request)
     if (method === 'DELETE') return deleteSpray(env, id, request)
+  }
+
+  // ── /api/spray-programs (Phase 7F.1 — Spray Program Planner) ──────────
+  if (pathname === '/api/spray-programs') {
+    if (method === 'GET') {
+      const status = url.searchParams.get('status') || null
+      return listSprayPrograms(env, courseId, { status })
+    }
+    if (method === 'POST') return createSprayProgram(env, request)
+  }
+
+  // ── /api/spray-programs/:id/items ─────────────────────────────────────
+  // Must precede /api/spray-programs/:id so 'items' isn't consumed.
+  const sprogItemsMatch = pathname.match(/^\/api\/spray-programs\/([^/]+)\/items$/)
+  if (sprogItemsMatch) {
+    const id = decodeURIComponent(sprogItemsMatch[1])
+    if (method === 'GET')  return listSprayProgramItems(env, id)
+    if (method === 'POST') return createSprayProgramItem(env, id, request)
+  }
+
+  // ── /api/spray-programs/:id ───────────────────────────────────────────
+  // DELETE is a SOFT archive — keeps the row + its items for audit and
+  // future reactivation. Matches the spray_records soft-delete pattern.
+  const sprogMatch = pathname.match(/^\/api\/spray-programs\/([^/]+)$/)
+  if (sprogMatch) {
+    const id = decodeURIComponent(sprogMatch[1])
+    if (method === 'GET')    return getSprayProgram(env, id)
+    if (method === 'PATCH')  return updateSprayProgram(env, id, request)
+    if (method === 'DELETE') return archiveSprayProgram(env, id)
+  }
+
+  // ── /api/spray-program-items/:itemId ──────────────────────────────────
+  // Peer collection so item PATCH/DELETE can be addressed without
+  // re-walking the program. Items are hard-deleted — they're plan
+  // entries, not audit-bearing operational records.
+  const sprogItemMatch = pathname.match(/^\/api\/spray-program-items\/([^/]+)$/)
+  if (sprogItemMatch) {
+    const id = decodeURIComponent(sprogItemMatch[1])
+    if (method === 'PATCH')  return updateSprayProgramItem(env, id, request)
+    if (method === 'DELETE') return deleteSprayProgramItem(env, id)
   }
 
   // ── /api/calendar-events ──────────────────────────────────────────────

@@ -1,0 +1,176 @@
+/* Phase 7F (1/?) — Spray Program Planner tab shell styles.
+   Mobile-first; scoped to this tab. */
+
+.tabContent { display: block; }
+
+.toolbarRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 6px 0 10px;
+}
+
+.countLabel {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.programList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.programCard {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.pending { opacity: 0.6; border-style: dashed; }
+
+.programMain { flex: 1 1 auto; min-width: 0; }
+
+.programName {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+  display: block;
+  margin-bottom: 2px;
+}
+
+.programMeta {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.programType {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(100, 150, 220, 0.15);
+  color: rgba(160, 200, 255, 0.95);
+  border: 1px solid rgba(100, 150, 220, 0.3);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: lowercase;
+}
+
+.programStatus_draft    { color: rgba(255, 255, 255, 0.7); }
+.programStatus_active   { color: #8ed68e; }
+.programStatus_archived { color: rgba(255, 255, 255, 0.4); }
+
+.programNotes {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+  line-height: 1.5;
+}
+
+.createForm {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.createTitle {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.createHint {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.formRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.formLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.req { color: #f08080; margin-left: 2px; }
+
+.formInput {
+  padding: 7px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: inherit;
+  font-size: 13px;
+}
+.formInput:focus {
+  outline: none;
+  border-color: rgba(100, 150, 220, 0.5);
+}
+
+.formTextarea {
+  resize: vertical;
+  min-height: 60px;
+  font-family: inherit;
+}
+
+.errorBanner {
+  margin: 6px 0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: rgba(220, 60, 60, 0.12);
+  color: #ff9999;
+  border: 1px solid rgba(220, 60, 60, 0.3);
+  font-size: 12px;
+}
+
+.formActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.btnPrimary,
+.btnSecondary {
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.btnPrimary {
+  background: rgba(100, 150, 220, 0.25);
+  border-color: rgba(100, 150, 220, 0.6);
+  color: #e0eeff;
+}
+.btnPrimary:hover  { background: rgba(100, 150, 220, 0.35); }
+.btnPrimary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btnSecondary {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.85);
+}
+.btnSecondary:hover { background: rgba(255, 255, 255, 0.1); }
+.btnSecondary:disabled { opacity: 0.5; cursor: not-allowed; }
