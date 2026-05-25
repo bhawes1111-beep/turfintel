@@ -28,6 +28,7 @@ import { useInventoryData, recordInventoryUsage } from '../../../utils/inventory
 import { useImportedLabels } from '../../../utils/inventory/labelImportStore'
 import { useProductCatalog } from '../../../utils/productCatalog/productCatalogStore'
 import { resolveSprayProductIntel } from '../../../utils/productCatalog/resolveSprayProductIntel'
+import { buildSprayIntelligence } from '../../../utils/productCatalog/sprayIntelligence'
 import { useCrewData } from '../../../utils/crew/crewStore'
 import { createCalendarEvent } from '../../../utils/calendar/calendarStore'
 import { createAlert } from '../../../utils/alerts/alertsStore'
@@ -451,6 +452,14 @@ export default function BuildSpraySheet() {
   const labeledTankCount = useMemo(
     () => tankProducts.filter(p => p.label).length,
     [tankProducts],
+  )
+
+  // Phase 7D (1/?) — Spray Intelligence summary. Pure derivation from
+  // row.intel; renders awareness chips in the tank summary. Does not
+  // affect save behavior or tank math.
+  const sprayIntel = useMemo(
+    () => buildSprayIntelligence(enrichedRows),
+    [enrichedRows],
   )
 
   const chemAnalysis = useMemo(() => {
@@ -1198,6 +1207,10 @@ export default function BuildSpraySheet() {
               />
             </SummarySection>
 
+            <SummarySection label="Spray Intelligence">
+              <SprayIntelligencePanel intel={sprayIntel} />
+            </SummarySection>
+
             {summary.unitMismatches.length > 0 && (
               <div className={styles.naInsufficientCard} role="alert">
                 <strong>Unit mismatch.</strong> {summary.unitMismatches.length === 1
@@ -1222,6 +1235,120 @@ export default function BuildSpraySheet() {
 }
 
 // ── Small render helpers ────────────────────────────────────────────────
+
+// Phase 7D (1/?) — Spray Intelligence panel. Renders the deterministic
+// summary from buildSprayIntelligence as compact chips + a notices list.
+// Stewardship language only: awareness, not recommendation.
+function SprayIntelligencePanel({ intel }) {
+  if (!intel || intel.totalProducts === 0) {
+    return (
+      <span className={styles.naUnavailable}>
+        Read-only awareness based on linked catalog and label data. Add a
+        product to begin.
+      </span>
+    )
+  }
+
+  const groupChip = (label, values, tone) =>
+    values.length === 0 ? null : (
+      <span
+        key={label}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'baseline',
+          padding: '2px 8px',
+          borderRadius: 999,
+          fontSize: 11,
+          marginRight: 4,
+          marginBottom: 4,
+          ...intelChipTone(tone),
+        }}
+        title={`${label}: ${values.join(', ')}`}
+      >
+        <span style={{ opacity: 0.65, marginRight: 4, fontWeight: 400 }}>{label}</span>
+        {values.join(', ')}
+      </span>
+    )
+
+  const noticeLine = (n) => (
+    <li
+      key={`${n.type}-${n.label}`}
+      style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 6,
+        fontSize: 12,
+        lineHeight: 1.5,
+        margin: '2px 0',
+        color: noticeColor(n.type),
+      }}
+    >
+      <span style={{ flex: '0 0 auto', opacity: 0.8 }}>{noticeIcon(n.type)}</span>
+      <span style={{ flex: '1 1 auto' }}>
+        <strong style={{ fontWeight: 600 }}>{n.label}:</strong> {n.value}
+      </span>
+    </li>
+  )
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <p style={{ margin: 0, fontSize: 11, color: 'rgba(255,255,255,0.55)', lineHeight: 1.45 }}>
+        Read-only awareness based on linked catalog and label data. This
+        does not replace the product label.
+      </p>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline' }}>
+        {groupChip('FRAC', intel.groups.frac, 'frac')}
+        {groupChip('HRAC', intel.groups.hrac, 'hrac')}
+        {groupChip('IRAC', intel.groups.irac, 'irac')}
+        {groupChip('PGR',  intel.groups.pgr,  'pgr')}
+        {intel.maxReiHours != null && groupChip('Max REI', [`${intel.maxReiHours} hrs`], 'rei')}
+        {intel.highestSignalWord && groupChip('Signal', [intel.highestSignalWord], 'signal')}
+        {intel.restrictedUse && groupChip('RUP', ['present'], 'rup')}
+      </div>
+
+      {intel.notices.length > 0 && (
+        <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+          {intel.notices.map(noticeLine)}
+        </ul>
+      )}
+
+      <p style={{ margin: 0, fontSize: 11, color: 'rgba(255,255,255,0.5)', fontStyle: 'italic', lineHeight: 1.45 }}>
+        Missing intelligence means the product is not linked or no label
+        data is available. {intel.productsWithIntelCount} of {intel.totalProducts}{' '}
+        product{intel.totalProducts !== 1 ? 's' : ''} have intelligence available.
+      </p>
+    </div>
+  )
+}
+
+function intelChipTone(tone) {
+  switch (tone) {
+    case 'frac':   return { background: 'rgba(200,100,100,0.12)', color: '#f08c8c', border: '1px solid rgba(200,100,100,0.35)' }
+    case 'hrac':   return { background: 'rgba(100,180,100,0.12)', color: '#8cd48c', border: '1px solid rgba(100,180,100,0.35)' }
+    case 'irac':   return { background: 'rgba(200,160,80,0.12)',  color: '#e0c070', border: '1px solid rgba(200,160,80,0.35)' }
+    case 'pgr':    return { background: 'rgba(160,100,200,0.12)', color: '#c897e3', border: '1px solid rgba(160,100,200,0.35)' }
+    case 'rei':    return { background: 'rgba(80,140,200,0.12)',  color: '#9ec5ec', border: '1px solid rgba(80,140,200,0.35)' }
+    case 'signal': return { background: 'rgba(220,180,60,0.12)',  color: '#e8c660', border: '1px solid rgba(220,180,60,0.35)' }
+    case 'rup':    return { background: 'rgba(220,60,60,0.18)',   color: '#ff8080', border: '1px solid rgba(220,60,60,0.45)' }
+    default:       return { background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.85)', border: '1px solid rgba(255,255,255,0.12)' }
+  }
+}
+
+function noticeColor(type) {
+  switch (type) {
+    case 'warning': return '#e0a060'
+    case 'caution': return '#e8c660'
+    default:        return 'rgba(255, 255, 255, 0.75)'
+  }
+}
+function noticeIcon(type) {
+  switch (type) {
+    case 'warning': return '⚠'
+    case 'caution': return '•'
+    default:        return '·'
+  }
+}
 
 // Phase 7C.1 (6/6) — Read-only product-intelligence chips. Rendered
 // directly under the product picker for each spray row when the
