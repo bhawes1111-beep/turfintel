@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import WorkspaceSection from '../../../components/shared/WorkspaceSection'
 import { EmptyState } from '../../../components/shared/EmptyState'
 import {
@@ -11,6 +11,12 @@ import {
   updateSprayProgramItem,
   deleteSprayProgramItem,
 } from '../../../utils/sprayPrograms/sprayProgramStore'
+import { useInventoryData } from '../../../utils/inventory/inventoryStore'
+import { useProductCatalog, getCatalogProductById } from '../../../utils/productCatalog/productCatalogStore'
+import { useImportedLabels } from '../../../utils/inventory/labelImportStore'
+import { resolveProgramItemIntel } from '../../../utils/sprayPrograms/resolveProgramItemIntel'
+import InventoryPickerModal     from './components/InventoryPickerModal'
+import ProductCatalogPickerModal from './components/ProductCatalogPickerModal'
 import styles from './SprayProgramPlanner.module.css'
 
 // Phase 7F (2/?) — Manual Spray Program Planner UI.
@@ -53,6 +59,24 @@ const EMPTY_ITEM_FORM = () => ({
 
 export default function SprayProgramPlanner() {
   const { programs, itemsByProgramId, loading, error } = useSprayPrograms()
+  // Phase 7F (3/?) — picker + intel inputs. Lazy-load only what's
+  // needed; the catalog store is already lazy-fetched on first
+  // subscribe, and inventory/labels load on workspace mount.
+  const { items: inventoryItems }   = useInventoryData()
+  const { products: catalogProducts } = useProductCatalog()
+  const { labels: importedLabels }  = useImportedLabels()
+  const labelsByItemId = useMemo(() => {
+    const out = {}
+    for (const lbl of importedLabels ?? []) {
+      if (lbl?.inventoryItemId) out[lbl.inventoryItemId] = lbl
+    }
+    return out
+  }, [importedLabels])
+  const intelContext = useMemo(() => ({
+    inventoryProducts: inventoryItems ?? [],
+    catalogProducts:   catalogProducts ?? [],
+    labelsByItemId,
+  }), [inventoryItems, catalogProducts, labelsByItemId])
 
   // ── Program-level state ──────────────────────────────────────────────
   const [selectedId, setSelectedId] = useState(null)
@@ -68,6 +92,8 @@ export default function SprayProgramPlanner() {
   const [itemErr, setItemErr] = useState(null)
   const [itemSubmitting, setItemSubmitting] = useState(false)
   const [itemsLoading, setItemsLoading] = useState(false)
+  // Phase 7F (3/?) — picker visibility. Only one picker open at a time.
+  const [pickerOpen, setPickerOpen] = useState(null)  // null | 'inventory' | 'catalog'
 
   const selected = programs.find(p => p.id === selectedId) ?? null
   const items    = selectedId ? (itemsByProgramId[selectedId] ?? []) : []
@@ -445,6 +471,9 @@ export default function SprayProgramPlanner() {
                         onCancel={cancelItemEdit}
                         submitting={itemSubmitting}
                         submitErr={itemErr}
+                        inventoryItems={inventoryItems}
+                        catalogProducts={catalogProducts}
+                        onOpenPicker={(kind) => setPickerOpen(kind)}
                       />
                     )}
 
@@ -463,76 +492,13 @@ export default function SprayProgramPlanner() {
                     {items.length > 0 && (
                       <ul className={styles.itemList}>
                         {items.map(item => (
-                          <li
+                          <ItemRow
                             key={item.id}
-                            className={`${styles.itemCard} ${item._pending ? styles.pending : ''}`}
-                          >
-                            <div className={styles.itemMain}>
-                              <div className={styles.itemTitleRow}>
-                                <span className={styles.itemProduct}>
-                                  {item.productName ?? '(no product)'}
-                                </span>
-                                <span className={styles[`itemStatus_${item.status}`] ?? styles.itemStatus}>
-                                  {item.status}
-                                </span>
-                              </div>
-                              <div className={styles.itemMeta}>
-                                {item.targetArea && <span>📍 {item.targetArea}</span>}
-                                {item.plannedWindowLabel && (
-                                  <span>🗓 {item.plannedWindowLabel}</span>
-                                )}
-                                {(item.plannedStartDate || item.plannedEndDate) && (
-                                  <span>
-                                    {item.plannedStartDate ?? '?'}
-                                    {item.plannedEndDate ? ` → ${item.plannedEndDate}` : ''}
-                                  </span>
-                                )}
-                              </div>
-                              {(item.rateValue != null || item.carrierVolumeValue != null) && (
-                                <div className={styles.itemMeta}>
-                                  {item.rateValue != null && (
-                                    <span>Rate: {item.rateValue} {item.rateUnit ?? ''}</span>
-                                  )}
-                                  {item.carrierVolumeValue != null && (
-                                    <span>Carrier: {item.carrierVolumeValue} {item.carrierVolumeUnit ?? ''}</span>
-                                  )}
-                                </div>
-                              )}
-                              {(item.inventoryItemId || item.productCatalogId) && (
-                                <div className={styles.itemLinks}>
-                                  {item.inventoryItemId && (
-                                    <span className={styles.linkChip} title="Linked inventory item">
-                                      📦 inv {item.inventoryItemId.slice(0, 12)}
-                                    </span>
-                                  )}
-                                  {item.productCatalogId && (
-                                    <span className={styles.linkChip} title="Linked catalog product (read-only)">
-                                      📋 catalog {item.productCatalogId.slice(0, 12)}
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-                              {item.applicationNotes && (
-                                <p className={styles.itemNotes}>{item.applicationNotes}</p>
-                              )}
-                            </div>
-                            <div className={styles.itemActions}>
-                              <button
-                                type="button"
-                                className={styles.btnGhost}
-                                onClick={() => startEditItem(item)}
-                              >
-                                Edit
-                              </button>
-                              <button
-                                type="button"
-                                className={styles.btnDangerGhost}
-                                onClick={() => removeItem(item)}
-                              >
-                                Remove
-                              </button>
-                            </div>
-                          </li>
+                            item={item}
+                            intelContext={intelContext}
+                            onEdit={() => startEditItem(item)}
+                            onRemove={() => removeItem(item)}
+                          />
                         ))}
                       </ul>
                     )}
@@ -543,6 +509,164 @@ export default function SprayProgramPlanner() {
           </div>
         )}
       </WorkspaceSection>
+
+      {/* Phase 7F (3/?) — picker modals. Open over the planner; close
+          on cancel or selection. Selection populates the item form
+          directly — no D1 writes, no inventory deduction. */}
+      {pickerOpen === 'inventory' && (
+        <InventoryPickerModal
+          onCancel={() => setPickerOpen(null)}
+          onSelect={(invItem) => {
+            setItemForm(form => ({
+              ...form,
+              inventoryItemId: invItem.id,
+              // If productName is empty, fill it from the chosen inv row.
+              productName: form.productName?.trim() ? form.productName : (invItem.name ?? ''),
+            }))
+            setPickerOpen(null)
+          }}
+        />
+      )}
+      {pickerOpen === 'catalog' && (
+        <ProductCatalogPickerModal
+          onCancel={() => setPickerOpen(null)}
+          onSelect={(catalogProduct) => {
+            setItemForm(form => ({
+              ...form,
+              productCatalogId: catalogProduct.id,
+              productName: form.productName?.trim()
+                ? form.productName
+                : (catalogProduct.productName ?? ''),
+            }))
+            setPickerOpen(null)
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+// Phase 7F (3/?) — one item row, with intel chips resolved from the
+// catalog-first 3-tier resolver. Pure render; chips are derived, not
+// persisted.
+function ItemRow({ item, intelContext, onEdit, onRemove }) {
+  const intel = useMemo(
+    () => resolveProgramItemIntel(item, intelContext),
+    [item, intelContext],
+  )
+  const hasIntel = intel && intel.source && intel.source !== 'none'
+
+  return (
+    <li className={`${styles.itemCard} ${item._pending ? styles.pending : ''}`}>
+      <div className={styles.itemMain}>
+        <div className={styles.itemTitleRow}>
+          <span className={styles.itemProduct}>
+            {item.productName ?? '(no product)'}
+          </span>
+          <span className={styles[`itemStatus_${item.status}`] ?? styles.itemStatus}>
+            {item.status}
+          </span>
+        </div>
+        <div className={styles.itemMeta}>
+          {item.targetArea && <span>📍 {item.targetArea}</span>}
+          {item.plannedWindowLabel && <span>🗓 {item.plannedWindowLabel}</span>}
+          {(item.plannedStartDate || item.plannedEndDate) && (
+            <span>
+              {item.plannedStartDate ?? '?'}
+              {item.plannedEndDate ? ` → ${item.plannedEndDate}` : ''}
+            </span>
+          )}
+        </div>
+        {(item.rateValue != null || item.carrierVolumeValue != null) && (
+          <div className={styles.itemMeta}>
+            {item.rateValue != null && (
+              <span>Rate: {item.rateValue} {item.rateUnit ?? ''}</span>
+            )}
+            {item.carrierVolumeValue != null && (
+              <span>Carrier: {item.carrierVolumeValue} {item.carrierVolumeUnit ?? ''}</span>
+            )}
+          </div>
+        )}
+
+        {/* Compact link chips for the raw FK references the planner stored. */}
+        {(item.inventoryItemId || item.productCatalogId) && (
+          <div className={styles.itemLinks}>
+            {item.inventoryItemId && (
+              <span className={styles.linkChip} title="Linked inventory item">
+                📦 inv {item.inventoryItemId.slice(0, 12)}
+              </span>
+            )}
+            {item.productCatalogId && (
+              <span className={styles.linkChip} title="Linked catalog product (read-only)">
+                📋 catalog {item.productCatalogId.slice(0, 12)}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Read-only intel chips resolved from catalog/label/legacy. */}
+        {hasIntel && <ItemIntelChips intel={intel} />}
+        {!hasIntel && (item.productCatalogId || item.inventoryItemId) && (
+          <p className={styles.intelEmpty}>No linked intelligence available.</p>
+        )}
+
+        {item.applicationNotes && (
+          <p className={styles.itemNotes}>{item.applicationNotes}</p>
+        )}
+      </div>
+      <div className={styles.itemActions}>
+        <button type="button" className={styles.btnGhost} onClick={onEdit}>
+          Edit
+        </button>
+        <button type="button" className={styles.btnDangerGhost} onClick={onRemove}>
+          Remove
+        </button>
+      </div>
+    </li>
+  )
+}
+
+function ItemIntelChips({ intel }) {
+  const groupChips = []
+  if (intel.fracGroup) groupChips.push(['FRAC', intel.fracGroup, styles.intelChipFrac])
+  if (intel.hracGroup) groupChips.push(['HRAC', intel.hracGroup, styles.intelChipHrac])
+  if (intel.iracGroup) groupChips.push(['IRAC', intel.iracGroup, styles.intelChipIrac])
+  if (intel.pgrClass)  groupChips.push(['PGR',  intel.pgrClass,  styles.intelChipPgr])
+
+  const showSignal = intel.signalWord
+    && /^(warning|danger)$/i.test(String(intel.signalWord).trim())
+
+  if (groupChips.length === 0 && intel.reiHours == null && !intel.restrictedUse && !showSignal) {
+    return null
+  }
+
+  return (
+    <div className={styles.intelChipRow}>
+      {intel.source === 'catalog' && (
+        <span className={styles.intelChipLinked} title="Read-only catalog intelligence">
+          📋 Catalog
+        </span>
+      )}
+      {groupChips.map(([label, value, cls]) => (
+        <span key={label} className={`${styles.intelChip} ${cls}`}>
+          <span className={styles.intelChipLabel}>{label}</span>
+          {value}
+        </span>
+      ))}
+      {intel.reiHours != null && (
+        <span className={`${styles.intelChip} ${styles.intelChipRei}`}>
+          <span className={styles.intelChipLabel}>REI</span>
+          {intel.reiHours}h
+        </span>
+      )}
+      {intel.restrictedUse && (
+        <span className={`${styles.intelChip} ${styles.intelChipRup}`}>RUP</span>
+      )}
+      {showSignal && (
+        <span className={`${styles.intelChip} ${styles.intelChipSignal}`}>
+          {intel.signalWord}
+        </span>
+      )}
     </div>
   )
 }
@@ -643,8 +767,27 @@ function ProgramForm({ title, form, setForm, onSubmit, onCancel, submitting, sub
   )
 }
 
-function ItemForm({ title, form, setForm, onSubmit, onCancel, submitting, submitErr }) {
+function ItemForm({
+  title, form, setForm, onSubmit, onCancel, submitting, submitErr,
+  inventoryItems = [],
+  catalogProducts = [],
+  onOpenPicker,
+}) {
   function set(field, value) { setForm({ ...form, [field]: value }) }
+  // Resolve currently-linked summaries from the in-memory caches.
+  const linkedInv = form.inventoryItemId
+    ? inventoryItems.find(i => i.id === form.inventoryItemId)
+    : null
+  const linkedCat = form.productCatalogId
+    ? catalogProducts.find(c => c.id === form.productCatalogId)
+    : null
+
+  function clearInventory() {
+    setForm({ ...form, inventoryItemId: '' })
+  }
+  function clearCatalog() {
+    setForm({ ...form, productCatalogId: '' })
+  }
   return (
     <form className={styles.createForm} onSubmit={onSubmit}>
       <h4 className={styles.createTitle}>{title}</h4>
@@ -745,27 +888,45 @@ function ItemForm({ title, form, setForm, onSubmit, onCancel, submitting, submit
           </select>
         </label>
       </div>
-      <div className={styles.formRow}>
-        <label className={styles.formLabel}>
-          Inventory item id (optional)
-          <input
-            type="text"
-            className={styles.formInput}
-            value={form.inventoryItemId}
-            onChange={e => set('inventoryItemId', e.target.value)}
-            placeholder="inv-..."
-          />
-        </label>
-        <label className={styles.formLabel}>
-          Catalog product id (optional, read-only intelligence)
-          <input
-            type="text"
-            className={styles.formInput}
-            value={form.productCatalogId}
-            onChange={e => set('productCatalogId', e.target.value)}
-            placeholder="pc-..."
-          />
-        </label>
+      {/* Phase 7F (3/?) — picker-driven optional links. Both fields are
+          stewardship-only: selecting does not deduct inventory and does
+          not mutate the catalog. */}
+      <div className={styles.linkPickers}>
+        <PickerSlot
+          label="Inventory link"
+          hint="Inventory links are for planning only and do not deduct stock."
+          onPick={() => onOpenPicker?.('inventory')}
+          onClear={form.inventoryItemId ? clearInventory : null}
+          selected={linkedInv
+            ? {
+                title: linkedInv.name,
+                sub:   [linkedInv.category || linkedInv.kind, linkedInv.location].filter(Boolean).join(' · '),
+                meta:  linkedInv.quantity != null
+                  ? `${linkedInv.quantity} ${linkedInv.unit ?? ''}`.trim()
+                  : null,
+              }
+            : null}
+          rawId={form.inventoryItemId}
+        />
+        <PickerSlot
+          label="Catalog link"
+          hint="Catalog links provide read-only intelligence."
+          onPick={() => onOpenPicker?.('catalog')}
+          onClear={form.productCatalogId ? clearCatalog : null}
+          selected={linkedCat
+            ? {
+                title: linkedCat.productName,
+                sub:   [linkedCat.category, linkedCat.brandOwner].filter(Boolean).join(' · '),
+                meta: [
+                  linkedCat.fracGroup && `FRAC ${linkedCat.fracGroup}`,
+                  linkedCat.hracGroup && `HRAC ${linkedCat.hracGroup}`,
+                  linkedCat.iracGroup && `IRAC ${linkedCat.iracGroup}`,
+                  linkedCat.pgrClass  && `PGR ${linkedCat.pgrClass}`,
+                ].filter(Boolean).join(' · '),
+              }
+            : null}
+          rawId={form.productCatalogId}
+        />
       </div>
       <div className={styles.formRow}>
         <label className={styles.formLabel}>
@@ -818,5 +979,40 @@ function ItemForm({ title, form, setForm, onSubmit, onCancel, submitting, submit
         </button>
       </div>
     </form>
+  )
+}
+
+// Phase 7F (3/?) — link-picker slot shared by the item form.
+function PickerSlot({ label, hint, onPick, onClear, selected, rawId }) {
+  return (
+    <div className={styles.pickerSlot}>
+      <div className={styles.pickerHeader}>
+        <span className={styles.pickerLabel}>{label}</span>
+        <div className={styles.pickerActions}>
+          <button type="button" className={styles.btnSecondary} onClick={onPick}>
+            {selected ? "Change" : "Select"}
+          </button>
+          {onClear && (
+            <button type="button" className={styles.btnGhost} onClick={onClear}>
+              Clear
+            </button>
+          )}
+        </div>
+      </div>
+      <p className={styles.pickerHint}>{hint}</p>
+      {selected ? (
+        <div className={styles.pickerCard}>
+          <div className={styles.pickerCardTitle}>{selected.title}</div>
+          {selected.sub && <div className={styles.pickerCardSub}>{selected.sub}</div>}
+          {selected.meta && <div className={styles.pickerCardMeta}>{selected.meta}</div>}
+        </div>
+      ) : rawId ? (
+        <div className={styles.pickerCardStale}>
+          <strong>Linked id:</strong> {rawId} <span>(not currently cached)</span>
+        </div>
+      ) : (
+        <div className={styles.pickerCardEmpty}>No link selected.</div>
+      )}
+    </div>
   )
 }

@@ -650,6 +650,248 @@ console.log('— SprayProgramPlanner.jsx usable UI (Phase 7F.2)')
     'CSS defines master/detail/itemCard classes')
 }
 
+// ── 10. Phase 7F (3/?) — picker UX + intelligence chips ──────────────────
+console.log('— resolveProgramItemIntel (pure helper)')
+{
+  const src = readFileSync('src/utils/sprayPrograms/resolveProgramItemIntel.js', 'utf8')
+
+  assert(/export\s+function\s+resolveProgramItemIntel\b/.test(src),
+    'exports resolveProgramItemIntel')
+
+  // Pure. Code-only scan so the architectural comments that name what
+  // we DO NOT import aren't false positives.
+  const codeOnly = src
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '')
+  assert(!/from\s+['"]react['"]/.test(codeOnly),
+    'helper does not import react')
+  assert(!/fetch\(/.test(codeOnly),
+    'helper does not call fetch()')
+  assert(!/from\s+['"][^'"]*Store(\.js)?['"]/.test(codeOnly),
+    'helper does not import any *Store module')
+  assert(!/method:\s*['"](POST|PATCH|DELETE)['"]/.test(codeOnly),
+    'helper does not issue mutations')
+
+  // Wraps the Phase 7C.1/6 resolver (no parallel intelligence logic).
+  assert(/from\s+['"][^'"]*resolveSprayProductIntel(\.js)?['"]/.test(codeOnly),
+    'helper imports resolveSprayProductIntel (catalog-first reuse)')
+
+  // Behavior: does not mutate inputs.
+  const mod = await import('../src/utils/sprayPrograms/resolveProgramItemIntel.js')
+  const inv = [
+    { id: 'inv-A', name: 'Heritage', kind: 'chemical', productCatalogId: 'pc-heritage' },
+  ]
+  const cat = [
+    { id: 'pc-heritage', productName: 'Heritage', category: 'fungicide', fracGroup: '11',
+      activeIngredients: [{ name: 'Azoxystrobin', percentage: 50 }] },
+    { id: 'pc-tenacity', productName: 'Tenacity', category: 'herbicide', hracGroup: '27' },
+  ]
+  const item = {
+    id: 'i1', productName: 'Heritage', inventoryItemId: 'inv-A',
+    productCatalogId: 'pc-heritage',
+  }
+  const before = JSON.stringify({ item, inv, cat })
+  const out = mod.resolveProgramItemIntel(item,
+    { inventoryProducts: inv, catalogProducts: cat, labelsByItemId: {} })
+  assert(JSON.stringify({ item, inv, cat }) === before,
+    'resolveProgramItemIntel does not mutate inputs')
+
+  // Catalog-first when both FKs aligned.
+  assert(out.source === 'catalog' && out.fracGroup === '11',
+    'planner FK + matching inventory FK → catalog intel resolved')
+
+  // Plan-only FK (no inventory match): synthesized shadow inventory.
+  const out2 = mod.resolveProgramItemIntel(
+    { id: 'i2', productName: 'Tenacity', productCatalogId: 'pc-tenacity' },
+    { inventoryProducts: [], catalogProducts: cat, labelsByItemId: {} })
+  assert(out2.source === 'catalog' && out2.hracGroup === '27',
+    "plan-only catalog FK still resolves via synthesized shadow row")
+
+  // Unknown name + no FK → none.
+  const out3 = mod.resolveProgramItemIntel(
+    { id: 'i3', productName: 'Unknown Brand' },
+    { inventoryProducts: [], catalogProducts: cat, labelsByItemId: {} })
+  assert(out3.source === 'none',
+    'unknown name + no FK → source none')
+
+  // null / empty item → none.
+  const empty = mod.resolveProgramItemIntel(null, {})
+  assert(empty && empty.source === 'none',
+    'null item → empty intel')
+}
+
+console.log('— InventoryPickerModal source')
+{
+  const src = readFileSync('src/pages/Spray/tabs/components/InventoryPickerModal.jsx', 'utf8')
+  const codeOnly = src
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '')
+
+  assert(/export\s+default\s+function\s+InventoryPickerModal\b/.test(src),
+    'default exports InventoryPickerModal')
+  assert(/useInventoryData/.test(src),
+    'reads from useInventoryData hook')
+  assert(/type=['"]search['"]/.test(src),
+    'renders a <input type="search">')
+  assert(/onSelect\s*\(\s*item\s*\)/.test(src),
+    'invokes onSelect(item) when a row is chosen')
+  // Boundary copy.
+  assert(/Inventory links are for planning only and do not deduct stock/.test(src),
+    'planning copy: "Inventory links are for planning only and do not deduct stock"')
+  // No mutation paths.
+  assert(!/method:\s*['"](POST|PATCH|DELETE)['"]/.test(codeOnly),
+    'picker does not POST/PATCH/DELETE')
+  assert(!/recordInventoryUsage|createSpray|productCatalogId\s*=/.test(codeOnly)
+        || !/recordInventoryUsage|createSpray/.test(codeOnly),
+    'picker does not call inventory-usage or spray-create')
+  // No catalog mutation.
+  assert(!/['"]\/api\/product-catalog['"][^\n]{0,160}(POST|PATCH|DELETE)/.test(codeOnly),
+    'picker never mutates /api/product-catalog')
+}
+
+console.log('— ProductCatalogPickerModal source')
+{
+  const src = readFileSync('src/pages/Spray/tabs/components/ProductCatalogPickerModal.jsx', 'utf8')
+  const codeOnly = src
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '')
+
+  assert(/export\s+default\s+function\s+ProductCatalogPickerModal\b/.test(src),
+    'default exports ProductCatalogPickerModal')
+  // Reuses productCatalogStore helpers (no parallel fetch).
+  for (const fn of [
+    'useProductCatalog',
+    'searchProductCatalog',
+    'listCatalogCategories',
+    'listCatalogFracGroups',
+    'listCatalogHracGroups',
+    'listCatalogIracGroups',
+    'listCatalogPgrClasses',
+  ]) {
+    assert(new RegExp(`\\b${fn}\\b`).test(src),
+      `catalog picker reuses ${fn}`)
+  }
+  assert(/onSelect\s*\(\s*p\s*\)/.test(src),
+    'invokes onSelect(p) when a catalog row is chosen')
+  // Boundary copy.
+  assert(/Catalog links provide read-only intelligence/.test(src),
+    'planning copy: "Catalog links provide read-only intelligence"')
+  // No mutation paths.
+  assert(!/method:\s*['"](POST|PATCH|DELETE)['"]/.test(codeOnly),
+    'catalog picker does not POST/PATCH/DELETE')
+  assert(!/['"]\/api\/product-catalog['"][^\n]{0,160}(POST|PATCH|DELETE)/.test(codeOnly),
+    'catalog picker never mutates /api/product-catalog')
+  // No Add-to-Inventory CTA.
+  assert(!/Add to Inventory/i.test(codeOnly),
+    'no "Add to Inventory" CTA in catalog picker')
+}
+
+console.log('— SprayProgramPlanner wires pickers + intel chips')
+{
+  const src = readFileSync('src/pages/Spray/tabs/SprayProgramPlanner.jsx', 'utf8')
+
+  // Picker modals mounted.
+  assert(/<InventoryPickerModal\b/.test(src),
+    'planner mounts <InventoryPickerModal>')
+  assert(/<ProductCatalogPickerModal\b/.test(src),
+    'planner mounts <ProductCatalogPickerModal>')
+
+  // Item-form opens pickers via onOpenPicker handler.
+  assert(/onOpenPicker\?\.\(['"]inventory['"]\)/.test(src),
+    'inventory PickerSlot opens via onOpenPicker("inventory")')
+  assert(/onOpenPicker\?\.\(['"]catalog['"]\)/.test(src),
+    'catalog PickerSlot opens via onOpenPicker("catalog")')
+
+  // Selecting populates the form WITHOUT calling create/update item.
+  assert(/setItemForm\(form\s*=>\s*\(\{\s*\.\.\.form,\s*inventoryItemId:\s*invItem\.id/.test(src),
+    'inventory pick populates form.inventoryItemId')
+  assert(/setItemForm\(form\s*=>\s*\(\{\s*\.\.\.form,\s*productCatalogId:\s*catalogProduct\.id/.test(src),
+    'catalog pick populates form.productCatalogId')
+
+  // Optional productName fill behavior.
+  assert(/productName:\s*form\.productName\?\.trim\(\)\s*\?\s*form\.productName\s*:\s*\(invItem\.name\s*\?\?\s*['"]['"]\)/.test(src),
+    'inventory pick optionally fills productName when empty')
+  assert(/productName:\s*form\.productName\?\.trim\(\)[\s\S]{0,200}catalogProduct\.productName/.test(src),
+    'catalog pick optionally fills productName when empty')
+
+  // Clear buttons (declared inside ItemForm).
+  assert(/function\s+clearInventory\b/.test(src),
+    'ItemForm declares clearInventory()')
+  assert(/function\s+clearCatalog\b/.test(src),
+    'ItemForm declares clearCatalog()')
+  assert(/clearInventory\(\)\s*{[\s\S]*?setForm\(\{\s*\.\.\.form,\s*inventoryItemId:\s*['"]['"]\s*\}\)/.test(src),
+    'clearInventory sets form.inventoryItemId to empty string')
+  assert(/clearCatalog\(\)\s*{[\s\S]*?setForm\(\{\s*\.\.\.form,\s*productCatalogId:\s*['"]['"]\s*\}\)/.test(src),
+    'clearCatalog sets form.productCatalogId to empty string')
+
+  // Raw <input> for inventoryItemId / productCatalogId is GONE.
+  // (We do still bind those fields in the form's state, but never via
+  // a free-text input anymore.)
+  assert(!/placeholder=['"]inv-\.\.\.['"]/.test(src),
+    'no free-text "inv-..." input remains')
+  assert(!/placeholder=['"]pc-\.\.\.['"]/.test(src),
+    'no free-text "pc-..." input remains')
+  // No <input> element bound to inventoryItemId / productCatalogId.
+  assert(!/<input\b[^>]*value=\{form\.inventoryItemId\}/.test(src),
+    'no <input> bound to form.inventoryItemId (replaced by picker)')
+  assert(!/<input\b[^>]*value=\{form\.productCatalogId\}/.test(src),
+    'no <input> bound to form.productCatalogId (replaced by picker)')
+
+  // Intel resolution + chips.
+  assert(/resolveProgramItemIntel\b/.test(src),
+    'planner imports resolveProgramItemIntel')
+  assert(/<ItemIntelChips\b/.test(src),
+    'planner renders <ItemIntelChips> on item cards')
+  assert(/function\s+ItemRow\b/.test(src),
+    'declares ItemRow row component')
+  assert(/function\s+ItemIntelChips\b/.test(src),
+    'declares ItemIntelChips component')
+
+  // Pickers boot the catalog + inventory stores via the existing hooks.
+  for (const fn of ['useInventoryData', 'useProductCatalog', 'useImportedLabels']) {
+    assert(new RegExp(`\\b${fn}\\b`).test(src), `planner subscribes to ${fn}`)
+  }
+
+  // No new D1 write paths added on the planner side. Code-only scan so
+  // the architectural prose ("no inventory deduction" etc.) is allowed.
+  const codeOnly = src
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '')
+  assert(!/createSpray\s*\(/.test(codeOnly),
+    'planner never calls createSpray(...)')
+  assert(!/recordInventoryUsage/.test(codeOnly),
+    'planner never calls recordInventoryUsage')
+  assert(!/linkedSprayRecordId/.test(codeOnly),
+    'planner never writes linkedSprayRecordId')
+  assert(!/['"]\/api\/product-catalog['"][^\n]{0,200}(POST|PATCH|DELETE)/.test(codeOnly),
+    'planner never POSTs/PATCHes/DELETEs /api/product-catalog')
+  assert(!/Add to Inventory/i.test(codeOnly),
+    'planner has no "Add to Inventory" CTA')
+  // Boundary copy preserved.
+  assert(/Inventory links are for planning only and do not deduct stock/.test(src),
+    'planner carries planning-only copy')
+  assert(/Catalog links provide read-only intelligence/.test(src),
+    'planner carries catalog-intel copy')
+}
+
+console.log('— planner CSS adds picker + intel chip classes')
+{
+  const css = readFileSync('src/pages/Spray/tabs/SprayProgramPlanner.module.css', 'utf8')
+  for (const cls of [
+    'linkPickers', 'pickerSlot', 'pickerHeader', 'pickerCard',
+    'pickerCardEmpty', 'pickerCardStale',
+    'intelChipRow', 'intelChip',
+    'intelChipFrac', 'intelChipHrac', 'intelChipIrac', 'intelChipPgr',
+    'intelChipRei', 'intelChipRup', 'intelChipSignal',
+    'intelChipLinked', 'intelEmpty',
+  ]) {
+    assert(new RegExp(`\\.${cls}\\b`).test(css), `CSS defines .${cls}`)
+  }
+  // Mobile-first guard preserved.
+  assert(/@media\s*\(min-width:\s*\d+px\)/.test(css),
+    'CSS keeps mobile-first @media (min-width: …) breakpoint')
+}
+
 // ── Result ─────────────────────────────────────────────────────────────────
 console.log(`\n${passed} passed, ${failed} failed`)
 process.exit(failed === 0 ? 0 : 1)

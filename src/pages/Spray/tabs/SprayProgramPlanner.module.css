@@ -418,3 +418,141 @@
   border-color: rgba(220, 60, 60, 0.3);
 }
 .btnDangerGhost:hover { background: rgba(220, 60, 60, 0.1); }
+
+/* ── Picker slots (Phase 7F.3) ─────────────────────────────────────── */
+
+.linkPickers {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+@media (min-width: 720px) {
+  .linkPickers { flex-direction: row; }
+  .pickerSlot  { flex: 1 1 0; }
+}
+
+.pickerSlot {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.pickerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pickerLabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.pickerActions {
+  display: flex;
+  gap: 6px;
+}
+
+.pickerHint {
+  margin: 0;
+  font-size: 11px;
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.55);
+  line-height: 1.45;
+}
+
+.pickerCard {
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(100, 150, 220, 0.08);
+  border: 1px solid rgba(100, 150, 220, 0.25);
+}
+.pickerCardTitle { font-size: 13px; font-weight: 600; color: rgba(255, 255, 255, 0.92); }
+.pickerCardSub   { font-size: 11px; color: rgba(255, 255, 255, 0.55); margin-top: 1px; }
+.pickerCardMeta  { font-size: 11px; color: rgba(255, 255, 255, 0.6);  margin-top: 4px; }
+
+.pickerCardEmpty {
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
+}
+
+.pickerCardStale {
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(220, 180, 60, 0.08);
+  border: 1px solid rgba(220, 180, 60, 0.3);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.75);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.pickerCardStale span { font-family: inherit; color: rgba(255, 255, 255, 0.5); margin-left: 4px; }
+
+/* ── Intel chips on item cards (Phase 7F.3) ────────────────────────── */
+
+.intelChipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.intelChip {
+  display: inline-flex;
+  align-items: baseline;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.intelChipLabel {
+  opacity: 0.65;
+  margin-right: 4px;
+  font-weight: 400;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.intelChipLinked {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  background: rgba(100, 150, 220, 0.15);
+  color: rgba(160, 200, 255, 0.95);
+  border: 1px solid rgba(100, 150, 220, 0.35);
+}
+
+.intelChipFrac { background: rgba(200,100,100,0.12); color: #f08c8c; border-color: rgba(200,100,100,0.35); }
+.intelChipHrac { background: rgba(100,180,100,0.12); color: #8cd48c; border-color: rgba(100,180,100,0.35); }
+.intelChipIrac { background: rgba(200,160,80,0.12);  color: #e0c070; border-color: rgba(200,160,80,0.35); }
+.intelChipPgr  { background: rgba(160,100,200,0.12); color: #c897e3; border-color: rgba(160,100,200,0.35); }
+.intelChipRei  { background: rgba(80,140,200,0.12);  color: #9ec5ec; border-color: rgba(80,140,200,0.35); }
+.intelChipRup  { background: rgba(220,60,60,0.18);   color: #ff8080; border-color: rgba(220,60,60,0.45); }
+.intelChipSignal { background: rgba(220,180,60,0.12); color: #e8c660; border-color: rgba(220,180,60,0.35); }
+
+.intelEmpty {
+  margin: 4px 0 0;
+  font-size: 11px;
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.45);
+}
