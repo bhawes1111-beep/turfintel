@@ -2,11 +2,144 @@
    Mobile-first card layout; desktop widens but stays card-based (no
    table assumption per spec). */
 
+/* Phase 7C.2 (3/?) — Progress + toolbar additions. */
+
+.progress {
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.progressHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.progressTitle {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 600;
+}
+
+.progressPct {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.progressBarWrap {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.progressBar {
+  height: 100%;
+  background: linear-gradient(90deg, rgba(78, 203, 78, 0.7), rgba(78, 203, 78, 0.9));
+  border-radius: 999px;
+  transition: width 200ms ease;
+}
+
+/* Toolbar */
+.toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 4px 0 12px;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: inherit;
+  font-size: 14px;
+}
+.searchInput:focus {
+  outline: none;
+  border-color: rgba(100, 150, 220, 0.5);
+}
+
+.filterRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.filterBtn {
+  padding: 4px 10px;
+  font-size: 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.75);
+  cursor: pointer;
+}
+.filterBtn:hover { background: rgba(255, 255, 255, 0.08); }
+
+.filterBtnActive {
+  background: rgba(100, 150, 220, 0.2);
+  border-color: rgba(100, 150, 220, 0.5);
+  color: #cfe2ff;
+}
+
+.sortRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sortLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sortSelect {
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 12px;
+}
+
+.toolbarCount {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.stewardNote {
+  margin: 4px 0 0;
+  font-size: 11px;
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.5;
+}
+
 .legend {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin-bottom: 14px;
+  margin-bottom: 0;
 }
 
 .legendStat {
@@ -23,6 +156,7 @@
 .legendStat_suggest  { border-left-color: rgba(100, 150, 220, 0.65); }
 .legendStat_warn     { border-left-color: rgba(220, 180, 60, 0.65); }
 .legendStat_ok       { border-left-color: rgba(78, 203, 78, 0.65); }
+.legendStat_total    { border-left-color: rgba(180, 180, 180, 0.65); }
 
 .legendValue {
   font-size: 20px;

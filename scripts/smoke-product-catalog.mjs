@@ -1512,11 +1512,22 @@ console.log('— InventoryLinkReview tab body (UI source contracts)')
     'copy: suggestions not applied until confirmed')
   assert(/exact[- ]name/i.test(src),
     'copy: explicit "exact name" framing')
-  assert(/does not change inventory stock/i.test(src),
+  // Copy phrasing was refined in Commit 7C.2/3 to "No inventory stock
+  // changes" in the subtitle + the same idea in the steward note. Accept
+  // either wording.
+  assert(/does not change inventory stock/i.test(src) || /no inventory stock changes/i.test(src),
     'copy: linking does not change inventory stock')
 
-  // Open suggestion seeds the picker rather than writing directly.
-  assert(/openPickerFor\(item,\s*buckets\.suggestionsByItemId\[item\.id\]\?\.id/.test(src),
+  // Open suggestion seeds the picker rather than writing directly. The
+  // refactor in Commit 7C.2/3 wraps the call inside an onLinkSuggestion
+  // callback on the ReviewCard, so accept either the original direct
+  // openPickerFor(item, suggestionId) signature or the new onLink(item,
+  // suggestion.id) form. The contract is unchanged: a non-null seed
+  // arrives at the picker without writing the FK first.
+  assert(
+    /openPickerFor\(\s*item\s*,\s*buckets\.suggestionsByItemId\[item\.id\]\?\.id/.test(src) ||
+    /onLink\(\s*item\s*,\s*buckets\.suggestionsByItemId\[item\.id\]\?\.id/.test(src) ||
+    /onLink\(\s*item\s*,\s*suggestion\.id\s*\)/.test(src),
     'clicking suggested match opens the picker seeded with that catalog id')
 
   // Unlink uses null FK.
@@ -1604,6 +1615,318 @@ console.log('— No new write routes / no MUTABLE_COLUMNS regression')
     assert(!/(UPDATE|INSERT|DELETE)\s+(inventory_items|product_catalog)\b/i.test(s),
       `${path.split('/').pop()}: no direct SQL against inventory_items / product_catalog`)
   }
+}
+
+// ── 14. Phase 7C.2 (3/?) — workflow polish (filter / sort / progress) ──────
+
+console.log('— linkReview.js exposes filter / sort / progress helpers + constants')
+{
+  const src = readFileSync('src/utils/productCatalog/linkReview.js', 'utf8')
+  for (const name of [
+    'filterLinkReviewItems',
+    'sortLinkReviewItems',
+    'calculateLinkReviewProgress',
+  ]) {
+    assert(new RegExp(`export\\s+function\\s+${name}\\b`).test(src),
+      `exports ${name}`)
+  }
+  for (const name of ['LINK_REVIEW_FILTERS', 'LINK_REVIEW_SORTS']) {
+    assert(new RegExp(`export\\s+const\\s+${name}\\b`).test(src),
+      `exports ${name} (frozen constants)`)
+  }
+  // Still purity-clean.
+  assert(!/from\s+['"]react['"]/.test(src),                'helpers do not import react')
+  assert(!/fetch\(/.test(src),                              'helpers do not fetch()')
+  assert(!/method:\s*['"](POST|PATCH|DELETE)['"]/.test(src),
+    'helpers do not issue mutations')
+  assert(!/from\s+['"][^'"]*productCatalogStore['"]/.test(src)
+      && !/from\s+['"][^'"]*inventoryStore['"]/.test(src),
+    'helpers do not import any store')
+}
+
+console.log('— filter / sort / progress behavior')
+{
+  const mod = await import('../src/utils/productCatalog/linkReview.js')
+  const F = mod.LINK_REVIEW_FILTERS
+  const S = mod.LINK_REVIEW_SORTS
+
+  // Frozen / stable enum values.
+  assert(Object.isFrozen(F), 'LINK_REVIEW_FILTERS is frozen')
+  assert(Object.isFrozen(S), 'LINK_REVIEW_SORTS is frozen')
+  assert(F.ALL === 'all' && F.UNLINKED === 'unlinked' && F.SUGGESTED === 'suggested'
+      && F.STALE === 'stale' && F.LINKED === 'linked',
+    'LINK_REVIEW_FILTERS values match the contract')
+  assert(S.NAME === 'name' && S.STATUS === 'status'
+      && S.SUGGESTED_FIRST === 'suggestedFirst' && S.STALE_FIRST === 'staleFirst',
+    'LINK_REVIEW_SORTS values match the contract')
+
+  // Fixture: same shape as the Commit 2 smoke, expanded to exercise sort.
+  const catalogProducts = [
+    { id: 'pc-tenacity-100-1267',     productName: 'Tenacity',      category: 'herbicide', hracGroup: '27' },
+    { id: 'pc-heritage-100-1093',     productName: 'Heritage',      category: 'fungicide', fracGroup: '11' },
+    { id: 'pc-barricade-4fl-100-1139',productName: 'Barricade 4FL', category: 'herbicide', hracGroup: '3' },
+  ]
+  const items = [
+    { id: 'a-stale',   name: 'Aplha Old',  kind: 'chemical',   productCatalogId: 'pc-deleted'             },
+    { id: 'b-linked',  name: 'Bravo',      kind: 'chemical',   productCatalogId: 'pc-tenacity-100-1267'   },
+    { id: 'c-suggest', name: 'Heritage',   kind: 'chemical'                                                },
+    { id: 'd-suggest', name: 'Barricade 4FL', kind: 'product'                                              },
+    { id: 'e-unlink',  name: 'Echo Generic', kind: 'fertilizer'                                            },
+    { id: 'f-parts',   name: 'Mower Belt',   kind: 'parts'                                                 },
+    { id: 'g-empty',   name: '',            kind: 'product'                                                },
+  ]
+
+  const buckets = mod.buildLinkReviewBuckets(items, catalogProducts)
+
+  // ── filterLinkReviewItems ─────────────────────────────────────────────
+  const all = mod.filterLinkReviewItems(items, buckets, { filter: F.ALL })
+  assert(all.length === 6, // excludes parts only; empty-name is still reviewable
+    'filter=all → all 6 reviewable items (parts dropped)', all.map(i=>i.id))
+
+  const unlinked = mod.filterLinkReviewItems(items, buckets, { filter: F.UNLINKED })
+  assert(unlinked.every(i => !i.productCatalogId),
+    'filter=unlinked → no items with FK')
+  assert(unlinked.length === 4,
+    'filter=unlinked → 4 items (c, d, e, g)', unlinked.map(i=>i.id))
+
+  const suggested = mod.filterLinkReviewItems(items, buckets, { filter: F.SUGGESTED })
+  assert(suggested.length === 2,
+    'filter=suggested → 2 items (only those with exact-name match)', suggested.map(i=>i.id))
+  assert(suggested.every(i => !i.productCatalogId),
+    'filter=suggested items are all unlinked')
+
+  const linked = mod.filterLinkReviewItems(items, buckets, { filter: F.LINKED })
+  assert(linked.length === 1 && linked[0].id === 'b-linked',
+    'filter=linked → only b-linked')
+
+  const stale = mod.filterLinkReviewItems(items, buckets, { filter: F.STALE })
+  assert(stale.length === 1 && stale[0].id === 'a-stale',
+    'filter=stale → only a-stale')
+
+  // ── search ────────────────────────────────────────────────────────────
+  const search1 = mod.filterLinkReviewItems(items, buckets, { filter: F.ALL, search: 'her' })
+  assert(search1.length === 1 && search1[0].id === 'c-suggest',
+    'search "her" → Heritage row only')
+  const search2 = mod.filterLinkReviewItems(items, buckets, { filter: F.ALL, search: '  BARRI ' })
+  assert(search2.length === 1 && search2[0].id === 'd-suggest',
+    'search is trimmed + case-insensitive')
+  const searchMiss = mod.filterLinkReviewItems(items, buckets, { filter: F.ALL, search: 'zzz' })
+  assert(searchMiss.length === 0,
+    'search miss → empty array')
+  // Search combines with filter.
+  const combined = mod.filterLinkReviewItems(items, buckets, { filter: F.SUGGESTED, search: 'her' })
+  assert(combined.length === 1 && combined[0].id === 'c-suggest',
+    'filter=suggested + search=her → 1 result')
+
+  // Invalid filter value → falls back to ALL.
+  const fallback = mod.filterLinkReviewItems(items, buckets, { filter: 'banjo' })
+  assert(fallback.length === 6, 'unknown filter falls back to ALL', fallback.length)
+
+  // ── sortLinkReviewItems ───────────────────────────────────────────────
+  const byName = mod.sortLinkReviewItems(all, buckets, S.NAME).map(i => i.id)
+  // names sort: '' < 'Aplha Old' < 'Barricade 4FL' < 'Bravo' < 'Echo Generic' < 'Heritage'
+  assert(JSON.stringify(byName) === JSON.stringify(['g-empty','a-stale','d-suggest','b-linked','e-unlink','c-suggest']),
+    'sort=name → alphabetical A→Z (empty name first)', byName)
+
+  const byStatus = mod.sortLinkReviewItems(all, buckets, S.STATUS).map(i => i.id)
+  // Expect: with-suggestion (c-suggest, d-suggest sorted by name) → plain unlinked (e-unlink, g-empty) → stale (a-stale) → linked (b-linked)
+  assert(byStatus[0] === 'd-suggest' || byStatus[0] === 'c-suggest',
+    'sort=status: with-suggestion items first',  byStatus)
+  assert(byStatus[byStatus.length - 1] === 'b-linked',
+    'sort=status: linked items last')
+  const staleIdx  = byStatus.indexOf('a-stale')
+  const linkedIdx = byStatus.indexOf('b-linked')
+  assert(staleIdx > -1 && linkedIdx > -1 && staleIdx < linkedIdx,
+    'sort=status: stale appears before linked')
+
+  const suggestedFirst = mod.sortLinkReviewItems(all, buckets, S.SUGGESTED_FIRST).map(i => i.id)
+  assert(['c-suggest','d-suggest'].includes(suggestedFirst[0])
+      && ['c-suggest','d-suggest'].includes(suggestedFirst[1]),
+    'sort=suggestedFirst: suggestion-bearing items are the first two', suggestedFirst)
+  // Within suggested group: name asc → Barricade 4FL ('d-suggest') before Heritage ('c-suggest')
+  assert(suggestedFirst[0] === 'd-suggest' && suggestedFirst[1] === 'c-suggest',
+    'sort=suggestedFirst: name-asc tiebreaker within the suggestion group')
+
+  const staleFirst = mod.sortLinkReviewItems(all, buckets, S.STALE_FIRST).map(i => i.id)
+  assert(staleFirst[0] === 'a-stale',
+    'sort=staleFirst: stale row is first')
+  // After the stale row, remaining items are name-asc.
+  assert(JSON.stringify(staleFirst.slice(1)) ===
+         JSON.stringify(['g-empty','d-suggest','b-linked','e-unlink','c-suggest']),
+    'sort=staleFirst: name-asc tiebreaker for the rest', staleFirst.slice(1))
+
+  // Unknown sort mode falls back to NAME.
+  const sortFallback = mod.sortLinkReviewItems(all, buckets, 'banjo').map(i => i.id)
+  assert(JSON.stringify(sortFallback) === JSON.stringify(byName),
+    'unknown sort mode falls back to NAME')
+
+  // ── Purity: neither filter nor sort mutates inputs ─────────────────────
+  const itemsClone   = JSON.parse(JSON.stringify(items))
+  const bucketsClone = JSON.parse(JSON.stringify(buckets))
+  const itemsBefore  = JSON.stringify(itemsClone)
+  const bucketsBefore = JSON.stringify(bucketsClone)
+  mod.filterLinkReviewItems(itemsClone, bucketsClone, { filter: F.SUGGESTED, search: 'her' })
+  mod.sortLinkReviewItems(itemsClone, bucketsClone, S.STATUS)
+  assert(JSON.stringify(itemsClone)   === itemsBefore,   'filter+sort do not mutate items')
+  assert(JSON.stringify(bucketsClone) === bucketsBefore, 'filter+sort do not mutate buckets')
+
+  // Sort returns a NEW array (not the original reference) even when no
+  // re-ordering occurs.
+  const sortedRef = mod.sortLinkReviewItems(all, buckets, S.NAME)
+  assert(sortedRef !== all, 'sort returns a fresh array reference')
+
+  // ── calculateLinkReviewProgress ───────────────────────────────────────
+  const progress = mod.calculateLinkReviewProgress(buckets)
+  assert(progress.total === 6,
+    'progress.total = linked+unlinked+stale = 1+4+1 = 6', progress)
+  assert(progress.linked === 1,                                'progress.linked = 1')
+  assert(progress.unlinked === 4,                              'progress.unlinked = 4')
+  assert(progress.stale === 1,                                 'progress.stale = 1')
+  assert(progress.unlinkedWithSuggestion === 2,                'progress.unlinkedWithSuggestion = 2')
+  assert(progress.percentLinked === 17,                        'progress.percentLinked = round(1/6 * 100) = 17')
+
+  // Edge: empty buckets → zero progress, 0% (no div-by-zero).
+  const empty = mod.buildLinkReviewBuckets([], [])
+  const emptyP = mod.calculateLinkReviewProgress(empty)
+  assert(emptyP.total === 0 && emptyP.percentLinked === 0,
+    'empty buckets → total 0 + percentLinked 0 (no div-by-zero)')
+
+  // Edge: null buckets → all-zero progress.
+  const nullP = mod.calculateLinkReviewProgress(null)
+  assert(nullP.total === 0 && nullP.linked === 0 && nullP.percentLinked === 0,
+    'null buckets → all-zero progress (safe default)')
+
+  // 100% case.
+  const allLinked = mod.buildLinkReviewBuckets(
+    [{ id: 'i-1', name: 'Tenacity', kind: 'chemical', productCatalogId: 'pc-tenacity-100-1267' }],
+    catalogProducts)
+  const fullP = mod.calculateLinkReviewProgress(allLinked)
+  assert(fullP.percentLinked === 100, '100% linked → percentLinked = 100')
+}
+
+console.log('— InventoryLinkReview tab body wires the new workflow surface')
+{
+  const src = readFileSync('src/pages/Inventory/tabs/InventoryLinkReview.jsx', 'utf8')
+
+  // Imports include the new helpers.
+  for (const name of [
+    'filterLinkReviewItems', 'sortLinkReviewItems', 'calculateLinkReviewProgress',
+    'LINK_REVIEW_FILTERS', 'LINK_REVIEW_SORTS',
+  ]) {
+    assert(new RegExp(`\\b${name}\\b`).test(src),
+      `tab imports/uses ${name}`)
+  }
+
+  // Toolbar (filter pills + sort select + search).
+  assert(/type=['"]search['"]/.test(src),                       'renders a <input type="search">')
+  assert(/<select\b[^>]*onChange/.test(src),                    'renders a <select> for sort')
+  // The Toolbar child receives onSearchChange={setSearch} from the parent
+  // and applies it onChange. Either binding-style is acceptable.
+  assert(/onSearchChange=\{setSearch\}/.test(src)
+      || /onChange=\{e\s*=>\s*onSearchChange\(e\.target\.value\)\s*\}/.test(src),
+    'search input wired through onSearchChange → setSearch (Toolbar child)')
+
+  // Five filter pills (label literals).
+  for (const label of ['All reviewable', 'Unlinked', 'With exact-name suggestion', 'Stale linked', 'Linked']) {
+    assert(new RegExp(`label:\\s*['"]${label.replace(/[-[\]/{}()*+?.\\^$|]/g, '\\$&')}['"]`).test(src),
+      `filter option present: '${label}'`)
+  }
+
+  // Four sort options.
+  for (const label of ['Name A–Z', 'Status', 'Suggested first', 'Stale first']) {
+    assert(new RegExp(`label:\\s*['"]${label}['"]`).test(src),
+      `sort option present: '${label}'`)
+  }
+
+  // Progress summary rendered.
+  assert(/Review progress/.test(src),                           'renders "Review progress" heading')
+  assert(/percentLinked/.test(src),                             'renders percent linked')
+
+  // Stewardship copy.
+  for (const phrase of [
+    'No inventory stock changes',
+    'No automatic catalog links are applied',
+    'Exact-name suggestions only',
+    'Suggestions require confirmation',
+  ]) {
+    assert(new RegExp(phrase.replace(/[-[\]/{}()*+?.\\^$|]/g, '\\$&'), 'i').test(src),
+      `copy includes: "${phrase}"`)
+  }
+
+  // Sectioned view triggers only when filter=all AND search empty.
+  assert(/showSections\s*=\s*filter\s*===\s*LINK_REVIEW_FILTERS\.ALL\s*&&\s*search\s*===\s*['"]['"]/.test(src),
+    'sectioned view conditional includes both filter==all AND empty search')
+
+  // No bulk apply UI / no accept-all. Strip JS line/block comments
+  // first so the file's own architectural discussion of "no bulk
+  // apply, no 'accept all suggestions'" doesn't trip the CTA detector.
+  const codeOnly = src
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '')
+  assert(!/(Apply|Accept|Link)\s+all\s+(suggestion|match|item|catalog)/i.test(codeOnly)
+      && !/Auto[- ]link/i.test(codeOnly)
+      && !/>\s*Apply all\s*</.test(codeOnly)
+      && !/>\s*Accept all\s*</.test(codeOnly),
+    'no bulk-apply / accept-all CTA in the tab body (code-only scan)')
+  // No Add-to-Inventory regression.
+  assert(!/Add to Inventory/i.test(src),
+    'no "Add to Inventory" CTA')
+  // Still card-based (no <table>).
+  assert(!/<table\b/.test(src),
+    'no <table> layout in Link Review tab')
+  // Picker still the only write surface — no direct PATCH from this file.
+  assert(!/method:\s*['"](POST|PATCH|DELETE)['"]/.test(src),
+    'tab issues no direct POST/PATCH/DELETE')
+  // No /api/product-catalog mutation anywhere.
+  assert(!/['"]\/api\/product-catalog['"][^\n]{0,160}method:\s*['"](POST|PATCH|DELETE)/.test(src),
+    'no /api/product-catalog mutation request')
+
+  // Single-list view still requires picker confirmation. The contract:
+  // every non-null setInventoryCatalogLink invocation must live inside
+  // commitLink — the function the CatalogLinkPicker calls via onConfirm.
+  // Unlink (second-arg null) is allowed anywhere because it's a one-tap
+  // stewardship action with no picker round-trip.
+  const commitLinkBlock = src.match(
+    /async\s+function\s+commitLink[\s\S]*?\n\s{0,4}\}/,
+  )?.[0] ?? ''
+  assert(/setInventoryCatalogLink\(pickerItem\.id,\s*productCatalogId\)/.test(commitLinkBlock),
+    'commitLink invokes setInventoryCatalogLink(pickerItem.id, productCatalogId)')
+  // Outside commitLink: every setInventoryCatalogLink call MUST pass
+  // `null` as the second arg (unlink only).
+  const outside = src.replace(commitLinkBlock, '')
+  const outsideCalls = outside.match(/setInventoryCatalogLink\([^)]*\)/g) ?? []
+  for (const call of outsideCalls) {
+    assert(/,\s*null\s*\)/.test(call),
+      `setInventoryCatalogLink call outside commitLink is unlink-only: ${call}`)
+  }
+}
+
+console.log('— CSS adds toolbar / progress / totalTone classes')
+{
+  const css = readFileSync('src/pages/Inventory/tabs/InventoryLinkReview.module.css', 'utf8')
+  for (const cls of [
+    'progress', 'progressBar', 'progressPct',
+    'toolbar', 'filterBtn', 'filterBtnActive', 'sortSelect',
+    'stewardNote', 'legendStat_total',
+  ]) {
+    assert(new RegExp(`\\.${cls}\\b`).test(css), `CSS defines .${cls}`)
+  }
+  // Mobile-first guard preserved.
+  assert(/@media\s*\(min-width:\s*\d+px\)/.test(css),
+    'mobile-first @media (min-width: …) preserved')
+}
+
+console.log('— Forbidden-write invariants still hold')
+{
+  const idx = readFileSync('worker/index.js', 'utf8')
+  assert(!/['"]\/api\/product-catalog['"][^\n]{0,200}(POST|PATCH|DELETE)/.test(idx)
+      && !/(POST|PATCH|DELETE)[^\n]{0,80}['"]\/api\/product-catalog['"]/.test(idx),
+    'still no POST/PATCH/DELETE on /api/product-catalog')
+
+  const invSrc = readFileSync('worker/api/inventory.js', 'utf8')
+  const mut = invSrc.match(/MUTABLE_COLUMNS\s*=\s*\{[\s\S]*?\}/)?.[0] ?? ''
+  assert(!/productCatalogId/.test(mut),
+    'MUTABLE_COLUMNS still excludes productCatalogId')
 }
 
 // ── Result ──────────────────────────────────────────────────────────────────
