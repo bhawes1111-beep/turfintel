@@ -1,0 +1,224 @@
+/* Phase 7C.1 (4/6) — Inventory Catalog tab.
+   Scoped to this tab only; nothing here leaks into the other Inventory
+   tabs' stock-status visual language. Uses the existing toolbar / search /
+   filter patterns from Inventory.module.css for visual consistency. */
+
+.summaryRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 8px 0 4px;
+}
+
+.summaryCount {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.summaryHint {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  text-align: left;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  color: inherit;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.card:hover,
+.card:focus-visible {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.16);
+  outline: none;
+}
+
+.cardMain    { flex: 1; min-width: 0; }
+.cardRight   { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+
+.cardTitle {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.cardName {
+  font-size: 15px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.cardSub {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.55);
+  margin-bottom: 6px;
+}
+
+.cardIngredients {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  margin-top: 6px;
+}
+
+.cardTargets {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 4px;
+  font-style: italic;
+}
+
+/* ── Pills / chips ─────────────────────────────────────────────────────── */
+
+.categoryPill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: rgba(100, 150, 220, 0.15);
+  color: rgba(160, 200, 255, 0.95);
+  border: 1px solid rgba(100, 150, 220, 0.3);
+}
+
+.epaChip {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.05);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.chipFrac { background: rgba(200, 100, 100, 0.12); color: #f08c8c; border-color: rgba(200, 100, 100, 0.35); }
+.chipHrac { background: rgba(100, 180, 100, 0.12); color: #8cd48c; border-color: rgba(100, 180, 100, 0.35); }
+.chipIrac { background: rgba(200, 160, 80, 0.12);  color: #e0c070; border-color: rgba(200, 160, 80, 0.35); }
+.chipPgr  { background: rgba(160, 100, 200, 0.12); color: #c897e3; border-color: rgba(160, 100, 200, 0.35); }
+.chipRup  { background: rgba(220, 60, 60, 0.18);   color: #ff8080; border-color: rgba(220, 60, 60, 0.45); }
+
+.chipLabel {
+  opacity: 0.6;
+  margin-right: 2px;
+  font-weight: 400;
+}
+
+/* ── Detail drawer ─────────────────────────────────────────────────────── */
+
+.detailSection {
+  margin-bottom: 18px;
+}
+
+.detailSectionTitle {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.55);
+  margin: 0 0 8px;
+  font-weight: 600;
+}
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 12px;
+  font-size: 13px;
+}
+
+.detailLabel { color: rgba(255, 255, 255, 0.55); }
+.detailValue { color: rgba(255, 255, 255, 0.9); }
+
+.detailList {
+  margin: 0;
+  padding-left: 18px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.labelLink {
+  color: #80c0ff;
+  text-decoration: underline;
+  word-break: break-all;
+}
+.labelLink:hover { color: #a5d3ff; }
+
+.notesBlock {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.78);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.provenance {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.rateRow {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.85);
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.rateRow:last-child { border-bottom: 0; }
+.rateInterval { color: rgba(255, 255, 255, 0.5); font-size: 12px; margin-left: 6px; }
+
+.toolbarStack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+.filterGroup {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.filterGroupLabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.45);
+  margin-right: 4px;
+}

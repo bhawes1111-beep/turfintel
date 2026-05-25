@@ -11,9 +11,13 @@ import InventoryParts           from './tabs/InventoryParts'
 import InventoryFuel            from './tabs/InventoryFuel'
 import InventoryLowStock        from './tabs/InventoryLowStock'
 import InventoryPurchaseHistory from './tabs/InventoryPurchaseHistory'
+import InventoryCatalog         from './tabs/InventoryCatalog'
 import workspace from '../../styles/workspace.module.css'
 
-const TABS = ['Overview', 'Products', 'Chemicals', 'Fertilizer', 'Parts', 'Fuel', 'Low Stock', 'Purchase History']
+// Phase 7C.1 (4/6) — 'Catalog' is the new globally-scoped product-intelligence
+// tab. Read-only; the course-owned stock tabs (Products / Chemicals / etc.)
+// remain unchanged.
+const TABS = ['Overview', 'Products', 'Chemicals', 'Fertilizer', 'Parts', 'Fuel', 'Low Stock', 'Purchase History', 'Catalog']
 
 /**
  * Inventory workspace — follows the canonical workspace pattern established
@@ -77,6 +81,7 @@ export default function Inventory() {
       {activeTab === 'Fuel'             && <InventoryFuel />}
       {activeTab === 'Low Stock'        && <InventoryLowStock />}
       {activeTab === 'Purchase History' && <InventoryPurchaseHistory />}
+      {activeTab === 'Catalog'          && <InventoryCatalog />}
     </PageShell>
   )
 }

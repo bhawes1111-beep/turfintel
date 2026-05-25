@@ -494,6 +494,91 @@ console.log('— productCatalogStore behavior (cache + filters)')
   mod.__TEST.reset()
 }
 
+// ── 9. Inventory Catalog tab (UI source contracts) ─────────────────────────
+console.log('— src/pages/Inventory/Inventory.jsx (Catalog tab registered)')
+{
+  const shell = readFileSync('src/pages/Inventory/Inventory.jsx', 'utf8')
+  assert(/from\s+['"]\.\/tabs\/InventoryCatalog['"]/.test(shell),
+    'imports InventoryCatalog tab body')
+  assert(/'Catalog'/.test(shell),
+    "'Catalog' literal appears in Inventory shell")
+  // Confirm 'Catalog' is in the TABS array (registered, not just imported).
+  const tabsMatch = shell.match(/const\s+TABS\s*=\s*\[([^\]]+)\]/)
+  assert(tabsMatch && /'Catalog'/.test(tabsMatch[1]),
+    "'Catalog' present in TABS array")
+  assert(/activeTab\s*===\s*'Catalog'\s*&&\s*<InventoryCatalog/.test(shell),
+    'Catalog tab body wired to activeTab === Catalog')
+
+  // Pre-existing tabs must remain unchanged in this commit.
+  for (const t of ['Overview', 'Products', 'Chemicals', 'Fertilizer', 'Parts', 'Fuel', 'Low Stock', 'Purchase History']) {
+    assert(tabsMatch && new RegExp(`'${t}'`).test(tabsMatch[1]),
+      `pre-existing tab '${t}' still in TABS`)
+  }
+}
+
+console.log('— src/pages/Inventory/tabs/InventoryCatalog.jsx (tab body)')
+{
+  const src = readFileSync('src/pages/Inventory/tabs/InventoryCatalog.jsx', 'utf8')
+
+  // Hook + helpers wired from the store.
+  assert(/useProductCatalog\b/.test(src),                  'uses useProductCatalog()')
+  assert(/searchProductCatalog\b/.test(src),               'uses searchProductCatalog()')
+  assert(/listCatalogCategories\b/.test(src),              'uses listCatalogCategories()')
+  assert(/listCatalogFracGroups\b/.test(src),              'uses listCatalogFracGroups()')
+  assert(/listCatalogHracGroups\b/.test(src),              'uses listCatalogHracGroups()')
+  assert(/listCatalogIracGroups\b/.test(src),              'uses listCatalogIracGroups()')
+  assert(/listCatalogPgrClasses\b/.test(src),              'uses listCatalogPgrClasses()')
+
+  // Search input present.
+  assert(/type=['"]search['"]/.test(src),                  'renders a <input type="search">')
+
+  // Card surface shows the required identity fields.
+  assert(/productName/.test(src),                          'card surfaces productName')
+  assert(/brandOwner/.test(src) && /manufacturer/.test(src), 'card surfaces brandOwner + manufacturer')
+  assert(/category/.test(src),                             'card surfaces category')
+  assert(/epaNumber/.test(src),                            'card surfaces epaNumber when present')
+  assert(/activeIngredients/.test(src),                    'card surfaces activeIngredients')
+  assert(/targets/.test(src),                              'card surfaces primary targets')
+
+  // Chips for chemistry vocabularies (FRAC/HRAC/IRAC/PGR).
+  assert(/fracGroup/.test(src) && /chipFrac/.test(src),    'FRAC chip rendered')
+  assert(/hracGroup/.test(src) && /chipHrac/.test(src),    'HRAC chip rendered')
+  assert(/iracGroup/.test(src) && /chipIrac/.test(src),    'IRAC chip rendered')
+  assert(/pgrClass/.test(src)  && /chipPgr/.test(src),     'PGR chip rendered')
+
+  // Detail drawer.
+  assert(/SideDrawer/.test(src),                           'uses SideDrawer for detail panel')
+  assert(/labelUrl/.test(src),                             'detail surfaces labelUrl')
+  assert(/<a\s+href={product\.labelUrl}/.test(src) || /href={product\.labelUrl}/.test(src),
+    'detail renders labelUrl as an anchor (clickable label link)')
+  assert(/rates/.test(src) && /Label rates/.test(src),     'detail surfaces rates section')
+  assert(/notes/.test(src),                                'detail surfaces notes')
+  assert(/product\.source/.test(src) && /product\.sourceVersion/.test(src),
+    'detail surfaces source + sourceVersion (provenance)')
+  assert(/reiHours/.test(src),                             'detail surfaces REI')
+
+  // ── Forbidden surfaces (Commit 4 scope) ──────────────────────────────────
+  // No "Add to Inventory" CTA in any form.
+  assert(!/Add to Inventory/i.test(src),                   'no "Add to Inventory" CTA in this commit')
+  // No mutation calls / no inventory writes / no Spray Builder coupling.
+  assert(!/method:\s*['"](POST|PATCH|DELETE)['"]/.test(src),
+    'tab body issues no POST/PATCH/DELETE')
+  assert(!/inventoryStore|createInventory|updateInventory|deleteInventory|spraysStore|SprayBuilder|BuildSpraySheet/.test(src),
+    'tab body does not import inventory or spray-builder modules')
+  assert(!/product_catalog_id/.test(src),
+    'tab body does not write product_catalog_id linkage (deferred to Commit 5)')
+}
+
+console.log('— InventoryCatalog css scope')
+{
+  const css = readFileSync('src/pages/Inventory/tabs/InventoryCatalog.module.css', 'utf8')
+  // Scoped chip class names so they don't collide with the existing
+  // inventory stock badges.
+  for (const cls of ['chipFrac', 'chipHrac', 'chipIrac', 'chipPgr']) {
+    assert(new RegExp(`\\.${cls}\\b`).test(css), `CSS defines .${cls}`)
+  }
+}
+
 // ── Result ──────────────────────────────────────────────────────────────────
 console.log(`\n${passed} passed, ${failed} failed`)
 process.exit(failed === 0 ? 0 : 1)
