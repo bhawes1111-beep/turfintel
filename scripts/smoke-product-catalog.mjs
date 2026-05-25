@@ -1333,6 +1333,279 @@ console.log('— Resolver fallthrough on unlink')
     'unlinked + catalog empty + no label → legacy (no fake intelligence)')
 }
 
+// ── 13. Phase 7C.2 (2/?) — Catalog Link Review ─────────────────────────────
+
+console.log('— src/utils/productCatalog/linkReview.js (helpers source)')
+{
+  const src = readFileSync('src/utils/productCatalog/linkReview.js', 'utf8')
+
+  for (const name of [
+    'resolveInventoryCatalogLinkStatus',
+    'findExactCatalogNameMatch',
+    'buildLinkReviewBuckets',
+    'normalizeProductName',
+    'REVIEWABLE_KINDS',
+  ]) {
+    assert(new RegExp(`export\\s+(?:const\\s+|function\\s+)${name}\\b`).test(src),
+      `exports ${name}`)
+  }
+
+  // Pure-compute: no React, no fetch, no store imports.
+  assert(!/from\s+['"]react['"]/.test(src),                'helpers do not import react')
+  assert(!/fetch\(/.test(src),                              'helpers do not fetch()')
+  assert(!/from\s+['"][^'"]*productCatalogStore['"]/.test(src),
+    'helpers do not import productCatalogStore (pure module)')
+  assert(!/from\s+['"][^'"]*inventoryStore['"]/.test(src),
+    'helpers do not import inventoryStore (pure module)')
+  assert(!/method:\s*['"](POST|PATCH|DELETE)['"]/.test(src),
+    'helpers issue no POST/PATCH/DELETE')
+}
+
+console.log('— linkReview behavior (status + suggestion + bucketing)')
+{
+  const mod = await import('../src/utils/productCatalog/linkReview.js')
+
+  const catalogProducts = [
+    { id: 'pc-tenacity-100-1267',  productName: 'Tenacity',         category: 'herbicide', hracGroup: '27' },
+    { id: 'pc-heritage-100-1093',  productName: 'Heritage',         category: 'fungicide', fracGroup: '11' },
+    { id: 'pc-barricade-4fl-100-1139', productName: 'Barricade 4FL', category: 'herbicide', hracGroup: '3' },
+    // Ambiguous duplicate — two rows with the same normalized name.
+    { id: 'pc-dup-1', productName: 'Generic Foo',  category: 'fungicide' },
+    { id: 'pc-dup-2', productName: 'generic-foo',  category: 'fungicide' },
+  ]
+
+  const items = [
+    // Linked + cached.
+    { id: 'inv-1', name: 'Tenacity', kind: 'chemical', productCatalogId: 'pc-tenacity-100-1267' },
+    // Unlinked, exact-name match exists.
+    { id: 'inv-2', name: 'Heritage', kind: 'chemical' },
+    // Unlinked, no match in catalog.
+    { id: 'inv-3', name: 'Some Private Label', kind: 'chemical' },
+    // Stale link — FK set but not in cache.
+    { id: 'inv-4', name: 'Old Stuff', kind: 'fertilizer', productCatalogId: 'pc-deleted' },
+    // Unlinked + ambiguous duplicate in catalog → must NOT suggest.
+    { id: 'inv-5', name: 'Generic Foo', kind: 'fungicide' /* deliberately unusual kind */ },
+    // Non-reviewable kind (parts) — must be dropped from all buckets.
+    { id: 'inv-6', name: 'Mower Belt', kind: 'parts' },
+    // Reviewable kind + null name → in unlinked bucket but no suggestion.
+    { id: 'inv-7', name: '', kind: 'product' },
+    // Reviewable kind 'product' that does match.
+    { id: 'inv-8', name: 'Barricade 4FL', kind: 'product' },
+  ]
+
+  // ── resolveInventoryCatalogLinkStatus ─────────────────────────────────
+  assert(mod.resolveInventoryCatalogLinkStatus(items[0], catalogProducts) === 'linked',
+    'linked when FK resolves in catalog')
+  assert(mod.resolveInventoryCatalogLinkStatus(items[1], catalogProducts) === 'unlinked',
+    'unlinked when no FK')
+  assert(mod.resolveInventoryCatalogLinkStatus(items[3], catalogProducts) === 'stale',
+    "stale when FK doesn't resolve")
+  assert(mod.resolveInventoryCatalogLinkStatus(null, catalogProducts) === 'unlinked',
+    'null item → unlinked (safe default)')
+  assert(mod.resolveInventoryCatalogLinkStatus(items[1], []) === 'unlinked',
+    'empty catalog cache + no FK → unlinked')
+  // Edge: linked-by-FK row evaluated against empty cache becomes 'stale'.
+  assert(mod.resolveInventoryCatalogLinkStatus(items[0], []) === 'stale',
+    'empty catalog cache + FK set → stale (cache miss)')
+
+  // ── findExactCatalogNameMatch ─────────────────────────────────────────
+  assert(mod.findExactCatalogNameMatch(items[1], catalogProducts)?.id === 'pc-heritage-100-1093',
+    'Heritage → exact match on heritage catalog row')
+  assert(mod.findExactCatalogNameMatch(items[7], catalogProducts)?.id === 'pc-barricade-4fl-100-1139',
+    'Barricade 4FL → exact match (normalized: barricade-4fl)')
+  assert(mod.findExactCatalogNameMatch(items[2], catalogProducts) === null,
+    'No catalog match → null (no fuzzy guess)')
+  assert(mod.findExactCatalogNameMatch(items[4], catalogProducts) === null,
+    'Ambiguous duplicates → no suggestion (silent ambiguity beats wrong guess)')
+  assert(mod.findExactCatalogNameMatch(items[6], catalogProducts) === null,
+    'Empty name → null')
+  assert(mod.findExactCatalogNameMatch(null, catalogProducts) === null,
+    'null item → null')
+
+  // Normalize helper edge cases.
+  assert(mod.normalizeProductName('Barricade 4FL') === 'barricade-4fl', 'normalize spaces')
+  assert(mod.normalizeProductName('PGF Complete 16-4-8') === 'pgf-complete-16-4-8',
+    'normalize collapses punctuation')
+  assert(mod.normalizeProductName('  Tenacity  ') === 'tenacity', 'normalize trims')
+  assert(mod.normalizeProductName(null) === '', 'normalize null → empty')
+
+  // ── buildLinkReviewBuckets ────────────────────────────────────────────
+  const buckets = mod.buildLinkReviewBuckets(items, catalogProducts)
+  assert(buckets.linked.length === 1 && buckets.linked[0].id === 'inv-1',
+    'bucket: linked has inv-1 (Tenacity FK resolved)')
+  assert(buckets.stale.length === 1 && buckets.stale[0].id === 'inv-4',
+    'bucket: stale has inv-4 (FK pc-deleted)')
+
+  const unlinkedIds = buckets.unlinked.map(i => i.id).sort()
+  // inv-2 (Heritage), inv-3 (Some Private Label), inv-7 (empty name), inv-8 (Barricade 4FL)
+  // inv-5 has kind 'fungicide' which is NOT in REVIEWABLE_KINDS → must be dropped.
+  // inv-6 has kind 'parts' → dropped.
+  assert(JSON.stringify(unlinkedIds) === JSON.stringify(['inv-2','inv-3','inv-7','inv-8']),
+    'bucket: unlinked has reviewable kinds only (excludes parts + non-reviewable kinds)',
+    unlinkedIds)
+
+  // Suggestions only on unambiguous exact match.
+  assert(buckets.suggestionsByItemId['inv-2']?.id === 'pc-heritage-100-1093',
+    'suggestion: inv-2 → Heritage catalog row')
+  assert(buckets.suggestionsByItemId['inv-8']?.id === 'pc-barricade-4fl-100-1139',
+    'suggestion: inv-8 → Barricade 4FL catalog row')
+  assert(buckets.suggestionsByItemId['inv-3'] === undefined,
+    'no suggestion: inv-3 has no match')
+  assert(buckets.suggestionsByItemId['inv-7'] === undefined,
+    'no suggestion: inv-7 has empty name')
+
+  assert(buckets.totals.linked === 1,                'totals.linked = 1')
+  assert(buckets.totals.unlinked === 4,              'totals.unlinked = 4')
+  assert(buckets.totals.stale === 1,                 'totals.stale = 1')
+  assert(buckets.totals.unlinkedWithSuggestion === 2,'totals.unlinkedWithSuggestion = 2 (Heritage + Barricade)')
+
+  // ── Pure: bucketing does not mutate inputs ────────────────────────────
+  const itemsClone     = JSON.parse(JSON.stringify(items))
+  const catalogClone   = JSON.parse(JSON.stringify(catalogProducts))
+  const itemsBefore    = JSON.stringify(itemsClone)
+  const catalogBefore  = JSON.stringify(catalogClone)
+  mod.buildLinkReviewBuckets(itemsClone, catalogClone)
+  assert(JSON.stringify(itemsClone)   === itemsBefore,   'items array not mutated')
+  assert(JSON.stringify(catalogClone) === catalogBefore, 'catalog array not mutated')
+
+  // Empty / null safety.
+  const empty = mod.buildLinkReviewBuckets([], [])
+  assert(empty.linked.length === 0 && empty.unlinked.length === 0 && empty.stale.length === 0,
+    'empty inputs → empty buckets')
+  const nullSafe = mod.buildLinkReviewBuckets(undefined, undefined)
+  assert(nullSafe.totals.linked === 0,                'undefined inputs → totals 0')
+
+  // REVIEWABLE_KINDS contract.
+  assert(mod.REVIEWABLE_KINDS instanceof Set,         'REVIEWABLE_KINDS is a Set')
+  assert(mod.REVIEWABLE_KINDS.has('product') &&
+         mod.REVIEWABLE_KINDS.has('chemical') &&
+         mod.REVIEWABLE_KINDS.has('fertilizer'),
+    'REVIEWABLE_KINDS includes product/chemical/fertilizer')
+  assert(!mod.REVIEWABLE_KINDS.has('parts') && !mod.REVIEWABLE_KINDS.has('fuel'),
+    'REVIEWABLE_KINDS excludes parts/fuel')
+}
+
+console.log('— InventoryLinkReview tab body (UI source contracts)')
+{
+  const src = readFileSync('src/pages/Inventory/tabs/InventoryLinkReview.jsx', 'utf8')
+
+  // Reuses store/helpers/picker — no parallel fetch path.
+  assert(/from\s+['"][^'"]*productCatalog\/productCatalogStore['"]/.test(src),
+    'reuses productCatalogStore')
+  assert(/useProductCatalog\b/.test(src),                'uses useProductCatalog()')
+  assert(/from\s+['"][^'"]*productCatalog\/linkReview['"]/.test(src),
+    'imports linkReview helpers')
+  assert(/buildLinkReviewBuckets\b/.test(src),            'uses buildLinkReviewBuckets')
+  assert(/setInventoryCatalogLink\b/.test(src),           'uses setInventoryCatalogLink (existing endpoint)')
+  assert(/from\s+['"]\.\.\/components\/CatalogLinkPicker['"]/.test(src),
+    'reuses CatalogLinkPicker (single source of link UI)')
+
+  // Three sections.
+  assert(/title=['"]Unlinked['"]/.test(src),              'renders Unlinked section')
+  assert(/title=['"]Stale links['"]/.test(src),           'renders Stale links section')
+  assert(/title=['"]Linked['"]/.test(src),                'renders Linked section')
+
+  // Suggestion is read-only — it never auto-applies, the user must
+  // confirm through the picker. The picker is mounted only inside the
+  // tab (no direct write call on suggestion render).
+  assert(/Suggestions are not applied until you confirm/i.test(src),
+    'copy: suggestions not applied until confirmed')
+  assert(/exact[- ]name/i.test(src),
+    'copy: explicit "exact name" framing')
+  assert(/does not change inventory stock/i.test(src),
+    'copy: linking does not change inventory stock')
+
+  // Open suggestion seeds the picker rather than writing directly.
+  assert(/openPickerFor\(item,\s*buckets\.suggestionsByItemId\[item\.id\]\?\.id/.test(src),
+    'clicking suggested match opens the picker seeded with that catalog id')
+
+  // Unlink uses null FK.
+  assert(/setInventoryCatalogLink\([^)]*,\s*null\s*\)/.test(src),
+    'unlink calls setInventoryCatalogLink(..., null)')
+
+  // No POST/PATCH/DELETE issued from the tab body — everything goes
+  // through the store/picker.
+  assert(!/method:\s*['"](POST|PATCH|DELETE)['"]/.test(src),
+    'tab body issues no direct POST/PATCH/DELETE')
+
+  // Forbidden: no Add-to-Inventory CTA, no catalog-table writes.
+  assert(!/Add to Inventory/i.test(src),
+    'no "Add to Inventory" CTA in Link Review tab')
+  assert(!/['"]\/api\/product-catalog['"][^\n]{0,160}method:\s*['"](POST|PATCH|DELETE)/.test(src),
+    'no /api/product-catalog mutation request')
+
+  // No raw <table>-only layout — spec requires mobile-friendly cards.
+  // We allow <table> in other contexts; this tab must use cards.
+  assert(!/<table\b/.test(src),
+    'tab body uses card layout, not <table> (mobile-first)')
+}
+
+console.log('— InventoryLinkReview module css scope')
+{
+  const css = readFileSync('src/pages/Inventory/tabs/InventoryLinkReview.module.css', 'utf8')
+  for (const cls of [
+    'card', 'card_linked', 'card_unlinked', 'card_stale',
+    'badgeLinked', 'badgeUnlinked', 'badgeStale',
+    'suggestion', 'suggestionGuard',
+    'btnPrimary', 'btnSecondary', 'btnDanger',
+  ]) {
+    assert(new RegExp(`\\.${cls}\\b`).test(css), `CSS defines .${cls}`)
+  }
+  // Mobile-first guard: there's a min-width media query for desktop,
+  // but the default layout is column-based.
+  assert(/@media\s*\(min-width:\s*\d+px\)/.test(css),
+    'CSS has a min-width media query (mobile-first → desktop)')
+}
+
+console.log('— Inventory shell: Link Review tab registered')
+{
+  const shell = readFileSync('src/pages/Inventory/Inventory.jsx', 'utf8')
+  assert(/from\s+['"]\.\/tabs\/InventoryLinkReview['"]/.test(shell),
+    'imports InventoryLinkReview')
+  assert(/'Link Review'/.test(shell),
+    "'Link Review' literal present in shell")
+  const tabsMatch = shell.match(/const\s+TABS\s*=\s*\[([^\]]+)\]/)
+  assert(tabsMatch && /'Link Review'/.test(tabsMatch[1]),
+    "'Link Review' present in TABS array")
+  assert(/activeTab\s*===\s*'Link Review'\s*&&\s*<InventoryLinkReview/.test(shell),
+    "Link Review tab wired to activeTab === 'Link Review'")
+  // Pre-existing 9 tabs still present.
+  for (const t of ['Overview','Products','Chemicals','Fertilizer','Parts','Fuel','Low Stock','Purchase History','Catalog']) {
+    assert(tabsMatch && new RegExp(`'${t}'`).test(tabsMatch[1]),
+      `pre-existing tab '${t}' still in TABS`)
+  }
+}
+
+console.log('— No new write routes / no MUTABLE_COLUMNS regression')
+{
+  // No new write routes in worker/index.js — only the existing catalog-link
+  // PATCH from Commit 7C.2/1 should exist. Specifically: no new
+  // /api/product-catalog mutation route.
+  const idx = readFileSync('worker/index.js', 'utf8')
+  assert(!/['"]\/api\/product-catalog['"][^\n]{0,200}(POST|PATCH|DELETE)/.test(idx)
+      && !/(POST|PATCH|DELETE)[^\n]{0,80}['"]\/api\/product-catalog['"]/.test(idx),
+    'still no POST/PATCH/DELETE on /api/product-catalog')
+
+  // MUTABLE_COLUMNS still excludes productCatalogId.
+  const invSrc = readFileSync('worker/api/inventory.js', 'utf8')
+  const mut = invSrc.match(/MUTABLE_COLUMNS\s*=\s*\{[\s\S]*?\}/)?.[0] ?? ''
+  assert(!/productCatalogId/.test(mut),
+    'MUTABLE_COLUMNS still excludes productCatalogId (narrow endpoint preserved)')
+
+  // The catalog-link patch handler is the ONLY function that writes
+  // product_catalog_id. linkReview helpers + Link Review tab body
+  // should not contain any UPDATE/INSERT against inventory_items
+  // or product_catalog.
+  for (const path of [
+    'src/utils/productCatalog/linkReview.js',
+    'src/pages/Inventory/tabs/InventoryLinkReview.jsx',
+  ]) {
+    const s = readFileSync(path, 'utf8')
+    assert(!/(UPDATE|INSERT|DELETE)\s+(inventory_items|product_catalog)\b/i.test(s),
+      `${path.split('/').pop()}: no direct SQL against inventory_items / product_catalog`)
+  }
+}
+
 // ── Result ──────────────────────────────────────────────────────────────────
 console.log(`\n${passed} passed, ${failed} failed`)
 process.exit(failed === 0 ? 0 : 1)

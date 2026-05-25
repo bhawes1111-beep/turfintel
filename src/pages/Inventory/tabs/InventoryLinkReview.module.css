@@ -1,0 +1,274 @@
+/* Phase 7C.2 (2/?) — Catalog Link Review tab styles.
+   Mobile-first card layout; desktop widens but stays card-based (no
+   table assumption per spec). */
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.legendStat {
+  flex: 1 1 120px;
+  min-width: 120px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left-width: 3px;
+}
+
+.legendStat_unlinked { border-left-color: rgba(255, 255, 255, 0.35); }
+.legendStat_suggest  { border-left-color: rgba(100, 150, 220, 0.65); }
+.legendStat_warn     { border-left-color: rgba(220, 180, 60, 0.65); }
+.legendStat_ok       { border-left-color: rgba(78, 203, 78, 0.65); }
+
+.legendValue {
+  font-size: 20px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+  line-height: 1.1;
+}
+.legendLabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.section {
+  margin-top: 14px;
+}
+.section_warn {
+  /* Subtle yellow tint matches the stale-FK warning in the Products drawer. */
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: inherit;
+  cursor: pointer;
+}
+.sectionHeader:hover { background: rgba(255, 255, 255, 0.06); }
+
+.sectionTitle {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.sectionCount {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.sectionToggle {
+  margin-left: auto;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+}
+
+.sectionHint {
+  margin: 8px 2px 4px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+  line-height: 1.5;
+}
+
+.sectionEmpty {
+  margin: 8px 2px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.45);
+  font-style: italic;
+}
+
+.cardGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.card_linked   { border-left: 3px solid rgba(78, 203, 78, 0.55); }
+.card_unlinked { border-left: 3px solid rgba(255, 255, 255, 0.25); }
+.card_stale    { border-left: 3px solid rgba(220, 180, 60, 0.55); }
+
+@media (min-width: 720px) {
+  .card { flex-direction: row; align-items: center; }
+  .cardMain    { flex: 1 1 auto; min-width: 0; }
+  .cardActions { flex: 0 0 auto; }
+}
+
+.cardMain { display: flex; flex-direction: column; gap: 4px; }
+
+.cardTitleRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cardName {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.cardSub {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.cardStock { color: rgba(255, 255, 255, 0.7); }
+
+/* ── Badges ───────────────────────────────────────────────────────────── */
+.badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.badgeLinked   { background: rgba(78, 203, 78, 0.12);  color: #8ed68e; border: 1px solid rgba(78, 203, 78, 0.3); }
+.badgeUnlinked { background: rgba(255, 255, 255, 0.06); color: rgba(255, 255, 255, 0.6); border: 1px solid rgba(255, 255, 255, 0.15); }
+.badgeStale    { background: rgba(220, 180, 60, 0.12); color: #e0c070; border: 1px solid rgba(220, 180, 60, 0.35); }
+
+/* ── Suggestion block ─────────────────────────────────────────────────── */
+.suggestion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(100, 150, 220, 0.08);
+  border: 1px solid rgba(100, 150, 220, 0.25);
+}
+.suggestionLabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(160, 200, 255, 0.9);
+  margin-right: 4px;
+}
+.suggestionName {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.92);
+}
+.suggestionCat {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(100, 150, 220, 0.15);
+  color: rgba(160, 200, 255, 0.95);
+  border: 1px solid rgba(100, 150, 220, 0.3);
+}
+.suggestionChips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.suggestionGuard {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  font-size: 11px;
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* Chip palette (mirrors Inventory Catalog tab) */
+.chip {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 500;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+.chipFrac { background: rgba(200,100,100,0.12); color: #f08c8c; border-color: rgba(200,100,100,0.35); }
+.chipHrac { background: rgba(100,180,100,0.12); color: #8cd48c; border-color: rgba(100,180,100,0.35); }
+.chipIrac { background: rgba(200,160,80,0.12);  color: #e0c070; border-color: rgba(200,160,80,0.35); }
+.chipPgr  { background: rgba(160,100,200,0.12); color: #c897e3; border-color: rgba(160,100,200,0.35); }
+
+.staleFk {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+}
+.fkMono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* ── Actions ──────────────────────────────────────────────────────────── */
+.cardActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.btnPrimary,
+.btnSecondary,
+.btnDanger,
+.btnGhost {
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.btnPrimary {
+  background: rgba(100, 150, 220, 0.25);
+  border-color: rgba(100, 150, 220, 0.6);
+  color: #e0eeff;
+}
+.btnPrimary:hover { background: rgba(100, 150, 220, 0.35); }
+
+.btnSecondary {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.85);
+}
+.btnSecondary:hover { background: rgba(255, 255, 255, 0.1); }
+
+.btnGhost {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  border-style: dashed;
+}
+.btnGhost:hover { background: rgba(255, 255, 255, 0.04); color: rgba(255, 255, 255, 0.9); }
+
+.btnDanger {
+  background: rgba(220, 60, 60, 0.1);
+  border-color: rgba(220, 60, 60, 0.3);
+  color: #ff9999;
+}
+.btnDanger:hover { background: rgba(220, 60, 60, 0.18); }

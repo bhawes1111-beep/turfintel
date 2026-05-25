@@ -12,12 +12,14 @@ import InventoryFuel            from './tabs/InventoryFuel'
 import InventoryLowStock        from './tabs/InventoryLowStock'
 import InventoryPurchaseHistory from './tabs/InventoryPurchaseHistory'
 import InventoryCatalog         from './tabs/InventoryCatalog'
+import InventoryLinkReview     from './tabs/InventoryLinkReview'
 import workspace from '../../styles/workspace.module.css'
 
-// Phase 7C.1 (4/6) — 'Catalog' is the new globally-scoped product-intelligence
-// tab. Read-only; the course-owned stock tabs (Products / Chemicals / etc.)
-// remain unchanged.
-const TABS = ['Overview', 'Products', 'Chemicals', 'Fertilizer', 'Parts', 'Fuel', 'Low Stock', 'Purchase History', 'Catalog']
+// Phase 7C.1 (4/6) — 'Catalog' is the globally-scoped product-intelligence tab.
+// Phase 7C.2 (2/?) — 'Link Review' is the stewardship surface that pairs
+// inventory rows with catalog rows. Both are read-only over the catalog;
+// only inventory_items.product_catalog_id ever gets written.
+const TABS = ['Overview', 'Products', 'Chemicals', 'Fertilizer', 'Parts', 'Fuel', 'Low Stock', 'Purchase History', 'Catalog', 'Link Review']
 
 /**
  * Inventory workspace — follows the canonical workspace pattern established
@@ -93,6 +95,7 @@ export default function Inventory() {
       {activeTab === 'Low Stock'        && <InventoryLowStock />}
       {activeTab === 'Purchase History' && <InventoryPurchaseHistory />}
       {activeTab === 'Catalog'          && <InventoryCatalog initialSelectedId={catalogSeedId} onConsumeSeed={() => setCatalogSeedId(null)} />}
+      {activeTab === 'Link Review'      && <InventoryLinkReview onOpenCatalog={openCatalogProduct} />}
     </PageShell>
   )
 }
