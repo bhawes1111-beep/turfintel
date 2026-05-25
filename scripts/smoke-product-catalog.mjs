@@ -731,6 +731,232 @@ console.log('— CatalogChip behavior (live)')
   storeMod.__TEST.reset()
 }
 
+// ── 11. Spray Builder catalog-first lookup (Phase 7C.1 Commit 6) ────────────
+console.log('— src/utils/productCatalog/resolveSprayProductIntel.js (resolver)')
+{
+  const src = readFileSync('src/utils/productCatalog/resolveSprayProductIntel.js', 'utf8')
+  assert(/export\s+function\s+resolveSprayProductIntel/.test(src),
+    'exports resolveSprayProductIntel')
+
+  // Precedence comments lock the order: catalog → label → legacy.
+  assert(/Tier 1:\s*product_catalog/.test(src),         'documents Tier 1 = product_catalog')
+  assert(/Tier 2:\s*inventory_product_labels/.test(src),'documents Tier 2 = inventory_product_labels')
+  assert(/Tier 3:\s*legacy/.test(src),                  'documents Tier 3 = legacy')
+
+  // First-hit-wins: never merges across tiers.
+  assert(/first hit wins/i.test(src),                   'comment: first-hit-wins (no cross-tier merge)')
+
+  // Pure-compute: resolver does not import the catalog store / inventoryStore.
+  assert(!/from\s+['"][^'"]*productCatalogStore['"]/.test(src),
+    'resolver does not import productCatalogStore (pure helper)')
+  assert(!/from\s+['"][^'"]*inventoryStore['"]/.test(src),
+    'resolver does not import inventoryStore (pure helper)')
+
+  // No mutation: no fetch / POST / DB calls.
+  assert(!/fetch\(/.test(src),                          'resolver does not call fetch()')
+  assert(!/method:\s*['"](POST|PATCH|DELETE)['"]/.test(src),
+    'resolver does not POST/PATCH/DELETE')
+}
+
+console.log('— resolveSprayProductIntel behavior (3-tier precedence)')
+{
+  const { resolveSprayProductIntel, __TEST } =
+    await import('../src/utils/productCatalog/resolveSprayProductIntel.js')
+
+  // ── Fixtures ────────────────────────────────────────────────────────────
+  const catalogProducts = [
+    {
+      id: 'pc-tenacity-100-1267', productName: 'Tenacity', category: 'herbicide',
+      hracGroup: '27', activeIngredients: [{ name: 'Mesotrione', percentage: 40 }],
+      signalWord: 'Caution', reiHours: 12, phiHours: null,
+      rates: [{ rate: '4-8', unit: 'fl oz/acre' }],
+      labelUrl: 'https://example/tenacity',
+    },
+    {
+      id: 'pc-heritage-100-1093', productName: 'Heritage', category: 'fungicide',
+      fracGroup: '11', activeIngredients: [{ name: 'Azoxystrobin', percentage: 50 }],
+      signalWord: 'Caution', reiHours: 4, phiHours: null,
+      rates: [], labelUrl: null,
+    },
+  ]
+
+  // Inventory rows: one linked via FK, one matched by name, one with a
+  // label (no catalog hit), one legacy-only.
+  const inventoryProducts = [
+    { id: 'inv-A', name: 'Tenacity',  kind: 'chemical', category: 'Herbicide',
+      productCatalogId: 'pc-tenacity-100-1267' },
+    { id: 'inv-B', name: 'Heritage',  kind: 'chemical', category: 'Fungicide' /* no FK */ },
+    { id: 'inv-C', name: 'PrivateLabel 50WG', kind: 'chemical', category: 'Fungicide' },
+    { id: 'inv-D', name: 'Generic Filler',    kind: 'fertilizer', category: 'Fertilizer' },
+    { id: 'inv-E', name: 'Stale FK',  kind: 'chemical', category: 'Fungicide',
+      productCatalogId: 'pc-deleted-row' /* not in cache */ },
+  ]
+
+  const labelsByItemId = {
+    'inv-C': {
+      productName: 'PrivateLabel 50WG', fracGroup: '7', hracGroup: null,
+      iracGroup: null, signalWord: 'Warning', reiHours: 24, phi: 4,
+      activeIngredients: 'Boscalid 50%', pdfUrl: 'https://example/private.pdf',
+    },
+  }
+
+  // (a) catalog hit via explicit FK
+  {
+    const r = resolveSprayProductIntel(
+      { name: 'Tenacity', inventoryItemId: 'inv-A' },
+      { inventoryProducts, catalogProducts, labelsByItemId })
+    assert(r.source === 'catalog',                'FK → catalog source')
+    assert(r.catalogId === 'pc-tenacity-100-1267','FK → returns catalog id')
+    assert(r.hracGroup === '27',                  'FK → HRAC from catalog')
+    assert(/Mesotrione 40%/.test(r.activeIngredientSummary ?? ''),
+      'FK → ingredient summary built')
+    assert(r.reiHours === 12,                     'FK → REI from catalog')
+    assert(r.labelUrl === 'https://example/tenacity', 'FK → labelUrl from catalog')
+  }
+
+  // (b) catalog hit via normalized name (no FK)
+  {
+    const r = resolveSprayProductIntel(
+      { name: 'Heritage', inventoryItemId: 'inv-B' },
+      { inventoryProducts, catalogProducts, labelsByItemId })
+    assert(r.source === 'catalog',                'name-match → catalog source')
+    assert(r.fracGroup === '11',                  'name-match → FRAC from catalog')
+    assert(r.catalogId === 'pc-heritage-100-1093','name-match → catalog id')
+  }
+
+  // (c) catalog beats label when both exist for the same product.
+  //     Inject a fake catalog row with the same name as the labeled
+  //     inventory item and confirm catalog wins.
+  {
+    const r = resolveSprayProductIntel(
+      { name: 'PrivateLabel 50WG', inventoryItemId: 'inv-C' },
+      {
+        inventoryProducts,
+        catalogProducts: [
+          ...catalogProducts,
+          {
+            id: 'pc-private-50wg', productName: 'PrivateLabel 50WG',
+            category: 'fungicide', fracGroup: '11',
+            activeIngredients: [{ name: 'Pyraclostrobin', percentage: 23 }],
+            signalWord: 'Caution', reiHours: 12, rates: [],
+          },
+        ],
+        labelsByItemId,
+      })
+    assert(r.source === 'catalog',                'catalog wins over label when both match')
+    assert(r.fracGroup === '11',                  'catalog FRAC supplied (not label FRAC "7")')
+    assert(r.reiHours === 12,                     'catalog REI supplied (not label REI 24)')
+  }
+
+  // (d) label fallback when no catalog match.
+  {
+    const r = resolveSprayProductIntel(
+      { name: 'PrivateLabel 50WG', inventoryItemId: 'inv-C' },
+      { inventoryProducts, catalogProducts, labelsByItemId })
+    assert(r.source === 'label',                  'no catalog → label tier')
+    assert(r.fracGroup === '7',                   'label FRAC surfaced')
+    assert(r.reiHours === 24,                     'label REI surfaced')
+    assert(r.phiHours === 4,                      'label PHI surfaced from label.phi')
+    assert(r.labelUrl === 'https://example/private.pdf', 'label pdfUrl surfaced')
+  }
+
+  // (e) legacy fallback when no catalog and no label.
+  {
+    const r = resolveSprayProductIntel(
+      { name: 'Generic Filler', inventoryItemId: 'inv-D' },
+      { inventoryProducts, catalogProducts, labelsByItemId })
+    assert(r.source === 'legacy',                 'no catalog + no label → legacy tier')
+    assert(r.category === 'Fertilizer',           'legacy → category from inventory row')
+    assert(r.fracGroup === null,                  'legacy → no FRAC')
+  }
+
+  // (f) stale FK falls through to name-match (which here also misses
+  //     because "Stale FK" isn't in the catalog) → legacy.
+  {
+    const r = resolveSprayProductIntel(
+      { name: 'Stale FK', inventoryItemId: 'inv-E' },
+      { inventoryProducts, catalogProducts, labelsByItemId })
+    assert(r.source === 'legacy',                 'stale catalog FK does not return catalog data')
+    assert(r.catalogId === null,                  'stale FK does not leak as catalogId')
+  }
+
+  // (g) row with no inventoryItemId and unknown name → empty intel.
+  {
+    const r = resolveSprayProductIntel(
+      { name: 'Unknown Product' },
+      { inventoryProducts, catalogProducts, labelsByItemId })
+    assert(r.source === 'none',                   "unknown name + no FK → source 'none'")
+  }
+
+  // (h) null/undefined inputs don't blow up.
+  {
+    const r1 = resolveSprayProductIntel(null,      {})
+    const r2 = resolveSprayProductIntel(undefined, {})
+    const r3 = resolveSprayProductIntel({},        {})
+    assert(r1.source === 'none' && r2.source === 'none' && r3.source === 'none',
+      'null/undefined/empty row → empty intel')
+  }
+
+  // (i) normalize helper edge cases.
+  {
+    assert(__TEST.normalizeName('Tenacity')         === 'tenacity', 'normalize simple')
+    assert(__TEST.normalizeName('Barricade 4FL')    === 'barricade-4fl', 'normalize spaces')
+    assert(__TEST.normalizeName('PGF Complete 16-4-8') === 'pgf-complete-16-4-8',
+      'normalize hyphens collapse')
+    assert(__TEST.normalizeName('  Tenacity  ')     === 'tenacity', 'normalize trims')
+    assert(__TEST.normalizeName(null)               === '',         'normalize null → ""')
+  }
+
+  // (j) read-only — calling the resolver does not mutate inputs.
+  {
+    const ip      = JSON.parse(JSON.stringify(inventoryProducts))
+    const cp      = JSON.parse(JSON.stringify(catalogProducts))
+    const lbl     = JSON.parse(JSON.stringify(labelsByItemId))
+    const ipBefore = JSON.stringify(ip)
+    const cpBefore = JSON.stringify(cp)
+    const lblBefore = JSON.stringify(lbl)
+    resolveSprayProductIntel({ name: 'Tenacity', inventoryItemId: 'inv-A' },
+      { inventoryProducts: ip, catalogProducts: cp, labelsByItemId: lbl })
+    assert(JSON.stringify(ip)  === ipBefore,  'inventoryProducts not mutated')
+    assert(JSON.stringify(cp)  === cpBefore,  'catalogProducts not mutated')
+    assert(JSON.stringify(lbl) === lblBefore, 'labelsByItemId not mutated')
+  }
+}
+
+console.log('— BuildSpraySheet wires catalog-first lookup')
+{
+  const src = readFileSync('src/pages/Spray/tabs/BuildSpraySheet.jsx', 'utf8')
+
+  // Hook + resolver imports.
+  assert(/from\s+['"][^'"]*productCatalog\/productCatalogStore['"]/.test(src),
+    'imports useProductCatalog from store')
+  assert(/useProductCatalog/.test(src),                 'calls useProductCatalog()')
+  assert(/from\s+['"][^'"]*productCatalog\/resolveSprayProductIntel['"]/.test(src),
+    'imports resolveSprayProductIntel')
+  assert(/resolveSprayProductIntel\(/.test(src),        'invokes resolveSprayProductIntel(...)')
+
+  // Resolver wired into enrichedRows + dependency array.
+  const memo = src.match(/enrichedRows\s*=\s*useMemo\([\s\S]*?\}, \[[^\]]*\]\)/)?.[0] ?? ''
+  assert(memo.includes('catalogProducts'),
+    'enrichedRows useMemo deps include catalogProducts')
+  assert(memo.includes('labelsByItemId'),
+    'enrichedRows useMemo deps include labelsByItemId')
+  assert(memo.includes('resolveSprayProductIntel'),
+    'enrichedRows invokes the resolver per row')
+
+  // Intel chip render present.
+  assert(/<RowIntelChips\b/.test(src),                  'renders <RowIntelChips intel=…> in row column')
+
+  // Forbidden: no catalog mutation surface in BuildSpraySheet.
+  assert(!/['"]\/api\/product-catalog['"][^\n]*method:\s*['"](POST|PATCH|DELETE)/.test(src),
+    'no catalog mutation requests in BuildSpraySheet')
+  // Save payload must NOT carry a productCatalogId / catalogId column.
+  const payload = src.match(/products:\s*enrichedRows\.map\([\s\S]*?\)\),/)?.[0] ?? ''
+  assert(payload.length > 0,                            'spray-save products payload block found')
+  assert(!/productCatalogId|catalogId/.test(payload),
+    'save payload does not echo productCatalogId/catalogId (catalog stays read-only)')
+}
+
 // ── Result ──────────────────────────────────────────────────────────────────
 console.log(`\n${passed} passed, ${failed} failed`)
 process.exit(failed === 0 ? 0 : 1)

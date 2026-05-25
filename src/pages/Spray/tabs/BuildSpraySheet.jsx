@@ -26,6 +26,8 @@ import { useNavigate } from 'react-router-dom'
 import { createSpray, useSpraysData } from '../../../utils/sprays/spraysStore'
 import { useInventoryData, recordInventoryUsage } from '../../../utils/inventory/inventoryStore'
 import { useImportedLabels } from '../../../utils/inventory/labelImportStore'
+import { useProductCatalog } from '../../../utils/productCatalog/productCatalogStore'
+import { resolveSprayProductIntel } from '../../../utils/productCatalog/resolveSprayProductIntel'
 import { useCrewData } from '../../../utils/crew/crewStore'
 import { createCalendarEvent } from '../../../utils/calendar/calendarStore'
 import { createAlert } from '../../../utils/alerts/alertsStore'
@@ -284,6 +286,9 @@ export default function BuildSpraySheet() {
   const { items: inventoryProducts }    = useInventoryData()
   const { employees: crewEmployees }    = useCrewData()
   const { labels: importedLabels }      = useImportedLabels()
+  // Phase 7C.1 (6/6) — catalog-first intelligence. Lazy-loaded on first
+  // subscription via the store; no extra fetch when the builder loads.
+  const { products: catalogProducts }   = useProductCatalog()
   const { records: sprayHistory }       = useSpraysData()
   const selectedCourse                  = useSelectedCourse()
   const toast                           = useToast()
@@ -401,6 +406,15 @@ export default function BuildSpraySheet() {
         : null
       const status   = inv ? stockStatus(available, inv.reorderLevel) : 'unknown'
       const insufficient = inv && available != null && conv.ok && qtyInInv > available
+      // Phase 7C.1 (6/6) — read-only product intelligence. Catalog-first
+      // resolver; falls back to inventory_product_labels, then legacy.
+      // The result is rendered inline as compact chips so the planner
+      // sees FRAC/HRAC/IRAC at-a-glance without leaving the row.
+      const intel = resolveSprayProductIntel(row, {
+        inventoryProducts,
+        catalogProducts,
+        labelsByItemId,
+      })
       return {
         ...row,
         rateUnit,
@@ -413,9 +427,10 @@ export default function BuildSpraySheet() {
         cost,
         status,
         insufficient,
+        intel,
       }
     })
-  }, [draft.rows, draft.acres, inventoryProducts])
+  }, [draft.rows, draft.acres, inventoryProducts, catalogProducts, labelsByItemId])
 
   // ── Chemistry intelligence analysis (Phase 22B) ──────────────────────
   // tankProducts is the typed shape the analyzer expects:
@@ -943,6 +958,7 @@ export default function BuildSpraySheet() {
                               : 'Low stock'}
                           </span>
                         )}
+                        <RowIntelChips intel={row.intel} />
                       </td>
                       <td className={styles.naDimCell}>{row.type || '—'}</td>
                       <td>
@@ -1206,6 +1222,72 @@ export default function BuildSpraySheet() {
 }
 
 // ── Small render helpers ────────────────────────────────────────────────
+
+// Phase 7C.1 (6/6) — Read-only product-intelligence chips. Rendered
+// directly under the product picker for each spray row when the
+// resolver returned something useful. The `source` tag is intentionally
+// visible (small "via catalog" / "via label" / "via inventory" hint) so
+// the planner knows where each piece of intelligence came from. No
+// click handlers — the catalog tab is the source of truth for deeper
+// detail. Mobile-first: chips wrap to multiple lines.
+function RowIntelChips({ intel }) {
+  if (!intel || intel.source === 'none') return null
+
+  const chips = []
+  if (intel.fracGroup) chips.push({ key: 'frac', label: `FRAC ${intel.fracGroup}`, bg: 'rgba(200,100,100,0.12)', bd: 'rgba(200,100,100,0.35)', fg: '#f08c8c' })
+  if (intel.hracGroup) chips.push({ key: 'hrac', label: `HRAC ${intel.hracGroup}`, bg: 'rgba(100,180,100,0.12)', bd: 'rgba(100,180,100,0.35)', fg: '#8cd48c' })
+  if (intel.iracGroup) chips.push({ key: 'irac', label: `IRAC ${intel.iracGroup}`, bg: 'rgba(200,160,80,0.12)',  bd: 'rgba(200,160,80,0.35)',  fg: '#e0c070' })
+  if (intel.pgrClass)  chips.push({ key: 'pgr',  label: `PGR ${intel.pgrClass}`,   bg: 'rgba(160,100,200,0.12)', bd: 'rgba(160,100,200,0.35)', fg: '#c897e3' })
+  if (intel.signalWord && intel.signalWord !== 'Caution') chips.push({
+    key: 'sig', label: intel.signalWord, bg: 'rgba(220,60,60,0.12)', bd: 'rgba(220,60,60,0.35)', fg: '#ff9999',
+  })
+  if (intel.reiHours != null) chips.push({
+    key: 'rei', label: `REI ${intel.reiHours}h`,
+    bg: 'rgba(80,140,200,0.12)', bd: 'rgba(80,140,200,0.35)', fg: '#9ec5ec',
+  })
+
+  // No structured chips but maybe an ingredient summary — still useful.
+  if (chips.length === 0 && !intel.activeIngredientSummary) return null
+
+  const sourceLabel = intel.source === 'catalog' ? 'via catalog'
+    : intel.source === 'label'   ? 'via label'
+    : intel.source === 'legacy'  ? 'via inventory'
+    : null
+
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6, alignItems: 'center' }}>
+      {chips.map(c => (
+        <span
+          key={c.key}
+          style={{
+            display: 'inline-block',
+            padding: '1px 6px',
+            borderRadius: 999,
+            fontSize: 10,
+            lineHeight: 1.5,
+            background: c.bg,
+            color: c.fg,
+            border: `1px solid ${c.bd}`,
+            whiteSpace: 'nowrap',
+          }}
+        >{c.label}</span>
+      ))}
+      {intel.activeIngredientSummary && (
+        <span
+          style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', fontStyle: 'italic' }}
+          title={intel.activeIngredientSummary}
+        >
+          {intel.activeIngredientSummary.length > 40
+            ? `${intel.activeIngredientSummary.slice(0, 38)}…`
+            : intel.activeIngredientSummary}
+        </span>
+      )}
+      {sourceLabel && (
+        <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>{sourceLabel}</span>
+      )}
+    </div>
+  )
+}
 
 function Field({ label, wide, children }) {
   return (
