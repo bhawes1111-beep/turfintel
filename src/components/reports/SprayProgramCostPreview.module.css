@@ -1,0 +1,410 @@
+/* Phase 7I (4/?) — Spray Program Cost custom preview.
+   Scoped to this component. Mobile-first; cards/lists that print
+   cleanly so users get a usable PDF without a custom PDF engine. */
+
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 4px 2px;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────── */
+
+.header { margin: 0 0 4px; }
+.title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+}
+.subtitle {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.65);
+  font-style: italic;
+}
+.meta {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* ── Tiles ───────────────────────────────────────────────────────────── */
+
+.tilesSection { display: block; }
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+@media (min-width: 540px) {
+  .tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+.tile {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.tileValue {
+  font-size: 16px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tileLabel {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+}
+.tileEmphasis { grid-column: span 2; }
+@media (min-width: 540px) {
+  .tileEmphasis { grid-column: span 2; }
+}
+
+.tile_ok      { border-color: rgba(120, 180, 130, 0.35); background: rgba(120, 180, 130, 0.08); }
+.tile_warn    { border-color: rgba(220, 180, 60, 0.35);  background: rgba(220, 180, 60, 0.08); }
+.tile_muted   { opacity: 0.65; }
+.tile_cost    { border-color: rgba(120, 180, 130, 0.45); background: rgba(120, 180, 130, 0.12); }
+.tile_cost .tileValue { color: #9cd6a2; font-size: 18px; }
+
+/* ── Section card ────────────────────────────────────────────────────── */
+
+.section {
+  padding: 12px 12px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.sectionTitle {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.empty {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+  font-style: italic;
+}
+
+/* ── Program cost list ───────────────────────────────────────────────── */
+
+.programList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.programCard {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.programHeader {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.programName {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+}
+.programStatusBadge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+.programStatus_active   { background: rgba(120, 180, 130, 0.12); color: #9cd6a2; border-color: rgba(120, 180, 130, 0.4); }
+.programStatus_draft    { background: rgba(100, 150, 220, 0.12); color: rgba(160, 200, 255, 0.95); border-color: rgba(100, 150, 220, 0.4); }
+.programStatus_archived { background: rgba(255, 255, 255, 0.05); color: rgba(255, 255, 255, 0.5); border-color: rgba(255, 255, 255, 0.15); }
+
+.programMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+.programType {
+  text-transform: capitalize;
+}
+
+.programCostRow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 2px;
+}
+.programCost {
+  font-size: 17px;
+  font-weight: 700;
+  color: #9cd6a2;
+}
+.programCostLabel {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.programCounts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.75);
+}
+.warnText {
+  color: #e8c660;
+}
+
+/* ── Item cards (estimated + not-estimated) ──────────────────────────── */
+
+.itemList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.itemCard {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.itemCard_ok   { border-left: 3px solid rgba(120, 180, 130, 0.45); }
+.itemCard_warn { border-left: 3px solid rgba(220, 180, 60, 0.45); }
+.itemHeader {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.itemProduct {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+}
+.itemCost {
+  font-size: 16px;
+  font-weight: 700;
+  color: #9cd6a2;
+}
+.itemMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+.itemMessage {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.65);
+  font-style: italic;
+}
+
+.reasonBadge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: rgba(220, 180, 60, 0.10);
+  color: #e8c660;
+  border: 1px solid rgba(220, 180, 60, 0.4);
+}
+.reason_ok   { background: rgba(120, 180, 130, 0.12); color: #9cd6a2; border-color: rgba(120, 180, 130, 0.4); }
+.reason_warn { background: rgba(220, 180, 60, 0.12);  color: #e8c660; border-color: rgba(220, 180, 60, 0.4); }
+
+.itemKv {
+  margin: 4px 0 0;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 12px;
+  row-gap: 4px;
+}
+.kvRow { display: contents; }
+.kvLabel {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 11px;
+  margin: 0;
+}
+.kvValue {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 12px;
+  margin: 0;
+}
+.kvCost {
+  color: #9cd6a2;
+  font-weight: 600;
+}
+
+/* ── Cost basis gaps ─────────────────────────────────────────────────── */
+
+.gapList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.gapItem {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(220, 180, 60, 0.05);
+  border: 1px solid rgba(220, 180, 60, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.gapHeader {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.gapInventory {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+}
+.gapStatusBadge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: rgba(220, 180, 60, 0.12);
+  color: #e8c660;
+  border: 1px solid rgba(220, 180, 60, 0.4);
+}
+.gapMeta {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+}
+.gapAffected {
+  list-style: disc;
+  margin: 4px 0 0 18px;
+  padding: 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.gapAffectedRow {
+  line-height: 1.4;
+}
+
+/* ── Notices ─────────────────────────────────────────────────────────── */
+
+.noticeList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.notice {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.85);
+}
+.noticeIcon { flex: 0 0 auto; color: rgba(255, 255, 255, 0.6); }
+.noticeText { flex: 1 1 auto; }
+.notice_warning {
+  background: rgba(220, 180, 60, 0.08);
+  border-color: rgba(220, 180, 60, 0.35);
+}
+.notice_warning .noticeIcon { color: #e8c660; }
+.notice_info { /* default */ }
+
+/* ── Disclaimer ──────────────────────────────────────────────────────── */
+
+.disclaimer {
+  margin-top: 4px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(100, 150, 220, 0.06);
+  border: 1px solid rgba(100, 150, 220, 0.25);
+}
+.disclaimer p {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* ── Print styles ────────────────────────────────────────────────────── */
+@media print {
+  .preview { gap: 8px; padding: 0; color: #000; }
+  .title, .subtitle, .meta, .sectionTitle,
+  .tileValue, .tileLabel,
+  .programName, .programMeta, .programCostLabel, .programCounts,
+  .itemProduct, .itemMeta, .itemMessage, .kvLabel, .kvValue,
+  .gapInventory, .gapMeta, .gapAffected, .noticeText,
+  .disclaimer p {
+    color: #000 !important;
+  }
+  .tile, .programCard, .itemCard, .gapItem, .notice, .section, .disclaimer {
+    background: #fff !important;
+    border-color: #999 !important;
+  }
+  .programCost, .itemCost, .kvCost, .tile_cost .tileValue {
+    color: #176c1f !important;
+  }
+  .warnText, .reasonBadge, .gapStatusBadge {
+    color: #8a6d1c !important;
+  }
+}

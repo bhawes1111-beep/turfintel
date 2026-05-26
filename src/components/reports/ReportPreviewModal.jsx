@@ -3,6 +3,7 @@ import { SECTION_TYPE, REPORT_TYPE } from '../../utils/reports/reportSchemas'
 import ReportActions from './ReportActions'
 import SprayIntelligencePreview from './SprayIntelligencePreview'
 import SprayProgramPreview      from './SprayProgramPreview'
+import SprayProgramCostPreview  from './SprayProgramCostPreview'
 import styles from './reports.module.css'
 
 // Phase 7E (2/?) — per-report custom-preview dispatcher. Any report
@@ -11,9 +12,11 @@ import styles from './reports.module.css'
 // Falls through to the existing renderer for every other report so
 // adding a custom preview is opt-in per report.
 const CUSTOM_PREVIEWS = {
-  [REPORT_TYPE.SPRAY_INTELLIGENCE]: SprayIntelligencePreview,
+  [REPORT_TYPE.SPRAY_INTELLIGENCE]:  SprayIntelligencePreview,
   // Phase 7G (2/?) — Spray Program custom preview.
-  [REPORT_TYPE.SPRAY_PROGRAM]:      SprayProgramPreview,
+  [REPORT_TYPE.SPRAY_PROGRAM]:       SprayProgramPreview,
+  // Phase 7I (4/?) — Spray Program Cost custom preview.
+  [REPORT_TYPE.SPRAY_PROGRAM_COST]:  SprayProgramCostPreview,
 }
 
 /**
