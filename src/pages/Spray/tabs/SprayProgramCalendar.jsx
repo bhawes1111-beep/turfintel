@@ -8,6 +8,9 @@ import {
 import {
   buildProgramCalendarItems,
   groupProgramItemsByDate,
+  filterProgramCalendarItems,
+  sortProgramCalendarItems,
+  PROGRAM_CALENDAR_DEFAULT_FILTERS,
 } from '../../../utils/sprayPrograms/programCalendar'
 // Phase 7H (2/?) — read-only detail drawer + the stores it needs to
 // resolve linked completed sprays + intelligence context.
@@ -16,6 +19,8 @@ import { useProductCatalog } from '../../../utils/productCatalog/productCatalogS
 import { useImportedLabels } from '../../../utils/inventory/labelImportStore'
 import { useSpraysData } from '../../../utils/sprays/spraysStore'
 import ProgramCalendarItemDrawer from './components/ProgramCalendarItemDrawer'
+// Phase 7H (3/?) — filter/sort toolbar.
+import CalendarFilterToolbar from './components/CalendarFilterToolbar'
 import styles from './SprayProgramCalendar.module.css'
 
 // Phase 7H (1/?) — Spray Program Calendar tab.
@@ -118,6 +123,13 @@ export default function SprayProgramCalendar() {
   // Selected planned-item id; the drawer is open whenever this is set.
   const [selectedItemId, setSelectedItemId] = useState(null)
 
+  // Phase 7H (3/?) — filter + sort state. Filters narrow the calendar
+  // items before grouping; sort orders the agenda + unscheduled lists.
+  // The month grid receives the same filtered set so a cell only ever
+  // surfaces items the user asked to see.
+  const [filters, setFilters]   = useState(() => ({ ...PROGRAM_CALENDAR_DEFAULT_FILTERS }))
+  const [sortMode, setSortMode] = useState('date')
+
   const [{ year, month }, setAnchor] = useState(todayMonthAnchor)
 
   // Lazy-load items for every non-archived program on mount + on
@@ -140,9 +152,20 @@ export default function SprayProgramCalendar() {
     [programs, itemsByProgramId],
   )
 
+  // Apply filter + sort BEFORE grouping so the month grid, agenda, and
+  // unscheduled buckets all honor the same narrowed view.
+  const filteredItems = useMemo(
+    () => filterProgramCalendarItems(calendarItems, filters),
+    [calendarItems, filters],
+  )
+  const sortedItems = useMemo(
+    () => sortProgramCalendarItems(filteredItems, sortMode),
+    [filteredItems, sortMode],
+  )
+
   const { byDay, unscheduled } = useMemo(
-    () => groupProgramItemsByDate(calendarItems),
-    [calendarItems],
+    () => groupProgramItemsByDate(sortedItems),
+    [sortedItems],
   )
 
   const monthCells = useMemo(() => buildMonthGrid(year, month), [year, month])
@@ -233,6 +256,17 @@ export default function SprayProgramCalendar() {
 
         {hasAnyData && (
           <>
+            {/* Phase 7H (3/?) — filter + sort toolbar. */}
+            <CalendarFilterToolbar
+              calendarItems={calendarItems}
+              filters={filters}
+              onFiltersChange={setFilters}
+              sortMode={sortMode}
+              onSortChange={setSortMode}
+              filteredCount={sortedItems.length}
+              totalCount={calendarItems.length}
+            />
+
             <div className={styles.toolbarRow}>
               <div className={styles.navGroup}>
                 <button type="button" className={styles.navBtn} onClick={goPrevMonth}>← Prev</button>
@@ -241,7 +275,7 @@ export default function SprayProgramCalendar() {
               </div>
               <h3 className={styles.monthHeader}>{monthLabel(year, month)}</h3>
               <span className={styles.countLabel}>
-                {agendaRows.length} planned item{agendaRows.length !== 1 ? 's' : ''} this month
+                {agendaRows.length} item{agendaRows.length !== 1 ? 's' : ''} this month
               </span>
             </div>
 

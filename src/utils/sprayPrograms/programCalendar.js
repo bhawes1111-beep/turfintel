@@ -222,6 +222,196 @@ export function groupProgramItemsByDate(calendarItems = []) {
   return { byDay, unscheduled }
 }
 
+// ── Phase 7H (3/?) — Filtering, sorting, and filter-option discovery ──────
+//
+// Pure-compute helpers that narrow + reorder the calendar-item array
+// produced by buildProgramCalendarItems. No fetch, no React, no store
+// imports, no mutation. Filters never throw on bad input — unknown
+// values fall back to 'all'. Sort modes are deterministic (stable on
+// equal keys via a secondary id tiebreak).
+
+const STATUS_VALUES = new Set(['planned', 'completed', 'skipped', 'canceled'])
+const LINK_STATES   = new Set(['all', 'linked', 'unlinked'])
+const SORT_MODES    = new Set(['date', 'program', 'product', 'status'])
+
+export const PROGRAM_CALENDAR_DEFAULT_FILTERS = Object.freeze({
+  search:     '',
+  programId:  'all',
+  status:     'all',
+  targetArea: 'all',
+  linkState:  'all',
+})
+
+function normalizeSearchToken(s) {
+  if (s == null) return ''
+  return String(s).trim().toLowerCase()
+}
+
+function matchesSearch(ci, token) {
+  if (!token) return true
+  const hay = [
+    ci.productName,
+    ci.programName,
+    ci.targetArea,
+    ci.plannedWindowLabel,
+    ci.displayLabel,
+    ci.rangeLabel,
+  ]
+    .filter(Boolean)
+    .map(v => String(v).toLowerCase())
+    .join(' ')
+  return hay.includes(token)
+}
+
+/**
+ * Filter calendar items by a (potentially partial) filters object.
+ * Unknown / missing keys are treated as 'all' (no narrowing). The input
+ * array is never mutated; a new array is always returned.
+ *
+ * @param {Array}  calendarItems  output of buildProgramCalendarItems
+ * @param {Object} [filters]
+ * @param {string} [filters.search='']
+ * @param {string} [filters.programId='all']
+ * @param {string} [filters.status='all']     planned|completed|skipped|canceled|all
+ * @param {string} [filters.targetArea='all']
+ * @param {string} [filters.linkState='all']  all|linked|unlinked
+ * @returns {Array}
+ */
+export function filterProgramCalendarItems(calendarItems = [], filters = {}) {
+  if (!Array.isArray(calendarItems)) return []
+  const f = filters && typeof filters === 'object' ? filters : {}
+
+  const token       = normalizeSearchToken(f.search)
+  const programId   = f.programId   ?? 'all'
+  const statusRaw   = f.status      ?? 'all'
+  const status      = statusRaw === 'all' || STATUS_VALUES.has(statusRaw) ? statusRaw : 'all'
+  const targetArea  = f.targetArea  ?? 'all'
+  const linkStateIn = f.linkState   ?? 'all'
+  const linkState   = LINK_STATES.has(linkStateIn) ? linkStateIn : 'all'
+
+  const out = []
+  for (const ci of calendarItems) {
+    if (!ci) continue
+    if (programId !== 'all' && ci.programId !== programId) continue
+    if (status    !== 'all' && (ci.status ?? 'planned') !== status) continue
+    if (targetArea !== 'all' && (ci.targetArea ?? '') !== targetArea) continue
+    if (linkState === 'linked'   && !ci.hasCompletedLink) continue
+    if (linkState === 'unlinked' &&  ci.hasCompletedLink) continue
+    if (!matchesSearch(ci, token)) continue
+    out.push(ci)
+  }
+  return out
+}
+
+/**
+ * Sort calendar items by the given mode without mutating the input.
+ * Unknown modes fall back to 'date'. All modes use a secondary id
+ * tiebreak so output ordering is deterministic regardless of input
+ * order.
+ *
+ * @param {Array}  calendarItems
+ * @param {string} [sortMode='date']  date|program|product|status
+ * @returns {Array}
+ */
+export function sortProgramCalendarItems(calendarItems = [], sortMode = 'date') {
+  if (!Array.isArray(calendarItems)) return []
+  const mode = SORT_MODES.has(sortMode) ? sortMode : 'date'
+  const copy = calendarItems.slice()
+  const statusOrder = { planned: 0, completed: 1, skipped: 2, canceled: 3 }
+  const idKey = (ci) => String(ci?.itemId ?? ci?.id ?? '')
+
+  function byDate(a, b) {
+    const av = a._start ?? Number.POSITIVE_INFINITY
+    const bv = b._start ?? Number.POSITIVE_INFINITY
+    if (av !== bv) return av - bv
+    return idKey(a).localeCompare(idKey(b))
+  }
+  function byProgram(a, b) {
+    const r = (a.programName ?? '').localeCompare(b.programName ?? '')
+    if (r !== 0) return r
+    return byDate(a, b)
+  }
+  function byProduct(a, b) {
+    const r = (a.productName ?? a.displayLabel ?? '').localeCompare(b.productName ?? b.displayLabel ?? '')
+    if (r !== 0) return r
+    return byDate(a, b)
+  }
+  function byStatus(a, b) {
+    const sa = statusOrder[a.status] ?? 9
+    const sb = statusOrder[b.status] ?? 9
+    if (sa !== sb) return sa - sb
+    return byDate(a, b)
+  }
+
+  const cmp = mode === 'program' ? byProgram
+            : mode === 'product' ? byProduct
+            : mode === 'status'  ? byStatus
+            :                      byDate
+  copy.sort(cmp)
+  return copy
+}
+
+/**
+ * Derive option lists for the filter toolbar dropdowns from the
+ * currently visible calendar items. Each list begins with an "all"
+ * entry so the dropdown can be wired without a separate render branch.
+ *
+ * @param {Array} calendarItems  output of buildProgramCalendarItems
+ * @returns {{
+ *   programs:    Array<{ value: string, label: string }>,
+ *   statuses:    Array<{ value: string, label: string }>,
+ *   targetAreas: Array<{ value: string, label: string }>,
+ *   linkStates:  Array<{ value: string, label: string }>,
+ *   sortModes:   Array<{ value: string, label: string }>,
+ * }}
+ */
+export function buildProgramCalendarFilterOptions(calendarItems = []) {
+  const programMap = new Map()
+  const areaSet    = new Set()
+  const statusSet  = new Set()
+
+  for (const ci of calendarItems ?? []) {
+    if (!ci) continue
+    if (ci.programId && !programMap.has(ci.programId)) {
+      programMap.set(ci.programId, ci.programName ?? '(unnamed program)')
+    }
+    if (ci.targetArea) areaSet.add(ci.targetArea)
+    if (ci.status)     statusSet.add(ci.status)
+  }
+
+  const programs = [{ value: 'all', label: 'All programs' }]
+  // Sort programs by name for a stable dropdown ordering.
+  const programEntries = Array.from(programMap.entries())
+    .sort((a, b) => (a[1] ?? '').localeCompare(b[1] ?? ''))
+  for (const [id, name] of programEntries) programs.push({ value: id, label: name })
+
+  const STATUS_LABEL = { planned: 'Planned', completed: 'Completed', skipped: 'Skipped', canceled: 'Canceled' }
+  const statuses = [{ value: 'all', label: 'All statuses' }]
+  for (const s of ['planned', 'completed', 'skipped', 'canceled']) {
+    if (statusSet.has(s)) statuses.push({ value: s, label: STATUS_LABEL[s] })
+  }
+
+  const targetAreas = [{ value: 'all', label: 'All target areas' }]
+  for (const a of Array.from(areaSet).sort((x, y) => x.localeCompare(y))) {
+    targetAreas.push({ value: a, label: a })
+  }
+
+  const linkStates = [
+    { value: 'all',      label: 'All link states' },
+    { value: 'linked',   label: 'Linked completed' },
+    { value: 'unlinked', label: 'Not linked' },
+  ]
+
+  const sortModes = [
+    { value: 'date',    label: 'Date' },
+    { value: 'program', label: 'Program' },
+    { value: 'product', label: 'Product' },
+    { value: 'status',  label: 'Status' },
+  ]
+
+  return { programs, statuses, targetAreas, linkStates, sortModes }
+}
+
 // Exported for the smoke; not part of the public render contract.
 export const __TEST = {
   isValidDate,
@@ -229,4 +419,7 @@ export const __TEST = {
   dayKey,
   MAX_RANGE_DAYS,
   DAY_MS,
+  STATUS_VALUES,
+  LINK_STATES,
+  SORT_MODES,
 }
