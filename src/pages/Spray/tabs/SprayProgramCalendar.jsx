@@ -9,6 +9,13 @@ import {
   buildProgramCalendarItems,
   groupProgramItemsByDate,
 } from '../../../utils/sprayPrograms/programCalendar'
+// Phase 7H (2/?) — read-only detail drawer + the stores it needs to
+// resolve linked completed sprays + intelligence context.
+import { useInventoryData } from '../../../utils/inventory/inventoryStore'
+import { useProductCatalog } from '../../../utils/productCatalog/productCatalogStore'
+import { useImportedLabels } from '../../../utils/inventory/labelImportStore'
+import { useSpraysData } from '../../../utils/sprays/spraysStore'
+import ProgramCalendarItemDrawer from './components/ProgramCalendarItemDrawer'
 import styles from './SprayProgramCalendar.module.css'
 
 // Phase 7H (1/?) — Spray Program Calendar tab.
@@ -85,6 +92,31 @@ function buildMonthGrid(year, month) {
 
 export default function SprayProgramCalendar() {
   const { programs, itemsByProgramId, loading, error } = useSprayPrograms()
+  // Phase 7H (2/?) — stores for the read-only detail drawer.
+  const { items: inventoryItems }     = useInventoryData()
+  const { products: catalogProducts } = useProductCatalog()
+  const { labels: importedLabels }    = useImportedLabels()
+  const { records: sprayRecords }     = useSpraysData()
+  const labelsByItemId = useMemo(() => {
+    const out = {}
+    for (const lbl of importedLabels ?? []) {
+      if (lbl?.inventoryItemId) out[lbl.inventoryItemId] = lbl
+    }
+    return out
+  }, [importedLabels])
+  const intelContext = useMemo(() => ({
+    inventoryProducts: inventoryItems ?? [],
+    catalogProducts:   catalogProducts ?? [],
+    labelsByItemId,
+  }), [inventoryItems, catalogProducts, labelsByItemId])
+  const sprayRecordsById = useMemo(() => {
+    const out = {}
+    for (const r of sprayRecords ?? []) if (r?.id) out[r.id] = r
+    return out
+  }, [sprayRecords])
+
+  // Selected planned-item id; the drawer is open whenever this is set.
+  const [selectedItemId, setSelectedItemId] = useState(null)
 
   const [{ year, month }, setAnchor] = useState(todayMonthAnchor)
 
@@ -114,6 +146,25 @@ export default function SprayProgramCalendar() {
   )
 
   const monthCells = useMemo(() => buildMonthGrid(year, month), [year, month])
+
+  // Selected-item resolution. Walk every cached program's items to find
+  // the planner row by id; resolve the parent program + the linked
+  // completed spray (when present). Defensive against missing caches.
+  const selection = useMemo(() => {
+    if (!selectedItemId) return null
+    for (const p of programs ?? []) {
+      const list = itemsByProgramId?.[p.id]
+      if (!Array.isArray(list)) continue
+      const item = list.find(i => i.id === selectedItemId)
+      if (item) {
+        const linkedSpray = item.linkedSprayRecordId
+          ? sprayRecordsById[item.linkedSprayRecordId] ?? null
+          : null
+        return { item, program: p, linkedSpray }
+      }
+    }
+    return null
+  }, [selectedItemId, programs, itemsByProgramId, sprayRecordsById])
 
   // Agenda rows: items whose window touches the active month.
   const agendaRows = useMemo(() => {
@@ -209,6 +260,7 @@ export default function SprayProgramCalendar() {
                       key={cell.key}
                       cell={cell}
                       items={list}
+                      onSelect={setSelectedItemId}
                     />
                   )
                 })}
@@ -222,7 +274,12 @@ export default function SprayProgramCalendar() {
                 ? (
                   <ul className={styles.agendaList}>
                     {agendaRows.map(({ key, ci }, i) => (
-                      <AgendaRow key={`${key}-${ci.id}-${i}`} day={key} ci={ci} />
+                      <AgendaRow
+                        key={`${key}-${ci.id}-${i}`}
+                        day={key}
+                        ci={ci}
+                        onSelect={setSelectedItemId}
+                      />
                     ))}
                   </ul>
                 )
@@ -240,7 +297,12 @@ export default function SprayProgramCalendar() {
                 </p>
                 <ul className={styles.agendaList}>
                   {unscheduled.map((ci, i) => (
-                    <AgendaRow key={`unscheduled-${ci.id}-${i}`} day={null} ci={ci} />
+                    <AgendaRow
+                      key={`unscheduled-${ci.id}-${i}`}
+                      day={null}
+                      ci={ci}
+                      onSelect={setSelectedItemId}
+                    />
                   ))}
                 </ul>
               </section>
@@ -248,6 +310,17 @@ export default function SprayProgramCalendar() {
           </>
         )}
       </WorkspaceSection>
+
+      {/* Phase 7H (2/?) — read-only detail drawer. Opens whenever a
+          calendar chip / agenda row / unscheduled row is clicked. */}
+      <ProgramCalendarItemDrawer
+        item={selection?.item ?? null}
+        program={selection?.program ?? null}
+        linkedSpray={selection?.linkedSpray ?? null}
+        intelContext={intelContext}
+        inventoryItems={inventoryItems ?? []}
+        onClose={() => setSelectedItemId(null)}
+      />
     </div>
   )
 }
@@ -260,7 +333,7 @@ function BoundaryNote() {
   )
 }
 
-function DayCell({ cell, items }) {
+function DayCell({ cell, items, onSelect }) {
   const hasItems = items.length > 0
   const visible  = items.slice(0, 3)
   const overflow = items.length - visible.length
@@ -275,15 +348,19 @@ function DayCell({ cell, items }) {
       {hasItems && (
         <ul className={styles.dayItemList}>
           {visible.map(ci => (
-            <li
-              key={ci.id}
-              className={`${styles.dayItem} ${styles[`status_${ci.status}`] ?? ''}`}
-              title={`${ci.programName ?? ''} — ${ci.displayLabel}`}
-            >
-              {ci.hasCompletedLink && (
-                <span className={styles.completedDot} aria-hidden>✓</span>
-              )}
-              <span className={styles.dayItemLabel}>{ci.displayLabel}</span>
+            <li key={ci.id}>
+              <button
+                type="button"
+                className={`${styles.dayItem} ${styles.dayItemBtn} ${styles[`status_${ci.status}`] ?? ''}`}
+                title={`${ci.programName ?? ''} — ${ci.displayLabel}`}
+                onClick={() => onSelect?.(ci.itemId)}
+                aria-label={`Open details for ${ci.displayLabel}`}
+              >
+                {ci.hasCompletedLink && (
+                  <span className={styles.completedDot} aria-hidden>✓</span>
+                )}
+                <span className={styles.dayItemLabel}>{ci.displayLabel}</span>
+              </button>
             </li>
           ))}
           {overflow > 0 && (
@@ -295,33 +372,40 @@ function DayCell({ cell, items }) {
   )
 }
 
-function AgendaRow({ day, ci }) {
+function AgendaRow({ day, ci, onSelect }) {
   return (
     <li className={`${styles.agendaItem} ${styles[`agendaStatus_${ci.status}`] ?? ''}`}>
-      <div className={styles.agendaMain}>
-        <div className={styles.agendaTitleRow}>
-          <span className={styles.agendaProduct}>{ci.displayLabel}</span>
-          <span className={styles.agendaStatusBadge}>
-            {STATUS_LABEL[ci.status] ?? ci.status}
-          </span>
-          {ci.hasCompletedLink && (
-            <span className={styles.agendaLinkedChip} title="Linked to a completed spray record">
-              ✓ Linked completed
+      <button
+        type="button"
+        className={styles.agendaItemBtn}
+        onClick={() => onSelect?.(ci.itemId)}
+        aria-label={`Open details for ${ci.displayLabel}`}
+      >
+        <div className={styles.agendaMain}>
+          <div className={styles.agendaTitleRow}>
+            <span className={styles.agendaProduct}>{ci.displayLabel}</span>
+            <span className={styles.agendaStatusBadge}>
+              {STATUS_LABEL[ci.status] ?? ci.status}
             </span>
+            {ci.hasCompletedLink && (
+              <span className={styles.agendaLinkedChip} title="Linked to a completed spray record">
+                ✓ Linked completed
+              </span>
+            )}
+          </div>
+          <div className={styles.agendaMeta}>
+            {ci.programName && <span>📋 {ci.programName}</span>}
+            {ci.targetArea  && <span>📍 {ci.targetArea}</span>}
+            {ci.rangeLabel && <span>🗓 {ci.rangeLabel}</span>}
+            {ci.plannedWindowLabel && !ci.rangeLabel && (
+              <span>🗓 {ci.plannedWindowLabel}</span>
+            )}
+          </div>
+          {day && (
+            <div className={styles.agendaDayKey}>On {day}</div>
           )}
         </div>
-        <div className={styles.agendaMeta}>
-          {ci.programName && <span>📋 {ci.programName}</span>}
-          {ci.targetArea  && <span>📍 {ci.targetArea}</span>}
-          {ci.rangeLabel && <span>🗓 {ci.rangeLabel}</span>}
-          {ci.plannedWindowLabel && !ci.rangeLabel && (
-            <span>🗓 {ci.plannedWindowLabel}</span>
-          )}
-        </div>
-        {day && (
-          <div className={styles.agendaDayKey}>On {day}</div>
-        )}
-      </div>
+      </button>
     </li>
   )
 }

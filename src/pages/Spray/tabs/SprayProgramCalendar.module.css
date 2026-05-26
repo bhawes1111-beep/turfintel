@@ -152,6 +152,43 @@
   font-weight: 700;
 }
 
+/* ── Clickable affordances (Phase 7H.2) ────────────────────────────── */
+
+.dayItemBtn {
+  width: 100%;
+  text-align: left;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+.dayItemBtn:hover,
+.dayItemBtn:focus-visible {
+  filter: brightness(1.15);
+  outline: none;
+}
+
+.agendaItemBtn {
+  display: block;
+  width: 100%;
+  padding: 0;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+.agendaItemBtn:hover,
+.agendaItemBtn:focus-visible {
+  outline: none;
+}
+.agendaItemBtn:hover .agendaProduct,
+.agendaItemBtn:focus-visible .agendaProduct {
+  color: rgba(255, 255, 255, 1);
+  text-decoration: underline;
+}
+
 .status_planned   { background: rgba(100, 150, 220, 0.12); color: rgba(200, 220, 255, 0.95); border-left-color: rgba(100, 150, 220, 0.6); }
 .status_completed { background: rgba(78, 203, 78, 0.12);   color: #8ed68e;                  border-left-color: rgba(78, 203, 78, 0.6); }
 .status_skipped   { background: rgba(255, 255, 255, 0.05); color: rgba(255, 255, 255, 0.55); border-left-color: rgba(255, 255, 255, 0.25); }
