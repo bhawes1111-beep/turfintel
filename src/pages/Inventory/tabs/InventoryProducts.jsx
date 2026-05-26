@@ -7,6 +7,8 @@ import SideDrawer from '../../../components/primitives/SideDrawer'
 import StatusBoard from '../../../components/primitives/StatusBoard'
 import CatalogChip from '../components/CatalogChip'
 import CatalogLinkPicker from '../components/CatalogLinkPicker'
+// Phase 7J (1/?) — Inventory cost-basis stewardship editor.
+import CostBasisEditor from '../components/CostBasisEditor'
 import styles from '../Inventory.module.css'
 import linkStyles from '../components/CatalogLinkSection.module.css'
 
@@ -333,6 +335,9 @@ export default function InventoryProducts({ initialSelectedId = null, onOpenCata
                     </div>
                   </section>
                 )}
+
+                {/* Phase 7J (1/?) — Cost basis stewardship editor. */}
+                <CostBasisEditor item={selected} />
 
                 {/* Cost Information */}
                 {selected.costPerUnit != null && (

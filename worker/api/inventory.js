@@ -24,6 +24,13 @@ export function rowToItem(row) {
     location:     row.location,
     vendor:       row.vendor,
     costPerUnit:  row.cost_per_unit,
+    // Phase 7J.1 — cost-basis stewardship fields. All nullable; only
+    // populated by the narrow /cost-basis PATCH endpoint. Legacy rows
+    // stay NULL until a steward edits them.
+    costUnit:       row.cost_unit       ?? null,
+    costSource:     row.cost_source     ?? null,
+    costUpdatedAt:  row.cost_updated_at ?? null,
+    costNotes:      row.cost_notes      ?? null,
     notes:        row.notes,
     // Kind-specific (only populated for the relevant kind)
     manufacturer:  row.manufacturer,
@@ -230,6 +237,109 @@ export async function patchInventoryCatalogLink(env, id, request) {
            updated_at         = datetime('now')
      WHERE id = ?`,
   ).bind(productCatalogId, id).run()
+
+  if (!result.success || result.meta.changes === 0) {
+    return notFound('Inventory item not found')
+  }
+  return getInventory(env, id)
+}
+
+// ── Phase 7J.1 — narrow cost-basis stewardship patch ──────────────────────
+//
+// PATCH /api/inventory/:id/cost-basis
+// Body: {
+//   costPerUnit: number | null,
+//   costUnit:    string | null,
+//   costSource:  'manual' | 'imported' | 'invoice' | 'unknown' | null,
+//   costNotes:   string | null,
+// }
+//
+// The ONE write path into the cost-basis cluster (cost_per_unit,
+// cost_unit, cost_source, cost_updated_at, cost_notes). Kept off
+// MUTABLE_COLUMNS on purpose so:
+//   - generic updateInventory cannot blanket-clobber a cost basis
+//   - we can validate the (cost, unit) pair as a single proposition
+//   - cost_source is constrained to the allowed vocabulary
+//   - cost_updated_at is always set by the server, never by the client
+//
+// Strict invariants:
+//   - never writes product_catalog
+//   - never deducts inventory.quantity
+//   - never creates inventory_usage
+//   - never creates budget / invoice / ledger rows
+//   - costPerUnit must be null or a finite positive number
+//   - costUnit is REQUIRED whenever costPerUnit is not null (a price
+//     without a unit is meaningless for the cost-awareness estimator)
+//   - costSource, when provided, must be one of the allowed labels
+const COST_SOURCE_VALUES = new Set(['manual', 'imported', 'invoice', 'unknown'])
+
+export async function patchInventoryCostBasis(env, id, request) {
+  if (!env.DB) return json({ error: 'D1 not configured' }, 503)
+  const body = await readJson(request)
+
+  // The body must include costPerUnit (even as null) so an empty PATCH
+  // can't silently no-op the cost basis.
+  if (!Object.prototype.hasOwnProperty.call(body, 'costPerUnit')) {
+    return badRequest("Body must include 'costPerUnit' (number | null)")
+  }
+
+  // costPerUnit — null clears; otherwise must be a finite positive number.
+  let costPerUnit = body.costPerUnit
+  if (costPerUnit !== null) {
+    const num = Number(costPerUnit)
+    if (!Number.isFinite(num) || num <= 0) {
+      return badRequest('costPerUnit must be null or a positive finite number')
+    }
+    costPerUnit = num
+  }
+
+  // costUnit — required when costPerUnit is set, otherwise nullable.
+  let costUnit = body.costUnit ?? null
+  if (typeof costUnit === 'string') costUnit = costUnit.trim() || null
+  if (costPerUnit !== null && !costUnit) {
+    return badRequest('costUnit is required when costPerUnit is set')
+  }
+
+  // costSource — must be one of the allowed vocabulary if present.
+  let costSource = body.costSource ?? null
+  if (typeof costSource === 'string') {
+    costSource = costSource.trim().toLowerCase() || null
+  }
+  if (costSource !== null && !COST_SOURCE_VALUES.has(costSource)) {
+    return badRequest(
+      `costSource must be one of manual / imported / invoice / unknown`,
+    )
+  }
+  // When the steward writes a cost without naming its source, default
+  // to 'manual'. When clearing the cost (costPerUnit === null), the
+  // source clears too.
+  if (costPerUnit === null) costSource = null
+  else if (!costSource)     costSource = 'manual'
+
+  // costNotes — free-text, nullable. Trim empties to null so the UI
+  // never shows " " as a notes value.
+  let costNotes = body.costNotes ?? null
+  if (typeof costNotes === 'string') costNotes = costNotes.trim() || null
+
+  // Inventory row must exist.
+  const inv = await env.DB.prepare(
+    'SELECT id FROM inventory_items WHERE id = ?',
+  ).bind(id).first()
+  if (!inv) return notFound('Inventory item not found')
+
+  // Server-stamped timestamp. Clearing the cost also clears the stamp.
+  const stampedAt = costPerUnit === null ? null : new Date().toISOString()
+
+  const result = await env.DB.prepare(
+    `UPDATE inventory_items
+       SET cost_per_unit    = ?,
+           cost_unit        = ?,
+           cost_source      = ?,
+           cost_updated_at  = ?,
+           cost_notes       = ?,
+           updated_at       = datetime('now')
+     WHERE id = ?`,
+  ).bind(costPerUnit, costUnit, costSource, stampedAt, costNotes, id).run()
 
   if (!result.success || result.meta.changes === 0) {
     return notFound('Inventory item not found')

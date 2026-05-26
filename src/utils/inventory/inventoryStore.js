@@ -112,6 +112,54 @@ export async function setInventoryCatalogLink(id, productCatalogId) {
   }
 }
 
+// Phase 7J (1/?) — Cost-basis stewardship control.
+//
+// Narrow client wrapper around PATCH /api/inventory/:id/cost-basis.
+// Optimistic: patches the local row's cost-basis fields first so the
+// drawer reflects the new state immediately; on error we roll back
+// and surface the message.
+//
+// Kept distinct from patchInventory() on purpose — cost basis is a
+// stewardship action with its own server-side validation (the unit
+// is required when a cost is set, costSource is constrained to the
+// allowed vocabulary, and the timestamp is server-stamped).
+//
+// Pass costPerUnit=null to clear the entire cost-basis cluster.
+export async function setInventoryCostBasis(id, patch) {
+  const costPerUnit = patch?.costPerUnit ?? null
+  const costUnit    = patch?.costUnit    ?? null
+  const costSource  = patch?.costSource  ?? null
+  const costNotes   = patch?.costNotes   ?? null
+
+  const prev = state.items
+  const optimistic = prev.map(i => i.id === id ? {
+    ...i,
+    costPerUnit,
+    costUnit,
+    costSource:    costPerUnit === null ? null
+                  : (costSource || 'manual'),
+    costUpdatedAt: costPerUnit === null ? null : new Date().toISOString(),
+    costNotes,
+  } : i)
+  setState({ items: optimistic })
+
+  try {
+    const saved = await fetchJSON(
+      `${API.items}/${encodeURIComponent(id)}/cost-basis`,
+      {
+        method:  'PATCH',
+        headers: mutationHeaders(),
+        body:    JSON.stringify({ costPerUnit, costUnit, costSource, costNotes }),
+      },
+    )
+    setState({ items: state.items.map(i => i.id === id ? saved : i) })
+    return saved
+  } catch (err) {
+    setState({ items: prev, error: err.message })
+    throw err
+  }
+}
+
 export async function createInventory(payload) {
   try {
     const saved = await fetchJSON(API.items, {

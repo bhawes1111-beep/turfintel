@@ -1,0 +1,171 @@
+/* Phase 7J (1/?) — Inventory cost-basis stewardship editor.
+   Scoped to this component; mobile-first. */
+
+.costBasis {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(120, 180, 130, 0.05);
+  border: 1px solid rgba(120, 180, 130, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.kv {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 12px;
+  row-gap: 4px;
+  margin: 0;
+}
+.kvRow    { display: contents; }
+.notesRow { display: contents; }
+
+.kvLabel {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 12px;
+  margin: 0;
+}
+.kvValue {
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 13px;
+  margin: 0;
+}
+.kvNotes {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 12px;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.fieldLabel {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+.input {
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+.input:focus {
+  outline: none;
+  border-color: rgba(100, 150, 220, 0.55);
+  background: rgba(255, 255, 255, 0.07);
+}
+textarea.input {
+  resize: vertical;
+  min-height: 44px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.btnPrimary {
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(120, 180, 130, 0.18);
+  color: #9cd6a2;
+  border: 1px solid rgba(120, 180, 130, 0.45);
+  cursor: pointer;
+}
+.btnPrimary:hover:not(:disabled) {
+  background: rgba(120, 180, 130, 0.28);
+}
+.btnPrimary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btnGhost {
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  cursor: pointer;
+}
+.btnGhost:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+}
+.btnGhost:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btnDangerGhost {
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  background: rgba(220, 60, 60, 0.08);
+  color: #ff9999;
+  border: 1px solid rgba(220, 60, 60, 0.35);
+  cursor: pointer;
+}
+.btnDangerGhost:hover:not(:disabled) {
+  background: rgba(220, 60, 60, 0.16);
+}
+.btnDangerGhost:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.errorBanner {
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  background: rgba(220, 60, 60, 0.1);
+  color: #ff9999;
+  border: 1px solid rgba(220, 60, 60, 0.35);
+}
+
+.boundaryNote {
+  margin: 0;
+  font-size: 11px;
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.5;
+}

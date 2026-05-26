@@ -35,6 +35,7 @@ import {
   listInventoryUsage,
   recordInventoryUsage,
   patchInventoryCatalogLink,
+  patchInventoryCostBasis,
 } from './api/inventory.js'
 import {
   extractLabelDraft,
@@ -669,6 +670,17 @@ async function handleApi(request, env, url, ctx) {
   if (invCatLinkMatch) {
     const id = decodeURIComponent(invCatLinkMatch[1])
     if (method === 'PATCH') return patchInventoryCatalogLink(env, id, request)
+  }
+
+  // ── /api/inventory/:id/cost-basis (Phase 7J.1) ────────────────────────
+  // Same pattern as catalog-link: must precede the generic /:id route.
+  // The narrow PATCH writes only the cost-basis cluster
+  // (cost_per_unit, cost_unit, cost_source, cost_updated_at, cost_notes)
+  // and never touches product_catalog or inventory_usage.
+  const invCostBasisMatch = pathname.match(/^\/api\/inventory\/([^/]+)\/cost-basis$/)
+  if (invCostBasisMatch) {
+    const id = decodeURIComponent(invCostBasisMatch[1])
+    if (method === 'PATCH') return patchInventoryCostBasis(env, id, request)
   }
 
   // ── /api/inventory/:id ────────────────────────────────────────────────
