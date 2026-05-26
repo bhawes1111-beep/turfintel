@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { setInventoryCostBasis } from '../../../utils/inventory/inventoryStore'
 import styles from './CostBasisEditor.module.css'
 
@@ -36,11 +36,32 @@ const BOUNDARY_COPY = [
   'Product Catalog is not used as a price source.',
 ]
 
-export default function CostBasisEditor({ item }) {
+// Phase 7J (2/?) — deep-link context copy. Rendered ONLY when the
+// CostBasisEditor was opened from Spray Program Cost Basis Review
+// (sourceContext === 'spray-program-cost-basis-review'). Generic
+// Inventory usage continues to see no banner at all.
+const REVIEW_BANNER_COPY = [
+  'Review this inventory cost basis for spray program estimates.',
+  'Cost basis supports planning estimates and does not create budget entries.',
+]
+
+export default function CostBasisEditor({
+  item,
+  focusIntent   = null,
+  sourceContext = null,
+  highlight     = false,
+}) {
   const [editing,   setEditing]   = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [err,       setErr]       = useState(null)
   const [form,      setForm]      = useState(() => formFromItem(item))
+  // Phase 7J (2/?) — brief visual highlight when arriving from
+  // Spray Program Cost Basis Review. The highlight class is a
+  // background pulse that fades after ~1.5s so the steward can
+  // see the editor was the navigation target without a permanent
+  // banner outline.
+  const [pulse, setPulse] = useState(false)
+  const rootRef = useRef(null)
 
   // Re-sync the form when the user switches drawer rows underneath us
   // (so the cached form state from item A doesn't leak into item B).
@@ -50,7 +71,24 @@ export default function CostBasisEditor({ item }) {
     setErr(null)
   }, [item?.id])
 
+  // Deep-link landing: scroll into view + flash the editor when this
+  // mount was triggered from the Cost Basis Review flow. The effect
+  // ignores generic InventoryProducts use (highlight=false).
+  useEffect(() => {
+    if (!highlight) return
+    setPulse(true)
+    const t1 = setTimeout(() => {
+      try { rootRef.current?.scrollIntoView?.({ block: 'center', behavior: 'smooth' }) } catch { /* SSR / jsdom */ }
+    }, 50)
+    const t2 = setTimeout(() => setPulse(false), 1600)
+    return () => { clearTimeout(t1); clearTimeout(t2) }
+  }, [highlight, item?.id])
+
   if (!item) return null
+
+  const fromReview =
+    sourceContext === 'spray-program-cost-basis-review' ||
+    focusIntent  === 'cost-basis'
 
   async function submit(e) {
     e?.preventDefault?.()
@@ -98,7 +136,23 @@ export default function CostBasisEditor({ item }) {
   const updatedLabel = formatUpdatedAt(item.costUpdatedAt)
 
   return (
-    <section className={styles.costBasis} aria-label="Cost basis stewardship">
+    <section
+      ref={rootRef}
+      className={`${styles.costBasis} ${pulse ? styles.costBasisPulse : ''}`}
+      aria-label="Cost basis stewardship"
+      data-focus-intent={focusIntent ?? undefined}
+      data-source-context={sourceContext ?? undefined}
+    >
+      {/* Phase 7J (2/?) — contextual banner from Spray Program Cost
+          Basis Review. Renders ONLY when arriving from that flow. */}
+      {fromReview && (
+        <div className={styles.reviewBanner} role="note">
+          {REVIEW_BANNER_COPY.map((line, i) => (
+            <p key={i} className={styles.reviewBannerLine}>{line}</p>
+          ))}
+        </div>
+      )}
+
       <div className={styles.header}>
         <h3 className={styles.title}>Cost basis stewardship</h3>
         {!editing && (

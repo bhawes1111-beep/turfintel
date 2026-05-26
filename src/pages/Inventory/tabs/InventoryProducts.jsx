@@ -32,7 +32,12 @@ const FILTER_KEY = { 'Good': 'good', 'Low': 'low', 'Critical': 'critical', 'Out 
 
 const SORT_STATUS = { out: 0, critical: 1, low: 2, good: 3 }
 
-export default function InventoryProducts({ initialSelectedId = null, onOpenCatalog } = {}) {
+export default function InventoryProducts({
+  initialSelectedId = null,
+  initialFocus      = null,
+  initialSource     = null,
+  onOpenCatalog,
+} = {}) {
   const { items } = useInventoryData()
   // Phase 7C.2 (1/?) — subscribe so the drawer's "current link" summary
   // re-renders when the catalog cache settles.
@@ -336,8 +341,17 @@ export default function InventoryProducts({ initialSelectedId = null, onOpenCata
                   </section>
                 )}
 
-                {/* Phase 7J (1/?) — Cost basis stewardship editor. */}
-                <CostBasisEditor item={selected} />
+                {/* Phase 7J (1/?) — Cost basis stewardship editor.
+                    Phase 7J (2/?) — deep-link focus + source markers
+                    are threaded in so the editor can render a
+                    contextual banner + brief highlight when arrived
+                    at from Spray Program Cost Basis Review. */}
+                <CostBasisEditor
+                  item={selected}
+                  focusIntent={initialFocus}
+                  sourceContext={initialSource}
+                  highlight={initialFocus === 'cost-basis' && selected?.id === initialSelectedId}
+                />
 
                 {/* Cost Information */}
                 {selected.costPerUnit != null && (

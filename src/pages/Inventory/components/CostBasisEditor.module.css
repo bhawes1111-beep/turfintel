@@ -169,3 +169,35 @@ textarea.input {
   color: rgba(255, 255, 255, 0.6);
   line-height: 1.5;
 }
+
+/* Phase 7J (2/?) — deep-link context. Banner + brief highlight pulse
+   render only when the editor is opened from Spray Program Cost
+   Basis Review. Generic Inventory usage shows neither. */
+
+.reviewBanner {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(100, 150, 220, 0.10);
+  border: 1px solid rgba(100, 150, 220, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.reviewBannerLine {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgba(200, 220, 255, 0.95);
+}
+
+.costBasisPulse {
+  animation: cbPulse 1.6s ease-out 1;
+}
+@keyframes cbPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(120, 180, 130, 0.55); }
+  60%  { box-shadow: 0 0 0 8px rgba(120, 180, 130, 0.06); }
+  100% { box-shadow: 0 0 0 0 rgba(120, 180, 130, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .costBasisPulse { animation: none; }
+}

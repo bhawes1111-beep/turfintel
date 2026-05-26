@@ -32,6 +32,12 @@ export default function Inventory() {
   const location = useLocation()
   const seedTab     = TABS.includes(location.state?.activeTab) ? location.state.activeTab : 'Overview'
   const seedProduct = location.state?.productId ?? null
+  // Phase 7J (2/?) — deep-link intent from Spray Program Cost Basis
+  // Review. When focus === 'cost-basis' the Products tab opens the
+  // requested item with the CostBasisEditor highlighted; otherwise
+  // direct Inventory usage is unaffected.
+  const seedFocus   = location.state?.focus  ?? null
+  const seedSource  = location.state?.source ?? null
   const [activeTab, setActiveTab] = useState(seedTab)
   const [wizardOpen, setWizardOpen] = useState(false)
   // Phase 7C.1 (5/6) — when an inventory tab's 📋 Catalog chip is clicked,
@@ -87,7 +93,7 @@ export default function Inventory() {
       )}
 
       {activeTab === 'Overview'         && <InventoryOverview />}
-      {activeTab === 'Products'         && <InventoryProducts initialSelectedId={seedProduct} onOpenCatalog={openCatalogProduct} />}
+      {activeTab === 'Products'         && <InventoryProducts initialSelectedId={seedProduct} initialFocus={seedFocus} initialSource={seedSource} onOpenCatalog={openCatalogProduct} />}
       {activeTab === 'Chemicals'        && <InventoryChemicals onOpenCatalog={openCatalogProduct} />}
       {activeTab === 'Fertilizer'       && <InventoryFertilizer onOpenCatalog={openCatalogProduct} />}
       {activeTab === 'Parts'            && <InventoryParts />}

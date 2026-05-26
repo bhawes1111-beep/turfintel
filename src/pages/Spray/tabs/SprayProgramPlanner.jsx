@@ -146,8 +146,17 @@ export default function SprayProgramPlanner() {
   )
   function openInventoryItem(inventoryItemId) {
     if (!inventoryItemId) return
+    // Phase 7J (2/?) — carry deep-link intent so the inventory tab
+    // can auto-open the drawer AND focus the cost-basis editor with
+    // a contextual banner. The Phase 7C.2 (catalog-link) state shape
+    // stays untouched; we just add two opt-in keys.
     navigate('/inventory', {
-      state: { activeTab: 'Products', productId: inventoryItemId },
+      state: {
+        activeTab: 'Products',
+        productId: inventoryItemId,
+        focus:     'cost-basis',
+        source:    'spray-program-cost-basis-review',
+      },
     })
   }
 
