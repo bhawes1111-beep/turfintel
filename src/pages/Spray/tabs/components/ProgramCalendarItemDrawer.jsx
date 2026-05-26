@@ -3,6 +3,11 @@ import SideDrawer from '../../../../components/primitives/SideDrawer'
 import { resolveProgramItemIntel } from '../../../../utils/sprayPrograms/resolveProgramItemIntel'
 import { buildPlanActualComparison } from '../../../../utils/sprayPrograms/planActualComparison'
 import { getCatalogProductById } from '../../../../utils/productCatalog/productCatalogStore'
+// Phase 7I (1/?) — read-only cost-awareness estimate.
+import {
+  estimateProgramItemCost,
+  formatEstimatedCost,
+} from '../../../../utils/sprayPrograms/programCostAwareness'
 import styles from './ProgramCalendarItemDrawer.module.css'
 
 // Phase 7H (2/?) — Read-only detail drawer for a planned program item
@@ -61,6 +66,12 @@ export default function ProgramCalendarItemDrawer({
   const comparison = useMemo(
     () => (item && linkedSpray ? buildPlanActualComparison(item, linkedSpray) : null),
     [item, linkedSpray],
+  )
+  // Phase 7I (1/?) — read-only cost-awareness estimate using the same
+  // intelContext shape the planner already passes through.
+  const costEstimate = useMemo(
+    () => (item ? estimateProgramItemCost(item, intelContext ?? {}) : null),
+    [item, intelContext],
   )
   // Inventory-side summary resolution (read-only against the store
   // cache the parent already subscribed to).
@@ -162,6 +173,32 @@ export default function ProgramCalendarItemDrawer({
                 </li>
               ))}
             </ul>
+          </section>
+        )}
+
+        {/* Phase 7I (1/?) — Read-only cost awareness. */}
+        {costEstimate && (
+          <section className={styles.section}>
+            <h3 className={styles.sectionTitle}>Cost awareness</h3>
+            {costEstimate.status === 'estimated' ? (
+              <div className={styles.linkSummary}>
+                <div className={styles.linkSummaryTitle}>
+                  {formatEstimatedCost(costEstimate.estimatedCost, costEstimate.currency)}
+                </div>
+                <div className={styles.linkSummarySub}>{costEstimate.message}</div>
+              </div>
+            ) : (
+              <div className={styles.linkedRecordStale}>
+                <strong>{labelForCostStatus(costEstimate.status)}</strong>
+                <div className={styles.linkSummarySub}>{costEstimate.message}</div>
+              </div>
+            )}
+            <p className={styles.boundaryNote}>
+              Cost awareness is an estimate.
+              Planning estimates do not create budget entries.
+              Inventory is not deducted from planned items.
+              Missing cost basis means no inventory cost is available.
+            </p>
           </section>
         )}
 
@@ -280,6 +317,14 @@ function formatCarrier(item) {
   if (item?.carrierVolumeValue == null) return '—'
   const unit = item.carrierVolumeUnit ?? ''
   return `${item.carrierVolumeValue} ${unit}`.trim()
+}
+function labelForCostStatus(status) {
+  switch (status) {
+    case 'missing-cost-basis':  return 'Missing cost basis'
+    case 'missing-quantity':    return 'Missing quantity'
+    case 'not-comparable-unit': return 'Unit mismatch'
+    default:                    return 'Cost not available'
+  }
 }
 function toneFor(value) {
   if (value == null) return ''

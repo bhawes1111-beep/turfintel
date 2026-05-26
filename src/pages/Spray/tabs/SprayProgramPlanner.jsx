@@ -18,6 +18,12 @@ import { useImportedLabels } from '../../../utils/inventory/labelImportStore'
 import { useSpraysData } from '../../../utils/sprays/spraysStore'
 import { resolveProgramItemIntel } from '../../../utils/sprayPrograms/resolveProgramItemIntel'
 import { buildPlanActualComparison } from '../../../utils/sprayPrograms/planActualComparison'
+// Phase 7I (1/?) — read-only cost-awareness estimates.
+import {
+  estimateProgramItemCost,
+  buildProgramCostSummary,
+  formatEstimatedCost,
+} from '../../../utils/sprayPrograms/programCostAwareness'
 import InventoryPickerModal       from './components/InventoryPickerModal'
 import ProductCatalogPickerModal  from './components/ProductCatalogPickerModal'
 import CompletedSprayPickerModal  from './components/CompletedSprayPickerModal'
@@ -114,6 +120,13 @@ export default function SprayProgramPlanner() {
 
   const selected = programs.find(p => p.id === selectedId) ?? null
   const items    = selectedId ? (itemsByProgramId[selectedId] ?? []) : []
+
+  // Phase 7I (1/?) — read-only cost-awareness summary for the selected
+  // program. Recomputed only when the items list or inventory changes.
+  const costSummary = useMemo(
+    () => (selected ? buildProgramCostSummary(selected, items, intelContext) : null),
+    [selected, items, intelContext],
+  )
 
   // Auto-load items for the selected program (lazy per-program cache
   // in the store).
@@ -472,6 +485,8 @@ export default function SprayProgramPlanner() {
                       {selected.notes && (
                         <p className={styles.detailNotes}>{selected.notes}</p>
                       )}
+                      {/* Phase 7I (1/?) — read-only cost-awareness summary. */}
+                      <ProgramCostHeader summary={costSummary} />
                     </div>
                     <div className={styles.detailActions}>
                       <button
@@ -669,6 +684,9 @@ function ItemRow({ item, intelContext, linkedSpray, onEdit, onRemove, onLinkComp
         {!hasIntel && (item.productCatalogId || item.inventoryItemId) && (
           <p className={styles.intelEmpty}>No linked intelligence available.</p>
         )}
+
+        {/* Phase 7I (1/?) — read-only cost-awareness chip. */}
+        <ItemCostChip item={item} intelContext={intelContext} />
 
         {item.applicationNotes && (
           <p className={styles.itemNotes}>{item.applicationNotes}</p>
@@ -1166,4 +1184,90 @@ function PlanVsActualBlock({ item, linkedSpray }) {
       </ul>
     </div>
   )
+}
+
+// Phase 7I (1/?) — read-only cost-awareness summary for the selected
+// program. Renders a compact chip row + an estimate-boundary note.
+// No writes, no fetches, no inventory deduction; the helper computes
+// against the planner-provided context only.
+const COST_BOUNDARY_COPY = [
+  'Cost awareness is an estimate.',
+  'Planning estimates do not create budget entries.',
+  'Inventory is not deducted from planned items.',
+  'Missing cost basis means no inventory cost is available.',
+]
+function ProgramCostHeader({ summary }) {
+  if (!summary) return null
+  const {
+    estimatedTotal, currency, estimatedItems,
+    missingCostBasis, missingQuantity, notComparableUnits,
+  } = summary
+  return (
+    <div className={styles.costHeader}>
+      <div className={styles.costHeaderChips}>
+        <span className={`${styles.costChip} ${styles.costChipEstimate}`}>
+          <span className={styles.costChipLabel}>Est. cost</span>
+          {formatEstimatedCost(estimatedTotal, currency)}
+        </span>
+        <span className={styles.costChip}>
+          <span className={styles.costChipLabel}>Items estimated</span>{estimatedItems}
+        </span>
+        {missingCostBasis > 0 && (
+          <span className={`${styles.costChip} ${styles.costChipWarn}`}>
+            <span className={styles.costChipLabel}>Missing cost basis</span>{missingCostBasis}
+          </span>
+        )}
+        {missingQuantity > 0 && (
+          <span className={`${styles.costChip} ${styles.costChipWarn}`}>
+            <span className={styles.costChipLabel}>Missing quantity</span>{missingQuantity}
+          </span>
+        )}
+        {notComparableUnits > 0 && (
+          <span className={`${styles.costChip} ${styles.costChipWarn}`}>
+            <span className={styles.costChipLabel}>Unit mismatch</span>{notComparableUnits}
+          </span>
+        )}
+      </div>
+      <p className={styles.costBoundaryNote}>{COST_BOUNDARY_COPY.join(' ')}</p>
+    </div>
+  )
+}
+
+// Phase 7I (1/?) — per-item cost chip. Renders an estimated value when
+// available, otherwise a clear "missing cost basis / quantity / unit"
+// note. Always read-only.
+function ItemCostChip({ item, intelContext }) {
+  const result = useMemo(
+    () => estimateProgramItemCost(item, intelContext ?? {}),
+    [item, intelContext],
+  )
+  if (!result) return null
+  if (result.status === 'estimated') {
+    return (
+      <div className={styles.itemCostRow}>
+        <span className={`${styles.costChip} ${styles.costChipEstimate}`}>
+          <span className={styles.costChipLabel}>Est. cost</span>
+          {formatEstimatedCost(result.estimatedCost, result.currency)}
+        </span>
+        <span className={styles.itemCostNote}>{result.message}</span>
+      </div>
+    )
+  }
+  return (
+    <div className={styles.itemCostRow}>
+      <span className={`${styles.costChip} ${styles.costChipWarn}`}>
+        <span className={styles.costChipLabel}>Cost</span>
+        {labelForStatus(result.status)}
+      </span>
+      <span className={styles.itemCostNote}>{result.message}</span>
+    </div>
+  )
+}
+function labelForStatus(status) {
+  switch (status) {
+    case 'missing-cost-basis':  return 'Missing cost basis'
+    case 'missing-quantity':    return 'Missing quantity'
+    case 'not-comparable-unit': return 'Unit mismatch'
+    default:                    return 'Not available'
+  }
 }
