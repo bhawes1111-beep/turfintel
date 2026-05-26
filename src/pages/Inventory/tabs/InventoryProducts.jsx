@@ -9,6 +9,8 @@ import CatalogChip from '../components/CatalogChip'
 import CatalogLinkPicker from '../components/CatalogLinkPicker'
 // Phase 7J (1/?) — Inventory cost-basis stewardship editor.
 import CostBasisEditor from '../components/CostBasisEditor'
+// Phase 7K (2/?) — read-only Cost Import Review preview surface.
+import CostBasisImportReview from '../components/CostBasisImportReview'
 import styles from '../Inventory.module.css'
 import linkStyles from '../components/CatalogLinkSection.module.css'
 
@@ -214,6 +216,10 @@ export default function InventoryProducts({
           })}
         </div>
       )}
+
+      {/* Phase 7K (2/?) — Cost Import Review preview. Read-only:
+          no Apply / Import / Save / Commit / Upload button. */}
+      <CostBasisImportReview />
 
       </WorkspaceSection>
 
