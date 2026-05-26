@@ -416,14 +416,40 @@ export function buildSprayProgramReport(input = {}) {
   const generatedAt = new Date(now).toISOString()
 
   const metadata = {
+    // ── Identification / versioning. Stable across PDF/Excel sinks. ──
     exportVersion: 1,
     reportKind:    REPORT_TYPE.SPRAY_PROGRAM,
     generatedBy:   'TurfIntel',
     generatedAt,
     dateRange,
+
+    // ── Content surfaces. ────────────────────────────────────────────
     totals:        summary.totals,
     notices,
     disclaimer:    DISCLAIMER,
+
+    // ── Print-only opt-in extras consumed by
+    //    reportFormatter.buildPrintDocument (Phase 7E.3). Generic
+    //    reports without this object get the same output as before;
+    //    smoke locks the regression. Every value is plain JSON-safe
+    //    data — no functions, no DOM refs, no React elements. ──────
+    printExtras: {
+      subtitle: 'Read-only spray program summary',
+      summary: [
+        ['Programs reviewed',       summary.totals.programsReviewed],
+        ['Planned items',           summary.totals.plannedItems],
+        ['Linked completed',        summary.totals.linkedCompletedItems],
+        ['Unlinked planned',        summary.totals.unlinkedPlannedItems],
+        ['Completed status',        summary.totals.completedStatusItems],
+        ['Skipped',                 summary.totals.skippedItems],
+        ['Canceled',                summary.totals.canceledItems],
+        ['Missing or stale links',  summary.totals.missingActualLinks],
+      ],
+      notices,
+      disclaimer:  DISCLAIMER,
+      footerLeft:  'TurfIntel · Spray Program',
+      footerRight: `Generated ${generatedAt}`,
+    },
   }
 
   return createReport({
