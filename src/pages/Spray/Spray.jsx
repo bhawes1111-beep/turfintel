@@ -13,9 +13,13 @@ import ProgramIntelligence   from './tabs/ProgramIntelligence'
 // spray_programs / spray_program_items data model. Distinct from the
 // legacy 'Planned Programs' tab which predates the model.
 import SprayProgramPlanner   from './tabs/SprayProgramPlanner'
+// Phase 7H (1/?) — read-only Spray Program calendar. Distinct from the
+// legacy 'Spray Calendar' (completed applications) — this one
+// visualizes planned spray_program_items.
+import SprayProgramCalendar  from './tabs/SprayProgramCalendar'
 import workspace from '../../styles/workspace.module.css'
 
-const TABS = ['Overview', 'Spray Calendar', 'New Application', 'Spray Records', 'Planned Programs', 'Program Planner', 'Mix Calculator', 'Reports', 'Program Intelligence']
+const TABS = ['Overview', 'Spray Calendar', 'New Application', 'Spray Records', 'Planned Programs', 'Program Planner', 'Program Calendar', 'Mix Calculator', 'Reports', 'Program Intelligence']
 
 /**
  * Sprays workspace — canonical TurfIntel workspace pattern (Phase 2.2 pilot).
@@ -57,6 +61,7 @@ export default function Spray() {
       {activeTab === 'Spray Records'         && <SprayRecords />}
       {activeTab === 'Planned Programs'      && <PlannedPrograms />}
       {activeTab === 'Program Planner'       && <SprayProgramPlanner />}
+      {activeTab === 'Program Calendar'      && <SprayProgramCalendar />}
       {activeTab === 'Mix Calculator'        && <MixCalculator />}
       {activeTab === 'Reports'               && <SprayReports />}
       {activeTab === 'Program Intelligence'  && <ProgramIntelligence />}
