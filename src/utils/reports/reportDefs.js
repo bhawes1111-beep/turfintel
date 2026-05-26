@@ -19,6 +19,7 @@ import {
   buildTurfHealthSummaryReport,
 } from './reportBuilder.js'
 import { buildSprayIntelligenceReport } from './builders/sprayIntelligenceReport.js'
+import { buildSprayProgramReport }      from './builders/sprayProgramReport.js'
 import { REPORT_MODULE } from './reportSchemas.js'
 
 /**
@@ -124,6 +125,22 @@ export const REPORT_DEFS = [
     build: ({ sprays, inventoryProducts, catalogProducts, labelsByItemId }) =>
       buildSprayIntelligenceReport({
         sprays, inventoryProducts, catalogProducts, labelsByItemId,
+      }),
+  },
+
+  // Phase 7G (1/?) — Spray Program report: planned-vs-actual summary
+  // over spray_programs + spray_program_items + linked spray_records.
+  // Reuses Phase 7F.5 planActualComparison helper; no parallel logic.
+  {
+    id:       'spray-program',
+    module:   REPORT_MODULE.SPRAY,
+    title:    'Spray Program',
+    desc:     'Read-only summary of spray programs, planned items, completed links, and plan-vs-actual comparisons.',
+    requires: ['programs', 'itemsByProgramId', 'sprays'],
+    build: ({ programs, itemsByProgramId, sprays, inventoryProducts, catalogProducts, labelsByItemId }) =>
+      buildSprayProgramReport({
+        programs, itemsByProgramId, sprays,
+        inventoryProducts, catalogProducts, labelsByItemId,
       }),
   },
 

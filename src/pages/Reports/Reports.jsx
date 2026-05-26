@@ -19,6 +19,8 @@ import { useSpraysData } from '../../utils/sprays/spraysStore'
 import { useInventoryData } from '../../utils/inventory/inventoryStore'
 import { useProductCatalog } from '../../utils/productCatalog/productCatalogStore'
 import { useImportedLabels } from '../../utils/inventory/labelImportStore'
+// Phase 7G (1/?) — Spray Program report bundle inputs.
+import { useSprayPrograms } from '../../utils/sprayPrograms/sprayProgramStore'
 import styles from './Reports.module.css'
 
 /**
@@ -49,6 +51,8 @@ export default function Reports() {
   const inventory        = useInventoryData()
   const catalog          = useProductCatalog()
   const importedLabels   = useImportedLabels()
+  // Phase 7G (1/?) — inputs for Spray Program report.
+  const sprayPrograms    = useSprayPrograms()
 
   const [activeReport, setActiveReport] = useState(null)
 
@@ -129,9 +133,23 @@ export default function Reports() {
           return out
         })(),
 
+    // Phase 7G (1/?) — Spray Program report inputs.
+    // - `programs` mirrors the store array (defaults to non-archived).
+    // - `itemsByProgramId` is the lazy per-program cache the planner
+    //   populates on selection. The report builder surfaces an explicit
+    //   notice for programs whose items haven't been loaded yet so the
+    //   user can refresh / open those programs to fill the cache.
+    programs: sprayPrograms.loading || sprayPrograms.error
+      ? { loading: sprayPrograms.loading, error: sprayPrograms.error }
+      : (sprayPrograms.programs ?? []),
+
+    itemsByProgramId: sprayPrograms.loading || sprayPrograms.error
+      ? { loading: sprayPrograms.loading, error: sprayPrograms.error }
+      : (sprayPrograms.itemsByProgramId ?? {}),
+
     morningBrief,
   }), [equipment, cultural, nutrition, disease, moisture, turfHealth,
-       sprays, inventory, catalog, importedLabels, morningBrief])
+       sprays, inventory, catalog, importedLabels, sprayPrograms, morningBrief])
 
   const courseInfo = useMemo(() => ({
     name:           selectedCourse?.name ?? selectedCourse?.shortName ?? '',
