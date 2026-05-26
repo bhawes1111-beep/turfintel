@@ -1,0 +1,438 @@
+/* Phase 7G (2/?) — Spray Program preview styles.
+   Scoped to this component. Mobile-first; print-friendly via @media
+   print at the bottom of the file. */
+
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 4px;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────── */
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 10px;
+}
+
+.title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.meta {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* ── Summary tiles ──────────────────────────────────────────────────── */
+
+.tilesSection { margin: 0; }
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.tile {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left-width: 3px;
+}
+
+.tileValue {
+  font-size: 22px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+  line-height: 1.1;
+}
+
+.tileLabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.55);
+  margin-top: 2px;
+}
+
+.tile_ok       { border-left-color: rgba(78, 203, 78, 0.65); }
+.tile_warn     { border-left-color: rgba(220, 180, 60, 0.65); }
+.tile_caution  { border-left-color: rgba(255, 160, 100, 0.65); }
+.tile_muted    { border-left-color: rgba(255, 255, 255, 0.2);  }
+.tile_neutral  { border-left-color: rgba(100, 150, 220, 0.5);  }
+
+/* ── Section card ───────────────────────────────────────────────────── */
+
+.section {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sectionTitle {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.empty {
+  margin: 4px 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
+}
+
+/* ── Program Summary ────────────────────────────────────────────────── */
+
+.programList,
+.pvaList,
+.unlinkedList,
+.staleList,
+.noticeList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.programCard {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.programHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.programName {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.programMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.programType {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  background: rgba(100, 150, 220, 0.15);
+  color: rgba(160, 200, 255, 0.95);
+  border: 1px solid rgba(100, 150, 220, 0.3);
+}
+
+.programCounts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.75);
+}
+.programCounts strong { color: rgba(255, 255, 255, 0.95); }
+
+.programStatusBadge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.programStatus_draft     { color: rgba(255, 255, 255, 0.7); }
+.programStatus_active    { color: #8ed68e; border-color: rgba(78, 203, 78, 0.4); background: rgba(78, 203, 78, 0.12); }
+.programStatus_archived  { color: rgba(255, 255, 255, 0.4); }
+
+/* ── Plan vs Actual ─────────────────────────────────────────────────── */
+
+.pvaItem {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pvaHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pvaProduct {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.pvaProgram {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.pvaLinked {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.pvaKv {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 12px;
+  row-gap: 4px;
+  margin: 4px 0 0;
+  font-size: 13px;
+}
+
+.pvaKvRow { display: contents; }
+
+.pvaKvLabel {
+  color: rgba(255, 255, 255, 0.55);
+  margin: 0;
+}
+
+.pvaKvValue {
+  color: rgba(255, 255, 255, 0.92);
+  margin: 0;
+}
+
+.pvaTone_ok    .pvaKvValue { color: #8ed68e; }
+.pvaTone_warn  .pvaKvValue { color: #e0a060; }
+.pvaTone_muted .pvaKvValue { color: rgba(255, 255, 255, 0.55); font-style: italic; }
+
+/* ── Unlinked / Stale lists ─────────────────────────────────────────── */
+
+.unlinkedItem,
+.staleItem {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.staleItem {
+  background: rgba(220, 180, 60, 0.06);
+  border: 1px solid rgba(220, 180, 60, 0.25);
+  border-left: 3px solid rgba(220, 180, 60, 0.65);
+}
+
+.unlinkedHeader,
+.staleHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.unlinkedProduct,
+.staleProduct {
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.unlinkedMeta,
+.staleMeta {
+  margin-top: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.staleFk {
+  margin-top: 6px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.staleFkMono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.staleReason {
+  margin-left: 4px;
+  font-style: italic;
+}
+
+.itemStatusBadge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.itemStatus_planned    { color: rgba(160, 200, 255, 0.95); border-color: rgba(100, 150, 220, 0.3); background: rgba(100, 150, 220, 0.12); }
+.itemStatus_completed  { color: #8ed68e; border-color: rgba(78, 203, 78, 0.3); background: rgba(78, 203, 78, 0.12); }
+.itemStatus_skipped    { color: rgba(255, 255, 255, 0.6); }
+.itemStatus_canceled   { color: #ff9999; border-color: rgba(220, 60, 60, 0.3); background: rgba(220, 60, 60, 0.1); }
+
+/* ── Notices ────────────────────────────────────────────────────────── */
+
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.noticeIcon {
+  flex: 0 0 auto;
+  opacity: 0.8;
+  width: 14px;
+  text-align: center;
+}
+
+.noticeText { flex: 1 1 auto; color: rgba(255, 255, 255, 0.85); }
+
+.notice_warning { background: rgba(220, 180, 60, 0.08); color: #e0a060; }
+.notice_caution { background: rgba(220, 180, 60, 0.04); color: #e8c660; }
+.notice_info    { /* neutral */ }
+
+/* ── Disclaimer ─────────────────────────────────────────────────────── */
+
+.disclaimer {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.55;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.disclaimer p { margin: 0; }
+
+/* ── Mobile ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 600px) {
+  .preview { padding: 0; }
+  .tiles {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .pvaKv {
+    grid-template-columns: 1fr;
+  }
+  .pvaKvRow {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 4px;
+  }
+  .header { padding-bottom: 6px; }
+  .title  { font-size: 16px; }
+}
+
+/* ── Print ──────────────────────────────────────────────────────────── */
+
+@media print {
+  .preview {
+    color: #111;
+    background: #fff;
+    gap: 10px;
+  }
+  .header,
+  .section,
+  .tile,
+  .programCard,
+  .pvaItem,
+  .unlinkedItem,
+  .staleItem,
+  .notice {
+    background: #fff !important;
+    border-color: #ccc !important;
+    color: #111 !important;
+    box-shadow: none !important;
+  }
+  .title,
+  .sectionTitle,
+  .tileValue,
+  .programName,
+  .pvaProduct,
+  .unlinkedProduct,
+  .staleProduct,
+  .pvaKvValue { color: #111 !important; }
+  .subtitle,
+  .meta,
+  .tileLabel,
+  .programMeta,
+  .programCounts,
+  .pvaProgram,
+  .pvaLinked,
+  .unlinkedMeta,
+  .staleMeta,
+  .staleFk,
+  .noticeText,
+  .empty,
+  .disclaimer,
+  .pvaKvLabel { color: #444 !important; }
+  .programType,
+  .programStatusBadge,
+  .itemStatusBadge {
+    background: #fff !important;
+    color: #111 !important;
+    border-color: #888 !important;
+  }
+  /* Don't split major cards across pages. */
+  .section,
+  .programCard,
+  .pvaItem,
+  .unlinkedItem,
+  .staleItem,
+  .tile { break-inside: avoid; page-break-inside: avoid; }
+}
