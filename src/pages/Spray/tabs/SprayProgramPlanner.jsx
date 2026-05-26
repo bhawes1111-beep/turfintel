@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import WorkspaceSection from '../../../components/shared/WorkspaceSection'
 import { EmptyState } from '../../../components/shared/EmptyState'
 import {
@@ -24,6 +25,11 @@ import {
   buildProgramCostSummary,
   formatEstimatedCost,
 } from '../../../utils/sprayPrograms/programCostAwareness'
+// Phase 7I (2/?) — cost-basis stewardship review (read-only).
+import {
+  buildCostBasisReview,
+  summarizeCostBasisReview,
+} from '../../../utils/sprayPrograms/costBasisReview'
 import InventoryPickerModal       from './components/InventoryPickerModal'
 import ProductCatalogPickerModal  from './components/ProductCatalogPickerModal'
 import CompletedSprayPickerModal  from './components/CompletedSprayPickerModal'
@@ -127,6 +133,23 @@ export default function SprayProgramPlanner() {
     () => (selected ? buildProgramCostSummary(selected, items, intelContext) : null),
     [selected, items, intelContext],
   )
+  // Phase 7I (2/?) — cost-basis stewardship review over ALL programs in
+  // the workspace. Recomputed when the program list or inventory shifts.
+  const navigate = useNavigate()
+  const costBasisReview = useMemo(
+    () => buildCostBasisReview(programs ?? [], itemsByProgramId ?? {}, inventoryItems ?? []),
+    [programs, itemsByProgramId, inventoryItems],
+  )
+  const costBasisSummary = useMemo(
+    () => summarizeCostBasisReview(costBasisReview),
+    [costBasisReview],
+  )
+  function openInventoryItem(inventoryItemId) {
+    if (!inventoryItemId) return
+    navigate('/inventory', {
+      state: { activeTab: 'Products', productId: inventoryItemId },
+    })
+  }
 
   // Auto-load items for the selected program (lazy per-program cache
   // in the store).
@@ -487,6 +510,12 @@ export default function SprayProgramPlanner() {
                       )}
                       {/* Phase 7I (1/?) — read-only cost-awareness summary. */}
                       <ProgramCostHeader summary={costSummary} />
+                      {/* Phase 7I (2/?) — read-only cost-basis stewardship review. */}
+                      <CostBasisReviewPanel
+                        review={costBasisReview}
+                        summary={costBasisSummary}
+                        onOpenInventoryItem={openInventoryItem}
+                      />
                     </div>
                     <div className={styles.detailActions}>
                       <button
@@ -1270,4 +1299,107 @@ function labelForStatus(status) {
     case 'not-comparable-unit': return 'Unit mismatch'
     default:                    return 'Not available'
   }
+}
+
+// Phase 7I (2/?) — Cost-basis stewardship review panel. Compact summary
+// + per-inventory issue list. Read-only: the only action exposed is
+// "Open inventory item", which navigates to the existing inventory
+// editor (which we do not touch in this commit).
+const COST_BASIS_BOUNDARY_COPY = [
+  'Cost basis review helps explain missing estimates.',
+  'This does not create budget entries.',
+  'Inventory is not deducted from planned items.',
+  'Product Catalog is not used as a price source.',
+]
+const COST_BASIS_STATUS_LABEL = {
+  'ready':                    'Ready',
+  'missing-inventory-link':   'No inventory linked',
+  'missing-inventory-item':   'Inventory item not found',
+  'missing-cost-per-unit':    'Missing cost per unit',
+  'missing-unit':             'Missing unit',
+  'invalid-cost':             'Invalid cost value',
+  'unused-in-programs':       'Unused in programs',
+}
+function CostBasisReviewPanel({ review, summary, onOpenInventoryItem }) {
+  if (!review || !summary) return null
+  const t = review.totals
+  return (
+    <section className={styles.costBasisPanel} aria-label="Cost basis review">
+      <div className={styles.costBasisHeader}>
+        <span className={styles.costBasisTitle}>Cost basis review</span>
+        <span
+          className={`${styles.costBasisStatusChip} ${summary.isClean ? styles.costBasisStatusOk : styles.costBasisStatusWarn}`}
+        >
+          {summary.message}
+        </span>
+      </div>
+
+      <div className={styles.costBasisCounters}>
+        <span className={`${styles.costChip} ${styles.costChipEstimate}`}>
+          <span className={styles.costChipLabel}>Ready</span>{t.ready}
+        </span>
+        {t.missingCostBasis > 0 && (
+          <span className={`${styles.costChip} ${styles.costChipWarn}`}>
+            <span className={styles.costChipLabel}>Missing cost basis</span>{t.missingCostBasis}
+          </span>
+        )}
+        {t.missingUnit > 0 && (
+          <span className={`${styles.costChip} ${styles.costChipWarn}`}>
+            <span className={styles.costChipLabel}>Missing unit</span>{t.missingUnit}
+          </span>
+        )}
+        {t.invalidCost > 0 && (
+          <span className={`${styles.costChip} ${styles.costChipWarn}`}>
+            <span className={styles.costChipLabel}>Invalid cost</span>{t.invalidCost}
+          </span>
+        )}
+        <span className={styles.costChip}>
+          <span className={styles.costChipLabel}>Affected planned items</span>{t.affectedPlannedItems}
+        </span>
+      </div>
+
+      {review.inventoryIssues.length > 0 && (
+        <ul className={styles.costBasisList}>
+          {review.inventoryIssues.map(issue => (
+            <li key={issue.inventoryItemId} className={styles.costBasisIssue}>
+              <div className={styles.costBasisIssueMain}>
+                <div className={styles.costBasisIssueTitle}>
+                  {issue.inventoryName ?? '(unnamed inventory item)'}
+                </div>
+                <div className={styles.costBasisIssueSub}>
+                  {COST_BASIS_STATUS_LABEL[issue.status] ?? issue.status}
+                </div>
+                {issue.affectedProgramItems.length > 0 && (
+                  <ul className={styles.costBasisAffected}>
+                    {issue.affectedProgramItems.map(a => (
+                      <li key={`${a.programId}-${a.itemId}`} className={styles.costBasisAffectedRow}>
+                        <span className={styles.costBasisAffectedProgram}>
+                          {a.programName ?? '(unnamed program)'}
+                        </span>
+                        <span className={styles.costBasisAffectedItem}>
+                          {a.productName ?? '(unnamed item)'}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              {issue.inventoryItemId && (
+                <button
+                  type="button"
+                  className={styles.btnGhost}
+                  onClick={() => onOpenInventoryItem?.(issue.inventoryItemId)}
+                  title="Open this inventory item in the Inventory workspace."
+                >
+                  Open inventory item
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <p className={styles.costBoundaryNote}>{COST_BASIS_BOUNDARY_COPY.join(' ')}</p>
+    </section>
+  )
 }
