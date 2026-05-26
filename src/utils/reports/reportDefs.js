@@ -20,6 +20,7 @@ import {
 } from './reportBuilder.js'
 import { buildSprayIntelligenceReport } from './builders/sprayIntelligenceReport.js'
 import { buildSprayProgramReport }      from './builders/sprayProgramReport.js'
+import { buildSprayProgramCostReport }  from './builders/sprayProgramCostReport.js'
 import { REPORT_MODULE } from './reportSchemas.js'
 
 /**
@@ -141,6 +142,22 @@ export const REPORT_DEFS = [
       buildSprayProgramReport({
         programs, itemsByProgramId, sprays,
         inventoryProducts, catalogProducts, labelsByItemId,
+      }),
+  },
+
+  // Phase 7I (3/?) — Spray Program Cost: read-only estimated cost
+  // rollup + cost-basis gap report. Reuses programCostAwareness
+  // (Phase 7I.1) and costBasisReview (Phase 7I.2) — no parallel
+  // cost logic, no budget entries, no inventory deduction.
+  {
+    id:       'spray-program-cost',
+    module:   REPORT_MODULE.SPRAY,
+    title:    'Spray Program Cost',
+    desc:     'Read-only cost estimate report for planned spray programs and inventory cost-basis gaps.',
+    requires: ['programs', 'itemsByProgramId', 'inventoryProducts'],
+    build: ({ programs, itemsByProgramId, inventoryProducts }) =>
+      buildSprayProgramCostReport({
+        programs, itemsByProgramId, inventoryProducts,
       }),
   },
 

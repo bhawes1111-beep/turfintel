@@ -29,6 +29,8 @@ export const REPORT_TYPE = {
   SPRAY_INTELLIGENCE:   'spray-intelligence',
   // Phase 7G — Spray Program (planned programs + plan-vs-actual summary).
   SPRAY_PROGRAM:        'spray-program',
+  // Phase 7I.3 — Spray Program Cost (estimated cost + cost-basis gaps).
+  SPRAY_PROGRAM_COST:   'spray-program-cost',
 }
 
 export const EXPORT_FORMAT = {
