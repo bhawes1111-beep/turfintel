@@ -417,23 +417,28 @@ export function buildSprayProgramCostReport(input = {}) {
     notices,
     disclaimer:    DISCLAIMER,
 
+    // Phase 7I.5 — stable print/export polish. The summary list is
+    // intentionally exactly the 8 pairs the spec calls out so a future
+    // PDF/Excel pipeline can rely on a fixed cardinality + ordering.
+    // The 9th metric (affectedPlannedItems) lives in metadata.totals
+    // and in the notices block already; we don't bloat the print
+    // summary tiles with it.
     printExtras: {
       subtitle: 'Read-only spray program cost summary',
       summary: [
-        ['Programs reviewed',       summary.totals.programsReviewed],
-        ['Planned items',           summary.totals.plannedItems],
-        ['Estimated items',         summary.totals.estimatedItems],
-        ['Estimated total',         formatEstimatedCost(summary.totals.estimatedTotal, summary.currency)],
-        ['Missing cost basis',      summary.totals.missingCostBasis],
-        ['Missing quantity',        summary.totals.missingQuantity],
-        ['Unit mismatch',           summary.totals.notComparableUnits],
-        ['Invalid inventory cost',  summary.totals.invalidCost],
-        ['Affected planned items',  summary.totals.affectedPlannedItems],
+        ['Programs reviewed',  summary.totals.programsReviewed],
+        ['Planned items',      summary.totals.plannedItems],
+        ['Estimated items',    summary.totals.estimatedItems],
+        ['Estimated total',    formatEstimatedCost(summary.totals.estimatedTotal, summary.currency)],
+        ['Missing cost basis', summary.totals.missingCostBasis],
+        ['Missing quantity',   summary.totals.missingQuantity],
+        ['Unit mismatch',      summary.totals.notComparableUnits],
+        ['Invalid cost',       summary.totals.invalidCost],
       ],
       notices,
       disclaimer:  DISCLAIMER,
       footerLeft:  'TurfIntel · Spray Program Cost',
-      footerRight: `Generated ${generatedAt}`,
+      footerRight: generatedAt,
     },
   }
 
