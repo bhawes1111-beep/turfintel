@@ -36,6 +36,7 @@ import {
   recordInventoryUsage,
   patchInventoryCatalogLink,
   patchInventoryCostBasis,
+  listInventoryCostBasisAudit,
 } from './api/inventory.js'
 import {
   extractLabelDraft,
@@ -681,6 +682,15 @@ async function handleApi(request, env, url, ctx) {
   if (invCostBasisMatch) {
     const id = decodeURIComponent(invCostBasisMatch[1])
     if (method === 'PATCH') return patchInventoryCostBasis(env, id, request)
+  }
+
+  // ── /api/inventory/:id/cost-basis-audit (Phase 7M.1) ──────────────────
+  // GET-only history endpoint. Read-only over
+  // inventory_cost_basis_audit; never writes.
+  const invCostBasisAuditMatch = pathname.match(/^\/api\/inventory\/([^/]+)\/cost-basis-audit$/)
+  if (invCostBasisAuditMatch) {
+    const id = decodeURIComponent(invCostBasisAuditMatch[1])
+    if (method === 'GET') return listInventoryCostBasisAudit(env, id)
   }
 
   // ── /api/inventory/:id ────────────────────────────────────────────────

@@ -130,6 +130,11 @@ export async function setInventoryCostBasis(id, patch) {
   const costUnit    = patch?.costUnit    ?? null
   const costSource  = patch?.costSource  ?? null
   const costNotes   = patch?.costNotes   ?? null
+  // Phase 7M.1 — optional audit attribution. Callers pick from
+  // 'manual' / 'import-single-row' / 'unknown'; the server validates
+  // the value before writing. Omitting it lets the server default
+  // to 'manual'.
+  const changeSource = patch?.changeSource ?? null
 
   const prev = state.items
   const optimistic = prev.map(i => i.id === id ? {
@@ -144,12 +149,14 @@ export async function setInventoryCostBasis(id, patch) {
   setState({ items: optimistic })
 
   try {
+    const body = { costPerUnit, costUnit, costSource, costNotes }
+    if (changeSource != null) body.changeSource = changeSource
     const saved = await fetchJSON(
       `${API.items}/${encodeURIComponent(id)}/cost-basis`,
       {
         method:  'PATCH',
         headers: mutationHeaders(),
-        body:    JSON.stringify({ costPerUnit, costUnit, costSource, costNotes }),
+        body:    JSON.stringify(body),
       },
     )
     setState({ items: state.items.map(i => i.id === id ? saved : i) })
@@ -158,6 +165,18 @@ export async function setInventoryCostBasis(id, patch) {
     setState({ items: prev, error: err.message })
     throw err
   }
+}
+
+// Phase 7M (1/?) — Inventory cost-basis audit history reader.
+//
+// Read-only wrapper around GET /api/inventory/:id/cost-basis-audit.
+// Returns the per-item history newest-first as a plain array. Audit
+// data is never cached in the inventory store — it's a per-drawer
+// fetch so the UI always renders the live trail.
+export async function listInventoryCostBasisAudit(inventoryItemId) {
+  if (!inventoryItemId) return []
+  const url = `${API.items}/${encodeURIComponent(inventoryItemId)}/cost-basis-audit`
+  return fetchJSON(url)
 }
 
 export async function createInventory(payload) {

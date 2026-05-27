@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { setInventoryCostBasis } from '../../../utils/inventory/inventoryStore'
+import {
+  setInventoryCostBasis,
+  listInventoryCostBasisAudit,
+} from '../../../utils/inventory/inventoryStore'
 import styles from './CostBasisEditor.module.css'
 
 // Phase 7J (1/?) — Inventory cost-basis stewardship editor.
@@ -55,6 +58,14 @@ export default function CostBasisEditor({
   const [submitting, setSubmitting] = useState(false)
   const [err,       setErr]       = useState(null)
   const [form,      setForm]      = useState(() => formFromItem(item))
+  // Phase 7M (1/?) — collapsible cost-basis history panel. Audit rows
+  // are fetched lazily the first time the user opens the panel for
+  // an item (and re-fetched when an apply lands underneath an open
+  // panel so the new row appears without a manual refresh).
+  const [historyOpen,    setHistoryOpen]    = useState(false)
+  const [historyRows,    setHistoryRows]    = useState([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyErr,     setHistoryErr]     = useState(null)
   // Phase 7J (2/?) — brief visual highlight when arriving from
   // Spray Program Cost Basis Review. The highlight class is a
   // background pulse that fades after ~1.5s so the steward can
@@ -69,7 +80,38 @@ export default function CostBasisEditor({
     setForm(formFromItem(item))
     setEditing(false)
     setErr(null)
+    // Phase 7M.1 — history is per-item; reset the cached rows when
+    // the inventory id changes so the panel never shows stale rows
+    // from a previous drawer.
+    setHistoryOpen(false)
+    setHistoryRows([])
+    setHistoryErr(null)
   }, [item?.id])
+
+  async function refreshHistory() {
+    if (!item?.id) return
+    setHistoryLoading(true)
+    setHistoryErr(null)
+    try {
+      const rows = await listInventoryCostBasisAudit(item.id)
+      setHistoryRows(Array.isArray(rows) ? rows : [])
+    } catch (e) {
+      setHistoryErr(e?.message ?? String(e))
+    } finally {
+      setHistoryLoading(false)
+    }
+  }
+  // When the panel transitions closed → open AND we haven't fetched
+  // yet, lazily pull the trail.
+  useEffect(() => {
+    if (historyOpen && historyRows.length === 0 && !historyLoading && !historyErr) {
+      refreshHistory()
+    }
+    // refreshHistory is stable for our purposes (only touches local
+    // state + item.id). The eslint deps lint would also flag item?.id
+    // here but the closure above already handles the cross-item reset.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [historyOpen, item?.id])
 
   // Deep-link landing: scroll into view + flash the editor when this
   // mount was triggered from the Cost Basis Review flow. The effect
@@ -108,8 +150,14 @@ export default function CostBasisEditor({
         costUnit,
         costSource: form.costSource || null,
         costNotes:  form.costNotes?.trim() ? form.costNotes.trim() : null,
+        // Phase 7M.1 — audit attribution. Manual edits land in the
+        // history with change_source = 'manual'.
+        changeSource: 'manual',
       })
       setEditing(false)
+      // Phase 7M.1 — refresh the history if the panel is open so the
+      // new row appears without a manual re-fetch.
+      if (historyOpen) refreshHistory()
     } catch (e2) {
       setErr(e2.message ?? String(e2))
     } finally {
@@ -123,9 +171,14 @@ export default function CostBasisEditor({
     try {
       await setInventoryCostBasis(item.id, {
         costPerUnit: null, costUnit: null, costSource: null, costNotes: null,
+        // Phase 7M.1 — clearing the cost basis still attributes the
+        // change to 'manual'. The audit row's new_* columns will all
+        // be null, marking the clear explicitly.
+        changeSource: 'manual',
       })
       setForm(formFromItem({ ...item, costPerUnit: null, costUnit: null, costSource: null, costNotes: null }))
       setEditing(false)
+      if (historyOpen) refreshHistory()
     } catch (e2) {
       setErr(e2.message ?? String(e2))
     } finally {
@@ -268,6 +321,17 @@ export default function CostBasisEditor({
       )}
 
       <p className={styles.boundaryNote}>{BOUNDARY_COPY.join(' ')}</p>
+
+      {/* Phase 7M (1/?) — collapsible cost-basis history. Read-only
+          over the per-item audit trail. */}
+      <CostBasisHistoryPanel
+        open={historyOpen}
+        loading={historyLoading}
+        error={historyErr}
+        rows={historyRows}
+        onToggle={() => setHistoryOpen(o => !o)}
+        onRefresh={refreshHistory}
+      />
     </section>
   )
 }
@@ -321,4 +385,87 @@ function formatUpdatedAt(iso) {
   } catch {
     return String(iso)
   }
+}
+
+// ── Phase 7M (1/?) — Cost basis history panel ──────────────────────────
+
+const CHANGE_SOURCE_LABEL = {
+  'manual':            'Manual edit',
+  'import-single-row': 'Imported (single row)',
+  'unknown':           'Unknown source',
+}
+
+function CostBasisHistoryPanel({ open, loading, error, rows, onToggle, onRefresh }) {
+  return (
+    <div className={styles.history}>
+      <button
+        type="button"
+        className={styles.historyToggle}
+        onClick={onToggle}
+        aria-expanded={open}
+        aria-controls="cost-basis-history-body"
+      >
+        <span className={styles.historyToggleLabel}>Cost basis history</span>
+        <span className={styles.historyToggleChevron} aria-hidden>
+          {open ? '▾' : '▸'}
+        </span>
+      </button>
+
+      {open && (
+        <div id="cost-basis-history-body" className={styles.historyBody}>
+          {loading && (
+            <p className={styles.historyEmpty}>Loading…</p>
+          )}
+          {error && (
+            <p className={styles.errorBanner} role="alert">{error}</p>
+          )}
+          {!loading && !error && rows.length === 0 && (
+            <p className={styles.historyEmpty}>
+              No cost basis changes recorded yet.
+            </p>
+          )}
+          {!loading && !error && rows.length > 0 && (
+            <ul className={styles.historyList}>
+              {rows.map(r => (
+                <li key={r.id} className={styles.historyRow}>
+                  <div className={styles.historyHeader}>
+                    <span className={styles.historyTimestamp}>
+                      {formatUpdatedAt(r.changedAt)}
+                    </span>
+                    <span className={styles.historySourceChip}>
+                      {CHANGE_SOURCE_LABEL[r.changeSource] ?? r.changeSource ?? 'Unknown source'}
+                    </span>
+                  </div>
+                  <dl className={styles.historyKv}>
+                    <KV label="Previous cost"   value={formatCostPair(r.previousCostPerUnit, r.previousCostUnit)} />
+                    <KV label="New cost"        value={formatCostPair(r.newCostPerUnit,      r.newCostUnit)} />
+                    <KV label="Previous source" value={labelForSource(r.previousCostSource)} />
+                    <KV label="New source"      value={labelForSource(r.newCostSource)} />
+                    {r.previousCostNotes && <KV label="Previous notes" value={r.previousCostNotes} />}
+                    {r.newCostNotes && <KV label="New notes" value={r.newCostNotes} />}
+                  </dl>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className={styles.historyActions}>
+            <button
+              type="button"
+              className={styles.btnGhost}
+              onClick={onRefresh}
+              disabled={loading}
+            >
+              {loading ? 'Refreshing…' : 'Refresh history'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function formatCostPair(value, unit) {
+  if (value == null || !Number.isFinite(Number(value))) return '—'
+  const cur = formatCurrency(value)
+  return unit ? `${cur} / ${unit}` : cur
 }

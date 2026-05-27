@@ -272,13 +272,14 @@ console.log('— Phase 7F.4 + cost-basis + catalog regression guards')
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/^\s*\/\/.*$/gm, '')
   // Count export async function declarations in worker/api/inventory.js
-  // to lock the surface size. Phase 7J.1 introduced exactly 8 exported
-  // handlers: rowToItem, listInventory, getInventory, createInventory,
-  // updateInventory, patchInventoryCatalogLink, patchInventoryCostBasis,
-  // deleteInventory, listInventoryUsage, recordInventoryUsage.
+  // to lock the surface size. The expected handlers are:
+  //   rowToItem, listInventory, getInventory, createInventory,
+  //   updateInventory, patchInventoryCatalogLink,
+  //   patchInventoryCostBasis, listInventoryCostBasisAudit (7M.1),
+  //   deleteInventory, listInventoryUsage, recordInventoryUsage.
   const exports = apiCode.match(/export\s+(?:async\s+)?function\s+\w+/g) ?? []
-  assert(exports.length === 10,
-    `worker/api/inventory.js still exports the same 10 handlers (got ${exports.length})`,
+  assert(exports.length === 11,
+    `worker/api/inventory.js still exports the expected 11 handlers (got ${exports.length})`,
     exports.map(s => s.replace('export ', '')))
 
   // No budget / invoice / ledger surface.

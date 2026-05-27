@@ -120,6 +120,10 @@ export default function CostBasisImportReview() {
         costUnit:    row.costUnit,
         costSource:  row.costSource,
         costNotes:   row.costNotes,
+        // Phase 7M.1 — audit attribution. Per-row apply from the
+        // import review surface lands in the history as
+        // 'import-single-row'.
+        changeSource: 'import-single-row',
       })
       const after = {
         costPerUnit: row.costPerUnit,

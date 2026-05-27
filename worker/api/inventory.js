@@ -272,6 +272,10 @@ export async function patchInventoryCatalogLink(env, id, request) {
 //     without a unit is meaningless for the cost-awareness estimator)
 //   - costSource, when provided, must be one of the allowed labels
 const COST_SOURCE_VALUES = new Set(['manual', 'imported', 'invoice', 'unknown'])
+// Phase 7M.1 — change_source vocabulary for the audit trail. Bound at
+// the endpoint so a malformed client cannot quietly stash arbitrary
+// strings in inventory_cost_basis_audit.change_source.
+const CHANGE_SOURCE_VALUES = new Set(['manual', 'import-single-row', 'unknown'])
 
 export async function patchInventoryCostBasis(env, id, request) {
   if (!env.DB) return json({ error: 'D1 not configured' }, 503)
@@ -321,9 +325,30 @@ export async function patchInventoryCostBasis(env, id, request) {
   let costNotes = body.costNotes ?? null
   if (typeof costNotes === 'string') costNotes = costNotes.trim() || null
 
-  // Inventory row must exist.
+  // Phase 7M.1 — changeSource decides what the audit row's
+  // change_source column carries. The body field is optional
+  // (default 'manual') but must be one of the allowed labels when
+  // supplied — anything else is rejected before the inventory row is
+  // touched.
+  let changeSource = body.changeSource ?? null
+  if (typeof changeSource === 'string') {
+    changeSource = changeSource.trim().toLowerCase() || null
+  }
+  if (changeSource !== null && !CHANGE_SOURCE_VALUES.has(changeSource)) {
+    return badRequest(
+      `changeSource must be one of manual / import-single-row / unknown`,
+    )
+  }
+  if (!changeSource) changeSource = 'manual'
+
+  // Phase 7M.1 — capture the FULL previous cost-basis state before
+  // any write so the audit row records a self-contained diff. Read
+  // the same columns the rowToItem mapper surfaces (camelCase) so a
+  // future no-op detector can compare apples-to-apples. We also read
+  // course_id here so audit rows inherit the inventory row's scope.
   const inv = await env.DB.prepare(
-    'SELECT id FROM inventory_items WHERE id = ?',
+    `SELECT id, course_id, cost_per_unit, cost_unit, cost_source, cost_notes
+       FROM inventory_items WHERE id = ?`,
   ).bind(id).first()
   if (!inv) return notFound('Inventory item not found')
 
@@ -344,7 +369,111 @@ export async function patchInventoryCostBasis(env, id, request) {
   if (!result.success || result.meta.changes === 0) {
     return notFound('Inventory item not found')
   }
+
+  // Phase 7M.1 — write the audit row AFTER the inventory update
+  // succeeds. If the inventory write fails, the audit row never
+  // exists (we returned 404 above). If the audit insert itself
+  // fails, we still return the updated inventory row so the UI
+  // doesn't think the cost change was lost — but we surface the
+  // audit failure on the response so the steward knows the trail
+  // is incomplete. (The narrow inventory write is the source of
+  // truth; the audit row is best-effort history.)
+  const auditId = generateId('cba')
+  const changedAt = stampedAt ?? new Date().toISOString()
+  let auditError = null
+  try {
+    await env.DB.prepare(
+      `INSERT INTO inventory_cost_basis_audit (
+         id, inventory_item_id, course_id,
+         previous_cost_per_unit, previous_cost_unit,
+         previous_cost_source,   previous_cost_notes,
+         new_cost_per_unit, new_cost_unit,
+         new_cost_source,   new_cost_notes,
+         change_source, changed_at, changed_by, notes
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).bind(
+      auditId,
+      id,
+      inv.course_id ?? null,
+      inv.cost_per_unit ?? null,
+      inv.cost_unit ?? null,
+      inv.cost_source ?? null,
+      inv.cost_notes ?? null,
+      costPerUnit,
+      costUnit,
+      costSource,
+      costNotes,
+      changeSource,
+      changedAt,
+      null,
+      null,
+    ).run()
+  } catch (err) {
+    auditError = err?.message ?? String(err)
+  }
+
+  if (auditError) {
+    // Inventory write succeeded; surface the audit gap with a 200
+    // body that carries both the fresh item AND the audit error so
+    // the UI can show a "history not written" notice. The status is
+    // still 200 because the cost basis itself is correct.
+    const item = await env.DB.prepare(
+      'SELECT * FROM inventory_items WHERE id = ?',
+    ).bind(id).first()
+    return json({
+      ...rowToItem(item),
+      _costBasisAuditError: auditError,
+    })
+  }
+
   return getInventory(env, id)
+}
+
+// ── Phase 7M.1 — Inventory cost-basis audit trail read ───────────────────
+//
+// GET /api/inventory/:id/cost-basis-audit
+//
+// Returns the per-item history of cost-basis changes, newest first.
+// Read-only; never writes. The endpoint exists so the CostBasisEditor
+// can show a "Cost basis history" panel without re-reading the
+// inventory row.
+
+function rowToCostBasisAudit(row) {
+  if (!row) return null
+  return {
+    id:                  row.id,
+    inventoryItemId:     row.inventory_item_id,
+    courseId:            row.course_id ?? null,
+    previousCostPerUnit: row.previous_cost_per_unit ?? null,
+    previousCostUnit:    row.previous_cost_unit ?? null,
+    previousCostSource:  row.previous_cost_source ?? null,
+    previousCostNotes:   row.previous_cost_notes ?? null,
+    newCostPerUnit:      row.new_cost_per_unit ?? null,
+    newCostUnit:         row.new_cost_unit ?? null,
+    newCostSource:       row.new_cost_source ?? null,
+    newCostNotes:        row.new_cost_notes ?? null,
+    changeSource:        row.change_source ?? 'unknown',
+    changedAt:           row.changed_at,
+    changedBy:           row.changed_by ?? null,
+    notes:               row.notes ?? null,
+  }
+}
+
+export async function listInventoryCostBasisAudit(env, id) {
+  if (!env.DB) return json({ error: 'D1 not configured' }, 503)
+  // Inventory row must exist (defends against bare-id probing).
+  const inv = await env.DB.prepare(
+    'SELECT id FROM inventory_items WHERE id = ?',
+  ).bind(id).first()
+  if (!inv) return notFound('Inventory item not found')
+
+  const { results } = await env.DB.prepare(
+    `SELECT * FROM inventory_cost_basis_audit
+      WHERE inventory_item_id = ?
+      ORDER BY datetime(changed_at) DESC, id DESC`,
+  ).bind(id).all()
+
+  return json((results ?? []).map(rowToCostBasisAudit))
 }
 
 // Phase 27D — cascade cleanup on delete.
