@@ -1,0 +1,165 @@
+/* Phase 7Q (1/?) — Manual product entry form.
+   Scoped to this component; mobile-first. */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: rgba(120, 180, 130, 0.05);
+  border: 1px solid rgba(120, 180, 130, 0.25);
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.subtitle {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  font-style: italic;
+  line-height: 1.45;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+.sectionLegend {
+  padding: 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+}
+.sectionNote {
+  margin: 0 0 4px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+  line-height: 1.5;
+  font-style: italic;
+}
+.sectionNote code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  background: rgba(255, 255, 255, 0.07);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.fieldRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.fieldRow .field { flex: 1 1 140px; min-width: 0; }
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.fieldLabel {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+.required { color: #ff9999; }
+
+.input {
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+.input:focus {
+  outline: none;
+  border-color: rgba(120, 180, 130, 0.55);
+  background: rgba(255, 255, 255, 0.07);
+}
+textarea.input {
+  resize: vertical;
+  min-height: 44px;
+}
+
+.pilotNotes {
+  list-style: disc;
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.65);
+  line-height: 1.5;
+}
+.pilotNote { line-height: 1.5; }
+
+.errorBanner {
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  background: rgba(220, 60, 60, 0.10);
+  color: #ff9999;
+  border: 1px solid rgba(220, 60, 60, 0.35);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.btnPrimary {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  background: rgba(120, 180, 130, 0.18);
+  color: #9cd6a2;
+  border: 1px solid rgba(120, 180, 130, 0.45);
+  cursor: pointer;
+}
+.btnPrimary:hover:not(:disabled) { background: rgba(120, 180, 130, 0.28); }
+.btnPrimary:disabled              { opacity: 0.55; cursor: not-allowed; }
+
+.btnGhost {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  cursor: pointer;
+}
+.btnGhost:hover:not(:disabled) { background: rgba(255, 255, 255, 0.12); }
+.btnGhost:disabled              { opacity: 0.55; cursor: not-allowed; }
+
+@media (max-width: 600px) {
+  .fieldRow { flex-direction: column; }
+  .actions { flex-direction: column; }
+  .btnPrimary, .btnGhost { width: 100%; }
+}

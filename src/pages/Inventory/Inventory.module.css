@@ -511,6 +511,35 @@
   margin: 0;
 }
 
+/* Phase 7Q (1/?) — manual-add affordance lives on the count row so
+   it's adjacent to "N products" without crowding the toolbar. */
+.ipCountRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 6px 0 8px;
+}
+.ipAddBtn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(120, 180, 130, 0.18);
+  color: #9cd6a2;
+  border: 1px solid rgba(120, 180, 130, 0.45);
+  cursor: pointer;
+}
+.ipAddBtn:hover { background: rgba(120, 180, 130, 0.28); }
+.ipAddBtn:focus-visible {
+  outline: none;
+  border-color: rgba(120, 180, 130, 0.75);
+}
+@media (max-width: 600px) {
+  .ipAddBtn { width: 100%; }
+}
+
 /* ── Stock status badges (4-level) ────────────────────────────────────────── */
 
 .ipStockGood     { background: rgba(74,158,74,0.15);  color: #4ecb4e; border: 1px solid rgba(74,158,74,0.3);  }

@@ -11,6 +11,8 @@ import CatalogLinkPicker from '../components/CatalogLinkPicker'
 import CostBasisEditor from '../components/CostBasisEditor'
 // Phase 7K (2/?) — read-only Cost Import Review preview surface.
 import CostBasisImportReview from '../components/CostBasisImportReview'
+// Phase 7Q (1/?) — Manual product entry form for the pilot.
+import ManualProductForm from '../components/ManualProductForm'
 import styles from '../Inventory.module.css'
 import linkStyles from '../components/CatalogLinkSection.module.css'
 
@@ -45,6 +47,8 @@ export default function InventoryProducts({
   // re-renders when the catalog cache settles.
   useProductCatalog()
   const [pickerOpen, setPickerOpen] = useState(false)
+  // Phase 7Q (1/?) — collapsible manual-add panel.
+  const [addingProduct, setAddingProduct] = useState(false)
   // Products tab shows the merged products + chemicals view (matches the
   // pre-5.2 OperationsContext.state.inventoryProducts behavior).
   const inventoryProducts = useMemo(
@@ -145,17 +149,42 @@ export default function InventoryProducts({
         </div>
       </div>
 
-      <p className={styles.ipCount}>
-        {visible.length} product{visible.length !== 1 ? 's' : ''}
-        {(catFilter !== 'All' || stkFilter !== 'All' || search) ? ' (filtered)' : ''}
-      </p>
+      <div className={styles.ipCountRow}>
+        <p className={styles.ipCount}>
+          {visible.length} product{visible.length !== 1 ? 's' : ''}
+          {(catFilter !== 'All' || stkFilter !== 'All' || search) ? ' (filtered)' : ''}
+        </p>
+        {/* Phase 7Q (1/?) — manual product entry. The PDF wizard
+            stays available from the workspace header; this toggle
+            is the pilot's hand-entry path. */}
+        {!addingProduct && (
+          <button
+            type="button"
+            className={styles.ipAddBtn}
+            onClick={() => setAddingProduct(true)}
+            aria-label="Add inventory product manually"
+          >
+            + Add product manually
+          </button>
+        )}
+      </div>
+
+      {addingProduct && (
+        <ManualProductForm
+          onSaved={(saved) => {
+            setAddingProduct(false)
+            if (saved?.id) setSelectedId(saved.id)
+          }}
+          onCancel={() => setAddingProduct(false)}
+        />
+      )}
 
       {/* ── Product list ── */}
       {visible.length === 0 ? (
         inventoryProducts.length === 0 ? (
           <EmptyState
             title="No products in inventory yet."
-            description="Products will appear here once added."
+            description="Add real Crosswinds chemicals, fertilizers, and other products you'll apply in the next 30 days. The PDF wizard is also available in the workspace header."
           />
         ) : (
           <EmptyState
@@ -447,8 +476,10 @@ function CatalogLinkSection({ inventoryItem, onOpenPicker, onUnlink }) {
         <div className={linkStyles.empty}>
           <p className={linkStyles.helper}>
             This inventory item has no catalog intelligence attached
-            (FRAC/HRAC/IRAC, REI, label URL). Linking is optional and
-            does not change stock or product records.
+            (FRAC/HRAC/IRAC, REI, label URL).
+            Catalog links provide read-only agronomic intelligence —
+            linking is optional and does not change stock, product
+            records, or the read-only Product Catalog itself.
           </p>
           <button
             type="button"
