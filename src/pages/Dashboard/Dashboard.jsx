@@ -40,6 +40,8 @@ import QuickActions from './QuickActions'
 import OperationalSummary from './OperationalSummary'
 import ActionQueue from './ActionQueue'
 import SchedulingAwareness from './SchedulingAwareness'
+// Phase 7N (1/?) — read-only dashboard stewardship alerts.
+import StewardshipAlerts from './StewardshipAlerts'
 import {
   EquipmentAlertsCard,
   UpcomingApplicationsCard,
@@ -87,6 +89,18 @@ export default function Dashboard() {
         </DashboardCard>
         <DashboardCard title="Action Required">
           <ActionQueue />
+        </DashboardCard>
+      </div>
+
+      {/* Phase 7N (1/?) — Stewardship Alerts. Read-only card that
+          surfaces setup/data issues from existing stores (inventory ↔
+          catalog links, cost basis review, stale completed links,
+          unlinked/unscheduled planned items, upcoming spray windows).
+          Each row links to the existing surface that addresses the
+          issue; the card itself never mutates. */}
+      <div className={styles.commandRow}>
+        <DashboardCard title="Stewardship Alerts" wide>
+          <StewardshipAlerts />
         </DashboardCard>
       </div>
 
