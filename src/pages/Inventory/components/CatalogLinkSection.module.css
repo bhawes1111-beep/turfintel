@@ -91,3 +91,43 @@
   cursor: pointer;
 }
 .btnDanger:hover { background: rgba(220, 60, 60, 0.18); }
+
+/* Phase 7Q (2/?) — Next-step prompt rendered when the drawer was
+   just opened via the manual-add flow AND no productCatalogId is
+   set. The banner replaces the generic empty-state helper so a
+   newly-created row immediately reads as "here's the next thing
+   to do". A brief pulse on the section root draws the eye when
+   the drawer opens. */
+
+.nextStepBanner {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(100, 150, 220, 0.10);
+  border: 1px solid rgba(100, 150, 220, 0.4);
+}
+.nextStepBannerLine {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgba(200, 220, 255, 0.95);
+}
+.nextStepBannerLine:first-of-type {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(220, 235, 255, 1);
+}
+
+.nextStepPulse {
+  animation: ipCatalogPulse 1.6s ease-out 1;
+}
+@keyframes ipCatalogPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(100, 150, 220, 0.55); }
+  60%  { box-shadow: 0 0 0 8px rgba(100, 150, 220, 0.06); }
+  100% { box-shadow: 0 0 0 0 rgba(100, 150, 220, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nextStepPulse { animation: none; }
+}

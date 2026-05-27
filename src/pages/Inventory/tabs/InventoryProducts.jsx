@@ -49,6 +49,13 @@ export default function InventoryProducts({
   const [pickerOpen, setPickerOpen] = useState(false)
   // Phase 7Q (1/?) — collapsible manual-add panel.
   const [addingProduct, setAddingProduct] = useState(false)
+  // Phase 7Q (2/?) — carry the source context that opened the
+  // current drawer so CatalogLinkSection can surface a
+  // "Next step: link catalog intelligence" banner only when the row
+  // was just created via the manual-add flow AND has no catalog
+  // link yet. Cleared as soon as the drawer is closed OR the user
+  // re-opens a different row from the product list.
+  const [selectedSource, setSelectedSource] = useState(null)
   // Products tab shows the merged products + chemicals view (matches the
   // pre-5.2 OperationsContext.state.inventoryProducts behavior).
   const inventoryProducts = useMemo(
@@ -173,7 +180,13 @@ export default function InventoryProducts({
         <ManualProductForm
           onSaved={(saved) => {
             setAddingProduct(false)
-            if (saved?.id) setSelectedId(saved.id)
+            if (saved?.id) {
+              setSelectedId(saved.id)
+              // Phase 7Q (2/?) — mark the drawer as opened via the
+              // manual-add flow so CatalogLinkSection can prompt
+              // for an optional catalog link.
+              setSelectedSource('manual-add')
+            }
           }}
           onCancel={() => setAddingProduct(false)}
         />
@@ -205,7 +218,7 @@ export default function InventoryProducts({
               <button
                 key={p.id}
                 className={`${styles.ipCard} ${styles[`ipCard_${status}`]}`}
-                onClick={() => setSelectedId(p.id)}
+                onClick={() => { setSelectedId(p.id); setSelectedSource(null) }}
                 aria-label={`View details for ${p.name}`}
               >
                 {/* Left: name + category + location */}
@@ -266,7 +279,7 @@ export default function InventoryProducts({
         return (
           <SideDrawer
             open={!!selected}
-            onClose={() => setSelectedId(null)}
+            onClose={() => { setSelectedId(null); setSelectedSource(null) }}
             accentColor={accentColors[status]}
             ariaLabel="Product details"
           >
@@ -276,7 +289,7 @@ export default function InventoryProducts({
               status={
                 <span className={`${styles.stockBadge} ${meta.cls}`}>{meta.label}</span>
               }
-              onClose={() => setSelectedId(null)}
+              onClose={() => { setSelectedId(null); setSelectedSource(null) }}
             />
 
             <SideDrawer.Body>
@@ -300,9 +313,15 @@ export default function InventoryProducts({
                   </div>
                 </section>
 
-                {/* Catalog Link (Phase 7C.2) */}
+                {/* Catalog Link (Phase 7C.2)
+                    Phase 7Q (2/?) — sourceContext + highlight surface
+                    a "Next step: link catalog intelligence" banner
+                    when the drawer was just opened via the manual-add
+                    flow AND the row has no catalog link yet. */}
                 <CatalogLinkSection
                   inventoryItem={selected}
+                  sourceContext={selectedSource}
+                  highlight={selectedSource === 'manual-add' && !selected.productCatalogId}
                   onOpenPicker={() => setPickerOpen(true)}
                   onUnlink={async () => {
                     try { await setInventoryCatalogLink(selected.id, null) }
@@ -464,15 +483,51 @@ export default function InventoryProducts({
 //   2. Linked + cached → shows the linked product summary + Change / Unlink.
 //   3. Linked + stale  → shows the raw FK with a warning + Change / Unlink.
 // All three avoid claiming any change to stock or product records.
-function CatalogLinkSection({ inventoryItem, onOpenPicker, onUnlink }) {
+//
+// Phase 7Q (2/?) — sourceContext + highlight gate the optional
+// "Next step: link catalog intelligence" banner that fires when the
+// drawer was just opened by the manual-add flow AND the row has
+// no productCatalogId. The banner is a navigation prompt, not an
+// auto-linker — clicking the CTA opens the existing
+// CatalogLinkPicker exactly the same way the regular "Link catalog
+// intelligence" button does.
+const NEXT_STEP_BANNER_COPY = [
+  'Next step: link catalog intelligence.',
+  'Catalog links provide read-only agronomic intelligence.',
+  'This does not change inventory stock.',
+  'Product Catalog remains read-only.',
+]
+function CatalogLinkSection({ inventoryItem, onOpenPicker, onUnlink, sourceContext = null, highlight = false }) {
   const fk     = inventoryItem.productCatalogId ?? null
   const linked = fk ? getCatalogProductById(fk) : null
+  // Banner is gated to manual-add + no-FK + the explicit highlight
+  // prop. Once the steward picks a catalog row, `fk` becomes
+  // truthy and the banner disappears on the next render.
+  const showNextStepBanner =
+    !fk &&
+    (sourceContext === 'manual-add' || highlight === true)
 
   return (
-    <section className={styles.ipModalSection}>
+    <section
+      className={`${styles.ipModalSection} ${highlight && !fk ? linkStyles.nextStepPulse : ''}`}
+      data-source-context={sourceContext ?? undefined}
+    >
       <h3 className={styles.ipModalSectionTitle}>Catalog Link</h3>
 
-      {!fk && (
+      {showNextStepBanner && (
+        <div className={linkStyles.nextStepBanner} role="note">
+          {NEXT_STEP_BANNER_COPY.map((line, i) => (
+            <p key={i} className={linkStyles.nextStepBannerLine}>{line}</p>
+          ))}
+          <button
+            type="button"
+            className={linkStyles.btnPrimary}
+            onClick={onOpenPicker}
+          >📋 Link catalog intelligence</button>
+        </div>
+      )}
+
+      {!fk && !showNextStepBanner && (
         <div className={linkStyles.empty}>
           <p className={linkStyles.helper}>
             This inventory item has no catalog intelligence attached

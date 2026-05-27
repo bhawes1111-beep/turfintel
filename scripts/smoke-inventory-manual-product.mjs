@@ -153,8 +153,9 @@ console.log('— InventoryProducts mounts <ManualProductForm /> + improved empty
   assert(/>\s*\+ Add product manually\s*</.test(src),
     'count-row button labeled "+ Add product manually"')
 
-  // Saved row auto-opens its drawer.
-  assert(/if\s*\(saved\?\.id\)\s*setSelectedId\(saved\.id\)/.test(src),
+  // Saved row auto-opens its drawer. Phase 7Q.2 wrapped this in a
+  // block so it could also set selectedSource — accept both forms.
+  assert(/if\s*\(saved\?\.id\)\s*(?:setSelectedId\(saved\.id\)|\{[\s\S]*?setSelectedId\(saved\.id\))/.test(src),
     'on save, the form opens the new row\'s drawer via setSelectedId(saved.id)')
 
   // Empty state copy steers the pilot to real Crosswinds products.
