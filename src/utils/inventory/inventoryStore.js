@@ -159,7 +159,14 @@ export async function setInventoryCostBasis(id, patch) {
         body:    JSON.stringify(body),
       },
     )
-    setState({ items: state.items.map(i => i.id === id ? saved : i) })
+    // Phase 7M.2 — strip the optional audit-failure marker from the
+    // cached row so the inventory store never carries an out-of-band
+    // status string into other consumers (the cost-awareness helpers,
+    // the planner, etc.). The marker is still returned to the
+    // immediate caller so the editor can render an audit-warning
+    // banner.
+    const { _costBasisAuditError, ...cachedRow } = saved ?? {}
+    setState({ items: state.items.map(i => i.id === id ? cachedRow : i) })
     return saved
   } catch (err) {
     setState({ items: prev, error: err.message })

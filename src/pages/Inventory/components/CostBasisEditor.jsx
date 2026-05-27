@@ -66,6 +66,12 @@ export default function CostBasisEditor({
   const [historyRows,    setHistoryRows]    = useState([])
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyErr,     setHistoryErr]     = useState(null)
+  // Phase 7M (2/?) — when the server reports a successful
+  // cost-basis UPDATE but a failed audit INSERT (the response body
+  // carries _costBasisAuditError), we surface a non-blocking
+  // warning so the steward knows the trail is incomplete. The
+  // banner clears on the next save attempt.
+  const [auditWarning, setAuditWarning] = useState(null)
   // Phase 7J (2/?) — brief visual highlight when arriving from
   // Spray Program Cost Basis Review. The highlight class is a
   // background pulse that fades after ~1.5s so the steward can
@@ -86,6 +92,9 @@ export default function CostBasisEditor({
     setHistoryOpen(false)
     setHistoryRows([])
     setHistoryErr(null)
+    // Phase 7M.2 — audit-warning is also per-item; clear it when
+    // switching drawers.
+    setAuditWarning(null)
   }, [item?.id])
 
   async function refreshHistory() {
@@ -135,6 +144,7 @@ export default function CostBasisEditor({
   async function submit(e) {
     e?.preventDefault?.()
     setErr(null)
+    setAuditWarning(null)
     setSubmitting(true)
     try {
       const costPerUnit = form.costPerUnit === '' ? null : Number(form.costPerUnit)
@@ -145,7 +155,7 @@ export default function CostBasisEditor({
       if (costPerUnit !== null && !costUnit) {
         throw new Error('Unit is required when a cost is set.')
       }
-      await setInventoryCostBasis(item.id, {
+      const saved = await setInventoryCostBasis(item.id, {
         costPerUnit,
         costUnit,
         costSource: form.costSource || null,
@@ -154,6 +164,11 @@ export default function CostBasisEditor({
         // history with change_source = 'manual'.
         changeSource: 'manual',
       })
+      // Phase 7M.2 — surface the optional audit-failure marker. The
+      // cost-basis itself was written; the history row just was not.
+      if (saved?._costBasisAuditError) {
+        setAuditWarning(saved._costBasisAuditError)
+      }
       setEditing(false)
       // Phase 7M.1 — refresh the history if the panel is open so the
       // new row appears without a manual re-fetch.
@@ -167,15 +182,19 @@ export default function CostBasisEditor({
 
   async function clearBasis() {
     setErr(null)
+    setAuditWarning(null)
     setSubmitting(true)
     try {
-      await setInventoryCostBasis(item.id, {
+      const saved = await setInventoryCostBasis(item.id, {
         costPerUnit: null, costUnit: null, costSource: null, costNotes: null,
         // Phase 7M.1 — clearing the cost basis still attributes the
         // change to 'manual'. The audit row's new_* columns will all
         // be null, marking the clear explicitly.
         changeSource: 'manual',
       })
+      if (saved?._costBasisAuditError) {
+        setAuditWarning(saved._costBasisAuditError)
+      }
       setForm(formFromItem({ ...item, costPerUnit: null, costUnit: null, costSource: null, costNotes: null }))
       setEditing(false)
       if (historyOpen) refreshHistory()
@@ -203,6 +222,17 @@ export default function CostBasisEditor({
           {REVIEW_BANNER_COPY.map((line, i) => (
             <p key={i} className={styles.reviewBannerLine}>{line}</p>
           ))}
+        </div>
+      )}
+
+      {/* Phase 7M (2/?) — audit-warning banner. Renders when the
+          inventory UPDATE succeeded but the audit INSERT did not, so
+          the steward knows the trail is incomplete. Non-blocking;
+          clears on the next save attempt or when switching drawers. */}
+      {auditWarning && (
+        <div className={styles.auditWarning} role="alert">
+          <strong>Cost basis was updated, but audit history could not be recorded.</strong>
+          <span className={styles.auditWarningDetail}> {auditWarning}</span>
         </div>
       )}
 
@@ -388,14 +418,19 @@ function formatUpdatedAt(iso) {
 }
 
 // ── Phase 7M (1/?) — Cost basis history panel ──────────────────────────
+// Phase 7M (2/?) — polish: clearer copy in loading / error / empty
+// states; the Refresh button stays available even after an error so
+// the steward can retry; a small newest-first hint banner sits above
+// the row list.
 
 const CHANGE_SOURCE_LABEL = {
   'manual':            'Manual edit',
-  'import-single-row': 'Imported (single row)',
+  'import-single-row': 'Imported row',
   'unknown':           'Unknown source',
 }
 
 function CostBasisHistoryPanel({ open, loading, error, rows, onToggle, onRefresh }) {
+  const hasRows = !loading && !error && rows.length > 0
   return (
     <div className={styles.history}>
       <button
@@ -414,17 +449,23 @@ function CostBasisHistoryPanel({ open, loading, error, rows, onToggle, onRefresh
       {open && (
         <div id="cost-basis-history-body" className={styles.historyBody}>
           {loading && (
-            <p className={styles.historyEmpty}>Loading…</p>
+            <p className={styles.historyEmpty}>Loading history…</p>
           )}
           {error && (
-            <p className={styles.errorBanner} role="alert">{error}</p>
+            <p className={styles.errorBanner} role="alert">
+              Unable to load cost basis history.
+              <span className={styles.historyErrorDetail}> {error}</span>
+            </p>
           )}
           {!loading && !error && rows.length === 0 && (
             <p className={styles.historyEmpty}>
               No cost basis changes recorded yet.
             </p>
           )}
-          {!loading && !error && rows.length > 0 && (
+          {hasRows && (
+            <p className={styles.historyHint}>Newest first.</p>
+          )}
+          {hasRows && (
             <ul className={styles.historyList}>
               {rows.map(r => (
                 <li key={r.id} className={styles.historyRow}>
