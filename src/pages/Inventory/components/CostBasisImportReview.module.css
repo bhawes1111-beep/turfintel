@@ -131,13 +131,18 @@
 }
 
 /* ── Totals row ─────────────────────────────────────────────────── */
+/* Phase 7L (2/?) — added Applied tile, so the desktop layout grows
+   to a 6-column grid. Mobile keeps 2 across. */
 .totalsRow {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
 }
 @media (min-width: 540px) {
-  .totalsRow { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .totalsRow { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (min-width: 760px) {
+  .totalsRow { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 }
 
 .tile {
@@ -314,4 +319,57 @@
   background: rgba(120, 180, 130, 0.16);
   color: #9cd6a2;
   border: 1px solid rgba(120, 180, 130, 0.45);
+}
+
+/* ── Phase 7L (2/?) — applied-row feedback (timestamp + before/after) ── */
+
+.appliedSummary {
+  margin-top: 4px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(120, 180, 130, 0.07);
+  border: 1px solid rgba(120, 180, 130, 0.30);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.appliedHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.appliedTimestamp {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  font-style: italic;
+}
+
+.beforeAfterGrid {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 10px;
+  row-gap: 2px;
+  margin: 0;
+}
+.beforeAfterRow { display: contents; }
+.beforeAfterValue {
+  margin: 0;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.beforeValue {
+  color: rgba(255, 255, 255, 0.55);
+  text-decoration: line-through;
+  text-decoration-color: rgba(255, 255, 255, 0.35);
+}
+.beforeAfterArrow {
+  color: rgba(255, 255, 255, 0.5);
+}
+.afterValue {
+  color: #9cd6a2;
+  font-weight: 600;
 }

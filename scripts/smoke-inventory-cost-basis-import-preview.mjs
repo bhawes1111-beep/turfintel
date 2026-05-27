@@ -105,10 +105,10 @@ console.log('— src/pages/Inventory/components/CostBasisImportReview.jsx (sourc
   assert(norm.includes('Cost Import Review'),
     'header renders "Cost Import Review" title')
   for (const phrase of [
-    'Apply one reviewed row at a time.',
-    'This updates inventory cost basis only.',
+    'Applied rows update inventory cost basis only.',
     'This does not create budget entries.',
     'Inventory is not deducted.',
+    'Review one row at a time before applying.',
   ]) {
     assert(norm.includes(phrase),
       `boundary copy verbatim: "${phrase}"`)

@@ -74,8 +74,11 @@ console.log('— component state machine')
 {
   const src = readFileSync('src/pages/Inventory/components/CostBasisImportReview.jsx', 'utf8')
 
+  // Phase 7L.2 — appliedRows is now a Map<rowIndex, { appliedAt,
+  // before, after }> so applied rows can render the before/after
+  // summary. errorRows + submittingIdx unchanged.
   for (const decl of [
-    /const\s+\[appliedRows,\s*setAppliedRows\]\s*=\s*useState\(\s*\(\)\s*=>\s*new Set\(\)\s*\)/,
+    /const\s+\[appliedRows,\s*setAppliedRows\]\s*=\s*useState\(\s*\(\)\s*=>\s*new Map\(\)\s*\)/,
     /const\s+\[errorRows,\s*setErrorRows\]\s*=\s*useState\(\s*\(\)\s*=>\s*new Map\(\)\s*\)/,
     /const\s+\[submittingIdx,\s*setSubmittingIdx\]\s*=\s*useState\(\s*null\s*\)/,
   ]) {
@@ -89,7 +92,7 @@ console.log('— component state machine')
     const body = fnClear[0]
     assert(/setText\(\s*['"]['"]\s*\)/.test(body),                'clearPreview resets text')
     assert(/setReview\(\s*null\s*\)/.test(body),                  'clearPreview resets review')
-    assert(/setAppliedRows\(\s*new Set\(\)\s*\)/.test(body),      'clearPreview resets appliedRows')
+    assert(/setAppliedRows\(\s*new Map\(\)\s*\)/.test(body),      'clearPreview resets appliedRows')
     assert(/setErrorRows\(\s*new Map\(\)\s*\)/.test(body),        'clearPreview resets errorRows')
     assert(/setSubmittingIdx\(\s*null\s*\)/.test(body),           'clearPreview resets submittingIdx')
   }
@@ -100,7 +103,7 @@ console.log('— component state machine')
   assert(!!fnPreview, 'previewRows body extractable')
   if (fnPreview) {
     const body = fnPreview[0]
-    assert(/setAppliedRows\(\s*new Set\(\)\s*\)/.test(body),      'previewRows resets appliedRows')
+    assert(/setAppliedRows\(\s*new Map\(\)\s*\)/.test(body),      'previewRows resets appliedRows')
     assert(/setErrorRows\(\s*new Map\(\)\s*\)/.test(body),        'previewRows resets errorRows')
     assert(/setSubmittingIdx\(\s*null\s*\)/.test(body),           'previewRows resets submittingIdx')
   }
@@ -131,9 +134,11 @@ console.log('— ReviewRow apply affordances')
   assert(/styles\.rowAppliedBadge/.test(src),
     'Applied marker uses styles.rowAppliedBadge')
 
-  // ReviewRow signature accepts the new props.
-  assert(/function\s+ReviewRow\s*\(\s*\{\s*row,\s*applied\s*=\s*false,\s*error\s*=\s*null,\s*submitting\s*=\s*false,\s*onApply\s*\}\s*\)/.test(src),
-    'ReviewRow signature accepts row + applied + error + submitting + onApply')
+  // Phase 7L.2 — ReviewRow signature now takes appliedEntry (the
+  // Map value carrying { appliedAt, before, after }) rather than a
+  // bare applied boolean.
+  assert(/function\s+ReviewRow\s*\(\s*\{\s*row,\s*appliedEntry\s*=\s*null,\s*error\s*=\s*null,\s*submitting\s*=\s*false,\s*onApply\s*\}\s*\)/.test(src),
+    'ReviewRow signature accepts row + appliedEntry + error + submitting + onApply')
 }
 
 // ── 4. No bulk-apply / Upload affordance ──────────────────────────────────
@@ -172,11 +177,13 @@ console.log('— Phase 7L boundary copy verbatim')
 {
   const src = readFileSync('src/pages/Inventory/components/CostBasisImportReview.jsx', 'utf8')
   const norm = src.replace(/\s+/g, ' ')
+  // Phase 7L.2 — boundary copy rewritten so the panel reads as
+  // an apply-with-confirmation surface, not a review-only preview.
   for (const phrase of [
-    'Apply one reviewed row at a time.',
-    'This updates inventory cost basis only.',
+    'Applied rows update inventory cost basis only.',
     'This does not create budget entries.',
     'Inventory is not deducted.',
+    'Review one row at a time before applying.',
   ]) {
     assert(norm.includes(phrase),
       `boundary copy verbatim: "${phrase}"`)
