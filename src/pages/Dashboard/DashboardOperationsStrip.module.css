@@ -1,0 +1,147 @@
+/* Phase 7N (3/?) — Dashboard Operations Strip.
+   Scoped to this component; mobile-first read-only render. */
+
+.strip {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.72);
+}
+.subtitle {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  font-style: italic;
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+@media (min-width: 540px) {
+  .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (min-width: 800px) {
+  .tiles { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+
+.tile {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.tileValue {
+  font-size: 18px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tileLabel {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+}
+.tileSub {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+  font-style: italic;
+  margin-top: 2px;
+}
+.tileBtn {
+  margin-top: 6px;
+  align-self: flex-start;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  cursor: pointer;
+}
+.tileBtn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.tile_ok        { border-color: rgba(120, 180, 130, 0.4); background: rgba(120, 180, 130, 0.10); }
+.tile_warn      { border-color: rgba(220, 180, 60, 0.4);  background: rgba(220, 180, 60, 0.08); }
+.tile_info      { border-color: rgba(100, 150, 220, 0.35); background: rgba(100, 150, 220, 0.08); }
+.tile_attention { border-color: rgba(220, 60, 60, 0.4);  background: rgba(220, 60, 60, 0.08); }
+.tile_muted     { opacity: 0.65; }
+.tile_cost      { border-color: rgba(120, 180, 130, 0.45); background: rgba(120, 180, 130, 0.12); }
+.tile_cost .tileValue { color: #9cd6a2; font-size: 17px; }
+
+.tileEmphasis {
+  /* On the 2-up mobile grid the cost tile gets a full row so the
+     currency string never truncates. */
+  grid-column: span 2;
+}
+@media (min-width: 540px) {
+  .tileEmphasis { grid-column: span 1; }
+}
+
+/* ── Notices ──────────────────────────────────────────────────────── */
+
+.noticeList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.notice {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.78);
+}
+.noticeIcon { flex: 0 0 auto; color: rgba(255, 255, 255, 0.6); }
+.notice_warning {
+  background: rgba(220, 180, 60, 0.08);
+  border-color: rgba(220, 180, 60, 0.35);
+}
+.notice_warning .noticeIcon { color: #e8c660; }
+
+.boundaryNote {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-style: italic;
+  line-height: 1.5;
+  background: rgba(100, 150, 220, 0.06);
+  border: 1px solid rgba(100, 150, 220, 0.22);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+@media (max-width: 700px) {
+  .tileBtn { align-self: stretch; }
+}

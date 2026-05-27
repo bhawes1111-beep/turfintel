@@ -44,6 +44,8 @@ import SchedulingAwareness from './SchedulingAwareness'
 import StewardshipAlerts from './StewardshipAlerts'
 // Phase 7N (2/?) — read-only Spray Program Snapshot card.
 import SprayProgramSnapshot from './SprayProgramSnapshot'
+// Phase 7N (3/?) — read-only dashboard operations strip.
+import DashboardOperationsStrip from './DashboardOperationsStrip'
 import {
   EquipmentAlertsCard,
   UpcomingApplicationsCard,
@@ -91,6 +93,16 @@ export default function Dashboard() {
         </DashboardCard>
         <DashboardCard title="Action Required">
           <ActionQueue />
+        </DashboardCard>
+      </div>
+
+      {/* Phase 7N (3/?) — Operations Strip. Compact at-a-glance tiles
+          for Today / This week / Overdue / Unscheduled / Est. week
+          cost. Read-only: each tile carries a "Calendar →" or
+          "Planner →" link only. */}
+      <div className={styles.commandRow}>
+        <DashboardCard title="Operations" wide>
+          <DashboardOperationsStrip />
         </DashboardCard>
       </div>
 
