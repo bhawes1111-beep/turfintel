@@ -46,6 +46,8 @@ import StewardshipAlerts from './StewardshipAlerts'
 import SprayProgramSnapshot from './SprayProgramSnapshot'
 // Phase 7N (3/?) — read-only dashboard operations strip.
 import DashboardOperationsStrip from './DashboardOperationsStrip'
+// Phase 7P (1/?) — Crosswinds pilot onboarding checklist (read-only).
+import CrosswindsPilotChecklist from './CrosswindsPilotChecklist'
 import {
   EquipmentAlertsCard,
   UpcomingApplicationsCard,
@@ -228,6 +230,14 @@ export default function Dashboard() {
 
         <DashboardCard title="Recent Activity" full>
           <RecentActivity />
+        </DashboardCard>
+
+        {/* Phase 7P (1/?) — Crosswinds Pilot Setup. Read-only
+            onboarding checklist with deep-links into existing
+            surfaces. Lives inside MorePanels so daily use isn't
+            cluttered; pilot operators reach it via "More panels". */}
+        <DashboardCard title="Crosswinds Pilot Setup" full>
+          <CrosswindsPilotChecklist />
         </DashboardCard>
       </MorePanels>
 
