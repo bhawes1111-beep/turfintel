@@ -97,15 +97,18 @@ console.log('— src/pages/Inventory/components/CostBasisImportReview.jsx (sourc
   assert(/export\s+default\s+function\s+CostBasisImportReview\s*\(/.test(src),
     'default exports CostBasisImportReview')
 
-  // Title + boundary copy verbatim.
+  // Title + boundary copy verbatim. (Phase 7L.1 rewrote the copy
+  // when single-row apply landed; only the always-true line
+  // "This does not create budget entries." carries over from
+  // Phase 7K.2.)
   const norm = src.replace(/\s+/g, ' ')
   assert(norm.includes('Cost Import Review'),
     'header renders "Cost Import Review" title')
   for (const phrase of [
-    'Review only — no inventory changes are made.',
+    'Apply one reviewed row at a time.',
+    'This updates inventory cost basis only.',
     'This does not create budget entries.',
-    'This does not process invoices.',
-    'Only exact inventory ID or exact name matches are reviewed.',
+    'Inventory is not deducted.',
   ]) {
     assert(norm.includes(phrase),
       `boundary copy verbatim: "${phrase}"`)
@@ -157,10 +160,11 @@ console.log('— src/pages/Inventory/components/CostBasisImportReview.jsx (sourc
   assert(!/method:\s*['"](POST|PATCH|DELETE)['"]/.test(codeOnly),
     'component issues no direct POST/PATCH/DELETE')
 
-  // No write verbs — most importantly no Phase 7J.1 store wrapper
-  // (this commit is review-only).
+  // No write verbs other than the Phase 7J.1 setInventoryCostBasis
+  // store wrapper, which Phase 7L.1 added for per-row apply. Detailed
+  // payload + gating contract is locked in
+  // smoke-inventory-cost-basis-import-apply.mjs.
   for (const verb of [
-    'setInventoryCostBasis',
     'recordInventoryUsage',
     'createInventoryItem', 'updateInventoryItem', 'deleteInventoryItem',
     'createSpray',         'createCalendarEvent',

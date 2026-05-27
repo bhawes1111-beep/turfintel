@@ -1,5 +1,8 @@
 import { useMemo, useState } from 'react'
-import { useInventoryData } from '../../../utils/inventory/inventoryStore'
+import {
+  useInventoryData,
+  setInventoryCostBasis,
+} from '../../../utils/inventory/inventoryStore'
 import {
   buildCostImportReview,
   summarizeCostImportReview,
@@ -8,21 +11,19 @@ import { parseSimpleCsv } from '../../../utils/inventory/simpleCsvRows'
 import styles from './CostBasisImportReview.module.css'
 
 // Phase 7K (2/?) — Inventory Cost Import Review (read-only preview).
-//
-// Surface for sanity-checking a future CSV cost-basis import BEFORE
-// any apply / write step exists. Pastes CSV-like text into a
-// textarea, parses it through the tiny simpleCsvRows helper, runs it
-// through the Phase 7K.1 buildCostImportReview mapper, and renders
-// the review model. Nothing here uploads, applies, writes, or
-// touches the network.
+// Phase 7L (1/?) — single-row apply added. Per-row "Apply cost basis"
+// button on ready rows only; non-ready rows stay read-only. The apply
+// path is the Phase 7J.1 store wrapper setInventoryCostBasis (which
+// talks to PATCH /api/inventory/:id/cost-basis) — no new endpoint,
+// no bulk write, no Apply All / Import All / Commit All / Upload.
 //
 // Strict invariants:
 //   - PURE render over local state + the live inventory cache
-//   - never calls setInventoryCostBasis (no apply path in this
-//     commit — review only)
-//   - never references /api/, product_catalog mutations, budget,
-//     invoice processing, ledger, PDF, OCR, or AI extraction
-//   - no Apply / Import / Save / Commit / Upload affordance
+//   - the ONLY mutation route is setInventoryCostBasis(id, payload)
+//     and only for rows whose status === 'ready' (one at a time)
+//   - never references /api/ directly, product_catalog mutations,
+//     budget, invoice processing, ledger, PDF, OCR, or AI extraction
+//   - no Apply All / Import All / Commit All / Upload affordance
 //
 // CSV parse contract (handled in parseSimpleCsv):
 //   - header row required
@@ -31,10 +32,10 @@ import styles from './CostBasisImportReview.module.css'
 //   - quoted commas NOT supported in this commit
 
 const BOUNDARY_COPY = [
-  'Review only — no inventory changes are made.',
+  'Apply one reviewed row at a time.',
+  'This updates inventory cost basis only.',
   'This does not create budget entries.',
-  'This does not process invoices.',
-  'Only exact inventory ID or exact name matches are reviewed.',
+  'Inventory is not deducted.',
 ]
 
 const SAMPLE_PLACEHOLDER = [
@@ -53,6 +54,14 @@ export default function CostBasisImportReview() {
   const { items: inventoryItems } = useInventoryData()
   const [text,   setText]   = useState('')
   const [review, setReview] = useState(null)
+  // Phase 7L (1/?) — single-row apply state. appliedRows is a Set of
+  // rowIndex values that have been successfully written via
+  // setInventoryCostBasis; errorRows maps rowIndex → message for the
+  // most recent failure; submittingIdx is the row currently in-flight
+  // (so its button can show a "Saving…" label and be disabled).
+  const [appliedRows,    setAppliedRows]    = useState(() => new Set())
+  const [errorRows,      setErrorRows]      = useState(() => new Map())
+  const [submittingIdx,  setSubmittingIdx]  = useState(null)
 
   const summary = useMemo(
     () => (review ? summarizeCostImportReview(review) : null),
@@ -62,10 +71,46 @@ export default function CostBasisImportReview() {
   function previewRows() {
     const rows = parseSimpleCsv(text)
     setReview(buildCostImportReview(rows, inventoryItems ?? []))
+    // A fresh preview voids any prior applied/error markers since the
+    // row indices may now point to different content.
+    setAppliedRows(new Set())
+    setErrorRows(new Map())
+    setSubmittingIdx(null)
   }
   function clearPreview() {
     setText('')
     setReview(null)
+    setAppliedRows(new Set())
+    setErrorRows(new Map())
+    setSubmittingIdx(null)
+  }
+
+  async function applyRow(row) {
+    if (!row || row.status !== 'ready' || !row.inventoryItemId) return
+    setSubmittingIdx(row.rowIndex)
+    // Clear any stale error for this row before re-attempting.
+    if (errorRows.has(row.rowIndex)) {
+      const nextErrors = new Map(errorRows)
+      nextErrors.delete(row.rowIndex)
+      setErrorRows(nextErrors)
+    }
+    try {
+      await setInventoryCostBasis(row.inventoryItemId, {
+        costPerUnit: row.costPerUnit,
+        costUnit:    row.costUnit,
+        costSource:  row.costSource,
+        costNotes:   row.costNotes,
+      })
+      const nextApplied = new Set(appliedRows)
+      nextApplied.add(row.rowIndex)
+      setAppliedRows(nextApplied)
+    } catch (e) {
+      const nextErrors = new Map(errorRows)
+      nextErrors.set(row.rowIndex, e?.message ?? String(e))
+      setErrorRows(nextErrors)
+    } finally {
+      setSubmittingIdx(null)
+    }
   }
 
   return (
@@ -125,7 +170,14 @@ export default function CostBasisImportReview() {
           ) : (
             <ul className={styles.rowList} aria-label="Review rows">
               {review.rows.map(r => (
-                <ReviewRow key={`${r.rowIndex}-${r.importedName ?? r.inventoryItemId ?? 'x'}`} row={r} />
+                <ReviewRow
+                  key={`${r.rowIndex}-${r.importedName ?? r.inventoryItemId ?? 'x'}`}
+                  row={r}
+                  applied={appliedRows.has(r.rowIndex)}
+                  error={errorRows.get(r.rowIndex) ?? null}
+                  submitting={submittingIdx === r.rowIndex}
+                  onApply={() => applyRow(r)}
+                />
               ))}
             </ul>
           )}
@@ -158,10 +210,11 @@ function Tile({ label, value, tone = 'neutral' }) {
   )
 }
 
-function ReviewRow({ row }) {
+function ReviewRow({ row, applied = false, error = null, submitting = false, onApply }) {
   const statusKey = row.status ?? 'invalid'
+  const isReady   = statusKey === 'ready'
   return (
-    <li className={`${styles.row} ${styles[`row_${statusKey}`] ?? ''}`}>
+    <li className={`${styles.row} ${styles[`row_${statusKey}`] ?? ''} ${applied ? styles.row_applied : ''}`}>
       <div className={styles.rowHeader}>
         <span className={styles.rowIndex}>Row {row.rowIndex + 1}</span>
         <span className={`${styles.rowStatusBadge} ${styles[`rowStatus_${statusKey}`] ?? ''}`}>
@@ -178,6 +231,29 @@ function ReviewRow({ row }) {
       </dl>
       {row.message && (
         <p className={styles.rowMessage}>{row.message}</p>
+      )}
+
+      {/* Phase 7L (1/?) — single-row apply. Only ready rows get the
+          button; non-ready rows are read-only. Applied rows replace
+          the button with a green "Applied" marker. Errors render
+          inline below the button. */}
+      {isReady && !applied && (
+        <div className={styles.rowActions}>
+          <button
+            type="button"
+            className={styles.btnApplyRow}
+            onClick={onApply}
+            disabled={submitting}
+          >
+            {submitting ? 'Saving…' : 'Apply cost basis'}
+          </button>
+          {error && <p className={styles.rowError} role="alert">{error}</p>}
+        </div>
+      )}
+      {isReady && applied && (
+        <p className={styles.rowAppliedBadge}>
+          <span aria-hidden>✓</span> Applied
+        </p>
       )}
     </li>
   )
