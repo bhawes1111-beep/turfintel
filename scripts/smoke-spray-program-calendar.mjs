@@ -290,7 +290,14 @@ console.log('— SprayProgramCalendar.jsx (tab body)')
     'reads useSprayPrograms()')
   assert(/listSprayProgramItems\b/.test(src),
     'invokes listSprayProgramItems to fill the per-program cache')
-  for (const fn of ['buildProgramCalendarItems', 'groupProgramItemsByDate']) {
+  // Phase 7R.4 — tab now groups items into per-application events for
+  // the calendar grid + agenda; the legacy per-item byDay group is no
+  // longer the calendar's primary projection.
+  for (const fn of [
+    'buildProgramCalendarItems',
+    'groupProgramItemsForCalendar',
+    'groupCalendarEventsByDate',
+  ]) {
     assert(new RegExp(`\\b${fn}\\b`).test(src), `tab imports ${fn}`)
   }
 

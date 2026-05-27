@@ -375,9 +375,13 @@ console.log('— SprayProgramCalendar tab wires filters + sort + drawer')
   assert(/const\s+sortedItems\s*=\s*useMemo/.test(tab),
     'tab memoizes sortedItems')
 
-  // Grouping happens on sortedItems (not raw calendarItems).
-  assert(/groupProgramItemsByDate\(sortedItems\)/.test(tab),
-    'tab groups sortedItems (not the raw set)')
+  // Phase 7R.4 — grouping happens on sortedItems via the per-application
+  // event projection. The grid + agenda then bucket events (not raw
+  // items) by day.
+  assert(/groupProgramItemsForCalendar\(sortedItems\)/.test(tab),
+    'tab groups sortedItems into per-application events')
+  assert(/groupCalendarEventsByDate\(/.test(tab),
+    'tab buckets events by day via groupCalendarEventsByDate')
 
   // Drawer still receives selection state from the same place.
   assert(/<ProgramCalendarItemDrawer\b/.test(tab),

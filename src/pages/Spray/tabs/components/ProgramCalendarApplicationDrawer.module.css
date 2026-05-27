@@ -1,0 +1,168 @@
+/* Phase 7R.4 — Spray Program Calendar grouped-application drawer.
+   Scoped to this component; mobile-first stacked. */
+
+.boundaryNote {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: rgba(100, 150, 220, 0.08);
+  border: 1px solid rgba(100, 150, 220, 0.25);
+  color: rgba(160, 200, 255, 0.95);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.statusBadge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+.status_planned    { background: rgba(100, 150, 220, 0.15); color: rgba(160, 200, 255, 0.95); border-color: rgba(100, 150, 220, 0.4); }
+.status_completed  { background: rgba(78, 203, 78, 0.12);   color: #8ed68e;                  border-color: rgba(78, 203, 78, 0.3); }
+.status_skipped    { color: rgba(255, 255, 255, 0.6); }
+.status_canceled   { background: rgba(220, 60, 60, 0.1);    color: #ff9999;                  border-color: rgba(220, 60, 60, 0.3); }
+
+.statusBreakdown {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.section {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.section:last-of-type {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.sectionTitle {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.kv {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 12px;
+  row-gap: 6px;
+  margin: 0;
+}
+
+.kvRow { display: contents; }
+
+.kvLabel {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 12px;
+  margin: 0;
+}
+
+.kvValue {
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 13px;
+  margin: 0;
+}
+
+.emptyNote {
+  margin: 4px 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+  font-style: italic;
+}
+
+.productsTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.productsTable th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.55);
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.productsTable td {
+  padding: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.85);
+  vertical-align: top;
+}
+
+.productLink {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: rgba(160, 200, 255, 0.95);
+  cursor: pointer;
+  text-align: left;
+}
+.productLink:hover,
+.productLink:focus-visible {
+  text-decoration: underline;
+  outline: none;
+}
+
+.linkedDot {
+  margin-left: 6px;
+  color: #8ed68e;
+  font-weight: 700;
+}
+
+.productStatus {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.noteList {
+  list-style: disc;
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.noteRow {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.75);
+  line-height: 1.5;
+}
+
+.footerBtn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+}
+.footerBtn:hover { background: rgba(255, 255, 255, 0.1); }

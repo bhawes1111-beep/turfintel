@@ -144,6 +144,11 @@ export function buildProgramCalendarItems(programs = [], itemsByProgramId = {}, 
         plannedStartDate:    item.plannedStartDate ?? null,
         plannedEndDate:      item.plannedEndDate   ?? null,
         plannedWindowLabel:  item.plannedWindowLabel ?? null,
+        applicationNotes:    item.applicationNotes  ?? null,
+        rateValue:           item.rateValue ?? null,
+        rateUnit:            item.rateUnit  ?? null,
+        carrierVolumeValue:  item.carrierVolumeValue ?? null,
+        carrierVolumeUnit:   item.carrierVolumeUnit  ?? null,
         displayLabel:        display,
         rangeLabel,
         linkedSprayRecordId: linkedId,
@@ -412,6 +417,258 @@ export function buildProgramCalendarFilterOptions(calendarItems = []) {
   return { programs, statuses, targetAreas, linkStates, sortModes }
 }
 
+// ── Phase 7R.4 (1/?) — Grouped calendar events ───────────────────────────
+//
+// Pure-compute helper that rolls a flat list of calendar items
+// (output of buildProgramCalendarItems / filterProgramCalendarItems
+// / sortProgramCalendarItems) into one event per
+// program × date × target_area × application bucket.
+//
+// The bucket distinguishes Water In / Granular / Aeration / Spray
+// types on the same date + area, derived purely from
+// applicationNotes text — there is no new schema column. The bucket
+// keys are:
+//   - 'aeration'  if any item carries an "aeration" mention
+//   - 'water-in'  if any item carries "water in"
+//   - 'granular'  if any item carries "granular only"
+//   - 'spray'     otherwise
+//
+// Returns event view-models with the shape the calendar grid + agenda
+// surfaces consume (id / title / subtitle / type / start / end /
+// programId / programName / targetArea / items / productCount /
+// statusBreakdown / hasCompletedLink / nutrientSummary / notes).
+// Underlying spray_program_items are never mutated — this helper is
+// strictly read-side projection.
+
+const APPLICATION_TYPE_LABEL = {
+  spray:    'Spray',
+  'water-in': 'Water In',
+  granular: 'Granular',
+  aeration: 'Aeration',
+}
+
+function deriveApplicationType(notes) {
+  if (!notes || typeof notes !== 'string') return 'spray'
+  const lower = notes.toLowerCase()
+  if (lower.includes('aeration'))      return 'aeration'
+  if (lower.includes('water in'))      return 'water-in'
+  if (lower.includes('granular only')) return 'granular'
+  return 'spray'
+}
+
+// One application "bucket" per item, used to pick the strongest
+// type across all products on the same date+area. Higher = wins.
+const TYPE_PRIORITY = { aeration: 3, 'water-in': 2, granular: 1, spray: 0 }
+
+function pickBucketType(types) {
+  let winner = 'spray'
+  let winnerRank = -1
+  for (const t of types) {
+    const rank = TYPE_PRIORITY[t] ?? 0
+    if (rank > winnerRank) { winner = t; winnerRank = rank }
+  }
+  return winner
+}
+
+function extractNutrientSummary(notes) {
+  if (!notes || typeof notes !== 'string') return null
+  // Format from the seed: "Nutrient summary: 0.08 lbs N/1000, 0.16 lbs K/1000."
+  // Capture until the sentence-ending period (a period followed by a
+  // space or end-of-string) so decimals like "0.08" don't truncate.
+  const m = notes.match(/Nutrient summary:\s*(.+?)(?:\.\s|\.$|$)/i)
+  if (!m) return null
+  const cleaned = m[1].trim().replace(/\s+/g, ' ')
+  return cleaned || null
+}
+
+function makeEventId(item, bucketType) {
+  // Stable id: program + start + end + area + bucket. Falls back
+  // gracefully when dates are missing.
+  return [
+    'pe',
+    item.programId   ?? 'noprogram',
+    item.plannedStartDate ?? 'nodate',
+    item.plannedEndDate   ?? item.plannedStartDate ?? 'nodate',
+    (item.targetArea ?? 'noarea').replace(/\s+/g, '-').toLowerCase(),
+    bucketType,
+  ].join('|')
+}
+
+/**
+ * Group a flat array of calendar-item rows into per-application
+ * calendar events. Items that share program + dates + area + type
+ * collapse into a single event whose `items` array is the
+ * underlying product rows.
+ *
+ * @param {Array} calendarItems  output of buildProgramCalendarItems
+ * @returns {Array<{
+ *   id: string,
+ *   title: string,
+ *   subtitle: string|null,
+ *   applicationType: 'spray' | 'water-in' | 'granular' | 'aeration',
+ *   typeLabel: string,
+ *   programId: string|null,
+ *   programName: string|null,
+ *   targetArea: string|null,
+ *   plannedStartDate: string|null,
+ *   plannedEndDate: string|null,
+ *   _start: number|null,
+ *   _end: number|null,
+ *   isStaleOrMissingDate: boolean,
+ *   items: Array<Object>,
+ *   productCount: number,
+ *   hasCompletedLink: boolean,
+ *   statusBreakdown: { planned: number, completed: number, skipped: number, canceled: number },
+ *   nutrientSummary: Array<string>,
+ *   notes: Array<string>,
+ * }>}
+ */
+export function groupProgramItemsForCalendar(calendarItems = []) {
+  const buckets = new Map()
+
+  // Pass 1: bucket items by (program, dates, area, type-derived-from-row).
+  // We use the row-level type for keying so a single "Water In" item
+  // doesn't collapse with the surrounding "Spray" items on the same
+  // date. After bucketing, the bucket's `applicationType` is the
+  // highest-priority type across the items in that bucket — which
+  // for a sane fixture equals the row-level type (because all items
+  // in a true grouping share one bucket key).
+  for (const ci of Array.isArray(calendarItems) ? calendarItems : []) {
+    if (!ci) continue
+    const type = deriveApplicationType(ci.applicationNotes)
+    const key = makeEventId(ci, type)
+    let bucket = buckets.get(key)
+    if (!bucket) {
+      bucket = {
+        id: key,
+        applicationType: type,
+        programId:        ci.programId   ?? null,
+        programName:      ci.programName ?? null,
+        targetArea:       ci.targetArea  ?? null,
+        plannedStartDate: ci.plannedStartDate ?? null,
+        plannedEndDate:   ci.plannedEndDate   ?? ci.plannedStartDate ?? null,
+        _start:           ci._start ?? null,
+        _end:             ci._end   ?? ci._start ?? null,
+        isStaleOrMissingDate: ci.isStaleOrMissingDate === true,
+        items:            [],
+        types:            [],
+        nutrientSummarySet: new Set(),
+        notesSet:           new Set(),
+      }
+      buckets.set(key, bucket)
+    }
+    bucket.items.push(ci)
+    bucket.types.push(type)
+    const ns = extractNutrientSummary(ci.applicationNotes)
+    if (ns) bucket.nutrientSummarySet.add(ns)
+    if (ci.applicationNotes) bucket.notesSet.add(ci.applicationNotes)
+    bucket.isStaleOrMissingDate = bucket.isStaleOrMissingDate || ci.isStaleOrMissingDate === true
+  }
+
+  // Pass 2: finalize.
+  const out = []
+  for (const bucket of buckets.values()) {
+    const type   = pickBucketType(bucket.types)
+    const typeLabel = APPLICATION_TYPE_LABEL[type] ?? 'Spray'
+    const areaTitle = bucket.targetArea || '(no area)'
+    // Title: just the area (e.g. "Greens"). Type chip renders
+    // separately in the calendar cell + agenda row, OR appears as a
+    // " · TypeLabel" suffix when the consumer wants a single string.
+    const title = areaTitle
+    const subtitle = type === 'spray' ? null : typeLabel
+
+    // status breakdown across the bucket.
+    const statusBreakdown = { planned: 0, completed: 0, skipped: 0, canceled: 0 }
+    let anyLinked = false
+    for (const it of bucket.items) {
+      statusBreakdown[it.status ?? 'planned'] =
+        (statusBreakdown[it.status ?? 'planned'] ?? 0) + 1
+      if (it.hasCompletedLink) anyLinked = true
+    }
+
+    out.push({
+      id:               bucket.id,
+      title,
+      subtitle,
+      applicationType:  type,
+      typeLabel,
+      programId:        bucket.programId,
+      programName:      bucket.programName,
+      targetArea:       bucket.targetArea,
+      plannedStartDate: bucket.plannedStartDate,
+      plannedEndDate:   bucket.plannedEndDate,
+      _start:           bucket._start,
+      _end:             bucket._end,
+      isStaleOrMissingDate: bucket.isStaleOrMissingDate,
+      items:            bucket.items,
+      productCount:     bucket.items.length,
+      hasCompletedLink: anyLinked,
+      statusBreakdown,
+      nutrientSummary:  Array.from(bucket.nutrientSummarySet),
+      notes:            Array.from(bucket.notesSet),
+    })
+  }
+
+  // Sort earliest-first within the array so consumers can render
+  // agenda rows directly without resorting.
+  out.sort((a, b) => {
+    const av = a._start ?? Number.POSITIVE_INFINITY
+    const bv = b._start ?? Number.POSITIVE_INFINITY
+    if (av !== bv) return av - bv
+    // Same date → put higher-priority types first (Aeration before
+    // Water In before Granular before Spray).
+    const ar = TYPE_PRIORITY[a.applicationType] ?? 0
+    const br = TYPE_PRIORITY[b.applicationType] ?? 0
+    if (ar !== br) return br - ar
+    return (a.title ?? '').localeCompare(b.title ?? '')
+  })
+  return out
+}
+
+/**
+ * Group calendar events by day key, mirroring the existing
+ * groupProgramItemsByDate output shape so consumers can render the
+ * monthly grid with grouped events instead of per-product items.
+ *
+ * @param {Array} events  output of groupProgramItemsForCalendar
+ * @returns {{ byDay: Object<string, Array>, unscheduled: Array }}
+ */
+export function groupCalendarEventsByDate(events = []) {
+  const byDay = {}
+  const unscheduled = []
+
+  for (const ev of Array.isArray(events) ? events : []) {
+    if (!ev) continue
+    if (ev.isStaleOrMissingDate || ev._start == null || ev._end == null) {
+      unscheduled.push(ev)
+      continue
+    }
+    const spanDays = Math.floor((ev._end - ev._start) / DAY_MS) + 1
+    if (spanDays > MAX_RANGE_DAYS) {
+      const key = dayKey(ev._start)
+      ;(byDay[key] = byDay[key] ?? []).push(ev)
+      unscheduled.push(ev)
+      continue
+    }
+    for (let t = ev._start; t <= ev._end; t += DAY_MS) {
+      const key = dayKey(t)
+      ;(byDay[key] = byDay[key] ?? []).push(ev)
+    }
+  }
+
+  // Sort each day: higher-priority application type first, then by
+  // area name for stability.
+  function cmp(a, b) {
+    const ar = TYPE_PRIORITY[a.applicationType] ?? 0
+    const br = TYPE_PRIORITY[b.applicationType] ?? 0
+    if (ar !== br) return br - ar
+    return (a.title ?? '').localeCompare(b.title ?? '')
+  }
+  for (const key of Object.keys(byDay)) byDay[key].sort(cmp)
+  unscheduled.sort(cmp)
+  return { byDay, unscheduled }
+}
+
 // Exported for the smoke; not part of the public render contract.
 export const __TEST = {
   isValidDate,
@@ -422,4 +679,11 @@ export const __TEST = {
   STATUS_VALUES,
   LINK_STATES,
   SORT_MODES,
+  // Phase 7R.4 internals
+  APPLICATION_TYPE_LABEL,
+  TYPE_PRIORITY,
+  deriveApplicationType,
+  pickBucketType,
+  extractNutrientSummary,
+  makeEventId,
 }

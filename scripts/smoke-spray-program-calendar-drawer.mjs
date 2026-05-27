@@ -168,21 +168,22 @@ console.log('— SprayProgramCalendar wires drawer + clickable chips/cards')
   assert(/onClose=\{\(\)\s*=>\s*setSelectedItemId\(null\)\}/.test(src),
     'drawer onClose clears selectedItemId')
 
-  // Calendar chips + agenda rows are clickable buttons.
+  // Phase 7R.4 — chips now open the grouped *application* drawer; the
+  // per-item drawer is reached by drilling into a product row inside it.
   assert(/className=\{`\$\{styles\.dayItem\}\s+\$\{styles\.dayItemBtn\}/.test(src),
     'day-item rendered as a button (.dayItem + .dayItemBtn)')
-  assert(/onClick=\{\(\)\s*=>\s*onSelect\?\.\(ci\.itemId\)\}/.test(src),
-    'day-item button calls onSelect(ci.itemId)')
+  assert(/onClick=\{\(\)\s*=>\s*onSelectEvent\?\.\(ev\.id\)\}/.test(src),
+    'day-item button calls onSelectEvent(ev.id)')
   assert(/className=\{styles\.agendaItemBtn\}/.test(src),
     'agenda row wraps in an .agendaItemBtn button')
 
-  // onSelect is threaded to DayCell + both AgendaRow usages.
-  assert(/<DayCell\b[^>]*onSelect=\{setSelectedItemId\}/.test(src),
-    'DayCell receives onSelect={setSelectedItemId}')
+  // onSelectEvent is threaded to DayCell + both AgendaRow usages.
+  assert(/<DayCell\b[^>]*onSelectEvent=\{setSelectedEventId\}/.test(src),
+    'DayCell receives onSelectEvent={setSelectedEventId}')
   // Two AgendaRow usages (active month + unscheduled).
-  const agendaOnSelectCount = (src.match(/<AgendaRow\b[^>]*onSelect=\{setSelectedItemId\}/g) ?? []).length
+  const agendaOnSelectCount = (src.match(/<AgendaRow\b[^>]*onSelectEvent=\{setSelectedEventId\}/g) ?? []).length
   assert(agendaOnSelectCount === 2,
-    `both AgendaRow usages receive onSelect (found ${agendaOnSelectCount})`)
+    `both AgendaRow usages receive onSelectEvent (found ${agendaOnSelectCount})`)
 
   // ── Tab body still has zero write paths ────────────────────────────
   const codeOnly = src
