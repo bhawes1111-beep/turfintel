@@ -42,6 +42,8 @@ import ActionQueue from './ActionQueue'
 import SchedulingAwareness from './SchedulingAwareness'
 // Phase 7N (1/?) — read-only dashboard stewardship alerts.
 import StewardshipAlerts from './StewardshipAlerts'
+// Phase 7N (2/?) — read-only Spray Program Snapshot card.
+import SprayProgramSnapshot from './SprayProgramSnapshot'
 import {
   EquipmentAlertsCard,
   UpcomingApplicationsCard,
@@ -101,6 +103,15 @@ export default function Dashboard() {
       <div className={styles.commandRow}>
         <DashboardCard title="Stewardship Alerts" wide>
           <StewardshipAlerts />
+        </DashboardCard>
+      </div>
+
+      {/* Phase 7N (2/?) — Spray Program Snapshot. Read-only:
+          upcoming-week planned items + link health + cost rollup.
+          Only affordance is "Review →" → Program Calendar. */}
+      <div className={styles.commandRow}>
+        <DashboardCard title="Spray Program Snapshot" wide>
+          <SprayProgramSnapshot />
         </DashboardCard>
       </div>
 

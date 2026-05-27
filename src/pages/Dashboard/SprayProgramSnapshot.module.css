@@ -1,0 +1,251 @@
+/* Phase 7N (2/?) — Dashboard Spray Program Snapshot card.
+   Scoped to this component; mobile-first read-only render. */
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.72);
+}
+.subtitle {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  font-style: italic;
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+@media (min-width: 540px) {
+  .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (min-width: 800px) {
+  .tiles { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+}
+
+.tile {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.tileValue {
+  font-size: 16px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tileLabel {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+}
+.tile_ok        { border-color: rgba(120, 180, 130, 0.4); background: rgba(120, 180, 130, 0.10); }
+.tile_warn      { border-color: rgba(220, 180, 60, 0.4);  background: rgba(220, 180, 60, 0.08); }
+.tile_info      { border-color: rgba(100, 150, 220, 0.35); background: rgba(100, 150, 220, 0.08); }
+.tile_attention { border-color: rgba(220, 60, 60, 0.4);  background: rgba(220, 60, 60, 0.08); }
+.tile_muted     { opacity: 0.65; }
+.tile_cost      { border-color: rgba(120, 180, 130, 0.45); background: rgba(120, 180, 130, 0.12); }
+.tile_cost .tileValue { color: #9cd6a2; font-size: 17px; }
+
+.tileEmphasis { grid-column: span 2; }
+
+/* ── Upcoming list ─────────────────────────────────────────────────── */
+
+.upcomingSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sectionLabel {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.empty {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  font-style: italic;
+}
+
+.upcomingList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.upcomingRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+.upcomingMain { flex: 1 1 auto; min-width: 0; }
+
+.upcomingTitleRow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.upcomingProduct {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+}
+.upcomingMeta {
+  margin-top: 2px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+}
+.upcomingCost {
+  flex: 0 0 auto;
+  font-size: 14px;
+  font-weight: 700;
+  color: #9cd6a2;
+  white-space: nowrap;
+}
+
+.statusBadge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+.status_planned   { background: rgba(100, 150, 220, 0.12); color: rgba(160, 200, 255, 0.95); border-color: rgba(100, 150, 220, 0.4); }
+.status_completed { background: rgba(78, 203, 78, 0.12);   color: #8ed68e;                  border-color: rgba(78, 203, 78, 0.3); }
+.status_skipped   { color: rgba(255, 255, 255, 0.55); }
+.status_canceled  { background: rgba(220, 60, 60, 0.1);    color: #ff9999;                  border-color: rgba(220, 60, 60, 0.3); }
+
+.linkedChip {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  background: rgba(78, 203, 78, 0.12);
+  color: #8ed68e;
+  border: 1px solid rgba(78, 203, 78, 0.4);
+}
+
+.overflow {
+  margin: 0;
+  padding: 2px 6px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+  font-style: italic;
+}
+
+/* ── Notices ──────────────────────────────────────────────────────── */
+
+.noticeList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.notice {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.78);
+}
+.noticeIcon { flex: 0 0 auto; color: rgba(255, 255, 255, 0.6); }
+.notice_warning {
+  background: rgba(220, 180, 60, 0.08);
+  border-color: rgba(220, 180, 60, 0.35);
+}
+.notice_warning .noticeIcon { color: #e8c660; }
+
+/* ── Review affordance ─────────────────────────────────────────────── */
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+}
+.reviewBtn {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  cursor: pointer;
+}
+.reviewBtn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.boundaryNote {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-style: italic;
+  line-height: 1.5;
+  background: rgba(100, 150, 220, 0.06);
+  border: 1px solid rgba(100, 150, 220, 0.22);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+@media (max-width: 700px) {
+  .upcomingRow { flex-direction: column; }
+  .upcomingCost { align-self: flex-start; }
+  .reviewBtn { width: 100%; }
+  .actions { justify-content: stretch; }
+}
