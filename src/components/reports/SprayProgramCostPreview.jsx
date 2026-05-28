@@ -31,6 +31,9 @@ const REASON_TONE = {
   'Missing quantity':     'warn',
   'Unit mismatch':        'warn',
   'Cost basis found, conversion needed': 'caution',
+  'Area needed for estimate':  'caution',
+  'Unsupported rate unit':     'warn',
+  'Unsupported cost unit':     'warn',
   'Invalid cost value':   'warn',
 }
 
@@ -127,6 +130,16 @@ export default function SprayProgramCostPreview({ report }) {
             label="Conversion needed"
             value={totals.conversionNeeded ?? 0}
             tone={(totals.conversionNeeded ?? 0) > 0 ? 'caution' : 'muted'}
+          />
+          <Tile
+            label="Area needed"
+            value={totals.areaNeeded ?? 0}
+            tone={(totals.areaNeeded ?? 0) > 0 ? 'caution' : 'muted'}
+          />
+          <Tile
+            label="Unsupported unit"
+            value={totals.unsupportedUnit ?? 0}
+            tone={(totals.unsupportedUnit ?? 0) > 0 ? 'warn' : 'muted'}
           />
           <Tile
             label="Invalid cost"
@@ -259,10 +272,10 @@ function ProgramCostList({ rows }) {
   )
 }
 
-// ── Estimated Items ────────────────────────────────────────────────────
+// ── Estimated Items (Phase 7V.1) ───────────────────────────────────────
 // Builder columns:
-// [program, planned product, inventory item, rate, unit cost basis,
-//  estimated cost]
+// [program, planned product, rate, est. quantity, unit cost basis,
+//  area basis, estimated cost]
 function EstimatedItemsList({ rows }) {
   const real = rows.filter(r => r?.[0] && r[0] !== 'No estimated items in the report range.')
   if (real.length === 0) {
@@ -274,16 +287,17 @@ function EstimatedItemsList({ rows }) {
         <li key={`${r[0]}-${r[1]}-${i}`} className={styles.itemCard}>
           <div className={styles.itemHeader}>
             <span className={styles.itemProduct}>{r[1]}</span>
-            <span className={styles.itemCost}>{r[5]}</span>
+            <span className={styles.itemCost}>{r[6]}</span>
           </div>
           <div className={styles.itemMeta}>
             <span>{r[0]}</span>
-            {r[2] !== '—' && <span>· 📦 {r[2]}</span>}
           </div>
           <dl className={styles.itemKv}>
-            <KvRow label="Rate"            value={r[3]} />
+            <KvRow label="Rate"            value={r[2]} />
+            <KvRow label="Est. quantity"   value={r[3]} />
             <KvRow label="Unit cost basis" value={r[4]} />
-            <KvRow label="Estimated cost"  value={r[5]} valueClassName={styles.kvCost} />
+            <KvRow label="Area basis"      value={r[5]} />
+            <KvRow label="Estimated cost"  value={r[6]} valueClassName={styles.kvCost} />
           </dl>
         </li>
       ))}

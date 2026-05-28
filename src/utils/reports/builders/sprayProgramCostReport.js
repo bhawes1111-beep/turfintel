@@ -124,6 +124,8 @@ export function buildSprayProgramCostReportSections(summary) {
       'Missing quantity':        summary.totals.missingQuantity,
       'Unit mismatch':           summary.totals.notComparableUnits,
       'Cost basis found, conversion needed': summary.totals.conversionNeeded,
+      'Area needed for estimate':  summary.totals.areaNeeded,
+      'Unsupported unit':          summary.totals.unsupportedUnit,
       'Invalid inventory cost':  summary.totals.invalidCost,
       'Affected planned items':  summary.totals.affectedPlannedItems,
       'Date range':              summary.dateRange ?? '—',
@@ -158,19 +160,28 @@ export function buildSprayProgramCostReportSections(summary) {
     },
   })))
 
-  // ── Estimated Items ──────────────────────────────────────────────────
+  // ── Estimated Items (Phase 7V.1 — qty + unit + area basis) ───────────
   const estimatedRows = []
   for (const p of summary.perProgram) {
     for (const it of p.perItem) {
       if (it.estimate?.status !== 'estimated') continue
-      const inv = resolveInventoryRow(it.item, summary.inventoryProducts)
+      const e = it.estimate
+      const qtyDisplay = e.estimatedQuantity != null && e.quantityUnit
+        ? `${e.estimatedQuantity} ${e.quantityUnit}`
+        : '—'
+      const areaBasis = e.areaAcres != null
+        ? `${e.areaAcres.toFixed(2)} acres${e.areaSource ? ` (${e.areaSource})` : ''}`
+        : 'exact-unit (no area needed)'
       estimatedRows.push([
         p.program.name ?? '—',
         it.item.productName ?? '—',
-        inv?.name ?? '—',
         `${it.item.rateValue ?? '—'} ${it.item.rateUnit ?? ''}`.trim(),
-        formatInventoryUnitCost(inv, summary.currency),
-        formatEstimatedCost(it.estimate.estimatedCost, summary.currency),
+        qtyDisplay,
+        e.unitCost != null
+          ? `${formatEstimatedCost(e.unitCost, summary.currency)} / ${e.quantityUnit ?? ''}`.trim()
+          : '—',
+        areaBasis,
+        formatEstimatedCost(e.estimatedCost, summary.currency),
       ])
     }
   }
@@ -179,12 +190,12 @@ export function buildSprayProgramCostReportSections(summary) {
     type:  SECTION_TYPE.TABLE,
     data: {
       columns: [
-        'Program', 'Planned product', 'Inventory item',
-        'Rate', 'Unit cost basis', 'Estimated cost',
+        'Program', 'Planned product', 'Rate',
+        'Est. quantity', 'Unit cost basis', 'Area basis', 'Estimated cost',
       ],
       rows: estimatedRows.length > 0
         ? estimatedRows
-        : [['No estimated items in the report range.', '—', '—', '—', '—', '—']],
+        : [['No estimated items in the report range.', '—', '—', '—', '—', '—', '—']],
     },
   })))
 
@@ -283,6 +294,9 @@ function labelForCostStatus(status) {
     case 'missing-quantity':     return 'Missing quantity'
     case 'not-comparable-unit':  return 'Unit mismatch'
     case 'cost-basis-found-unit-conversion-needed': return 'Cost basis found, conversion needed'
+    case 'area-needed-for-estimate': return 'Area needed for estimate'
+    case 'unsupported-rate-unit':    return 'Unsupported rate unit'
+    case 'unsupported-cost-unit':    return 'Unsupported cost unit'
     default:                     return status ?? '—'
   }
 }
@@ -367,6 +381,16 @@ function buildCostNotices(summary) {
       value: `${t.conversionNeeded} planned item${t.conversionNeeded !== 1 ? 's' : ''} have cost basis on file but need a unit conversion to estimate` })
   }
 
+  if (t.areaNeeded > 0) {
+    out.push({ type: 'caution', label: 'Area needed',
+      value: `${t.areaNeeded} planned item${t.areaNeeded !== 1 ? 's' : ''} have cost basis but no treated area set on the program to estimate from` })
+  }
+
+  if (t.unsupportedUnit > 0) {
+    out.push({ type: 'caution', label: 'Unsupported unit',
+      value: `${t.unsupportedUnit} planned item${t.unsupportedUnit !== 1 ? 's' : ''} have a rate or cost unit that cannot be converted safely` })
+  }
+
   if (t.invalidCost > 0) {
     out.push({ type: 'warning', label: 'Invalid inventory cost',
       value: `${t.invalidCost} inventory item${t.invalidCost !== 1 ? 's' : ''} have a non-positive or non-numeric cost value` })
@@ -427,6 +451,8 @@ export function buildSprayProgramCostReport(input = {}) {
   let missingQuantity     = 0
   let notComparableUnits  = 0
   let conversionNeeded    = 0
+  let areaNeeded          = 0
+  let unsupportedUnit     = 0
   for (const s of programSummaries) {
     estimatedTotal     += s.estimatedTotal
     estimatedItems     += s.estimatedItems
@@ -435,6 +461,8 @@ export function buildSprayProgramCostReport(input = {}) {
     missingQuantity    += s.missingQuantity
     notComparableUnits += s.notComparableUnits
     conversionNeeded   += s.conversionNeeded ?? 0
+    areaNeeded         += s.areaNeeded ?? 0
+    unsupportedUnit    += s.unsupportedUnit ?? 0
   }
   estimatedTotal = Math.round(estimatedTotal * 100) / 100
 
@@ -458,6 +486,8 @@ export function buildSprayProgramCostReport(input = {}) {
       missingQuantity,
       notComparableUnits,
       conversionNeeded,
+      areaNeeded,
+      unsupportedUnit,
       invalidCost:          review.totals.invalidCost,
       affectedPlannedItems: review.totals.affectedPlannedItems,
     },

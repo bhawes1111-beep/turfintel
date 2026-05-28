@@ -16,14 +16,9 @@
 // program reads used here are public GETs).
 
 import { readFileSync } from 'fs'
-import { estimateProgramItemCost } from '../src/utils/sprayPrograms/programCostAwareness.js'
+import { estimateProgramItemCost, resolveProgramArea } from '../src/utils/sprayPrograms/programCostAwareness.js'
 
 const PROGRAM_ID = 'sp-crosswinds-greens-2026'
-const TARGET_13 = new Set([
-  'Chlorothalonil 720', 'Contrado', 'Crescendo', 'Dual Shield', 'Manzate Max',
-  'Nemamectin', 'Pedigree', 'Pendant SC', 'Rain Pigment', 'Redox K+',
-  'Tebuconazole 3.6F', 'TM 4.5', 'Zelto',
-])
 
 // ── Load API config from .env.local (literal, no shell expansion) ──────────
 function loadEnv() {
@@ -46,102 +41,64 @@ async function getJson(path) {
   return res.json()
 }
 
-function normUnit(u) {
-  return u == null ? '' : String(u).trim().toLowerCase().replace(/\s+/g, ' ')
-}
-
 async function main() {
   if (!API) {
     console.error('✗ TURFINTEL_API_URL not set (in env or .env.local). Aborting read-only diagnostic.')
     process.exit(1)
   }
 
+  const programs     = await getJson('/api/spray-programs?status=active')
   const programItems = await getJson(`/api/spray-programs/${PROGRAM_ID}/items`)
   const inventory    = await getJson('/api/inventory')
-  const items = Array.isArray(programItems) ? programItems : []
-  const inv   = Array.isArray(inventory) ? inventory : []
+  const program = (Array.isArray(programs) ? programs : []).find(p => p?.id === PROGRAM_ID) ?? null
+  const items   = Array.isArray(programItems) ? programItems : []
+  const inv     = Array.isArray(inventory) ? inventory : []
 
-  // Inventory lookup by exact name (course already scoped server-side).
-  const invByName = new Map()
-  for (const r of inv) if (r?.name && !invByName.has(r.name)) invByName.set(r.name, r)
+  // The estimator needs the program (for area resolution from notes /
+  // default acres) + the course-scoped inventory list.
+  const context = { inventoryProducts: inv, program }
+  const area = resolveProgramArea({ program })
 
-  const context = { inventoryProducts: inv }
-
-  let exactNameMatch = 0
-  let costBasisByName = 0
-  let currentEstimatable = 0
-  let blockedNoLink = 0
-  let blockedUnit = 0
-  let blockedNameMismatch = 0
-  const target13ByName = []
-
+  const counts = {}
+  let estimatedTotal = 0
+  const estimated = []
   for (const it of items) {
-    // (1) Current estimator (what the live report uses).
     const est = estimateProgramItemCost(it, context)
-    if (est.status === 'estimated') currentEstimatable++
-
-    // (2) Name-match probe.
-    const invRow = invByName.get(it.productName) ?? null
-    if (invRow) {
-      exactNameMatch++
-      const unitCost = invRow.costPerUnit
-      if (unitCost != null && Number(unitCost) > 0) {
-        costBasisByName++
-        const rateU = normUnit(it.rateUnit)
-        const costU = normUnit(invRow.costUnit ?? invRow.unit)
-        const comparable = rateU && costU && rateU === costU
-        if (TARGET_13.has(it.productName)) {
-          target13ByName.push({
-            name: it.productName,
-            rate: `${it.rateValue ?? '?'} ${it.rateUnit ?? ''}`.trim(),
-            cost: `$${unitCost}/${invRow.costUnit ?? invRow.unit ?? '?'}`,
-            comparable,
-            currentStatus: est.status,
-          })
-        }
-        if (!comparable) blockedUnit++
-      }
-    } else {
-      blockedNameMismatch++
-    }
-
-    // Why the CURRENT estimator did not estimate.
-    if (est.status !== 'estimated') {
-      if (!it.inventoryItemId) blockedNoLink++
+    counts[est.status] = (counts[est.status] ?? 0) + 1
+    if (est.status === 'estimated') {
+      estimatedTotal += est.estimatedCost
+      estimated.push({
+        name: it.productName,
+        rate: `${it.rateValue ?? '?'} ${it.rateUnit ?? ''}`.trim(),
+        qty:  `${est.estimatedQuantity} ${est.quantityUnit}`,
+        unitCost: `$${est.unitCost}/${est.quantityUnit}`,
+        cost: est.estimatedCost,
+      })
     }
   }
 
-  console.log('— Crosswinds Greens Program 2026 — cost report diagnostic')
+  console.log('— Crosswinds Greens Program 2026 — cost report diagnostic (Phase 7V.1)')
   console.log('')
   console.log(`Total program items:                 ${items.length}`)
   console.log(`Inventory rows (course-scoped):      ${inv.length}`)
   console.log(`Inventory rows with cost basis:      ${inv.filter(r => r.costPerUnit != null).length}`)
+  console.log(`Area basis:                          ${area.acres != null ? `${area.acres} acres (${area.sqFt} sq ft) via ${area.source}` : 'NOT AVAILABLE'}`)
   console.log('')
-  console.log('CURRENT estimator (live report path — needs inventoryItemId + exact unit):')
-  console.log(`  items it can estimate:             ${currentEstimatable}`)
-  console.log(`  items with NULL inventory link:    ${blockedNoLink}`)
+  console.log('Estimator status breakdown:')
+  console.log(`  estimated:                         ${counts['estimated'] ?? 0}`)
+  console.log(`  cost-basis-found-conversion-needed:${counts['cost-basis-found-unit-conversion-needed'] ?? 0}`)
+  console.log(`  area-needed-for-estimate:          ${counts['area-needed-for-estimate'] ?? 0}`)
+  console.log(`  unsupported-rate-unit:             ${counts['unsupported-rate-unit'] ?? 0}`)
+  console.log(`  unsupported-cost-unit:             ${counts['unsupported-cost-unit'] ?? 0}`)
+  console.log(`  missing-cost-basis:                ${counts['missing-cost-basis'] ?? 0}`)
+  console.log(`  missing-quantity:                  ${counts['missing-quantity'] ?? 0}`)
   console.log('')
-  console.log('NAME-MATCH probe (program product_name → inventory name):')
-  console.log(`  items with exact inventory name:   ${exactNameMatch}`)
-  console.log(`  of those, with cost basis on file: ${costBasisByName}`)
-  console.log(`  items with NO inventory name match: ${blockedNameMismatch}`)
-  console.log(`  matched+costed but unit NOT comparable (needs conversion): ${blockedUnit}`)
+  console.log(`Estimated total: $${estimatedTotal.toFixed(2)} across ${estimated.length} item use(s)`)
   console.log('')
-  console.log('The 13 exact-cost target products (name-matched):')
-  for (const t of target13ByName) {
-    console.log(`  • ${t.name}`)
-    console.log(`      rate=${t.rate}  cost=${t.cost}  unit-comparable=${t.comparable}`)
-    console.log(`      current estimator status: ${t.currentStatus}`)
+  console.log('Estimated items breakdown:')
+  for (const e of estimated) {
+    console.log(`  • ${e.name}: ${e.rate} → ${e.qty} × ${e.unitCost} = $${e.cost.toFixed(2)}`)
   }
-  console.log('')
-  console.log('Interpretation:')
-  console.log('  - The live report uses item.inventoryItemId, which is NULL on every')
-  console.log('    Crosswinds item, so it reports "missing cost basis" for all.')
-  console.log('  - Even by name, the rate units (per-area: gal/acre, oz/1000 sq ft,')
-  console.log('    lb/acre) never equal the cost units (per-volume/weight: gal, lb),')
-  console.log('    so a safe per-unit estimate is not possible without an area/volume')
-  console.log('    conversion the planner does not store. Correct outcome is a')
-  console.log('    "cost basis found, unit conversion needed" state — not $0, not hidden.')
 }
 
 main().catch(e => { console.error('ERR', e.message); process.exit(1) })

@@ -24,6 +24,9 @@ import {
   buildProgramCostSummary,
   buildProgramCostSummaries,
   formatEstimatedCost,
+  normalizeProgramRateUnit,
+  estimatePlannedQuantityFromRate,
+  resolveProgramArea,
 } from '../src/utils/sprayPrograms/programCostAwareness.js'
 
 let passed = 0, failed = 0
@@ -147,16 +150,16 @@ console.log('— estimateProgramItemCost runtime behavior')
   )
   assert(negQty.status === 'missing-quantity', 'negative rateValue → missing-quantity')
 
-  // Phase 7U.4 — cost on file + planned unit differs from cost unit.
-  // This now surfaces as 'cost-basis-found-unit-conversion-needed'
-  // (NOT 'missing', NOT $0) so a real cost basis is never hidden.
+  // Phase 7V.1 — cost on file but cost unit is a per-area unit (lb/acre,
+  // not gal or lb) → cannot convert safely → 'unsupported-cost-unit'.
+  // (inv-3 Barricade has costUnit lb/acre.) Never $0, never hidden.
   const unitMismatch = estimateProgramItemCost(
     { id: 'i8', inventoryItemId: 'inv-3', rateValue: 1.0, rateUnit: 'oz/1000 sq ft' },
     context,
   )
-  assert(unitMismatch.status === 'cost-basis-found-unit-conversion-needed',
-    'cost on file + mismatched units → cost-basis-found-unit-conversion-needed')
-  assert(unitMismatch.estimatedCost == null, 'conversion-needed has null estimatedCost')
+  assert(unitMismatch.status === 'unsupported-cost-unit',
+    'cost on file + non-gal/lb cost unit → unsupported-cost-unit', unitMismatch.status)
+  assert(unitMismatch.estimatedCost == null, 'unsupported-cost-unit has null estimatedCost')
 
   // Cost on file + missing planned rateUnit → conversion-needed.
   const noPlannedUnit = estimateProgramItemCost(
@@ -198,14 +201,29 @@ console.log('— estimateProgramItemCost runtime behavior')
     'NULL link + exact name + same course + comparable unit → estimated via name', byNameEst.status)
   assert(Math.abs(byNameEst.estimatedCost - 1149.2) < 1e-9, 'name-matched estimate = 574.6 * 2')
 
-  // Same course, NON-comparable unit (gal/acre vs gal) → conversion-needed.
+  // Phase 7V.1 — same course, per-area rate (oz/1000 sq ft) vs gal cost,
+  // WITH area available → SAFE conversion → estimated via name.
+  // 1.46 oz/1000 sq ft × (174240/1000) = 254.4 floz ÷ 128 = 1.9875 gal.
+  const nameCtxArea = {
+    inventoryProducts: nameCtx.inventoryProducts,
+    program: { id: 'p', notes: 'Default acres: ~4 acres.' },
+  }
   const byNameConv = estimateProgramItemCost(
     { id: 'n2', productName: 'Pendant SC', courseId: 'crossroads-gc', rateValue: 1.46, rateUnit: 'oz/1000 sq ft' },
+    nameCtxArea,
+  )
+  assert(byNameConv.status === 'estimated' && byNameConv.matchedVia === 'name',
+    'NULL link + name match + convertible unit + area → estimated via name', byNameConv.status)
+  assert(Math.abs(byNameConv.estimatedQuantity - 1.99) < 0.01, 'oz/1000→gal qty ≈ 1.99 gal', byNameConv.estimatedQuantity)
+
+  // Same item but NO area available → area-needed-for-estimate (not $0).
+  const byNameNoArea = estimateProgramItemCost(
+    { id: 'n2b', productName: 'Pendant SC', courseId: 'crossroads-gc', rateValue: 1.46, rateUnit: 'oz/1000 sq ft' },
     nameCtx,
   )
-  assert(byNameConv.status === 'cost-basis-found-unit-conversion-needed',
-    'NULL link + name match + non-comparable unit → conversion-needed')
-  assert(byNameConv.matchedVia === 'name', 'conversion-needed records matchedVia=name')
+  assert(byNameNoArea.status === 'area-needed-for-estimate',
+    'NULL link + name match + convertible unit but NO area → area-needed-for-estimate')
+  assert(byNameNoArea.estimatedCost == null, 'area-needed has null estimatedCost (no fake $0)')
 
   // Course isolation: an item scoped to a course with no matching name
   // does NOT borrow another course's row.
@@ -242,7 +260,7 @@ console.log('— buildProgramCostSummary runtime behavior')
     { id: 'i2', inventoryItemId: 'inv-1', rateValue: 3.25, rateUnit: 'oz/1000 sq ft' }, // estimated → 13.8125 → 13.81
     { id: 'i3', inventoryItemId: 'inv-2', rateValue: 1,    rateUnit: 'oz/1000 sq ft' }, // missing-cost-basis
     { id: 'i4', inventoryItemId: 'inv-1', rateValue: null, rateUnit: 'oz/1000 sq ft' }, // missing-quantity
-    { id: 'i5', inventoryItemId: 'inv-3', rateValue: 1,    rateUnit: 'oz/1000 sq ft' }, // cost on file, unit differs → conversion-needed
+    { id: 'i5', inventoryItemId: 'inv-3', rateValue: 1,    rateUnit: 'oz/1000 sq ft' }, // cost on file but lb/acre cost unit → unsupported-cost-unit
     { id: 'i6', inventoryItemId: null,    rateValue: 1,    rateUnit: 'oz/1000 sq ft' }, // missing-cost-basis
   ]
 
@@ -258,8 +276,9 @@ console.log('— buildProgramCostSummary runtime behavior')
   assert(summary.estimatedItems === 2,        'summary counts estimated items', summary.estimatedItems)
   assert(summary.missingCostBasis === 2,      'summary counts missing-cost-basis', summary.missingCostBasis)
   assert(summary.missingQuantity === 1,       'summary counts missing-quantity', summary.missingQuantity)
-  assert(summary.notComparableUnits === 0,    'summary counts not-comparable-unit (cost-present mismatch now conversion-needed)', summary.notComparableUnits)
-  assert(summary.conversionNeeded === 1,       'summary counts cost-basis-found-unit-conversion-needed', summary.conversionNeeded)
+  assert(summary.notComparableUnits === 0,    'summary counts not-comparable-unit (superseded)', summary.notComparableUnits)
+  assert(summary.conversionNeeded === 0,       'summary counts conversion-needed', summary.conversionNeeded)
+  assert(summary.unsupportedUnit === 1,        'summary counts unsupported-unit (i5: lb/acre cost unit)', summary.unsupportedUnit)
 
   // Total = round(8.50 + 13.8125) = 22.31 (each estimate rounded to cents).
   // 4.25 * 2 = 8.50; 4.25 * 3.25 = 13.8125 → 13.81; total = 22.31.
@@ -308,6 +327,76 @@ console.log('— formatEstimatedCost runtime')
   const fmt = formatEstimatedCost(12.5)
   assert(typeof fmt === 'string' && fmt.length > 0 && /12\.50/.test(fmt),
     `formatted "$12.50" contains 12.50 (got "${fmt}")`)
+}
+
+// ── 5b. Phase 7V.1 — rate→quantity unit conversion helpers ───────────────
+console.log('— Phase 7V.1 conversion helpers')
+{
+  const ACRE_SQFT = 43560
+
+  // normalizeProgramRateUnit.
+  assert(JSON.stringify(normalizeProgramRateUnit('gal/acre')) === JSON.stringify({ measure: 'gal', per: 'acre' }),
+    'gal/acre → { gal, acre }')
+  assert(JSON.stringify(normalizeProgramRateUnit('oz/1000 sq ft')) === JSON.stringify({ measure: 'floz', per: '1000sqft' }),
+    'oz/1000 sq ft → { floz, 1000sqft }')
+  assert(JSON.stringify(normalizeProgramRateUnit('lb/acre')) === JSON.stringify({ measure: 'lb', per: 'acre' }),
+    'lb/acre → { lb, acre }')
+  assert(JSON.stringify(normalizeProgramRateUnit('lbs/1000 sq ft')) === JSON.stringify({ measure: 'lb', per: '1000sqft' }),
+    'lbs/1000 sq ft → { lb, 1000sqft }')
+  assert(normalizeProgramRateUnit('bottles') === null, 'bottles → null (unsupported)')
+  assert(normalizeProgramRateUnit('gal') === null, 'bare gal (no per-area) → null')
+
+  // Conversions with area = 4 acres.
+  const acres = 4, sqFt = 4 * ACRE_SQFT
+  const conv = (rateValue, rateUnit, costUnit) =>
+    estimatePlannedQuantityFromRate({ rateValue, rateUnit, costUnit, areaAcres: acres, areaSqFt: sqFt })
+
+  // gal/acre → gal
+  let r = conv(1.25, 'gal/acre', 'gal')
+  assert(r.ok && r.unit === 'gal' && Math.abs(r.quantity - 5) < 1e-9, 'gal/acre × 4 = 5 gal')
+  // oz/acre → gal (÷128)
+  r = conv(32, 'oz/acre', 'gal')
+  assert(r.ok && r.unit === 'gal' && Math.abs(r.quantity - 1) < 1e-9, 'oz/acre 32×4=128 oz ÷128 = 1 gal')
+  // oz/1000 sq ft → gal
+  r = conv(3.67, 'oz/1000 sq ft', 'gal')
+  assert(r.ok && r.unit === 'gal' && Math.abs(r.quantity - (3.67 * (sqFt / 1000) / 128)) < 1e-9,
+    'oz/1000 sq ft → gal via (sqFt/1000) ÷128', r.quantity)
+  // lb/acre → lb
+  r = conv(4, 'lb/acre', 'lb')
+  assert(r.ok && r.unit === 'lb' && Math.abs(r.quantity - 16) < 1e-9, 'lb/acre × 4 = 16 lb')
+  // lb/1000 sq ft → lb
+  r = conv(10, 'lb/1000 sq ft', 'lb')
+  assert(r.ok && r.unit === 'lb' && Math.abs(r.quantity - (10 * sqFt / 1000)) < 1e-9,
+    'lb/1000 sq ft → lb via (sqFt/1000)', r.quantity)
+
+  // Unsupported: bottles / cases / bags.
+  for (const u of ['bottles', 'cases', 'bags', 'pack']) {
+    assert(conv(1, u, 'gal').status === 'unsupported-rate-unit', `${u} → unsupported-rate-unit`)
+  }
+
+  // Volume↔weight refusal (never cross).
+  assert(conv(1, 'gal/acre', 'lb').ok === false, 'gal rate vs lb cost → not ok (no cross)')
+  assert(conv(1, 'lb/acre', 'gal').ok === false, 'lb rate vs gal cost → not ok (no cross)')
+
+  // Missing area → area-needed.
+  const noArea = estimatePlannedQuantityFromRate({ rateValue: 1, rateUnit: 'gal/acre', costUnit: 'gal', areaAcres: null, areaSqFt: null })
+  assert(noArea.status === 'area-needed-for-estimate' && noArea.ok === false,
+    'missing area → area-needed-for-estimate (no fake $0)')
+
+  // No fake zero: ok=false never carries a numeric quantity.
+  assert(noArea.quantity === null, 'area-needed has null quantity (no fake zero)')
+
+  // resolveProgramArea from notes.
+  const area = resolveProgramArea({ program: { notes: 'Default acres: ~4 acres (assumption).' } })
+  assert(area.acres === 4 && area.sqFt === 174240 && area.source === 'program.notes',
+    'resolveProgramArea parses "Default acres: ~4 acres" → 4 acres / 174240 sqft')
+  const noAreaResolve = resolveProgramArea({ program: { notes: 'no acreage here' } })
+  assert(noAreaResolve.acres === null && noAreaResolve.source === null,
+    'resolveProgramArea returns null when no area source exists')
+  // Structured field wins over notes.
+  const structured = resolveProgramArea({ program: { defaultAcres: 6, notes: 'Default acres: ~4 acres.' } })
+  assert(structured.acres === 6 && structured.source === 'program.defaultAcres',
+    'structured program.defaultAcres takes precedence over notes')
 }
 
 // ── 6. Planner UI wiring ──────────────────────────────────────────────────
