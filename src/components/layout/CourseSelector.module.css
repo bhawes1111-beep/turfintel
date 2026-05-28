@@ -37,8 +37,8 @@
 }
 
 .select option {
-  background: var(--color-card);
-  color: var(--color-text);
+  background: var(--dropdown-bg);
+  color: var(--dropdown-text);
 }
 
 .chevron {

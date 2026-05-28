@@ -31,6 +31,19 @@
   --card-border: 1px solid var(--color-border);
   --card-hover-border: rgba(74, 158, 74, 0.35);
   --card-hover-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+
+  /* Dropdown / select / menu / popover surfaces (Phase 7S.1).
+     Every native <select> option list, ARIA menu/listbox/combobox, and
+     custom dropdown surface renders on a near-black background so the
+     popup never falls back to the browser's light default. The turf
+     accent stays the selected-option highlight. */
+  --dropdown-bg: #050505;
+  --dropdown-bg-hover: #151515;
+  --dropdown-bg-active: #1f1f1f;
+  --dropdown-border: rgba(255, 255, 255, 0.14);
+  --dropdown-text: rgba(255, 255, 255, 0.92);
+  --dropdown-muted: rgba(255, 255, 255, 0.55);
+  --dropdown-accent: var(--color-accent);
 }
 
 *,
@@ -99,6 +112,66 @@ button {
   color: inherit;
   font-family: inherit;
   font-size: inherit;
+}
+
+/* ── Dropdown / select / menu surfaces (Phase 7S.1) ──────────────────────── */
+
+/* Native <select> option popups. Browsers render this list with the OS
+   theme by default (often light), so we pin the option background to
+   near-black app-wide. `select` itself keeps whatever closed-state
+   background each component sets — we only normalize the popup list and
+   provide a dark fallback for any select that sets no background. */
+select {
+  color-scheme: dark;
+}
+
+select option,
+select optgroup {
+  background-color: var(--dropdown-bg);
+  color: var(--dropdown-text);
+}
+
+select option:checked,
+select option[selected] {
+  background-color: var(--dropdown-bg-active);
+  color: var(--dropdown-text);
+}
+
+select option:disabled {
+  color: var(--dropdown-muted);
+}
+
+/* Custom (non-native) dropdown / menu / popover surfaces. Wrapped in
+   :where() so the whole block has ZERO specificity — it is a dark
+   fallback that any component's own class (e.g. a turf-green active
+   row) overrides automatically. Scoped to background/text/border only
+   so layout, sizing, and positioning set by the owning component are
+   untouched. */
+:where([role="menu"], [role="listbox"], .dropdown-menu, .popover) {
+  background-color: var(--dropdown-bg);
+  color: var(--dropdown-text);
+  border-color: var(--dropdown-border);
+}
+
+:where([role="menu"] [role="menuitem"], [role="listbox"] [role="option"]) {
+  color: var(--dropdown-text);
+}
+
+:where([role="menu"] [role="menuitem"]:hover,
+       [role="menu"] [role="menuitem"]:focus-visible,
+       [role="listbox"] [role="option"]:hover,
+       [role="listbox"] [role="option"]:focus-visible) {
+  background-color: var(--dropdown-bg-hover);
+}
+
+:where([role="menu"] [role="menuitem"][aria-selected="true"],
+       [role="listbox"] [role="option"][aria-selected="true"]) {
+  background-color: var(--dropdown-bg-active);
+}
+
+:where([role="menu"] [role="menuitem"][aria-disabled="true"],
+       [role="listbox"] [role="option"][aria-disabled="true"]) {
+  color: var(--dropdown-muted);
 }
 
 /* ── Operations layer shared UI ──────────────────────────────────────────── */

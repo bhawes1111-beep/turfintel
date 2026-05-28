@@ -148,9 +148,9 @@
   left: 0;
   right: 0;
   z-index: 50;
-  background: rgba(6, 16, 6, 0.97);
+  background: var(--dropdown-bg, #050505);
   backdrop-filter: blur(16px);
-  border: 1px solid rgba(60, 140, 60, 0.2);
+  border: 1px solid var(--dropdown-border, rgba(255, 255, 255, 0.14));
   border-top: none;
   border-radius: 0 0 10px 10px;
   list-style: none;
