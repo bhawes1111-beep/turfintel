@@ -147,20 +147,24 @@ console.log('— estimateProgramItemCost runtime behavior')
   )
   assert(negQty.status === 'missing-quantity', 'negative rateValue → missing-quantity')
 
-  // Not-comparable-unit — planned unit differs from inventory unit.
+  // Phase 7U.4 — cost on file + planned unit differs from cost unit.
+  // This now surfaces as 'cost-basis-found-unit-conversion-needed'
+  // (NOT 'missing', NOT $0) so a real cost basis is never hidden.
   const unitMismatch = estimateProgramItemCost(
     { id: 'i8', inventoryItemId: 'inv-3', rateValue: 1.0, rateUnit: 'oz/1000 sq ft' },
     context,
   )
-  assert(unitMismatch.status === 'not-comparable-unit', 'mismatched units → not-comparable-unit')
-  assert(unitMismatch.estimatedCost == null,             'not-comparable has null estimatedCost')
+  assert(unitMismatch.status === 'cost-basis-found-unit-conversion-needed',
+    'cost on file + mismatched units → cost-basis-found-unit-conversion-needed')
+  assert(unitMismatch.estimatedCost == null, 'conversion-needed has null estimatedCost')
 
-  // Not-comparable-unit — missing planned rateUnit.
+  // Cost on file + missing planned rateUnit → conversion-needed.
   const noPlannedUnit = estimateProgramItemCost(
     { id: 'i9', inventoryItemId: 'inv-1', rateValue: 1.0, rateUnit: '' },
     context,
   )
-  assert(noPlannedUnit.status === 'not-comparable-unit', 'missing rateUnit → not-comparable-unit')
+  assert(noPlannedUnit.status === 'cost-basis-found-unit-conversion-needed',
+    'cost on file + missing rateUnit → cost-basis-found-unit-conversion-needed')
 
   // Whitespace + casing normalization should NOT cause a false mismatch.
   const normalized = estimateProgramItemCost(
@@ -177,6 +181,49 @@ console.log('— estimateProgramItemCost runtime behavior')
   // Defensive — null context.
   const noCtx = estimateProgramItemCost(okItem, null)
   assert(noCtx.status === 'missing-cost-basis', 'null context → missing-cost-basis')
+
+  // ── Phase 7U.4 — name-match fallback (NULL inventoryItemId) ──────────────
+  // Seeded/imported program items carry no inventory link. The estimator
+  // falls back to an EXACT product_name match within the same course.
+  const nameCtx = { inventoryProducts: [
+    { id: 'inv-cw', name: 'Pendant SC', unit: 'gal', costUnit: 'gal', costPerUnit: 574.6, courseId: 'crossroads-gc' },
+    { id: 'inv-other', name: 'Pendant SC', unit: 'gal', costUnit: 'gal', costPerUnit: 999, courseId: 'other-course' },
+  ] }
+  // Same course, comparable unit → estimated via name.
+  const byNameEst = estimateProgramItemCost(
+    { id: 'n1', productName: 'Pendant SC', courseId: 'crossroads-gc', rateValue: 2, rateUnit: 'gal' },
+    nameCtx,
+  )
+  assert(byNameEst.status === 'estimated' && byNameEst.matchedVia === 'name',
+    'NULL link + exact name + same course + comparable unit → estimated via name', byNameEst.status)
+  assert(Math.abs(byNameEst.estimatedCost - 1149.2) < 1e-9, 'name-matched estimate = 574.6 * 2')
+
+  // Same course, NON-comparable unit (gal/acre vs gal) → conversion-needed.
+  const byNameConv = estimateProgramItemCost(
+    { id: 'n2', productName: 'Pendant SC', courseId: 'crossroads-gc', rateValue: 1.46, rateUnit: 'oz/1000 sq ft' },
+    nameCtx,
+  )
+  assert(byNameConv.status === 'cost-basis-found-unit-conversion-needed',
+    'NULL link + name match + non-comparable unit → conversion-needed')
+  assert(byNameConv.matchedVia === 'name', 'conversion-needed records matchedVia=name')
+
+  // Course isolation: an item scoped to a course with no matching name
+  // does NOT borrow another course's row.
+  const wrongCourse = estimateProgramItemCost(
+    { id: 'n3', productName: 'Pendant SC', courseId: 'no-such-course', rateValue: 2, rateUnit: 'gal' },
+    { inventoryProducts: [{ id: 'inv-x', name: 'Pendant SC', unit: 'gal', costUnit: 'gal', costPerUnit: 100, courseId: 'crossroads-gc' }] },
+  )
+  assert(wrongCourse.status === 'missing-cost-basis',
+    'name match in a DIFFERENT course is not borrowed → missing-cost-basis')
+
+  // An explicit-but-unresolvable inventoryItemId does NOT silently fall
+  // back to name (a bad link is a stewardship signal, not a guess).
+  const badLink = estimateProgramItemCost(
+    { id: 'n4', inventoryItemId: 'does-not-exist', productName: 'Pendant SC', courseId: 'crossroads-gc', rateValue: 2, rateUnit: 'gal' },
+    nameCtx,
+  )
+  assert(badLink.status === 'missing-cost-basis',
+    'explicit unresolvable inventoryItemId does NOT name-fallback')
 }
 
 // ── 3. buildProgramCostSummary — runtime behavior ─────────────────────────
@@ -195,7 +242,7 @@ console.log('— buildProgramCostSummary runtime behavior')
     { id: 'i2', inventoryItemId: 'inv-1', rateValue: 3.25, rateUnit: 'oz/1000 sq ft' }, // estimated → 13.8125 → 13.81
     { id: 'i3', inventoryItemId: 'inv-2', rateValue: 1,    rateUnit: 'oz/1000 sq ft' }, // missing-cost-basis
     { id: 'i4', inventoryItemId: 'inv-1', rateValue: null, rateUnit: 'oz/1000 sq ft' }, // missing-quantity
-    { id: 'i5', inventoryItemId: 'inv-3', rateValue: 1,    rateUnit: 'oz/1000 sq ft' }, // not-comparable-unit
+    { id: 'i5', inventoryItemId: 'inv-3', rateValue: 1,    rateUnit: 'oz/1000 sq ft' }, // cost on file, unit differs → conversion-needed
     { id: 'i6', inventoryItemId: null,    rateValue: 1,    rateUnit: 'oz/1000 sq ft' }, // missing-cost-basis
   ]
 
@@ -211,7 +258,8 @@ console.log('— buildProgramCostSummary runtime behavior')
   assert(summary.estimatedItems === 2,        'summary counts estimated items', summary.estimatedItems)
   assert(summary.missingCostBasis === 2,      'summary counts missing-cost-basis', summary.missingCostBasis)
   assert(summary.missingQuantity === 1,       'summary counts missing-quantity', summary.missingQuantity)
-  assert(summary.notComparableUnits === 1,    'summary counts not-comparable-unit', summary.notComparableUnits)
+  assert(summary.notComparableUnits === 0,    'summary counts not-comparable-unit (cost-present mismatch now conversion-needed)', summary.notComparableUnits)
+  assert(summary.conversionNeeded === 1,       'summary counts cost-basis-found-unit-conversion-needed', summary.conversionNeeded)
 
   // Total = round(8.50 + 13.8125) = 22.31 (each estimate rounded to cents).
   // 4.25 * 2 = 8.50; 4.25 * 3.25 = 13.8125 → 13.81; total = 22.31.

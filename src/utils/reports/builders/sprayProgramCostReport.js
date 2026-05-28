@@ -123,6 +123,7 @@ export function buildSprayProgramCostReportSections(summary) {
       'Missing cost basis':      summary.totals.missingCostBasis,
       'Missing quantity':        summary.totals.missingQuantity,
       'Unit mismatch':           summary.totals.notComparableUnits,
+      'Cost basis found, conversion needed': summary.totals.conversionNeeded,
       'Invalid inventory cost':  summary.totals.invalidCost,
       'Affected planned items':  summary.totals.affectedPlannedItems,
       'Date range':              summary.dateRange ?? '—',
@@ -205,11 +206,46 @@ export function buildSprayProgramCostReportSections(summary) {
     },
   })))
 
+  // ── Cost Basis Found — Conversion Needed (Phase 7U.4) ────────────────
+  // Items whose product matches an inventory row WITH cost basis on file,
+  // but whose planned rate unit is not directly comparable to the cost
+  // unit (e.g. gal/acre vs gal). These are NOT "missing cost basis" and
+  // must not read as $0 — they need a manual unit conversion to estimate.
+  const conversionRows = []
+  for (const p of summary.perProgram) {
+    for (const it of p.perItem) {
+      if (it.estimate?.status !== 'cost-basis-found-unit-conversion-needed') continue
+      const inv = resolveInventoryRow(it.item, summary.inventoryProducts)
+        ?? resolveInventoryByName(it.item, summary.inventoryProducts)
+      conversionRows.push([
+        p.program.name ?? '—',
+        it.item.productName ?? '—',
+        `${it.item.rateValue ?? '—'} ${it.item.rateUnit ?? ''}`.trim(),
+        formatInventoryUnitCost(inv, summary.currency),
+        it.estimate?.message ?? 'Cost basis found — unit conversion needed.',
+      ])
+    }
+  }
+  sections.push(withId('conversion-needed-items', createSection({
+    title: 'Cost Basis Found — Conversion Needed',
+    type:  SECTION_TYPE.TABLE,
+    data: {
+      columns: ['Program', 'Planned product', 'Rate', 'Unit cost basis', 'Note'],
+      rows: conversionRows.length > 0
+        ? conversionRows
+        : [['No items need unit conversion.', '—', '—', '—', '—']],
+    },
+  })))
+
   // ── Not Estimated Items ──────────────────────────────────────────────
+  // Excludes 'estimated' AND 'cost-basis-found-unit-conversion-needed'
+  // (the latter has its own section above) so an item is never
+  // double-counted across sections.
   const notEstRows = []
   for (const p of summary.perProgram) {
     for (const it of p.perItem) {
       if (it.estimate?.status === 'estimated') continue
+      if (it.estimate?.status === 'cost-basis-found-unit-conversion-needed') continue
       notEstRows.push([
         p.program.name ?? '—',
         it.item.productName ?? '—',
@@ -246,6 +282,7 @@ function labelForCostStatus(status) {
     case 'missing-cost-basis':   return 'Missing cost basis'
     case 'missing-quantity':     return 'Missing quantity'
     case 'not-comparable-unit':  return 'Unit mismatch'
+    case 'cost-basis-found-unit-conversion-needed': return 'Cost basis found, conversion needed'
     default:                     return status ?? '—'
   }
 }
@@ -255,6 +292,22 @@ function resolveInventoryRow(item, inventoryProducts) {
   if (!id) return null
   if (!Array.isArray(inventoryProducts)) return null
   return inventoryProducts.find(i => i?.id === id) ?? null
+}
+
+// Name-match fallback (Phase 7U.4) — mirrors the estimator's resolver so
+// the report can display the matched inventory cost for items that have
+// no explicit inventory link. Exact normalized-name match within course.
+function resolveInventoryByName(item, inventoryProducts) {
+  if (!Array.isArray(inventoryProducts)) return null
+  const norm = s => (s == null ? '' : String(s).trim().toLowerCase().replace(/\s+/g, ' '))
+  const name = norm(item?.productName)
+  if (!name) return null
+  const itemCourse = item?.courseId ?? null
+  return inventoryProducts.find(i => {
+    if (norm(i?.name) !== name) return false
+    if (itemCourse && i?.courseId && i.courseId !== itemCourse) return false
+    return true
+  }) ?? null
 }
 
 function inventoryUnitCostValue(inv) {
@@ -307,6 +360,11 @@ function buildCostNotices(summary) {
   if (t.notComparableUnits > 0) {
     out.push({ type: 'warning', label: 'Unit mismatch',
       value: `${t.notComparableUnits} planned item${t.notComparableUnits !== 1 ? 's' : ''} have rate units that do not match inventory units` })
+  }
+
+  if (t.conversionNeeded > 0) {
+    out.push({ type: 'caution', label: 'Conversion needed',
+      value: `${t.conversionNeeded} planned item${t.conversionNeeded !== 1 ? 's' : ''} have cost basis on file but need a unit conversion to estimate` })
   }
 
   if (t.invalidCost > 0) {
@@ -368,6 +426,7 @@ export function buildSprayProgramCostReport(input = {}) {
   let missingCostBasis    = 0
   let missingQuantity     = 0
   let notComparableUnits  = 0
+  let conversionNeeded    = 0
   for (const s of programSummaries) {
     estimatedTotal     += s.estimatedTotal
     estimatedItems     += s.estimatedItems
@@ -375,6 +434,7 @@ export function buildSprayProgramCostReport(input = {}) {
     missingCostBasis   += s.missingCostBasis
     missingQuantity    += s.missingQuantity
     notComparableUnits += s.notComparableUnits
+    conversionNeeded   += s.conversionNeeded ?? 0
   }
   estimatedTotal = Math.round(estimatedTotal * 100) / 100
 
@@ -397,6 +457,7 @@ export function buildSprayProgramCostReport(input = {}) {
       missingCostBasis,
       missingQuantity,
       notComparableUnits,
+      conversionNeeded,
       invalidCost:          review.totals.invalidCost,
       affectedPlannedItems: review.totals.affectedPlannedItems,
     },

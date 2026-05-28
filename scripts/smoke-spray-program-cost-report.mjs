@@ -140,7 +140,9 @@ console.log('— buildSprayProgramCostReport runtime behavior')
       { id: 'i4', productName: 'Daconil 3', inventoryItemId: 'inv-1', rateValue: null, rateUnit: 'oz/1000 sq ft', status: 'planned' },
     ],
     p2: [
-      // not-comparable-unit (planner says oz/1000 sq ft, inv-3 has no unit at all)
+      // Phase 7U.4: inv-3 has cost (12.00) but no unit → cost basis is
+      // ON FILE, so this is now 'cost-basis-found-unit-conversion-needed'
+      // (not 'not-comparable-unit', not 'missing').
       { id: 'i5', productName: 'Barricade', inventoryItemId: 'inv-3', rateValue: 1, rateUnit: 'oz/1000 sq ft', status: 'planned' },
       // missing-cost-basis (unknown inv id)
       { id: 'i6', productName: 'Ghost',     inventoryItemId: 'inv-ghost', rateValue: 1, rateUnit: 'oz/1000 sq ft', status: 'planned' },
@@ -193,7 +195,8 @@ console.log('— buildSprayProgramCostReport runtime behavior')
   // i6 + i7 → 3.
   assert(t.missingCostBasis === 3,        'missingCostBasis = 3 (i3 + i6 + i7)', t.missingCostBasis)
   assert(t.missingQuantity === 1,         'missingQuantity = 1 (i4)',  t.missingQuantity)
-  assert(t.notComparableUnits === 1,      'notComparableUnits = 1 (i5)', t.notComparableUnits)
+  assert(t.notComparableUnits === 0,      'notComparableUnits = 0 (i5 cost-present → conversion-needed)', t.notComparableUnits)
+  assert(t.conversionNeeded === 1,        'conversionNeeded = 1 (i5: cost on file, unit missing)', t.conversionNeeded)
   // Inventory-side counter: inv-4 has costPerUnit=0 → invalid-cost.
   assert(t.invalidCost === 1,             'invalidCost = 1 (inv-4)', t.invalidCost)
   // affectedPlannedItems = every non-ready planned item from the

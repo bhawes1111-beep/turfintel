@@ -30,6 +30,7 @@ const REASON_TONE = {
   'Missing cost basis':   'warn',
   'Missing quantity':     'warn',
   'Unit mismatch':        'warn',
+  'Cost basis found, conversion needed': 'caution',
   'Invalid cost value':   'warn',
 }
 
@@ -67,6 +68,7 @@ export default function SprayProgramCostPreview({ report }) {
   const programSummary  = byId['program-cost-summary']  ?? byId['Program Cost Summary']
   const estimatedItems  = byId['estimated-items']       ?? byId['Estimated Items']
   const costBasisGaps   = byId['cost-basis-gaps']       ?? byId['Cost Basis Gaps']
+  const conversionNeeded = byId['conversion-needed-items'] ?? byId['Cost Basis Found — Conversion Needed']
   const notEstimated    = byId['not-estimated-items']   ?? byId['Not Estimated Items']
 
   // Overview section was already used by the FIELDS path. We surface
@@ -122,6 +124,11 @@ export default function SprayProgramCostPreview({ report }) {
             tone={(totals.notComparableUnits ?? 0) > 0 ? 'warn' : 'muted'}
           />
           <Tile
+            label="Conversion needed"
+            value={totals.conversionNeeded ?? 0}
+            tone={(totals.conversionNeeded ?? 0) > 0 ? 'caution' : 'muted'}
+          />
+          <Tile
             label="Invalid cost"
             value={totals.invalidCost ?? 0}
             tone={(totals.invalidCost ?? 0) > 0 ? 'warn' : 'muted'}
@@ -147,6 +154,13 @@ export default function SprayProgramCostPreview({ report }) {
       {costBasisGaps && (
         <SectionCard title="Cost Basis Gaps">
           <CostBasisGapList rows={costBasisGaps.data?.rows ?? []} />
+        </SectionCard>
+      )}
+
+      {/* ── Cost Basis Found — Conversion Needed (Phase 7U.4) ────────── */}
+      {conversionNeeded && (
+        <SectionCard title="Cost Basis Found — Conversion Needed">
+          <ConversionNeededList rows={conversionNeeded.data?.rows ?? []} />
         </SectionCard>
       )}
 
@@ -342,6 +356,37 @@ function NotEstimatedList({ rows }) {
           </li>
         )
       })}
+    </ul>
+  )
+}
+
+// ── Cost Basis Found — Conversion Needed (Phase 7U.4) ──────────────────
+// Builder columns: [program, planned product, rate, unit cost basis, note]
+function ConversionNeededList({ rows }) {
+  const real = rows.filter(r => r?.[0] && r[0] !== 'No items need unit conversion.')
+  if (real.length === 0) {
+    return <p className={styles.empty}>No items need unit conversion.</p>
+  }
+  return (
+    <ul className={styles.itemList}>
+      {real.map((r, i) => (
+        <li key={`${r[0]}-${r[1]}-${i}`} className={`${styles.itemCard} ${styles.itemCard_caution ?? ''}`}>
+          <div className={styles.itemHeader}>
+            <span className={styles.itemProduct}>{r[1]}</span>
+            <span className={`${styles.reasonBadge} ${styles.reason_caution ?? ''}`}>
+              Conversion needed
+            </span>
+          </div>
+          <div className={styles.itemMeta}>
+            <span>{r[0]}</span>
+          </div>
+          <dl className={styles.itemKv}>
+            <KvRow label="Rate"            value={r[2]} />
+            <KvRow label="Unit cost basis" value={r[3]} />
+          </dl>
+          {r[4] && r[4] !== '—' && <p className={styles.itemMessage}>{r[4]}</p>}
+        </li>
+      ))}
     </ul>
   )
 }

@@ -35,6 +35,51 @@ function normalizeUnit(u) {
   return String(u).trim().toLowerCase().replace(/\s+/g, ' ')
 }
 
+function normalizeName(n) {
+  if (n == null) return ''
+  return String(n).trim().toLowerCase().replace(/\s+/g, ' ')
+}
+
+/**
+ * Resolve the inventory cost-basis row for a planned program item.
+ *
+ * Resolution order (Phase 7U.4):
+ *   1. item.inventoryItemId — the explicit link (set via the planner).
+ *   2. Fallback: exact product_name match against an inventory row in
+ *      the SAME course. Seeded/imported programs (e.g. Crosswinds) have
+ *      no inventory link, so without this fallback their applied cost
+ *      basis is unreachable and every item reads "missing cost basis".
+ *
+ * The name fallback is deliberately strict: exact normalized-name match
+ * within the same course_id only. No alias/fuzzy matching — that stays a
+ * manual stewardship decision. Returns null when nothing resolves.
+ *
+ * @param {Object} item
+ * @param {Array}  inventoryProducts
+ * @returns {{ row: Object, via: 'id'|'name' }|null}
+ */
+function resolveInventoryForItem(item, inventoryProducts) {
+  const inv = Array.isArray(inventoryProducts) ? inventoryProducts : []
+  const id = item?.inventoryItemId ?? null
+  if (id) {
+    const byId = inv.find(i => i?.id === id)
+    if (byId) return { row: byId, via: 'id' }
+    return null  // explicit link that doesn't resolve — do NOT silently name-match
+  }
+  // Fallback: exact name match within the same course.
+  const name = normalizeName(item?.productName)
+  if (!name) return null
+  const itemCourse = item?.courseId ?? null
+  const byName = inv.find(i => {
+    if (normalizeName(i?.name) !== name) return false
+    // If both carry a course, require it to match; if the item has no
+    // course, accept any (single-course deployments).
+    if (itemCourse && i?.courseId && i.courseId !== itemCourse) return false
+    return true
+  })
+  return byName ? { row: byName, via: 'name' } : null
+}
+
 function inventoryUnitCost(invItem) {
   if (!invItem) return null
   // Prefer the canonical D1 field first, then accept two common
@@ -60,10 +105,12 @@ function inventoryUnitCost(invItem) {
  * @param {Object} [context]
  * @param {Array}  [context.inventoryProducts]  inventoryStore items[]
  * @returns {{
- *   status: 'estimated' | 'missing-cost-basis' | 'missing-quantity' | 'not-comparable-unit',
+ *   status: 'estimated' | 'missing-cost-basis' | 'missing-quantity'
+ *         | 'not-comparable-unit' | 'cost-basis-found-unit-conversion-needed',
  *   estimatedCost: number|null,
  *   currency:      string,
  *   basis:         'inventory' | null,
+ *   matchedVia:    'id' | 'name' | null,
  *   message:       string,
  *   warnings:      string[],
  * }}
@@ -73,26 +120,31 @@ export function estimateProgramItemCost(item, context = {}) {
   const warnings = []
 
   if (!item) {
-    return shape('missing-cost-basis', null, null, 'No item supplied.', warnings)
+    return shape('missing-cost-basis', null, null, 'No item supplied.', warnings, null)
   }
 
-  // 1) Cost basis must come from a linked inventory row.
-  const invId = item.inventoryItemId ?? null
-  const invItem = invId ? (Array.isArray(inv) ? inv.find(i => i?.id === invId) : null) : null
-  const unitCost = inventoryUnitCost(invItem)
-
-  if (!invId || !invItem) {
+  // 1) Resolve the inventory cost-basis row by explicit link first, then
+  //    by exact name within the same course (Phase 7U.4 — seeded/imported
+  //    programs carry no inventory link).
+  const resolved = resolveInventoryForItem(item, inv)
+  if (!resolved) {
     return shape(
       'missing-cost-basis', null, null,
-      'No linked inventory item — cannot estimate cost.',
-      warnings,
+      'No matching inventory item — cannot estimate cost.',
+      warnings, null,
     )
   }
+  const invItem = resolved.row
+  const matchedVia = resolved.via
+  const unitCost = inventoryUnitCost(invItem)
+
   if (unitCost == null) {
     return shape(
       'missing-cost-basis', null, null,
-      'Linked inventory has no unit cost recorded.',
-      warnings,
+      matchedVia === 'name'
+        ? 'Matched inventory by name, but it has no unit cost recorded.'
+        : 'Linked inventory has no unit cost recorded.',
+      warnings, matchedVia,
     )
   }
 
@@ -104,26 +156,33 @@ export function estimateProgramItemCost(item, context = {}) {
     return shape(
       'missing-quantity', null, 'inventory',
       'Planned rate value missing — cannot estimate cost.',
-      warnings,
+      warnings, matchedVia,
     )
   }
 
   // 3) Units must match exactly (normalized) because we explicitly
-  //    refuse to guess a conversion factor.
+  //    refuse to guess a conversion factor. The cost unit is the
+  //    cost-basis unit (cost_unit) when present, else the stock unit.
   const rateUnit = normalizeUnit(item.rateUnit)
-  const invUnit  = normalizeUnit(invItem.unit)
+  const invUnit  = normalizeUnit(invItem.costUnit ?? invItem.unit)
   if (!rateUnit || !invUnit) {
+    // Cost basis IS on file (unitCost != null) but a unit is missing —
+    // surface as conversion-needed rather than a blanket "missing".
     return shape(
-      'not-comparable-unit', null, 'inventory',
-      'Planned rate unit or inventory unit missing — units not comparable.',
-      warnings,
+      'cost-basis-found-unit-conversion-needed', null, 'inventory',
+      'Cost basis found, but a unit is missing — unit conversion needed.',
+      warnings, matchedVia,
     )
   }
   if (rateUnit !== invUnit) {
+    // The cost basis exists; the planned rate is per-area while the cost
+    // is per-volume/weight (or otherwise differs). We will NOT guess a
+    // conversion, but we must NOT hide the item or call it "missing" —
+    // the cost basis is genuinely on file.
     return shape(
-      'not-comparable-unit', null, 'inventory',
-      `Planned rate unit "${item.rateUnit}" does not match inventory unit "${invItem.unit}".`,
-      warnings,
+      'cost-basis-found-unit-conversion-needed', null, 'inventory',
+      `Cost basis found ($${unitCost}/${invItem.costUnit ?? invItem.unit}), but planned rate unit "${item.rateUnit}" needs conversion to estimate cost.`,
+      warnings, matchedVia,
     )
   }
 
@@ -132,7 +191,7 @@ export function estimateProgramItemCost(item, context = {}) {
   return shape(
     'estimated', estimated, 'inventory',
     'Estimated from inventory unit cost × planned rate.',
-    warnings,
+    warnings, matchedVia,
   )
 }
 
@@ -161,6 +220,7 @@ export function buildProgramCostSummary(program, items = [], context = {}) {
   let missingCostBasis = 0
   let missingQuantity = 0
   let notComparableUnits = 0
+  let conversionNeeded = 0
   const detailed = []
 
   for (const item of Array.isArray(items) ? items : []) {
@@ -177,6 +237,7 @@ export function buildProgramCostSummary(program, items = [], context = {}) {
       case 'missing-cost-basis':   missingCostBasis++; break
       case 'missing-quantity':     missingQuantity++; break
       case 'not-comparable-unit':  notComparableUnits++; break
+      case 'cost-basis-found-unit-conversion-needed': conversionNeeded++; break
       default: break
     }
   }
@@ -189,6 +250,7 @@ export function buildProgramCostSummary(program, items = [], context = {}) {
     missingCostBasis,
     missingQuantity,
     notComparableUnits,
+    conversionNeeded,
     totalItems:         detailed.length,
     items:              detailed,
   }
@@ -240,12 +302,13 @@ export function formatEstimatedCost(value, currency = DEFAULT_CURRENCY) {
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────
-function shape(status, estimatedCost, basis, message, warnings) {
+function shape(status, estimatedCost, basis, message, warnings, matchedVia = null) {
   return {
     status,
     estimatedCost,
     currency: DEFAULT_CURRENCY,
     basis,
+    matchedVia,
     message,
     warnings: Array.isArray(warnings) ? warnings.slice() : [],
   }
@@ -259,5 +322,7 @@ function roundCents(n) {
 export const __TEST = {
   DEFAULT_CURRENCY,
   normalizeUnit,
+  normalizeName,
   inventoryUnitCost,
+  resolveInventoryForItem,
 }

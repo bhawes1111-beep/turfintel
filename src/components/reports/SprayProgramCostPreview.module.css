@@ -73,6 +73,7 @@
 
 .tile_ok      { border-color: rgba(120, 180, 130, 0.35); background: rgba(120, 180, 130, 0.08); }
 .tile_warn    { border-color: rgba(220, 180, 60, 0.35);  background: rgba(220, 180, 60, 0.08); }
+.tile_caution { border-color: rgba(100, 150, 220, 0.35); background: rgba(100, 150, 220, 0.08); }
 .tile_muted   { opacity: 0.65; }
 .tile_cost    { border-color: rgba(120, 180, 130, 0.45); background: rgba(120, 180, 130, 0.12); }
 .tile_cost .tileValue { color: #9cd6a2; font-size: 18px; }
@@ -209,8 +210,9 @@
   flex-direction: column;
   gap: 4px;
 }
-.itemCard_ok   { border-left: 3px solid rgba(120, 180, 130, 0.45); }
-.itemCard_warn { border-left: 3px solid rgba(220, 180, 60, 0.45); }
+.itemCard_ok      { border-left: 3px solid rgba(120, 180, 130, 0.45); }
+.itemCard_warn    { border-left: 3px solid rgba(220, 180, 60, 0.45); }
+.itemCard_caution { border-left: 3px solid rgba(100, 150, 220, 0.45); }
 .itemHeader {
   display: flex;
   align-items: baseline;
@@ -253,8 +255,9 @@
   color: #e8c660;
   border: 1px solid rgba(220, 180, 60, 0.4);
 }
-.reason_ok   { background: rgba(120, 180, 130, 0.12); color: #9cd6a2; border-color: rgba(120, 180, 130, 0.4); }
-.reason_warn { background: rgba(220, 180, 60, 0.12);  color: #e8c660; border-color: rgba(220, 180, 60, 0.4); }
+.reason_ok      { background: rgba(120, 180, 130, 0.12); color: #9cd6a2; border-color: rgba(120, 180, 130, 0.4); }
+.reason_warn    { background: rgba(220, 180, 60, 0.12);  color: #e8c660; border-color: rgba(220, 180, 60, 0.4); }
+.reason_caution { background: rgba(100, 150, 220, 0.12); color: #9cc0f0; border-color: rgba(100, 150, 220, 0.4); }
 
 .itemKv {
   margin: 4px 0 0;
