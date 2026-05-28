@@ -73,6 +73,68 @@ standalone price first.
 needs its program name reconciled with the inventory row
 ("Prothioconazole (generic Densicor)"). No `inputValue` needed.
 
+## Phase 7V.4 — Bryan confirmation needed (no values filled)
+
+The source document and seed carry **no explicit package-size
+statements** (no "50 lb bag", "2.5 gal/case", etc.). Per the no-guess
+rule, **no `inputValue` has been filled** — every row is still `null`.
+The checklist below groups exactly what to confirm. A few sizes are
+*derivable* from the seed's own totals (noted as hints) but rest on the
+~4-acre default, so they are **not** pre-filled — confirm before using.
+
+### ☐ Confirm gallons per case (14 liquids)
+
+Ampliphy 18 *(DO NOT MERGE)*, BioRhythym, Double Bass Kelp, Excalibur,
+Harmony, Hydra 30 Plus, Kickdrum 0-0-29 K Acetate, Microtone, Oars PS,
+PowerChord 0-0-26, Prize Phiter, Rootnote 3-18-18, Sea Sugar, Sweet Heat.
+
+> Common case sizes are 2 × 2.5 gal (= 5 gal) or 4 × 1 gal (= 4 gal),
+> but the document does not state which — confirm per product.
+
+### ☐ Confirm pounds per bag (11 granulars / solubles)
+
+5-4-5 Greens Grade, Calcium Nitrate 15.5-0-0, Ecolite, Epsom Salt,
+Fipronil 0.0143G, KMag, MycoReplenish, Potassium Nitrate 13.5-0-46,
+VerdeCal Gypsum, VerdeCal Lime, Vereens 13-2-13.
+
+> **Derivable hints (confirm before using — based on the ~4-acre default,
+> not an explicit label):**
+> - **Ecolite** — seed aeration note "450 lb/A, 36 bags" → 450 × 4 ÷ 36 = **50 lb/bag**
+> - **MycoReplenish** — "350 lb/A, 28 bags" → 350 × 4 ÷ 28 = **50 lb/bag**
+> - **5-4-5 Greens Grade** — "350 lb/A, 28 bags" → **50 lb/bag**
+>
+> All three land on exactly 50 lb/bag, which is the standard greens-grade
+> bag — but this is inferred from the acreage assumption, so confirm.
+
+### ☐ Confirm pounds per pack (1)
+
+Triden Microbes. *(Seed shows "2 lb total (~4 A)" across the program,
+but pack weight is not stated — confirm.)*
+
+### ☐ Confirm standalone price + size (8)
+
+- **Bundled (Syngenta):** Appear, Appear II, Ascernity, Daconil Action,
+  Secure Action — need a standalone price (currently inside the Greens
+  Foundation Solution bundle).
+- **By bottle (confirm size + standalone price):** Fosetyl Al *(seed
+  implies 45 lb ÷ 9 bottles = ~5 lb/bottle — confirm)*, Segway.
+- **Unpriced:** Veriphy 18 *(DO NOT MERGE)*.
+
+### ☐ Reconcile name (1)
+
+Prothioconazole — price already clean ($1320/gal); reconcile the program
+name with the inventory row "Prothioconazole (generic Densicor)", then it
+can be costed directly.
+
+### How to apply a confirmed value
+
+In the inputs JSON, set the row's `inputValue` to the confirmed package
+size (unit per `inputUnit`), save, then run
+`node scripts/calc-crosswinds-package-size-inputs.mjs` to preview the
+cost-per-unit. (A CSV export is available via
+`node scripts/export-crosswinds-package-size-inputs-csv.mjs` for editing
+in a spreadsheet.) Nothing is applied automatically.
+
 ## DO NOT MERGE
 
 `Ampliphy 18` and `Veriphy 18` are **separate products** and appear as
