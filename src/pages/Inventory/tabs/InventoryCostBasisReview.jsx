@@ -11,6 +11,8 @@ import { buildCostBasisReview } from '../../../utils/sprayPrograms/costBasisRevi
 import {
   estimateProgramItemCost,
   resolveProgramArea,
+  buildProgramCostSummaries,
+  formatEstimatedCost,
 } from '../../../utils/sprayPrograms/programCostAwareness'
 import styles from './InventoryCostBasisReview.module.css'
 
@@ -69,6 +71,17 @@ const BUCKETS = [
   { key: 'name',        title: 'Name reconciliation needed',      tone: 'caution' },
   { key: 'costed',      title: 'Already costed',                  tone: 'ok' },
 ]
+
+// Phase 7W.2 — short status badge per bucket (rendered next to the
+// product name for at-a-glance scanning).
+const BUCKET_BADGE = {
+  missing:     'Missing',
+  conversion:  'Conversion',
+  packageSize: 'Package size',
+  standalone:  'Standalone $',
+  name:        'Name reconcile',
+  costed:      'Costed',
+}
 
 // ── Draft storage (UI-only, localStorage) ──────────────────────────────────
 function loadDrafts() {
@@ -198,6 +211,9 @@ export default function InventoryCostBasisReview() {
   const [appliedFlash, setAppliedFlash] = useState({}) // { [invId]: 'saved' }
   const [confirmOverwrite, setConfirmOverwrite] = useState(null) // { invItem, derived } or null
   const [errors, setErrors] = useState({})
+  // Phase 7W.2 — bucket filter (chips). 'all' shows every bucket;
+  // a key like 'missing' / 'packageSize' / etc. shows only that bucket.
+  const [activeFilter, setActiveFilter] = useState('all')
 
   // Persist drafts whenever they change (UI-only; never written to D1).
   useEffect(() => { saveDrafts(drafts) }, [drafts])
@@ -224,6 +240,22 @@ export default function InventoryCostBasisReview() {
     for (const k of Object.keys(out)) out[k].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
     return out
   }, [inventoryItems, review, perItemStatuses])
+
+  // Phase 7W.2 — workspace-wide estimated program cost for the summary
+  // card. Read-only: same helper the Spray Program Cost report uses.
+  const estimatedProgramCost = useMemo(() => {
+    const summaries = buildProgramCostSummaries(
+      programs ?? [],
+      itemsByProgramId ?? {},
+      { inventoryProducts: inventoryItems ?? [] },
+    )
+    let total = 0, items = 0
+    for (const s of summaries) {
+      total += s.estimatedTotal ?? 0
+      items += s.estimatedItems ?? 0
+    }
+    return { total: Math.round(total * 100) / 100, items }
+  }, [programs, itemsByProgramId, inventoryItems])
 
   function setDraft(invId, patch) {
     setDrafts(d => ({ ...d, [invId]: { ...(d[invId] ?? {}), ...patch } }))
@@ -284,11 +316,16 @@ export default function InventoryCostBasisReview() {
     )
   }
 
+  // Filter buckets by the active chip (or 'all').
+  const visibleBuckets = activeFilter === 'all'
+    ? BUCKETS
+    : BUCKETS.filter(b => b.key === activeFilter)
+
   return (
     <div className={styles.tabContent}>
       <WorkspaceSection
         title="Cost Basis Review"
-        subtitle="Group inventory items by the input each one needs before spray-program cost estimates can complete. Edits are manual; nothing is auto-applied."
+        subtitle="Review missing product costs, package-size inputs, and products that need manual pricing before they can be included in planned program estimates."
       >
         <BoundaryNote />
 
@@ -304,23 +341,40 @@ export default function InventoryCostBasisReview() {
         )}
 
         {(inventoryItems ?? []).length > 0 && (
-          <div className={styles.bucketGrid}>
-            {BUCKETS.map(b => (
-              <BucketCard
-                key={b.key}
-                bucket={b}
-                items={buckets[b.key]}
-                drafts={drafts}
-                setDraft={setDraft}
-                clearDraft={clearDraft}
-                onJump={jumpToProducts}
-                onApply={applyDerivedCost}
-                applying={applying}
-                appliedFlash={appliedFlash}
-                errors={errors}
-              />
-            ))}
-          </div>
+          <>
+            <SummaryCards
+              counts={{
+                missing:     buckets.missing.length,
+                packageSize: buckets.packageSize.length,
+                standalone:  buckets.standalone.length,
+                conversion:  buckets.conversion.length,
+                costed:      buckets.costed.length,
+              }}
+              estimated={estimatedProgramCost}
+            />
+            <FilterChips
+              counts={buckets}
+              active={activeFilter}
+              onChange={setActiveFilter}
+            />
+            <div className={styles.bucketGrid}>
+              {visibleBuckets.map(b => (
+                <BucketCard
+                  key={b.key}
+                  bucket={b}
+                  items={buckets[b.key]}
+                  drafts={drafts}
+                  setDraft={setDraft}
+                  clearDraft={clearDraft}
+                  onJump={jumpToProducts}
+                  onApply={applyDerivedCost}
+                  applying={applying}
+                  appliedFlash={appliedFlash}
+                  errors={errors}
+                />
+              ))}
+            </div>
+          </>
         )}
       </WorkspaceSection>
 
@@ -345,9 +399,75 @@ export default function InventoryCostBasisReview() {
 function BoundaryNote() {
   return (
     <p className={styles.boundaryNote}>
-      Edits are manual only. Inventory is not deducted. Aliases are not auto-merged.
-      The only write is through the existing cost-basis endpoint, with full audit history.
+      ⚠ Applying cost basis updates inventory product pricing only.
+      It does not deduct inventory or create usage records. Aliases are not
+      auto-merged. All writes flow through the existing cost-basis endpoint
+      with full audit history.
     </p>
+  )
+}
+
+// Phase 7W.2 — compact summary cards above the bucket grid.
+function SummaryCards({ counts, estimated }) {
+  const cards = [
+    { key: 'missing',     label: 'Missing cost basis',  value: counts.missing,     tone: counts.missing > 0 ? 'warn' : 'muted' },
+    { key: 'packageSize', label: 'Package size needed', value: counts.packageSize, tone: counts.packageSize > 0 ? 'caution' : 'muted' },
+    { key: 'standalone',  label: 'Standalone price',    value: counts.standalone,  tone: counts.standalone > 0 ? 'caution' : 'muted' },
+    { key: 'conversion',  label: 'Conversion needed',   value: counts.conversion,  tone: counts.conversion > 0 ? 'caution' : 'muted' },
+    { key: 'costed',      label: 'Already costed',      value: counts.costed,      tone: 'ok' },
+    {
+      key: 'estimated',
+      label: 'Estimated program cost',
+      value: estimated?.total > 0
+        ? formatEstimatedCost(estimated.total)
+        : '—',
+      sub:   estimated?.items > 0 ? `${estimated.items} estimated items` : null,
+      tone:  estimated?.total > 0 ? 'cost' : 'muted',
+    },
+  ]
+  return (
+    <div className={styles.summaryCards}>
+      {cards.map(c => (
+        <div
+          key={c.key}
+          className={`${styles.summaryCard} ${styles[`summaryCard_${c.tone}`] ?? ''}`}
+        >
+          <div className={styles.summaryCardValue}>{c.value ?? '—'}</div>
+          <div className={styles.summaryCardLabel}>{c.label}</div>
+          {c.sub && <div className={styles.summaryCardSub}>{c.sub}</div>}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// Phase 7W.2 — sticky chip filter for jumping to a single bucket.
+function FilterChips({ counts, active, onChange }) {
+  const chips = [
+    { key: 'all',         label: 'All',              count: Object.values(counts).reduce((a, b) => a + (b?.length ?? 0), 0) },
+    { key: 'missing',     label: 'Missing cost',     count: counts.missing.length },
+    { key: 'packageSize', label: 'Package size',     count: counts.packageSize.length },
+    { key: 'standalone',  label: 'Standalone price', count: counts.standalone.length },
+    { key: 'conversion',  label: 'Conversion',       count: counts.conversion.length },
+    { key: 'name',        label: 'Name reconcile',   count: counts.name.length },
+    { key: 'costed',      label: 'Already costed',   count: counts.costed.length },
+  ]
+  return (
+    <div className={styles.chipStrip} role="tablist" aria-label="Filter by bucket">
+      {chips.map(c => (
+        <button
+          key={c.key}
+          type="button"
+          role="tab"
+          aria-selected={active === c.key}
+          className={`${styles.chip} ${active === c.key ? styles.chipActive : ''}`}
+          onClick={() => onChange(c.key)}
+        >
+          {c.label}
+          <span className={styles.chipCount}>{c.count}</span>
+        </button>
+      ))}
+    </div>
   )
 }
 
@@ -360,7 +480,7 @@ function BucketCard({ bucket, items, drafts, setDraft, clearDraft, onJump, onApp
         <span className={styles.bucketCount}>{count}</span>
       </header>
       {count === 0 ? (
-        <p className={styles.bucketEmpty}>No items.</p>
+        <p className={styles.bucketEmpty}>No products in this bucket.</p>
       ) : (
         <ul className={styles.itemList}>
           {items.map(inv => (
@@ -394,7 +514,12 @@ function ItemRow({ bucket, inv, draft, setDraft, clearDraft, onJump, onApply, ap
     <li className={styles.item}>
       <div className={styles.itemHeader}>
         <div className={styles.itemNameBlock}>
-          <span className={styles.itemName}>{inv.name}</span>
+          <div className={styles.itemNameRow}>
+            <span className={styles.itemName}>{inv.name}</span>
+            <span className={`${styles.statusBadge} ${styles[`statusBadge_${bucket}`] ?? ''}`}>
+              {BUCKET_BADGE[bucket] ?? '—'}
+            </span>
+          </div>
           <span className={styles.itemMeta}>
             {inv.vendor ? <span>vendor: {inv.vendor}</span> : null}
             {inv.unit ? <span>· stock unit: {inv.unit}</span> : null}
@@ -510,21 +635,26 @@ function ItemRow({ bucket, inv, draft, setDraft, clearDraft, onJump, onApply, ap
         <p className={styles.savedFlash} role="status">Cost basis applied.</p>
       )}
 
-      {/* Actions */}
+      {/* Actions — Phase 7W.2: plain-language labels + apply-blocker reason */}
       <div className={styles.itemActions}>
         <button
           type="button"
           className={styles.btnPrimary}
-          disabled={!derived || applying || NAME_RECONCILE_HINTS.has(inv.name) || STANDALONE_HINTS.has(inv.name) && !derived}
+          disabled={!derived || applying}
           onClick={() => derived && onApply(derived)}
           title={derived
             ? `Apply $${derived.costPerUnit}/${derived.costUnit} as the cost basis.`
-            : 'Fill in the inputs above to enable apply.'}
+            : applyBlockerReason(bucket, inv, derived)}
         >
-          {applying ? 'Applying…' : 'Apply derived cost basis'}
+          {applying ? 'Applying…' : (derived ? 'Apply cost basis' : 'Preview cost')}
         </button>
+        {!derived && (
+          <span className={styles.blockerReason}>
+            {applyBlockerReason(bucket, inv, derived)}
+          </span>
+        )}
         <button type="button" className={styles.btnGhost} onClick={onJump}>
-          Open in Products editor
+          Review item
         </button>
         {Object.keys(draft ?? {}).length > 0 && (
           <button type="button" className={styles.btnGhost} onClick={clearDraft}>
@@ -534,6 +664,21 @@ function ItemRow({ bucket, inv, draft, setDraft, clearDraft, onJump, onApply, ap
       </div>
     </li>
   )
+}
+
+// Phase 7W.2 — plain-language reason the Apply button is currently
+// disabled. Returns the most specific blocker so a steward knows the
+// next step.
+function applyBlockerReason(bucket, inv, derived) {
+  if (derived) return ''
+  if (bucket === 'costed') return 'Already costed.'
+  if (NAME_RECONCILE_HINTS.has(inv.name)) return 'Resolve name match first.'
+  if (STANDALONE_HINTS.has(inv.name)) return 'Standalone price required.'
+  if (bucket === 'standalone') return 'Standalone price required.'
+  if (bucket === 'packageSize' || bucket === 'missing' || bucket === 'conversion') {
+    return 'Enter package size first.'
+  }
+  return 'Fill in the inputs above to enable apply.'
 }
 
 function ConfirmOverwriteDialog({ invItem, derived, onCancel, onConfirm }) {

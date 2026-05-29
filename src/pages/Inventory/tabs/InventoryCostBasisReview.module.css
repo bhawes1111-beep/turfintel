@@ -13,6 +13,102 @@
   line-height: 1.5;
 }
 
+/* ── Summary cards (Phase 7W.2) ───────────────────────────────────────── */
+
+.summaryCards {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 12px;
+}
+@media (min-width: 540px) { .summaryCards { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 900px) { .summaryCards { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+
+.summaryCard {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: center;
+  min-width: 0;
+}
+.summaryCard_ok      { border-color: rgba(120, 180, 130, 0.35); background: rgba(120, 180, 130, 0.08); }
+.summaryCard_warn    { border-color: rgba(220, 180, 60, 0.35);  background: rgba(220, 180, 60, 0.08); }
+.summaryCard_caution { border-color: rgba(100, 150, 220, 0.35); background: rgba(100, 150, 220, 0.08); }
+.summaryCard_cost    { border-color: rgba(120, 180, 130, 0.45); background: rgba(120, 180, 130, 0.12); }
+.summaryCard_muted   { opacity: 0.65; }
+
+.summaryCardValue {
+  font-size: 18px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+  line-height: 1.1;
+}
+.summaryCard_cost .summaryCardValue { color: #9cd6a2; font-size: 16px; }
+.summaryCardLabel {
+  margin-top: 4px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.65);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.summaryCardSub {
+  margin-top: 2px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* ── Filter chip strip (Phase 7W.2) ───────────────────────────────────── */
+
+.chipStrip {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding-bottom: 4px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: rgba(13, 26, 13, 0.92);
+  backdrop-filter: blur(8px);
+}
+.chip {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.chip:hover { background: rgba(255, 255, 255, 0.08); }
+.chipActive {
+  background: rgba(120, 180, 130, 0.18);
+  border-color: rgba(120, 180, 130, 0.5);
+  color: #c8e8cc;
+}
+.chipCount {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.10);
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 10px;
+  font-weight: 600;
+}
+.chipActive .chipCount {
+  background: rgba(120, 180, 130, 0.28);
+  color: #d2efd6;
+}
+
 .bucketGrid {
   display: grid;
   gap: 14px;
@@ -86,12 +182,38 @@
   gap: 12px;
   flex-wrap: wrap;
 }
-.itemNameBlock { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.itemNameBlock { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 auto; }
+.itemNameRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 .itemName {
   font-size: 14px;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.92);
 }
+
+/* Status badge (Phase 7W.2) — short bucket label next to the product name. */
+.statusBadge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+.statusBadge_missing     { background: rgba(220, 180, 60, 0.14);  color: #e8c660; border-color: rgba(220, 180, 60, 0.45); }
+.statusBadge_conversion  { background: rgba(100, 150, 220, 0.14); color: #9cc0f0; border-color: rgba(100, 150, 220, 0.45); }
+.statusBadge_packageSize { background: rgba(100, 150, 220, 0.14); color: #9cc0f0; border-color: rgba(100, 150, 220, 0.45); }
+.statusBadge_standalone  { background: rgba(100, 150, 220, 0.14); color: #9cc0f0; border-color: rgba(100, 150, 220, 0.45); }
+.statusBadge_name        { background: rgba(220, 180, 60, 0.14);  color: #e8c660; border-color: rgba(220, 180, 60, 0.45); }
+.statusBadge_costed      { background: rgba(120, 180, 130, 0.16); color: #b8e0bf; border-color: rgba(120, 180, 130, 0.45); }
 .itemMeta {
   display: flex;
   flex-wrap: wrap;
@@ -147,12 +269,13 @@
 .draftField input,
 .draftField select {
   width: 100%;
-  padding: 6px 8px;
+  padding: 8px 10px;
+  min-height: 36px;       /* Phase 7W.2 — thumb-friendly on mobile. */
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.12);
   color: rgba(255, 255, 255, 0.92);
-  font-size: 12px;
+  font-size: 13px;
 }
 .draftField input::placeholder { color: rgba(255, 255, 255, 0.4); }
 .draftField input:focus,
@@ -201,14 +324,24 @@
 
 .itemActions {
   display: flex;
+  align-items: center;
   gap: 8px;
   flex-wrap: wrap;
   margin-top: 10px;
 }
+
+/* Phase 7W.2 — visible reason next to the disabled Apply button so the
+   steward knows what to do next without a tooltip. */
+.blockerReason {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+  font-style: italic;
+}
 .btnPrimary,
 .btnGhost,
 .btnDanger {
-  padding: 6px 12px;
+  padding: 8px 14px;
+  min-height: 36px;       /* Phase 7W.2 — thumb-friendly on mobile. */
   border-radius: 6px;
   font-size: 12px;
   font-weight: 600;

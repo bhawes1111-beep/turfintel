@@ -124,6 +124,55 @@ console.log('— Inventory Cost Basis Review tab source')
     'derive helper handles gal/case, lb/bag, lb/pack')
 }
 
+console.log('— Phase 7W.2 polish (UI/UX)')
+{
+  const src = readFileSync(TAB, 'utf8')
+
+  // Summary cards rendered above the bucket grid.
+  assert(/function\s+SummaryCards\b/.test(src) && /<SummaryCards\b/.test(src),
+    'SummaryCards component defined and rendered')
+  assert(/Missing cost basis/.test(src) && /Package size needed/.test(src)
+      && /Standalone price/.test(src) && /Conversion needed/.test(src)
+      && /Already costed/.test(src) && /Estimated program cost/.test(src),
+    'summary cards cover the six required labels (incl. Estimated program cost)')
+
+  // Filter chips for bucket navigation.
+  assert(/function\s+FilterChips\b/.test(src) && /<FilterChips\b/.test(src),
+    'FilterChips component defined and rendered')
+  for (const label of ['All', 'Missing cost', 'Package size', 'Standalone price', 'Conversion', 'Name reconcile', 'Already costed']) {
+    assert(new RegExp(`label:\\s*['"]${label}['"]`).test(src),
+      `filter chip label "${label}" present`)
+  }
+  assert(/activeFilter/.test(src) && /setActiveFilter/.test(src),
+    'tab maintains an activeFilter state for chip selection')
+
+  // Status badge rendered next to product name.
+  assert(/BUCKET_BADGE/.test(src) && /statusBadge\b/.test(src),
+    'status badge map + element present in the row')
+
+  // Plain-language action labels.
+  assert(/Apply cost basis/.test(src), 'Apply button uses "Apply cost basis"')
+  assert(/Preview cost/.test(src),      'shows "Preview cost" when no derivation yet')
+  assert(/Clear draft/.test(src),       '"Clear draft" label present')
+  assert(/Review item/.test(src),       '"Review item" label present (was "Open in Products editor")')
+
+  // Apply-blocker reason helper with plain-language reasons.
+  assert(/function\s+applyBlockerReason\b/.test(src),
+    'applyBlockerReason helper defined')
+  for (const reason of [
+    'Enter package size first.',
+    'Standalone price required.',
+    'Resolve name match first.',
+    'Already costed.',
+  ]) {
+    assert(src.includes(reason), `blocker reason "${reason}" present`)
+  }
+
+  // Updated boundary copy.
+  assert(/Applying cost basis updates inventory product pricing only/.test(src),
+    'boundary note copy updated per spec')
+}
+
 console.log('— Inventory page wiring')
 {
   const page = readFileSync(PAGE, 'utf8')
