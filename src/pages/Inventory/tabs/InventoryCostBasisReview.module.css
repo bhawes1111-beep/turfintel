@@ -1,0 +1,273 @@
+/* Phase 7W.1 — Cost Basis Review tab. */
+
+.tabContent { display: block; }
+
+.boundaryNote {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: rgba(100, 150, 220, 0.08);
+  border: 1px solid rgba(100, 150, 220, 0.25);
+  color: rgba(160, 200, 255, 0.95);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.bucketGrid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 900px) {
+  .bucketGrid { grid-template-columns: 1fr 1fr; }
+}
+
+/* ── Bucket card ──────────────────────────────────────────────────────── */
+
+.bucket {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.bucket_ok      { border-left: 3px solid rgba(120, 180, 130, 0.55); }
+.bucket_warn    { border-left: 3px solid rgba(220, 180, 60, 0.55); }
+.bucket_caution { border-left: 3px solid rgba(100, 150, 220, 0.55); }
+
+.bucketHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.bucketTitle {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+}
+.bucketCount {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 11px;
+  font-weight: 600;
+}
+.bucketEmpty {
+  margin: 6px 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
+}
+
+/* ── Item rows ────────────────────────────────────────────────────────── */
+
+.itemList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.item {
+  padding: 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.itemHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.itemNameBlock { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.itemName {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+}
+.itemMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.itemCostBlock { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.itemCost {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+}
+.itemCostMeta {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* ── Inline banners (per-product warnings) ────────────────────────────── */
+
+.itemBanner {
+  margin: 6px 0 0;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(100, 150, 220, 0.10);
+  border: 1px solid rgba(100, 150, 220, 0.30);
+  color: rgba(180, 210, 240, 0.95);
+  font-size: 12px;
+}
+.itemBanner_warn {
+  background: rgba(220, 60, 60, 0.10);
+  border-color: rgba(220, 60, 60, 0.35);
+  color: #ff9999;
+}
+
+/* ── Draft inputs ─────────────────────────────────────────────────────── */
+
+.draftRow {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 1fr 1fr;
+  margin-top: 8px;
+}
+@media (min-width: 700px) {
+  .draftRow { grid-template-columns: repeat(4, 1fr); }
+}
+.draftField { display: flex; flex-direction: column; gap: 4px; }
+.draftLabel {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+}
+.draftField input,
+.draftField select {
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 12px;
+}
+.draftField input::placeholder { color: rgba(255, 255, 255, 0.4); }
+.draftField input:focus,
+.draftField select:focus {
+  outline: none;
+  border-color: rgba(100, 150, 220, 0.55);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* ── Derived preview ──────────────────────────────────────────────────── */
+
+.derivedPreview {
+  margin: 8px 0 0;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(120, 180, 130, 0.10);
+  border: 1px solid rgba(120, 180, 130, 0.30);
+  color: rgba(220, 240, 220, 0.95);
+  font-size: 12px;
+}
+.derivedNote { color: rgba(220, 240, 220, 0.7); }
+
+/* ── Saved / error ───────────────────────────────────────────────────── */
+
+.errorBanner {
+  margin: 8px 0 0;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(220, 60, 60, 0.10);
+  border: 1px solid rgba(220, 60, 60, 0.35);
+  color: #ff9999;
+  font-size: 12px;
+}
+.savedFlash {
+  margin: 8px 0 0;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(120, 180, 130, 0.12);
+  border: 1px solid rgba(120, 180, 130, 0.45);
+  color: #b8e0bf;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ── Actions ─────────────────────────────────────────────────────────── */
+
+.itemActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.btnPrimary,
+.btnGhost,
+.btnDanger {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+.btnPrimary {
+  background: rgba(120, 180, 130, 0.18);
+  color: #b8e0bf;
+  border-color: rgba(120, 180, 130, 0.45);
+}
+.btnPrimary:hover:not(:disabled) { background: rgba(120, 180, 130, 0.28); }
+.btnPrimary:disabled { opacity: 0.45; cursor: not-allowed; }
+.btnGhost {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.8);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+.btnGhost:hover { background: rgba(255, 255, 255, 0.06); }
+.btnDanger {
+  background: rgba(220, 60, 60, 0.18);
+  color: #ff9999;
+  border-color: rgba(220, 60, 60, 0.45);
+}
+.btnDanger:hover { background: rgba(220, 60, 60, 0.28); }
+
+/* ── Confirm overlay ──────────────────────────────────────────────────── */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+.overlayCard {
+  background: #181b21;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 10px;
+  padding: 18px 20px;
+  width: min(520px, 100%);
+  color: rgba(255, 255, 255, 0.92);
+}
+.overlayTitle {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.overlayText {
+  margin: 0 0 14px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.85);
+}
+.overlayActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}

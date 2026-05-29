@@ -13,13 +13,18 @@ import InventoryLowStock        from './tabs/InventoryLowStock'
 import InventoryPurchaseHistory from './tabs/InventoryPurchaseHistory'
 import InventoryCatalog         from './tabs/InventoryCatalog'
 import InventoryLinkReview     from './tabs/InventoryLinkReview'
+import InventoryCostBasisReview from './tabs/InventoryCostBasisReview'
 import workspace from '../../styles/workspace.module.css'
 
 // Phase 7C.1 (4/6) — 'Catalog' is the globally-scoped product-intelligence tab.
 // Phase 7C.2 (2/?) — 'Link Review' is the stewardship surface that pairs
 // inventory rows with catalog rows. Both are read-only over the catalog;
 // only inventory_items.product_catalog_id ever gets written.
-const TABS = ['Overview', 'Products', 'Chemicals', 'Fertilizer', 'Parts', 'Fuel', 'Low Stock', 'Purchase History', 'Catalog', 'Link Review']
+// Phase 7W.1 — 'Cost Basis Review' is the grouped stewardship surface that
+// shows inventory items by the input each one needs before spray-program
+// cost estimates can complete. Uses the existing Phase 7J.1 PATCH endpoint
+// for any writes; package size + standalone price are UI-only drafts.
+const TABS = ['Overview', 'Products', 'Chemicals', 'Fertilizer', 'Parts', 'Fuel', 'Low Stock', 'Purchase History', 'Catalog', 'Link Review', 'Cost Basis Review']
 
 /**
  * Inventory workspace — follows the canonical workspace pattern established
@@ -102,6 +107,7 @@ export default function Inventory() {
       {activeTab === 'Purchase History' && <InventoryPurchaseHistory />}
       {activeTab === 'Catalog'          && <InventoryCatalog initialSelectedId={catalogSeedId} onConsumeSeed={() => setCatalogSeedId(null)} />}
       {activeTab === 'Link Review'      && <InventoryLinkReview onOpenCatalog={openCatalogProduct} />}
+      {activeTab === 'Cost Basis Review' && <InventoryCostBasisReview />}
     </PageShell>
   )
 }
