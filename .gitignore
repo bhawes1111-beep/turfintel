@@ -29,3 +29,7 @@ dist-ssr
 *.sln
 *.sw?
 .smoke-logs/
+
+# Local-only Crosswinds package-size worksheet CSV (Bryan edits in a
+# spreadsheet; the JSON in docs/ is the source of truth).
+docs/crosswinds-greens-program-2026-package-size-inputs.csv
