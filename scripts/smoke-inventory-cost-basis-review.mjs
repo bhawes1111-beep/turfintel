@@ -173,6 +173,68 @@ console.log('— Phase 7W.2 polish (UI/UX)')
     'boundary note copy updated per spec')
 }
 
+console.log('— Phase 7W.3 draft controls')
+{
+  const src = readFileSync(TAB, 'utf8')
+
+  // Draft summary strip rendered + computed.
+  assert(/function\s+DraftControlsStrip\b/.test(src) && /<DraftControlsStrip\b/.test(src),
+    'DraftControlsStrip component defined and rendered')
+  assert(/const\s+draftSummary\s*=\s*useMemo/.test(src),
+    'tab memoizes draftSummary (filled / previewed / blocked)')
+
+  // Draft-saved indicator + last-saved time wiring.
+  assert(/Draft saved in this browser/.test(src),
+    'tab shows "Draft saved in this browser" indicator')
+  assert(/lastSavedAt/.test(src) && /setLastSavedAt/.test(src),
+    'tab tracks lastSavedAt state')
+  assert(/showDraftSavedFlash/.test(src) || /draftStatSavedFlash/.test(src),
+    'tab carries a transient saved-flash signal')
+
+  // Drafts-only toggle wired to BucketCard filtering.
+  assert(/draftsOnly/.test(src) && /setDraftsOnly/.test(src),
+    'tab maintains a draftsOnly state')
+  assert(/Drafts only/.test(src),
+    'Drafts only toggle label present')
+  assert(/draftsOnly\s*\?\s*items\.filter\(/.test(src) || /draftsOnly\s*&&\s*items\.length/.test(src),
+    'BucketCard filters rows by draftsOnly when enabled')
+
+  // Clear all + confirmation gate (per spec: clear all REQUIRES confirmation).
+  assert(/Clear all drafts/.test(src),
+    '"Clear all drafts" button label present')
+  assert(/function\s+ConfirmClearAllDialog\b/.test(src),
+    'ConfirmClearAllDialog component defined')
+  assert(/<ConfirmClearAllDialog\b/.test(src),
+    'ConfirmClearAllDialog mounted')
+  assert(/confirmClearAll/.test(src) && /setConfirmClearAll/.test(src),
+    'clear-all wiring has a confirm gate (no direct wipe)')
+  // The onClearAll handler must open the dialog, not clear directly.
+  assert(/onClearAll=\{\s*\(\)\s*=>\s*setConfirmClearAll\(true\)\s*\}/.test(src),
+    'top-level "Clear all" button only opens the confirm dialog')
+
+  // Per-row clear-draft button is still present.
+  assert(/Clear draft/.test(src),
+    '"Clear draft" per-row label still present')
+
+  // Export — browser-only via Blob + URL.createObjectURL; no API call.
+  assert(/Export drafts/.test(src),
+    'Export drafts button label present')
+  assert(/function\s+exportDraftsCsv\b/.test(src),
+    'exportDraftsCsv function defined')
+  assert(/new Blob\(/.test(src) && /URL\.createObjectURL\(/.test(src),
+    'export uses Blob + URL.createObjectURL (browser-only)')
+  assert(!/await\s+fetch\(/.test(src),
+    'export does NOT call fetch — browser-only download')
+
+  // localStorage key unchanged.
+  assert(/STORAGE_KEY\s*=\s*['"]turfintel:costBasisReviewDrafts\/v1['"]/.test(src),
+    'localStorage key remains turfintel:costBasisReviewDrafts/v1')
+
+  // isMeaningfulDraft helper exists so empty drafts don't inflate counts.
+  assert(/function\s+isMeaningfulDraft\b/.test(src),
+    'isMeaningfulDraft helper defined for stable counts')
+}
+
 console.log('— Inventory page wiring')
 {
   const page = readFileSync(PAGE, 'utf8')

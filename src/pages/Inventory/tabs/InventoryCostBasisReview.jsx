@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import WorkspaceSection from '../../../components/shared/WorkspaceSection'
 import { EmptyState } from '../../../components/shared/EmptyState'
@@ -138,6 +138,25 @@ function roundCents(n) {
   return Math.round(n * 100) / 100
 }
 
+// Phase 7W.3 — a draft is "meaningful" once the steward has typed any
+// positive value in any of its fields. Empty object / all-null draft
+// rows are ignored so a stray useState patch never inflates the
+// "filled" count.
+function isMeaningfulDraft(d) {
+  if (!d || typeof d !== 'object') return false
+  for (const k of [
+    'packageSize', 'packageSizeUnit', 'purchaseQuantity', 'totalCost',
+    'standalonePrice', 'standalonePriceUnit',
+  ]) {
+    const v = d[k]
+    if (v == null) continue
+    if (typeof v === 'string' && v.trim() === '') continue
+    if (typeof v === 'number' && !Number.isFinite(v)) continue
+    return true
+  }
+  return false
+}
+
 // ── Bucket classification for an inventory item ────────────────────────────
 //
 // Combines:
@@ -214,9 +233,26 @@ export default function InventoryCostBasisReview() {
   // Phase 7W.2 — bucket filter (chips). 'all' shows every bucket;
   // a key like 'missing' / 'packageSize' / etc. shows only that bucket.
   const [activeFilter, setActiveFilter] = useState('all')
+  // Phase 7W.3 — drafts-only toggle, last-saved indicator, clear-all
+  // confirmation. Drafts live in localStorage; nothing here is written
+  // to D1 unless the steward explicitly clicks Apply on a row.
+  const [draftsOnly, setDraftsOnly] = useState(false)
+  const [lastSavedAt, setLastSavedAt] = useState(null)
+  const [showDraftSavedFlash, setShowDraftSavedFlash] = useState(false)
+  const [confirmClearAll, setConfirmClearAll] = useState(false)
 
   // Persist drafts whenever they change (UI-only; never written to D1).
-  useEffect(() => { saveDrafts(drafts) }, [drafts])
+  // The first run (initial load) is silent; subsequent saves drive the
+  // "Draft saved locally" indicator.
+  const firstSaveRef = useRef(true)
+  useEffect(() => {
+    saveDrafts(drafts)
+    if (firstSaveRef.current) { firstSaveRef.current = false; return }
+    setLastSavedAt(new Date())
+    setShowDraftSavedFlash(true)
+    const t = setTimeout(() => setShowDraftSavedFlash(false), 1800)
+    return () => clearTimeout(t)
+  }, [drafts])
 
   const review = useMemo(
     () => buildCostBasisReview(programs ?? [], itemsByProgramId ?? {}, inventoryItems ?? []),
@@ -241,6 +277,24 @@ export default function InventoryCostBasisReview() {
     return out
   }, [inventoryItems, review, perItemStatuses])
 
+  // Phase 7W.3 — draft summary: counts rows the steward has touched,
+  // rows that have a derivable preview from those drafts, and rows that
+  // remain blocked (a draft exists but the preview is null). All
+  // computed against the current drafts + inventory snapshot.
+  const draftSummary = useMemo(() => {
+    const filled = Object.keys(drafts ?? {}).filter(id => isMeaningfulDraft(drafts[id]))
+    const invById = new Map((inventoryItems ?? []).map(i => [i?.id, i]))
+    let previewed = 0
+    let blocked   = 0
+    for (const id of filled) {
+      const inv = invById.get(id)
+      if (!inv) { blocked++; continue }
+      const d = deriveCostFromDraft(drafts[id], inv)
+      if (d) previewed++; else blocked++
+    }
+    return { filled: filled.length, previewed, blocked }
+  }, [drafts, inventoryItems])
+
   // Phase 7W.2 — workspace-wide estimated program cost for the summary
   // card. Read-only: same helper the Spray Program Cost report uses.
   const estimatedProgramCost = useMemo(() => {
@@ -262,6 +316,75 @@ export default function InventoryCostBasisReview() {
   }
   function clearDraft(invId) {
     setDrafts(d => { const c = { ...d }; delete c[invId]; return c })
+  }
+  // Phase 7W.3 — clear-all drafts (browser-only). Guarded by an explicit
+  // confirmation dialog (see ConfirmClearAllDialog) so an accidental
+  // click can't wipe a half-finished worksheet. Touches localStorage
+  // only — never the inventory cost basis.
+  function clearAllDrafts() {
+    setDrafts({})
+    setConfirmClearAll(false)
+  }
+
+  // Phase 7W.3 — export current drafts to a CSV blob and trigger a
+  // browser download. No server write, no API call. The CSV mirrors the
+  // local worksheet so the steward can edit it elsewhere or share it.
+  function exportDraftsCsv() {
+    const rows = []
+    const invById = new Map((inventoryItems ?? []).map(i => [i?.id, i]))
+    for (const id of Object.keys(drafts ?? {})) {
+      const d = drafts[id]
+      if (!isMeaningfulDraft(d)) continue
+      const inv = invById.get(id)
+      if (!inv) continue
+      const bucket = classifyInventoryItem(inv, review, perItemStatuses)
+      const derived = deriveCostFromDraft(d, inv)
+      rows.push({
+        productName:       inv.name ?? '',
+        vendor:            inv.vendor ?? '',
+        bucket:            BUCKET_BADGE[bucket] ?? bucket,
+        packageSize:       d.packageSize ?? '',
+        packageSizeUnit:   d.packageSizeUnit ?? '',
+        purchaseQuantity:  d.purchaseQuantity ?? '',
+        totalCost:         d.totalCost ?? '',
+        standalonePrice:   d.standalonePrice ?? '',
+        standalonePriceUnit: d.standalonePriceUnit ?? '',
+        calculatedCostPerUnit: derived?.costPerUnit ?? '',
+        costUnit:          derived?.costUnit ?? '',
+        notes:             derived?.note ?? '',
+      })
+    }
+    const headers = [
+      'productName','vendor','bucket','packageSize','packageSizeUnit',
+      'purchaseQuantity','totalCost','standalonePrice','standalonePriceUnit',
+      'calculatedCostPerUnit','costUnit','notes',
+    ]
+    const cell = v => {
+      if (v == null) return ''
+      const s = String(v)
+      return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+    }
+    const csv = [headers.join(',')]
+      .concat(rows.map(r => headers.map(h => cell(r[h])).join(',')))
+      .join('\n') + '\n'
+    try {
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+      const url  = URL.createObjectURL(blob)
+      const a    = document.createElement('a')
+      const stamp = new Date().toISOString().replace(/[:T]/g, '-').slice(0, 19)
+      a.href = url
+      a.download = `cost-basis-drafts-${stamp}.csv`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 0)
+    } catch {
+      // Defensive fallback for sandboxed/SSR environments — surface a
+      // small note that the download didn't trigger. The drafts stay
+      // safe in localStorage.
+      // eslint-disable-next-line no-alert
+      try { window.alert?.('Could not start the download — drafts remain saved in this browser.') } catch { /* no-op */ }
+    }
   }
 
   function jumpToProducts(invId) {
@@ -352,6 +475,16 @@ export default function InventoryCostBasisReview() {
               }}
               estimated={estimatedProgramCost}
             />
+            <DraftControlsStrip
+              summary={draftSummary}
+              lastSavedAt={lastSavedAt}
+              draftsOnly={draftsOnly}
+              onToggleDraftsOnly={() => setDraftsOnly(v => !v)}
+              onExport={exportDraftsCsv}
+              onClearAll={() => setConfirmClearAll(true)}
+              hasAnyDraft={draftSummary.filled > 0}
+              showSavedFlash={showDraftSavedFlash}
+            />
             <FilterChips
               counts={buckets}
               active={activeFilter}
@@ -364,6 +497,7 @@ export default function InventoryCostBasisReview() {
                   bucket={b}
                   items={buckets[b.key]}
                   drafts={drafts}
+                  draftsOnly={draftsOnly}
                   setDraft={setDraft}
                   clearDraft={clearDraft}
                   onJump={jumpToProducts}
@@ -377,6 +511,14 @@ export default function InventoryCostBasisReview() {
           </>
         )}
       </WorkspaceSection>
+
+      {confirmClearAll && (
+        <ConfirmClearAllDialog
+          count={draftSummary.filled}
+          onCancel={() => setConfirmClearAll(false)}
+          onConfirm={clearAllDrafts}
+        />
+      )}
 
       {confirmOverwrite && (
         <ConfirmOverwriteDialog
@@ -471,8 +613,102 @@ function FilterChips({ counts, active, onChange }) {
   )
 }
 
-function BucketCard({ bucket, items, drafts, setDraft, clearDraft, onJump, onApply, applying, appliedFlash, errors }) {
-  const count = items.length
+// Phase 7W.3 — draft controls strip: at-a-glance counts, last-saved
+// indicator, drafts-only toggle, export + clear-all actions.
+function DraftControlsStrip({
+  summary, lastSavedAt, draftsOnly, onToggleDraftsOnly,
+  onExport, onClearAll, hasAnyDraft, showSavedFlash,
+}) {
+  return (
+    <section
+      className={styles.draftControls}
+      aria-label="Draft controls"
+    >
+      <div className={styles.draftStats}>
+        <span className={styles.draftStat}>
+          <strong>{summary.filled}</strong> filled
+        </span>
+        <span className={styles.draftStat}>
+          <strong>{summary.previewed}</strong> with preview
+        </span>
+        <span className={styles.draftStat}>
+          <strong>{summary.blocked}</strong> blocked
+        </span>
+        {lastSavedAt && (
+          <span className={`${styles.draftStat} ${styles.draftStatSaved} ${showSavedFlash ? styles.draftStatSavedFlash : ''}`}>
+            Draft saved in this browser
+            <span className={styles.draftSavedTime}> · {formatSavedAt(lastSavedAt)}</span>
+          </span>
+        )}
+      </div>
+      <div className={styles.draftActions}>
+        <label className={styles.draftToggle}>
+          <input
+            type="checkbox"
+            checked={draftsOnly}
+            onChange={onToggleDraftsOnly}
+            aria-label="Show only rows with drafts"
+          />
+          <span>Drafts only</span>
+        </label>
+        <button
+          type="button"
+          className={styles.btnGhost}
+          onClick={onExport}
+          disabled={!hasAnyDraft}
+          title={hasAnyDraft ? 'Download current drafts as CSV.' : 'No drafts to export yet.'}
+        >
+          Export drafts
+        </button>
+        <button
+          type="button"
+          className={styles.btnDangerGhost}
+          onClick={onClearAll}
+          disabled={!hasAnyDraft}
+          title={hasAnyDraft ? 'Clear every draft in this browser (asks first).' : 'No drafts to clear.'}
+        >
+          Clear all drafts
+        </button>
+      </div>
+    </section>
+  )
+}
+
+function ConfirmClearAllDialog({ count, onCancel, onConfirm }) {
+  return (
+    <div className={styles.overlay} role="dialog" aria-modal="true">
+      <div className={styles.overlayCard}>
+        <h3 className={styles.overlayTitle}>Clear all drafts?</h3>
+        <p className={styles.overlayText}>
+          This clears <strong>{count}</strong> draft row{count !== 1 ? 's' : ''} from this
+          browser only. <strong>Inventory cost basis values are not affected.</strong>
+          This cannot be undone.
+        </p>
+        <div className={styles.overlayActions}>
+          <button type="button" className={styles.btnDanger} onClick={onConfirm}>Clear all drafts</button>
+          <button type="button" className={styles.btnGhost} onClick={onCancel}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function formatSavedAt(d) {
+  if (!d) return ''
+  try {
+    return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+  } catch {
+    return ''
+  }
+}
+
+function BucketCard({ bucket, items, drafts, draftsOnly = false, setDraft, clearDraft, onJump, onApply, applying, appliedFlash, errors }) {
+  // Phase 7W.3 — when 'Drafts only' is on, the bucket renders only rows
+  // the steward has touched (a meaningful draft exists).
+  const visibleItems = draftsOnly
+    ? items.filter(inv => isMeaningfulDraft(drafts?.[inv.id]))
+    : items
+  const count = visibleItems.length
   return (
     <section className={`${styles.bucket} ${styles[`bucket_${bucket.tone}`] ?? ''}`}>
       <header className={styles.bucketHeader}>
@@ -480,10 +716,14 @@ function BucketCard({ bucket, items, drafts, setDraft, clearDraft, onJump, onApp
         <span className={styles.bucketCount}>{count}</span>
       </header>
       {count === 0 ? (
-        <p className={styles.bucketEmpty}>No products in this bucket.</p>
+        <p className={styles.bucketEmpty}>
+          {draftsOnly && items.length > 0
+            ? 'No drafts in this bucket yet.'
+            : 'No products in this bucket.'}
+        </p>
       ) : (
         <ul className={styles.itemList}>
-          {items.map(inv => (
+          {visibleItems.map(inv => (
             <ItemRow
               key={inv.id}
               bucket={bucket.key}
