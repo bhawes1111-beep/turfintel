@@ -235,6 +235,97 @@ console.log('— Phase 7W.3 draft controls')
     'isMeaningfulDraft helper defined for stable counts')
 }
 
+console.log('— Phase 7X.2A export hardening')
+{
+  const src = readFileSync(TAB, 'utf8')
+  const code = src
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '')
+
+  // Export handler is split into buildDraftsCsv (pure) +
+  // exportDraftsCsv (download/feedback). The fallback uses the same
+  // CSV string.
+  assert(/function\s+buildDraftsCsv\b/.test(src),
+    'buildDraftsCsv helper extracted (pure CSV builder)')
+  assert(/function\s+exportDraftsCsv\b/.test(src),
+    'exportDraftsCsv handler defined')
+
+  // Hardened browser-API guards.
+  assert(/typeof Blob !== ['"]undefined['"]/.test(src)
+      || /typeof Blob ?!==? ?['"]undefined['"]/.test(src),
+    'export guards typeof Blob !== "undefined"')
+  assert(/URL\.createObjectURL/.test(src) && /typeof URL\.createObjectURL\s*===\s*['"]function['"]/.test(src),
+    'export guards typeof URL.createObjectURL === "function"')
+  assert(/typeof document\s*!==\s*['"]undefined['"]/.test(src),
+    'export guards typeof document !== "undefined"')
+
+  // Visible feedback states: success / empty / error.
+  assert(/exportStatus/.test(src) && /setExportStatus/.test(src),
+    'tab tracks an exportStatus state for visible feedback')
+  for (const kind of [`'ok'`, `'empty'`, `'error'`]) {
+    assert(src.includes(`kind: ${kind}`),
+      `export status carries kind: ${kind}`)
+  }
+  assert(/Drafts exported/.test(src),
+    '"Drafts exported" success copy present')
+  assert(/No drafts to export/.test(src),
+    '"No drafts to export" empty copy present')
+  assert(/Export failed:/.test(src),
+    '"Export failed:" error copy present')
+
+  // Anchor is appended BEFORE click (the prior order was already
+  // correct, but the smoke pins it so a future refactor doesn't regress).
+  {
+    const append = src.indexOf('document.body.appendChild(a)')
+    const clickIdx = append >= 0 ? src.indexOf('a.click()', append) : -1
+    assert(append >= 0 && clickIdx > append,
+      'anchor is appended to document.body before .click()')
+  }
+
+  // URL revoke is DELAYED (the original bug was setTimeout 0 which
+  // races the download). Insist on a positive non-zero delay.
+  assert(/setTimeout\(\s*\(\)\s*=>\s*\{[\s\S]*?URL\.revokeObjectURL/.test(src),
+    'URL revoke wrapped in a setTimeout (delayed cleanup)')
+  assert(!/setTimeout\(\s*\(\)\s*=>\s*URL\.revokeObjectURL\([^)]*\)\s*,\s*0\s*\)/.test(src),
+    'URL revoke is NOT delayed by 0 ms (the original bug)')
+
+  // Readiness count rendered next to the export button.
+  assert(/exportReadyCount/.test(src),
+    'DraftControlsStrip receives exportReadyCount')
+  assert(/draft row.*ready to export/.test(src),
+    '"N draft row(s) ready to export" label present')
+
+  // Fallback modal: textarea + Copy CSV path; uses navigator.clipboard
+  // when available; no fetch.
+  assert(/function\s+ExportFallbackDialog\b/.test(src) && /<ExportFallbackDialog\b/.test(src),
+    'ExportFallbackDialog component defined and mounted')
+  assert(/navigator\?\.clipboard\?\.writeText/.test(src)
+      || /navigator\.clipboard\.writeText/.test(src),
+    'fallback offers Clipboard API copy when available')
+  assert(/<textarea/.test(src) && /readOnly/.test(src),
+    'fallback shows a readonly textarea so the steward can copy manually')
+
+  // SAFETY guards: export never writes to the server.
+  // (Helper sliced from buildDraftsCsv through copyExportText.)
+  const exportBlock = (() => {
+    const i = src.indexOf('function buildDraftsCsv')
+    const j = src.indexOf('function jumpToProducts')
+    return j > i ? src.slice(i, j) : src
+  })()
+  assert(!/\bfetch\(/.test(exportBlock),
+    'export path never calls fetch()')
+  assert(!/setInventoryCostBasis\(/.test(exportBlock),
+    'export path never calls setInventoryCostBasis()')
+  for (const verb of [
+    'recordInventoryUsage', 'deductInventory',
+    'updateSprayProgramItem', 'createSprayProgramItem',
+    'deleteSprayProgramItem',
+  ]) {
+    assert(!new RegExp(`\\b${verb}\\b`).test(exportBlock),
+      `export path never references ${verb}`)
+  }
+}
+
 console.log('— Phase 7X.1 Field Walk Mode')
 {
   const src = readFileSync(TAB, 'utf8')

@@ -252,6 +252,14 @@ export default function InventoryCostBasisReview() {
   const [fieldWalkOpen, setFieldWalkOpen] = useState(false)
   const [fieldWalkCursor, setFieldWalkCursor] = useState(0)
   const [fieldWalkIncludeCosted, setFieldWalkIncludeCosted] = useState(false)
+  // Phase 7X.2A — Export status surface so a failed/empty/successful
+  // download is visible instead of silent. Status shape:
+  //   null | { kind: 'ok'|'empty'|'error', message: string, rows?: number }
+  const [exportStatus, setExportStatus] = useState(null)
+  // Fallback modal carries the CSV string when the browser refuses the
+  // download (sandboxed iframes, missing Blob, locked-down Safari, etc.).
+  const [exportFallback, setExportFallback] = useState(null)
+  const [copyFlash, setCopyFlash] = useState(null)
 
   // Persist drafts whenever they change (UI-only; never written to D1).
   // The first run (initial load) is silent; subsequent saves drive the
@@ -383,7 +391,10 @@ export default function InventoryCostBasisReview() {
   // Phase 7W.3 — export current drafts to a CSV blob and trigger a
   // browser download. No server write, no API call. The CSV mirrors the
   // local worksheet so the steward can edit it elsewhere or share it.
-  function exportDraftsCsv() {
+  // Phase 7X.2A — build the CSV string from current drafts. Pure;
+  // returns { csv, rows } so the caller can decide what to do (download
+  // or feed into the fallback modal).
+  function buildDraftsCsv() {
     const rows = []
     const invById = new Map((inventoryItems ?? []).map(i => [i?.id, i]))
     for (const id of Object.keys(drafts ?? {})) {
@@ -405,8 +416,6 @@ export default function InventoryCostBasisReview() {
         standalonePriceUnit: d.standalonePriceUnit ?? '',
         calculatedCostPerUnit: derived?.costPerUnit ?? '',
         costUnit:          derived?.costUnit ?? '',
-        // Phase 7X.1 — include the Field Walk reviewed marker so the
-        // CSV reflects what the steward marked during the walk.
         reviewed:          d.reviewed ? 'yes' : '',
         reviewedAt:        d.reviewedAt ?? '',
         notes:             d.note ?? derived?.note ?? '',
@@ -425,24 +434,82 @@ export default function InventoryCostBasisReview() {
     const csv = [headers.join(',')]
       .concat(rows.map(r => headers.map(h => cell(r[h])).join(',')))
       .join('\n') + '\n'
+    return { csv, rows }
+  }
+
+  // Phase 7X.2A — hardened export: explicit empty/error feedback,
+  // delayed URL.revokeObjectURL so iOS Safari + older Firefox actually
+  // commit the download, environment guards before touching Blob/URL,
+  // and a fallback modal (textarea + "Copy CSV") when the download path
+  // refuses. Never writes to D1; never calls fetch.
+  function exportDraftsCsv() {
+    setExportStatus(null)
+    const { csv, rows } = buildDraftsCsv()
+    if (rows.length === 0) {
+      setExportStatus({ kind: 'empty', message: 'No drafts to export yet.' })
+      setTimeout(() => setExportStatus(null), 2400)
+      return
+    }
+    // Guard before touching browser APIs that might be unavailable.
+    const hasBlob = typeof Blob !== 'undefined'
+    const hasUrl  = typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function'
+    const hasDoc  = typeof document !== 'undefined' && document?.body
+    if (!hasBlob || !hasUrl || !hasDoc) {
+      setExportFallback({ csv, rows: rows.length })
+      return
+    }
     try {
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
-      const url  = URL.createObjectURL(blob)
-      const a    = document.createElement('a')
+      const blob  = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+      const url   = URL.createObjectURL(blob)
+      const a     = document.createElement('a')
       const stamp = new Date().toISOString().replace(/[:T]/g, '-').slice(0, 19)
       a.href = url
       a.download = `cost-basis-drafts-${stamp}.csv`
+      a.style.display = 'none'
+      a.rel = 'noopener'
       document.body.appendChild(a)
-      a.click()
-      a.remove()
-      setTimeout(() => URL.revokeObjectURL(url), 0)
-    } catch {
-      // Defensive fallback for sandboxed/SSR environments — surface a
-      // small note that the download didn't trigger. The drafts stay
-      // safe in localStorage.
-      // eslint-disable-next-line no-alert
-      try { window.alert?.('Could not start the download — drafts remain saved in this browser.') } catch { /* no-op */ }
+      // Use a synthetic MouseEvent (not just .click()) so Safari + older
+      // mobile browsers fire the download path consistently.
+      try {
+        a.click()
+      } catch {
+        a.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }))
+      }
+      // Delay both the anchor removal AND the URL revoke so the browser
+      // finishes wiring the download before the resource is freed.
+      // Immediate revoke (the prior bug) silently aborts the download
+      // on iOS Safari + older Firefox.
+      setTimeout(() => {
+        try { a.remove() } catch { /* no-op */ }
+        try { URL.revokeObjectURL(url) } catch { /* no-op */ }
+      }, 1500)
+      setExportStatus({ kind: 'ok', message: 'Drafts exported', rows: rows.length })
+      setTimeout(() => setExportStatus(null), 2400)
+    } catch (e) {
+      // The most common reasons we land here: very sandboxed iframe,
+      // privacy-locked browser, or a custom CSP. Open the fallback
+      // modal with the CSV text so the steward can still get the data.
+      setExportFallback({ csv, rows: rows.length })
+      setExportStatus({
+        kind: 'error',
+        message: `Export failed: ${(e?.message ?? String(e)).slice(0, 80)} — showing CSV inline.`,
+      })
+      setTimeout(() => setExportStatus(null), 4000)
     }
+  }
+
+  async function copyExportText(csv) {
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(csv)
+        setCopyFlash('Copied CSV to clipboard.')
+        setTimeout(() => setCopyFlash(null), 2000)
+        return true
+      }
+    } catch { /* fall through to manual select */ }
+    setCopyFlash('Could not copy — select the text and copy manually.')
+    setTimeout(() => setCopyFlash(null), 3500)
+    return false
   }
 
   function jumpToProducts(invId) {
@@ -539,6 +606,8 @@ export default function InventoryCostBasisReview() {
               draftsOnly={draftsOnly}
               onToggleDraftsOnly={() => setDraftsOnly(v => !v)}
               onExport={exportDraftsCsv}
+              exportStatus={exportStatus}
+              exportReadyCount={draftSummary.filled}
               onClearAll={() => setConfirmClearAll(true)}
               onOpenFieldWalk={openFieldWalk}
               fieldWalkQueueSize={fieldWalkQueue.length}
@@ -577,6 +646,16 @@ export default function InventoryCostBasisReview() {
           count={draftSummary.filled}
           onCancel={() => setConfirmClearAll(false)}
           onConfirm={clearAllDrafts}
+        />
+      )}
+
+      {exportFallback && (
+        <ExportFallbackDialog
+          csv={exportFallback.csv}
+          rowCount={exportFallback.rows}
+          flash={copyFlash}
+          onCopy={() => copyExportText(exportFallback.csv)}
+          onClose={() => { setExportFallback(null); setCopyFlash(null) }}
         />
       )}
 
@@ -702,6 +781,7 @@ function DraftControlsStrip({
   summary, lastSavedAt, draftsOnly, onToggleDraftsOnly,
   onExport, onClearAll, hasAnyDraft, showSavedFlash,
   onOpenFieldWalk, fieldWalkQueueSize = 0,
+  exportStatus = null, exportReadyCount = 0,
 }) {
   return (
     <section
@@ -746,15 +826,35 @@ function DraftControlsStrip({
         >
           Field Walk Mode
         </button>
-        <button
-          type="button"
-          className={styles.btnGhost}
-          onClick={onExport}
-          disabled={!hasAnyDraft}
-          title={hasAnyDraft ? 'Download current drafts as CSV.' : 'No drafts to export yet.'}
-        >
-          Export drafts
-        </button>
+        <div className={styles.exportGroup}>
+          <button
+            type="button"
+            className={styles.btnGhost}
+            onClick={onExport}
+            disabled={!hasAnyDraft}
+            title={hasAnyDraft
+              ? `Download ${exportReadyCount} draft row${exportReadyCount === 1 ? '' : 's'} as CSV.`
+              : 'No drafts to export yet.'}
+          >
+            Export drafts
+          </button>
+          {/* Phase 7X.2A — visible readiness count + status banner so a
+              silent failure can no longer be mistaken for "nothing
+              happened". */}
+          <span className={styles.exportReady}>
+            {exportReadyCount} draft row{exportReadyCount === 1 ? '' : 's'} ready to export
+          </span>
+          {exportStatus && (
+            <span
+              className={`${styles.exportStatus} ${styles[`exportStatus_${exportStatus.kind}`] ?? ''}`}
+              role={exportStatus.kind === 'error' ? 'alert' : 'status'}
+            >
+              {exportStatus.kind === 'ok' && exportStatus.rows != null
+                ? `${exportStatus.message} · ${exportStatus.rows} row${exportStatus.rows === 1 ? '' : 's'}`
+                : exportStatus.message}
+            </span>
+          )}
+        </div>
         <button
           type="button"
           className={styles.btnDangerGhost}
@@ -782,6 +882,37 @@ function ConfirmClearAllDialog({ count, onCancel, onConfirm }) {
         <div className={styles.overlayActions}>
           <button type="button" className={styles.btnDanger} onClick={onConfirm}>Clear all drafts</button>
           <button type="button" className={styles.btnGhost} onClick={onCancel}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Phase 7X.2A — fallback when the browser refuses the CSV download.
+// Shows the CSV in a textarea + offers a "Copy CSV" button. Never
+// writes to the server; nothing here touches inventory or cost basis.
+function ExportFallbackDialog({ csv, rowCount, flash, onCopy, onClose }) {
+  return (
+    <div className={styles.overlay} role="dialog" aria-modal="true">
+      <div className={`${styles.overlayCard} ${styles.exportFallbackCard}`}>
+        <h3 className={styles.overlayTitle}>Export drafts — inline CSV</h3>
+        <p className={styles.overlayText}>
+          The browser blocked the download. Copy the {rowCount} row{rowCount === 1 ? '' : 's'} below
+          and paste them into a spreadsheet or save them as a <code>.csv</code> file.
+          Nothing is sent to the server.
+        </p>
+        <textarea
+          className={styles.exportFallbackTextarea}
+          value={csv}
+          readOnly
+          rows={10}
+          onFocus={(e) => e.target.select()}
+          aria-label="Drafts CSV text"
+        />
+        {flash && <p className={styles.exportFallbackFlash}>{flash}</p>}
+        <div className={styles.overlayActions}>
+          <button type="button" className={styles.btnPrimary} onClick={onCopy}>Copy CSV</button>
+          <button type="button" className={styles.btnGhost} onClick={onClose}>Close</button>
         </div>
       </div>
     </div>
