@@ -144,6 +144,11 @@ function roundCents(n) {
 // "filled" count.
 function isMeaningfulDraft(d) {
   if (!d || typeof d !== 'object') return false
+  // Phase 7X.1 — a Field-Walk reviewed marker (or a free-form note)
+  // counts as meaningful even if no other value is set yet, so the
+  // draft summary + export pick it up.
+  if (d.reviewed === true) return true
+  if (typeof d.note === 'string' && d.note.trim() !== '') return true
   for (const k of [
     'packageSize', 'packageSizeUnit', 'purchaseQuantity', 'totalCost',
     'standalonePrice', 'standalonePriceUnit',
@@ -240,6 +245,13 @@ export default function InventoryCostBasisReview() {
   const [lastSavedAt, setLastSavedAt] = useState(null)
   const [showDraftSavedFlash, setShowDraftSavedFlash] = useState(false)
   const [confirmClearAll, setConfirmClearAll] = useState(false)
+  // Phase 7X.1 — Field Walk Mode: focused per-product entry overlay for
+  // chemical-room walkthroughs. The panel mounts at the tab root, holds
+  // its own queue cursor + an "include already costed" toggle, and
+  // never invokes Apply (this phase is data collection only).
+  const [fieldWalkOpen, setFieldWalkOpen] = useState(false)
+  const [fieldWalkCursor, setFieldWalkCursor] = useState(0)
+  const [fieldWalkIncludeCosted, setFieldWalkIncludeCosted] = useState(false)
 
   // Persist drafts whenever they change (UI-only; never written to D1).
   // The first run (initial load) is silent; subsequent saves drive the
@@ -276,6 +288,24 @@ export default function InventoryCostBasisReview() {
     for (const k of Object.keys(out)) out[k].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
     return out
   }, [inventoryItems, review, perItemStatuses])
+
+  // Phase 7X.1 — Field Walk queue. Default scope is the four buckets
+  // that need Bryan's confirmation; the steward can opt-in to include
+  // already-costed rows via the panel's own toggle. Each queue entry
+  // carries its bucket key so the focused card can pick the right
+  // input fields + warnings.
+  const fieldWalkQueue = useMemo(() => {
+    const order = fieldWalkIncludeCosted
+      ? ['missing', 'conversion', 'packageSize', 'standalone', 'name', 'costed']
+      : ['missing', 'conversion', 'packageSize', 'standalone', 'name']
+    const out = []
+    for (const key of order) {
+      for (const inv of buckets[key] ?? []) {
+        out.push({ inv, bucketKey: key })
+      }
+    }
+    return out
+  }, [buckets, fieldWalkIncludeCosted])
 
   // Phase 7W.3 — draft summary: counts rows the steward has touched,
   // rows that have a derivable preview from those drafts, and rows that
@@ -317,6 +347,30 @@ export default function InventoryCostBasisReview() {
   function clearDraft(invId) {
     setDrafts(d => { const c = { ...d }; delete c[invId]; return c })
   }
+  // Phase 7X.1 — Field Walk navigation.
+  function openFieldWalk() {
+    setFieldWalkCursor(0)
+    setFieldWalkOpen(true)
+  }
+  function closeFieldWalk() {
+    setFieldWalkOpen(false)
+  }
+  function fieldWalkPrev() {
+    setFieldWalkCursor(c => Math.max(0, c - 1))
+  }
+  function fieldWalkNext() {
+    setFieldWalkCursor(c => {
+      const last = Math.max(0, fieldWalkQueue.length - 1)
+      return Math.min(last, c + 1)
+    })
+  }
+  function markReviewed(invId) {
+    // Phase 7X.1 — reviewed marker is an additive boolean on the per-
+    // row draft. Older drafts (no `reviewed` key) keep working; the
+    // calc + apply paths ignore the field.
+    setDraft(invId, { reviewed: true, reviewedAt: new Date().toISOString() })
+  }
+
   // Phase 7W.3 — clear-all drafts (browser-only). Guarded by an explicit
   // confirmation dialog (see ConfirmClearAllDialog) so an accidental
   // click can't wipe a half-finished worksheet. Touches localStorage
@@ -351,13 +405,17 @@ export default function InventoryCostBasisReview() {
         standalonePriceUnit: d.standalonePriceUnit ?? '',
         calculatedCostPerUnit: derived?.costPerUnit ?? '',
         costUnit:          derived?.costUnit ?? '',
-        notes:             derived?.note ?? '',
+        // Phase 7X.1 — include the Field Walk reviewed marker so the
+        // CSV reflects what the steward marked during the walk.
+        reviewed:          d.reviewed ? 'yes' : '',
+        reviewedAt:        d.reviewedAt ?? '',
+        notes:             d.note ?? derived?.note ?? '',
       })
     }
     const headers = [
       'productName','vendor','bucket','packageSize','packageSizeUnit',
       'purchaseQuantity','totalCost','standalonePrice','standalonePriceUnit',
-      'calculatedCostPerUnit','costUnit','notes',
+      'calculatedCostPerUnit','costUnit','reviewed','reviewedAt','notes',
     ]
     const cell = v => {
       if (v == null) return ''
@@ -482,6 +540,8 @@ export default function InventoryCostBasisReview() {
               onToggleDraftsOnly={() => setDraftsOnly(v => !v)}
               onExport={exportDraftsCsv}
               onClearAll={() => setConfirmClearAll(true)}
+              onOpenFieldWalk={openFieldWalk}
+              fieldWalkQueueSize={fieldWalkQueue.length}
               hasAnyDraft={draftSummary.filled > 0}
               showSavedFlash={showDraftSavedFlash}
             />
@@ -517,6 +577,29 @@ export default function InventoryCostBasisReview() {
           count={draftSummary.filled}
           onCancel={() => setConfirmClearAll(false)}
           onConfirm={clearAllDrafts}
+        />
+      )}
+
+      {fieldWalkOpen && (
+        <FieldWalkPanel
+          queue={fieldWalkQueue}
+          cursor={fieldWalkCursor}
+          drafts={drafts}
+          setDraft={setDraft}
+          clearDraft={clearDraft}
+          markReviewed={markReviewed}
+          onPrev={fieldWalkPrev}
+          onNext={fieldWalkNext}
+          onClose={closeFieldWalk}
+          includeCosted={fieldWalkIncludeCosted}
+          onToggleIncludeCosted={() => {
+            // Toggling the scope can shorten the queue. Reset the cursor
+            // when it falls past the new end so the panel doesn't render
+            // an undefined card.
+            setFieldWalkIncludeCosted(v => !v)
+            setFieldWalkCursor(0)
+          }}
+          showSavedFlash={showDraftSavedFlash}
         />
       )}
 
@@ -618,6 +701,7 @@ function FilterChips({ counts, active, onChange }) {
 function DraftControlsStrip({
   summary, lastSavedAt, draftsOnly, onToggleDraftsOnly,
   onExport, onClearAll, hasAnyDraft, showSavedFlash,
+  onOpenFieldWalk, fieldWalkQueueSize = 0,
 }) {
   return (
     <section
@@ -651,6 +735,17 @@ function DraftControlsStrip({
           />
           <span>Drafts only</span>
         </label>
+        <button
+          type="button"
+          className={styles.btnPrimary}
+          onClick={onOpenFieldWalk}
+          disabled={fieldWalkQueueSize === 0}
+          title={fieldWalkQueueSize > 0
+            ? `Walk through ${fieldWalkQueueSize} products one at a time.`
+            : 'No products in the field-walk queue.'}
+        >
+          Field Walk Mode
+        </button>
         <button
           type="button"
           className={styles.btnGhost}
@@ -688,6 +783,260 @@ function ConfirmClearAllDialog({ count, onCancel, onConfirm }) {
           <button type="button" className={styles.btnDanger} onClick={onConfirm}>Clear all drafts</button>
           <button type="button" className={styles.btnGhost} onClick={onCancel}>Cancel</button>
         </div>
+      </div>
+    </div>
+  )
+}
+
+// Phase 7X.1 — Field Walk Mode panel.
+//
+// Mobile-first focused overlay that presents one product at a time so
+// Bryan can walk the chemical room and capture package sizes / standalone
+// prices / notes / reviewed markers. INTENTIONALLY DOES NOT include
+// Apply — this phase is data collection only. Apply remains the per-row
+// click in the main grid.
+function FieldWalkPanel({
+  queue, cursor, drafts, setDraft, clearDraft, markReviewed,
+  onPrev, onNext, onClose, includeCosted, onToggleIncludeCosted,
+  showSavedFlash,
+}) {
+  const safeCursor = Math.min(Math.max(0, cursor), Math.max(0, queue.length - 1))
+  const current    = queue[safeCursor] ?? null
+  const total      = queue.length
+  const atFirst    = safeCursor <= 0
+  const atLast     = safeCursor >= total - 1
+
+  return (
+    <div className={styles.fieldWalkOverlay} role="dialog" aria-modal="true" aria-label="Field Walk Mode">
+      <div className={styles.fieldWalkPanel}>
+        <header className={styles.fieldWalkHeader}>
+          <div className={styles.fieldWalkHeaderLeft}>
+            <h3 className={styles.fieldWalkTitle}>Field Walk Mode</h3>
+            <span className={styles.fieldWalkCounter}>
+              {total === 0 ? 'Empty queue' : `${safeCursor + 1} of ${total}`}
+            </span>
+          </div>
+          <button type="button" className={styles.fieldWalkClose} onClick={onClose} aria-label="Exit Field Walk Mode">
+            ✕
+          </button>
+        </header>
+
+        <div className={styles.fieldWalkScope}>
+          <label className={styles.draftToggle}>
+            <input
+              type="checkbox"
+              checked={includeCosted}
+              onChange={onToggleIncludeCosted}
+            />
+            <span>Include already costed</span>
+          </label>
+        </div>
+
+        {!current ? (
+          <div className={styles.fieldWalkEmpty}>
+            <p>No products in the field-walk queue.</p>
+            <p className={styles.fieldWalkEmptyHint}>
+              Try toggling “Include already costed” above, or exit Field Walk Mode.
+            </p>
+          </div>
+        ) : (
+          <FieldWalkCard
+            inv={current.inv}
+            bucketKey={current.bucketKey}
+            draft={drafts[current.inv.id] ?? {}}
+            setDraft={(p) => setDraft(current.inv.id, p)}
+            clearDraft={() => clearDraft(current.inv.id)}
+            markReviewed={() => markReviewed(current.inv.id)}
+            showSavedFlash={showSavedFlash}
+          />
+        )}
+
+        <footer className={styles.fieldWalkBar}>
+          <button
+            type="button"
+            className={styles.fieldWalkNavBtn}
+            onClick={onPrev}
+            disabled={atFirst}
+            aria-label="Previous product"
+          >
+            ← Previous
+          </button>
+          <button
+            type="button"
+            className={styles.fieldWalkSkipBtn}
+            onClick={onNext}
+            disabled={atLast || total === 0}
+          >
+            Skip
+          </button>
+          <button
+            type="button"
+            className={styles.fieldWalkNavBtnPrimary}
+            onClick={onNext}
+            disabled={atLast || total === 0}
+            aria-label="Next product"
+          >
+            Next →
+          </button>
+        </footer>
+      </div>
+    </div>
+  )
+}
+
+// Phase 7X.1 — Per-product focused entry card. Shows only the fields
+// relevant to the row's bucket; never invokes Apply.
+function FieldWalkCard({ inv, bucketKey, draft, setDraft, clearDraft, markReviewed, showSavedFlash }) {
+  const existingCost = inv.costPerUnit != null && Number(inv.costPerUnit) > 0
+  const derived = useMemo(() => deriveCostFromDraft(draft, inv), [draft, inv])
+  const reviewed = draft.reviewed === true
+  const showPackage    = bucketKey === 'packageSize' || bucketKey === 'missing' || bucketKey === 'conversion'
+  const showStandalone = bucketKey === 'standalone'  || bucketKey === 'packageSize'
+  const showNotesOnly  = bucketKey === 'name'
+
+  return (
+    <div className={styles.fieldWalkCard}>
+      <div className={styles.fieldWalkProduct}>
+        <h4 className={styles.fieldWalkProductName}>{inv.name}</h4>
+        <div className={styles.fieldWalkProductMeta}>
+          <span className={`${styles.statusBadge} ${styles[`statusBadge_${bucketKey}`] ?? ''}`}>
+            {BUCKET_BADGE[bucketKey] ?? '—'}
+          </span>
+          {inv.vendor && <span>vendor: {inv.vendor}</span>}
+          {inv.unit && <span>· stock unit: {inv.unit}</span>}
+        </div>
+      </div>
+
+      <div className={styles.fieldWalkCurrentCost}>
+        <span className={styles.fieldWalkCurrentCostLabel}>Current cost basis</span>
+        <span className={styles.fieldWalkCurrentCostValue}>
+          {existingCost
+            ? `$${Number(inv.costPerUnit).toFixed(2)} / ${inv.costUnit ?? inv.unit ?? '—'}`
+            : '—'}
+        </span>
+      </div>
+
+      {DO_NOT_MERGE.has(inv.name) && (
+        <p className={`${styles.fieldWalkBanner} ${styles.fieldWalkBanner_warn}`}>
+          ⚠ Do NOT merge {inv.name} with its phite counterpart — these are separate products.
+        </p>
+      )}
+      {NAME_RECONCILE_HINTS.has(inv.name) && (
+        <p className={styles.fieldWalkBanner}>
+          Name reconciliation needed — confirm the program name matches the inventory row name.
+        </p>
+      )}
+      {STANDALONE_HINTS.has(inv.name) && (
+        <p className={styles.fieldWalkBanner}>
+          Standalone vendor price required before this can be costed.
+        </p>
+      )}
+
+      {/* Entry fields — only the ones the row actually needs */}
+      {showPackage && (
+        <div className={styles.fieldWalkFields}>
+          <label className={styles.fieldWalkField}>
+            <span>Package size</span>
+            <input
+              type="number" step="0.01" min="0" inputMode="decimal"
+              value={draft.packageSize ?? ''}
+              onChange={e => setDraft({ packageSize: e.target.value })}
+              placeholder="e.g. 2.5"
+            />
+          </label>
+          <label className={styles.fieldWalkField}>
+            <span>Package unit</span>
+            <select
+              value={draft.packageSizeUnit ?? ''}
+              onChange={e => setDraft({ packageSizeUnit: e.target.value })}
+            >
+              <option value="">(select)</option>
+              <option value="gal/case">gal / case</option>
+              <option value="lb/bag">lb / bag</option>
+              <option value="lb/pack">lb / pack</option>
+            </select>
+          </label>
+          <label className={styles.fieldWalkField}>
+            <span>Purchase quantity</span>
+            <input
+              type="number" step="0.01" min="0" inputMode="decimal"
+              value={draft.purchaseQuantity ?? ''}
+              onChange={e => setDraft({ purchaseQuantity: e.target.value })}
+              placeholder="e.g. 5"
+            />
+          </label>
+          <label className={styles.fieldWalkField}>
+            <span>Total cost</span>
+            <input
+              type="number" step="0.01" min="0" inputMode="decimal"
+              value={draft.totalCost ?? ''}
+              onChange={e => setDraft({ totalCost: e.target.value })}
+              placeholder="e.g. 842.10"
+            />
+          </label>
+        </div>
+      )}
+
+      {showStandalone && (
+        <div className={styles.fieldWalkFields}>
+          <label className={styles.fieldWalkField}>
+            <span>Standalone price</span>
+            <input
+              type="number" step="0.01" min="0" inputMode="decimal"
+              value={draft.standalonePrice ?? ''}
+              onChange={e => setDraft({ standalonePrice: e.target.value })}
+              placeholder="e.g. 92.50"
+            />
+          </label>
+          <label className={styles.fieldWalkField}>
+            <span>Standalone unit</span>
+            <input
+              type="text"
+              value={draft.standalonePriceUnit ?? ''}
+              onChange={e => setDraft({ standalonePriceUnit: e.target.value })}
+              placeholder="gal / lb / bottle"
+            />
+          </label>
+        </div>
+      )}
+
+      {/* Name-reconcile rows: the only sensible entry is a free-form note */}
+      <label className={styles.fieldWalkField}>
+        <span>{showNotesOnly ? 'Reconcile notes' : 'Notes (optional)'}</span>
+        <textarea
+          rows={2}
+          value={draft.note ?? ''}
+          onChange={e => setDraft({ note: e.target.value })}
+          placeholder={showNotesOnly
+            ? 'Confirmed program / inventory name match …'
+            : 'Vendor confirmation, label observation, …'}
+        />
+      </label>
+
+      {derived && (
+        <p className={styles.fieldWalkPreview}>
+          <strong>Preview:</strong> ${derived.costPerUnit} / {derived.costUnit}
+          <span className={styles.fieldWalkPreviewNote}> — {derived.note}</span>
+        </p>
+      )}
+
+      <div className={styles.fieldWalkRowActions}>
+        <button
+          type="button"
+          className={reviewed ? styles.btnPrimary : styles.btnGhost}
+          onClick={markReviewed}
+          aria-pressed={reviewed}
+        >
+          {reviewed ? '✓ Reviewed' : 'Mark reviewed'}
+        </button>
+        {Object.keys(draft ?? {}).length > 0 && (
+          <button type="button" className={styles.btnGhost} onClick={clearDraft}>
+            Clear draft
+          </button>
+        )}
+        {showSavedFlash && (
+          <span className={styles.fieldWalkSavedFlash}>Draft saved in this browser</span>
+        )}
       </div>
     </div>
   )

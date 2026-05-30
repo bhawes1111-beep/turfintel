@@ -235,6 +235,101 @@ console.log('— Phase 7W.3 draft controls')
     'isMeaningfulDraft helper defined for stable counts')
 }
 
+console.log('— Phase 7X.1 Field Walk Mode')
+{
+  const src = readFileSync(TAB, 'utf8')
+  const code = src
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '')
+
+  // Entry button — labeled "Field Walk Mode" and routed through
+  // onOpenFieldWalk → openFieldWalk(); never auto-applies.
+  assert(/Field Walk Mode/.test(src),
+    '"Field Walk Mode" button label present in DraftControlsStrip')
+  assert(/function\s+openFieldWalk\b/.test(src),
+    'openFieldWalk handler defined')
+  assert(/onOpenFieldWalk=\{\s*openFieldWalk\s*\}/.test(src),
+    'DraftControlsStrip receives openFieldWalk as onOpenFieldWalk')
+
+  // Field Walk state machinery.
+  assert(/fieldWalkOpen/.test(src) && /setFieldWalkOpen/.test(src),
+    'tab maintains fieldWalkOpen state')
+  assert(/fieldWalkCursor/.test(src) && /setFieldWalkCursor/.test(src),
+    'tab maintains a fieldWalkCursor for queue navigation')
+  assert(/fieldWalkIncludeCosted/.test(src),
+    'tab has an include-already-costed toggle for Field Walk scope')
+
+  // Queue builder defaults to the four "needs confirmation" buckets
+  // and excludes already-costed unless the steward opts in.
+  assert(/fieldWalkQueue/.test(src) && /useMemo/.test(src),
+    'fieldWalkQueue is memoized')
+  assert(/['"]missing['"]\s*,\s*['"]conversion['"]\s*,\s*['"]packageSize['"]\s*,\s*['"]standalone['"]\s*,\s*['"]name['"]/.test(src),
+    'default queue covers the four needs-confirmation buckets (plus name)')
+
+  // Panel + per-product card components rendered.
+  assert(/function\s+FieldWalkPanel\b/.test(src) && /<FieldWalkPanel\b/.test(src),
+    'FieldWalkPanel component defined and rendered')
+  assert(/function\s+FieldWalkCard\b/.test(src) && /<FieldWalkCard\b/.test(src),
+    'FieldWalkCard component defined and rendered')
+
+  // Navigation + exit controls present (per spec: Previous / Next / Skip / Exit).
+  for (const label of ['Previous', 'Skip', 'Next', 'Exit Field Walk Mode']) {
+    assert(src.includes(label), `Field Walk control label "${label}" present`)
+  }
+  assert(/Mark reviewed/.test(src),
+    '"Mark reviewed" action label present')
+
+  // Mark-reviewed writes to localStorage (via setDraft) — not to D1.
+  assert(/function\s+markReviewed\b/.test(src) && /setDraft\(invId,\s*\{\s*reviewed:\s*true/.test(src),
+    'markReviewed updates the per-row draft (localStorage), not D1')
+
+  // SAFETY: Field Walk never auto-applies cost basis. The only
+  // setInventoryCostBasis call lives in the existing applyDerivedCost
+  // handler, and the Field Walk components do not call onApply.
+  const fieldWalkBlock = src.slice(src.indexOf('function FieldWalkPanel'), src.indexOf('function formatSavedAt'))
+  assert(!/setInventoryCostBasis\(/.test(fieldWalkBlock),
+    'Field Walk components NEVER call setInventoryCostBasis')
+  assert(!/applyDerivedCost/.test(fieldWalkBlock),
+    'Field Walk components NEVER invoke applyDerivedCost')
+  assert(!/onApply/.test(fieldWalkBlock),
+    'Field Walk components carry no onApply prop')
+
+  // Reviewed marker is back-compat (additive boolean on the draft).
+  // isMeaningfulDraft accepts reviewed===true so older drafts without
+  // the field still behave as before.
+  assert(/d\.reviewed\s*===\s*true/.test(src),
+    'isMeaningfulDraft treats reviewed===true as meaningful (back-compat)')
+
+  // Export covers the reviewed marker.
+  assert(/['"]reviewed['"]\s*,\s*['"]reviewedAt['"]/.test(src)
+      || /reviewed:\s*d\.reviewed\s*\?\s*['"]yes['"]/.test(src),
+    'export drafts CSV includes reviewed columns')
+
+  // DO-NOT-MERGE and standalone / name-reconcile warnings render
+  // inside the Field Walk card.
+  assert(/Do NOT merge/.test(src), 'Field Walk card includes DO NOT MERGE warning copy')
+  assert(/Name reconciliation needed/.test(src),
+    'Field Walk card includes name-reconciliation warning copy')
+  assert(/Standalone vendor price required/.test(src),
+    'Field Walk card includes standalone-required warning copy')
+
+  // localStorage key is still the same (no migration).
+  assert(/turfintel:costBasisReviewDrafts\/v1/.test(src),
+    'localStorage key unchanged')
+
+  // No forbidden surfaces (deduction / usage / spray-program mutation
+  // / new routes / migrations) anywhere in the file.
+  for (const verb of [
+    'recordInventoryUsage', 'deductInventory', 'createSpray',
+    'createInventoryItem', 'updateInventoryItem', 'mergeAlias',
+    'updateSprayProgramItem', 'deleteSprayProgramItem',
+    'createSprayProgramItem',
+  ]) {
+    assert(!new RegExp(`\\b${verb}\\b`).test(code),
+      `tab still never references ${verb}`)
+  }
+}
+
 console.log('— Inventory page wiring')
 {
   const page = readFileSync(PAGE, 'utf8')

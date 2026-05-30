@@ -494,3 +494,252 @@
   gap: 8px;
   justify-content: flex-end;
 }
+
+/* ── Field Walk Mode (Phase 7X.1) ─────────────────────────────────────── */
+
+.fieldWalkOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  z-index: 1100;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  padding: 0;
+}
+
+.fieldWalkPanel {
+  display: flex;
+  flex-direction: column;
+  background: #181b21;
+  color: rgba(255, 255, 255, 0.92);
+  width: min(560px, 100%);
+  height: 100%;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+@media (min-width: 700px) {
+  .fieldWalkOverlay { padding: 24px; }
+  .fieldWalkPanel {
+    height: auto;
+    max-height: calc(100vh - 48px);
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.10);
+  }
+}
+
+.fieldWalkHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.fieldWalkHeaderLeft { display: flex; flex-direction: column; gap: 2px; }
+.fieldWalkTitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+.fieldWalkCounter {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+}
+.fieldWalkClose {
+  background: transparent;
+  border: 0;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 18px;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.fieldWalkClose:hover { background: rgba(255, 255, 255, 0.06); }
+
+.fieldWalkScope {
+  padding: 10px 18px 0;
+}
+
+.fieldWalkEmpty {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  padding: 28px;
+  color: rgba(255, 255, 255, 0.65);
+  text-align: center;
+}
+.fieldWalkEmpty p { margin: 0; }
+.fieldWalkEmptyHint { font-size: 12px; color: rgba(255, 255, 255, 0.45); }
+
+.fieldWalkCard {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 18px 18px;
+  overflow-y: auto;
+}
+
+.fieldWalkProduct { display: flex; flex-direction: column; gap: 4px; }
+.fieldWalkProductName {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+  line-height: 1.2;
+}
+.fieldWalkProductMeta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.fieldWalkCurrentCost {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.fieldWalkCurrentCostLabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.55);
+}
+.fieldWalkCurrentCostValue {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.fieldWalkBanner {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(100, 150, 220, 0.10);
+  border: 1px solid rgba(100, 150, 220, 0.30);
+  color: rgba(180, 210, 240, 0.95);
+  font-size: 13px;
+}
+.fieldWalkBanner_warn {
+  background: rgba(220, 60, 60, 0.10);
+  border-color: rgba(220, 60, 60, 0.35);
+  color: #ff9999;
+}
+
+.fieldWalkFields {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 500px) {
+  .fieldWalkFields { grid-template-columns: 1fr 1fr; }
+}
+
+.fieldWalkField { display: flex; flex-direction: column; gap: 4px; }
+.fieldWalkField > span {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.65);
+}
+.fieldWalkField input,
+.fieldWalkField select,
+.fieldWalkField textarea {
+  width: 100%;
+  padding: 12px 14px;
+  min-height: 44px;        /* Phase 7X.1 — thumb-friendly for one-handed entry. */
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 15px;          /* avoid iOS zoom on focus */
+}
+.fieldWalkField textarea { min-height: 64px; resize: vertical; line-height: 1.45; }
+.fieldWalkField input::placeholder { color: rgba(255, 255, 255, 0.42); }
+.fieldWalkField input:focus,
+.fieldWalkField select:focus,
+.fieldWalkField textarea:focus {
+  outline: none;
+  border-color: rgba(100, 150, 220, 0.55);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.fieldWalkPreview {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(120, 180, 130, 0.10);
+  border: 1px solid rgba(120, 180, 130, 0.30);
+  color: rgba(220, 240, 220, 0.95);
+  font-size: 13px;
+}
+.fieldWalkPreviewNote { color: rgba(220, 240, 220, 0.65); }
+
+.fieldWalkRowActions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.fieldWalkSavedFlash {
+  font-size: 11px;
+  color: #9cc0f0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(100, 150, 220, 0.12);
+}
+
+/* Sticky bottom action bar (Previous / Skip / Next) */
+.fieldWalkBar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(20, 24, 30, 0.96);
+  backdrop-filter: blur(6px);
+}
+.fieldWalkNavBtn,
+.fieldWalkSkipBtn,
+.fieldWalkNavBtnPrimary {
+  flex: 1 1 0;
+  min-height: 48px;          /* large tap targets */
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.fieldWalkNavBtn {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.85);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+.fieldWalkNavBtn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.10); }
+.fieldWalkSkipBtn {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+.fieldWalkSkipBtn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.06); }
+.fieldWalkNavBtnPrimary {
+  background: rgba(120, 180, 130, 0.22);
+  color: #c8e8cc;
+  border-color: rgba(120, 180, 130, 0.5);
+}
+.fieldWalkNavBtnPrimary:hover:not(:disabled) { background: rgba(120, 180, 130, 0.32); }
+.fieldWalkNavBtn:disabled,
+.fieldWalkSkipBtn:disabled,
+.fieldWalkNavBtnPrimary:disabled { opacity: 0.45; cursor: not-allowed; }
