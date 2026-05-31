@@ -83,6 +83,28 @@ const TASK_GROUPS = [
 
 const DENSITY_OPTIONS = ['Compact', 'Comfortable', 'Expanded']
 
+// Phase 7Y.1 — Operations Board density default persisted to
+// localStorage. The board reads this on mount and writes it back on
+// every density change so the user's preferred density survives a
+// page refresh. UI-only; never touches D1 or any API.
+const DENSITY_STORAGE_KEY = 'turfintel:operations:densityDefault/v1'
+const DENSITY_ALLOWED     = ['compact', 'comfortable', 'expanded']
+const DENSITY_DEFAULT     = 'comfortable'
+
+function loadDensityDefault() {
+  if (typeof window === 'undefined' || !window.localStorage) return DENSITY_DEFAULT
+  try {
+    const raw = window.localStorage.getItem(DENSITY_STORAGE_KEY)
+    if (raw && DENSITY_ALLOWED.includes(raw)) return raw
+  } catch { /* privacy / quota */ }
+  return DENSITY_DEFAULT
+}
+function saveDensityDefault(value) {
+  if (typeof window === 'undefined' || !window.localStorage) return
+  if (!DENSITY_ALLOWED.includes(value)) return
+  try { window.localStorage.setItem(DENSITY_STORAGE_KEY, value) } catch { /* no-op */ }
+}
+
 const TABS = [
   { id: 'brief',       label: 'Morning Brief' },
   { id: 'center',      label: 'Daily Operations Center' },
@@ -150,7 +172,10 @@ export default function OperationsBoard() {
   const [panelOpen, setPanelOpen] = useState(false)
 
   // ── Board interaction ─────────────────────────────────────────────────────
-  const [density,         setDensity]         = useState('comfortable')
+  // Phase 7Y.1 — read the persisted density default once on mount;
+  // fall back to 'comfortable' (the existing live default) if nothing
+  // is stored or the value is unrecognized.
+  const [density,         setDensity]         = useState(loadDensityDefault)
   const [collapsedGroups, setCollapsedGroups] = useState(new Set())
   const [taskOverrides,   setTaskOverrides]   = useState({})
   const [expandedNoteIds, setExpandedNoteIds] = useState(new Set())
@@ -175,6 +200,9 @@ export default function OperationsBoard() {
   const [draggingEmpId,   setDraggingEmpId]   = useState(null)
   const [dragOverTaskId,  setDragOverTaskId]  = useState(null)
   const [timelineOpen,    setTimelineOpen]    = useState(true)
+
+  // ── Phase 7Y.1: persist density default whenever it changes ─────────────
+  useEffect(() => { saveDensityDefault(density) }, [density])
 
   // ── Live clock ────────────────────────────────────────────────────────────
   const [now, setNow] = useState(() => new Date())
@@ -1270,7 +1298,26 @@ export default function OperationsBoard() {
                     <div key={sec.title} className={styles.obSettingsSection}>
                       <div className={styles.obSettingsSectionTitle}>{sec.title}</div>
                       <div className={styles.obSettingsSectionDesc}>{sec.desc}</div>
-                      <span className={styles.obSettingsComingSoon}>Coming soon</span>
+                      {/* Phase 7Y.1 — Density Defaults gets a real, persisted
+                          toggle; the other three sections remain placeholders
+                          until their own phases. */}
+                      {sec.title === 'Density Defaults' ? (
+                        <div className={styles.obDensityToggle} role="group" aria-label="Default card density">
+                          {DENSITY_OPTIONS.map(d => (
+                            <button
+                              key={d}
+                              type="button"
+                              className={styles.obDensityBtn}
+                              data-active={density === d.toLowerCase()}
+                              onClick={() => setDensity(d.toLowerCase())}
+                            >
+                              {d}
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className={styles.obSettingsComingSoon}>Coming soon</span>
+                      )}
                     </div>
                   ))}
                 </div>

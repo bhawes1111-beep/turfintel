@@ -5,6 +5,7 @@
 //
 //   node scripts/smoke-operations-timeline.mjs
 
+import { readFileSync } from 'fs'
 import {
   buildOperationalTimeline,
   TIMELINE_SEVERITY,
@@ -282,6 +283,45 @@ const cats = new Set(full.map(t => t.category))
 for (const expected of ['weather', 'crew', 'spray', 'equipment', 'priority', 'routing']) {
   assert(cats.has(expected), `category "${expected}" represented`)
 }
+
+// ── Phase 7Y.1 — OperationsBoard density default persistence ────────────
+// Source-only checks against OperationsBoard.jsx: the localStorage key,
+// the allowed value set, the persistence wiring, the new toggle in the
+// settings panel, AND the regression guard that the OTHER three
+// settings sections still render "Coming soon".
+section('Phase 7Y.1 — Operations Board density default')
+
+const OB = readFileSync('src/pages/Operations/OperationsBoard.jsx', 'utf8')
+
+assert(OB.includes(`'turfintel:operations:densityDefault/v1'`),
+  'OperationsBoard declares the densityDefault localStorage key')
+for (const v of ['compact', 'comfortable', 'expanded']) {
+  assert(new RegExp(`['"]${v}['"]`).test(OB),
+    `allowed density value "${v}" present in source`)
+}
+assert(/loadDensityDefault\b/.test(OB) && /saveDensityDefault\b/.test(OB),
+  'OperationsBoard defines load/save helpers for the density default')
+assert(/useState\(\s*loadDensityDefault\s*\)/.test(OB),
+  'density state is initialized from loadDensityDefault on mount')
+assert(/useEffect\(\s*\(\)\s*=>\s*\{\s*saveDensityDefault\(density\)\s*\}\s*,\s*\[\s*density\s*\]\s*\)/.test(OB),
+  'persist effect writes density to localStorage on change')
+
+// The settings panel must wire the toggle for "Density Defaults" and
+// NOT render a "Coming soon" badge for that section. The exact branch
+// keys off sec.title === 'Density Defaults'.
+assert(/sec\.title === 'Density Defaults' \?/.test(OB),
+  'settings panel branches on Density Defaults to render the toggle')
+assert(/obDensityToggle[\s\S]{0,400}DENSITY_OPTIONS\.map/.test(OB),
+  'Density Defaults section renders the existing DENSITY_OPTIONS toggle')
+
+// Regression guard: the other three placeholder sections still exist
+// and still show "Coming soon".
+for (const title of ['Timeline Options', 'Crew Display', 'Turf Operations Defaults']) {
+  assert(OB.includes(`'${title}'`),
+    `placeholder title "${title}" still present`)
+}
+assert(/Coming soon/.test(OB),
+  'OperationsBoard still renders "Coming soon" for the other three sections')
 
 // ── Summary ─────────────────────────────────────────────────────────────
 console.log(`\n${failed === 0 ? '✅' : '❌'}  ${passed} passed, ${failed} failed`)
