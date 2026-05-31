@@ -314,14 +314,40 @@ assert(/sec\.title === 'Density Defaults' \?/.test(OB),
 assert(/obDensityToggle[\s\S]{0,400}DENSITY_OPTIONS\.map/.test(OB),
   'Density Defaults section renders the existing DENSITY_OPTIONS toggle')
 
-// Regression guard: the other three placeholder sections still exist
-// and still show "Coming soon".
-for (const title of ['Timeline Options', 'Crew Display', 'Turf Operations Defaults']) {
+// Regression guard: the remaining two placeholder sections still
+// exist and still show "Coming soon". (Phase 7Y.2 makes
+// "Timeline Options" a real toggle, so it is no longer required to
+// render "Coming soon".)
+for (const title of ['Crew Display', 'Turf Operations Defaults']) {
   assert(OB.includes(`'${title}'`),
     `placeholder title "${title}" still present`)
 }
 assert(/Coming soon/.test(OB),
-  'OperationsBoard still renders "Coming soon" for the other three sections')
+  'OperationsBoard still renders "Coming soon" for the remaining sections')
+
+// ── Phase 7Y.2 — OperationsBoard Schedule Overview timeline default ─────
+// Same shape as the Phase 7Y.1 density-default checks: the localStorage
+// key, the allowed value set, the load/save helpers, the persistence
+// wiring (init + write-through effect), and the new toggle in the
+// settings panel.
+section('Phase 7Y.2 — Operations Board timeline default')
+
+assert(OB.includes(`'turfintel:operations:timelineDefault/v1'`),
+  'OperationsBoard declares the timelineDefault localStorage key')
+for (const v of ['open', 'collapsed']) {
+  assert(new RegExp(`['"]${v}['"]`).test(OB),
+    `allowed timeline value "${v}" present in source`)
+}
+assert(/loadTimelineDefault\b/.test(OB) && /saveTimelineDefault\b/.test(OB),
+  'OperationsBoard defines load/save helpers for the timeline default')
+assert(/useState\(\s*loadTimelineDefault\s*\)/.test(OB),
+  'timelineOpen state is initialized from loadTimelineDefault on mount')
+assert(/useEffect\(\s*\(\)\s*=>\s*\{\s*saveTimelineDefault\(timelineOpen\)\s*\}\s*,\s*\[\s*timelineOpen\s*\]\s*\)/.test(OB),
+  'persist effect writes timelineOpen to localStorage on change')
+
+// The settings panel must wire the toggle for "Timeline Options".
+assert(/sec\.title === 'Timeline Options' \?/.test(OB),
+  'settings panel branches on Timeline Options to render the toggle')
 
 // ── Summary ─────────────────────────────────────────────────────────────
 console.log(`\n${failed === 0 ? '✅' : '❌'}  ${passed} passed, ${failed} failed`)

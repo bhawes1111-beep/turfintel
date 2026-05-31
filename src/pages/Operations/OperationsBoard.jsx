@@ -105,6 +105,29 @@ function saveDensityDefault(value) {
   try { window.localStorage.setItem(DENSITY_STORAGE_KEY, value) } catch { /* no-op */ }
 }
 
+// Phase 7Y.2 — Operations Board Schedule Overview timeline default
+// (open / collapsed) persisted to localStorage. Same shape as the
+// density default above: read once on mount, write through on every
+// timelineOpen change. UI-only; never touches D1 or any API.
+const TIMELINE_STORAGE_KEY = 'turfintel:operations:timelineDefault/v1'
+const TIMELINE_ALLOWED     = ['open', 'collapsed']
+const TIMELINE_DEFAULT     = 'open'
+
+function loadTimelineDefault() {
+  if (typeof window === 'undefined' || !window.localStorage) return true
+  try {
+    const raw = window.localStorage.getItem(TIMELINE_STORAGE_KEY)
+    if (raw && TIMELINE_ALLOWED.includes(raw)) return raw === 'open'
+  } catch { /* privacy / quota */ }
+  return TIMELINE_DEFAULT === 'open'
+}
+function saveTimelineDefault(open) {
+  if (typeof window === 'undefined' || !window.localStorage) return
+  const value = open ? 'open' : 'collapsed'
+  if (!TIMELINE_ALLOWED.includes(value)) return
+  try { window.localStorage.setItem(TIMELINE_STORAGE_KEY, value) } catch { /* no-op */ }
+}
+
 const TABS = [
   { id: 'brief',       label: 'Morning Brief' },
   { id: 'center',      label: 'Daily Operations Center' },
@@ -199,10 +222,13 @@ export default function OperationsBoard() {
   const [taskAssignments, setTaskAssignments] = useState({})
   const [draggingEmpId,   setDraggingEmpId]   = useState(null)
   const [dragOverTaskId,  setDragOverTaskId]  = useState(null)
-  const [timelineOpen,    setTimelineOpen]    = useState(true)
+  const [timelineOpen,    setTimelineOpen]    = useState(loadTimelineDefault)
 
   // ── Phase 7Y.1: persist density default whenever it changes ─────────────
   useEffect(() => { saveDensityDefault(density) }, [density])
+
+  // ── Phase 7Y.2: persist timeline open/collapsed whenever it changes ────
+  useEffect(() => { saveTimelineDefault(timelineOpen) }, [timelineOpen])
 
   // ── Live clock ────────────────────────────────────────────────────────────
   const [now, setNow] = useState(() => new Date())
@@ -1299,8 +1325,9 @@ export default function OperationsBoard() {
                       <div className={styles.obSettingsSectionTitle}>{sec.title}</div>
                       <div className={styles.obSettingsSectionDesc}>{sec.desc}</div>
                       {/* Phase 7Y.1 — Density Defaults gets a real, persisted
-                          toggle; the other three sections remain placeholders
-                          until their own phases. */}
+                          toggle. Phase 7Y.2 — Timeline Options gets a
+                          persisted Open/Collapsed toggle. The remaining two
+                          sections stay placeholders until their own phases. */}
                       {sec.title === 'Density Defaults' ? (
                         <div className={styles.obDensityToggle} role="group" aria-label="Default card density">
                           {DENSITY_OPTIONS.map(d => (
@@ -1312,6 +1339,23 @@ export default function OperationsBoard() {
                               onClick={() => setDensity(d.toLowerCase())}
                             >
                               {d}
+                            </button>
+                          ))}
+                        </div>
+                      ) : sec.title === 'Timeline Options' ? (
+                        <div className={styles.obDensityToggle} role="group" aria-label="Schedule Overview timeline default">
+                          {[
+                            { label: 'Open',      open: true  },
+                            { label: 'Collapsed', open: false },
+                          ].map(opt => (
+                            <button
+                              key={opt.label}
+                              type="button"
+                              className={styles.obDensityBtn}
+                              data-active={timelineOpen === opt.open}
+                              onClick={() => setTimelineOpen(opt.open)}
+                            >
+                              {opt.label}
                             </button>
                           ))}
                         </div>
