@@ -17,6 +17,7 @@ import {
   createEquipmentReservation,
   patchEquipmentReservation,
 } from '../../../utils/assignments/assignmentsStore'
+import { createCalendarEvent } from '../../../utils/calendar/calendarStore'
 import { useSelectedCourseId } from '../../../utils/courses/courseStore'
 import { useToast } from '../../../utils/feedback/toastContext'
 import { useEmployeeSchedulesData } from '../../../utils/schedules/schedulesStore'
@@ -39,6 +40,33 @@ function normalizeAssignmentStatus(raw) {
   if (raw === 'assigned' || raw == null || raw === '') return ASSIGNMENT_STATUS_DEFAULT
   if (ASSIGNMENT_STATUS_OPTIONS.includes(raw)) return raw
   return ASSIGNMENT_STATUS_DEFAULT
+}
+
+// Phase 8A.3c — Crosswinds-only curated task list. The dropdown
+// shows these names instead of forcing the supervisor through the
+// full 6-field TasksManagerModal. Selecting a name looks up an
+// existing crew-type calendar_event for the day or silently creates
+// one via the existing dedupe-friendly createCalendarEvent path.
+// No new schema; reuses sourceModule + sourceId for idempotency.
+const CROSSWINDS_TASK_LIST = [
+  'Mow Greens',
+  'Roll Greens',
+  'Course Setup',
+  'Bunkers',
+  'Spray',
+  'Hand Water',
+  'Irrigation',
+  'Detail Work',
+  'Mow Tees',
+  'Mow Fairways',
+  'Mow Rough',
+  'Cups',
+  'Cleanup',
+  'Project Work',
+]
+
+function slug(s) {
+  return (s ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
 }
 
 function shiftDate(iso, days) {
@@ -336,6 +364,50 @@ export default function DailyAssignmentBoard({
 
   function handleClear(emp) {
     return handleTaskChange(emp, '')
+  }
+
+  // Phase 8A.3c — pick an existing crew-type event by date + title (case-
+  // insensitive) or silently create one via the existing dedupe-friendly
+  // createCalendarEvent path. The stable sourceId (`<date>:<slug>`) means
+  // two operators picking the same task on the same day resolve to one
+  // event server-side, so DisplayBoard's operator/event joins stay clean.
+  async function pickOrCreateEventForTask(taskName, dateIso) {
+    const wanted = (taskName ?? '').trim().toLowerCase()
+    if (!wanted || !dateIso) return null
+    const existing = events.find(e =>
+      ((e.startDate ?? e.date) === dateIso) &&
+      ((e.title ?? '').trim().toLowerCase() === wanted) &&
+      (e.eventType === 'crew')
+    )
+    if (existing) return existing
+    return await createCalendarEvent({
+      title:        taskName,
+      startDate:    dateIso,
+      eventType:    'crew',
+      sourceModule: 'assignment-board',
+      sourceId:     `${dateIso}:${slug(taskName)}`,
+    })
+  }
+
+  // Phase 8A.3c — Crosswinds quick-task handler. Empty selection clears
+  // via the existing handleClear path. Any non-empty selection picks-or-
+  // creates the calendar_event and then hands its id to the existing
+  // handleTaskChange flow (which does the crew_assignment write).
+  async function handleQuickTaskChange(emp, taskName) {
+    if (!taskName) return handleClear(emp)
+    setBusyEmpId(emp.id)
+    try {
+      const event = await pickOrCreateEventForTask(taskName, selectedDate)
+      if (!event?.id) {
+        toast.error('Task assignment failed: no event id returned')
+        return
+      }
+      await handleTaskChange(emp, event.id)
+    } catch (err) {
+      toast.error(`Task assignment failed: ${err.message}`)
+    } finally {
+      setBusyEmpId(null)
+    }
   }
 
   // Phase 8A.3a — Notes + Status handlers (Crosswinds-gated render).
@@ -714,17 +786,44 @@ export default function DailyAssignmentBoard({
                     })()}
                   </td>
                   <td className={styles.taskCell}>
-                    <select
-                      className={styles.taskSelect}
-                      value={assignment?.calendarEventId ?? ''}
-                      disabled={busyEmpId === emp.id || dayEvents.length === 0}
-                      onChange={e => handleTaskChange(emp, e.target.value)}
-                    >
-                      <option value="">— Unassigned —</option>
-                      {dropdownOptionsFor(assignment).map(ev => (
-                        <option key={ev.id} value={ev.id}>{taskOptionLabel(ev)}</option>
-                      ))}
-                    </select>
+                    {isCrosswinds ? (
+                      /* Phase 8A.3c — Crosswinds curated task dropdown.
+                         The value resolves back to a list option by
+                         case-insensitive title match on the linked
+                         event; if no match, falls through to empty so
+                         the supervisor can pick a list task explicitly
+                         without losing the underlying assignment row. */
+                      <select
+                        className={styles.taskSelect}
+                        value={(() => {
+                          if (!assignment) return ''
+                          const ev = events.find(e => e.id === assignment.calendarEventId)
+                          const t  = (ev?.title ?? '').trim().toLowerCase()
+                          return CROSSWINDS_TASK_LIST.find(opt =>
+                            opt.toLowerCase() === t,
+                          ) ?? ''
+                        })()}
+                        disabled={busyEmpId === emp.id}
+                        onChange={e => handleQuickTaskChange(emp, e.target.value)}
+                      >
+                        <option value="">— Unassigned —</option>
+                        {CROSSWINDS_TASK_LIST.map(t => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <select
+                        className={styles.taskSelect}
+                        value={assignment?.calendarEventId ?? ''}
+                        disabled={busyEmpId === emp.id || dayEvents.length === 0}
+                        onChange={e => handleTaskChange(emp, e.target.value)}
+                      >
+                        <option value="">— Unassigned —</option>
+                        {dropdownOptionsFor(assignment).map(ev => (
+                          <option key={ev.id} value={ev.id}>{taskOptionLabel(ev)}</option>
+                        ))}
+                      </select>
+                    )}
                     {assignment && (
                       <button
                         type="button"
