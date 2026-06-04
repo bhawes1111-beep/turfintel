@@ -849,3 +849,55 @@
   .taskSelect { min-width: 0; }
   .equipmentRow { grid-template-columns: 1fr; gap: 6px; }
 }
+
+/* ── Phase 8A.3a — Crosswinds Notes + Status per assignment row ─────── */
+
+.notesCell,
+.statusCell {
+  vertical-align: middle;
+}
+
+.notesInput {
+  width: 100%;
+  min-width: 120px;
+  padding: 6px 10px;
+  background: rgba(4, 12, 6, 0.85);
+  border: 1px solid rgba(74, 158, 74, 0.28);
+  border-radius: 5px;
+  color: rgba(212, 237, 212, 0.92);
+  font-size: 12px;
+  font-family: inherit;
+}
+.notesInput::placeholder { color: rgba(212, 237, 212, 0.4); }
+.notesInput:focus    { outline: none; border-color: rgba(74, 222, 128, 0.55); }
+.notesInput:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.statusSelect {
+  min-width: 110px;
+  padding: 6px 10px;
+  background: rgba(4, 12, 6, 0.85);
+  border: 1px solid rgba(74, 158, 74, 0.28);
+  border-radius: 5px;
+  color: rgba(212, 237, 212, 0.92);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  text-transform: capitalize;
+}
+.statusSelect:focus    { outline: none; border-color: rgba(74, 222, 128, 0.55); }
+.statusSelect:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.statusSelect[data-status='pending']     { border-color: rgba(148, 163, 184, 0.55); }
+.statusSelect[data-status='in-progress'] { border-color: rgba(245, 158,  11, 0.55); }
+.statusSelect[data-status='complete']    { border-color: rgba( 34, 197,  94, 0.55); }
+.statusSelect[data-status='blocked']     { border-color: rgba(239,  68,  68, 0.55); }
+
+/* Mobile: keep the new columns usable on phones — stack labels above
+   inputs by letting the table go to a tighter padding profile. The
+   table itself stays a table (no flex/grid restructure) so the
+   Crosswinds gate's added columns just inherit narrower paddings. */
+@media (max-width: 600px) {
+  .notesInput, .statusSelect { font-size: 11px; padding: 5px 8px; }
+  .notesInput { min-width: 100px; }
+  .statusSelect { min-width: 96px; }
+}

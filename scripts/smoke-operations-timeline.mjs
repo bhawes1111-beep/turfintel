@@ -462,6 +462,86 @@ const CA = readFileSync('src/pages/Crew/tabs/CrewAssignments.jsx', 'utf8')
 assert(/import DailyAssignmentBoard from '\.\/DailyAssignmentBoard'/.test(CA),
   'CrewAssignments.jsx still imports DailyAssignmentBoard')
 
+// ── Phase 8A.3a — Crosswinds Notes + Status per assignment row ──────────
+// Source-only checks against DailyAssignmentBoard.jsx + the
+// assignmentsStore. New columns are Crosswinds-gated (courseId
+// 'crossroads-gc') and use existing crew_assignments columns
+// (notes + status), so no DB or worker change is needed. DisplayBoard
+// is explicitly NOT modified by this phase.
+section('Phase 8A.3a — Crosswinds assignment notes + status')
+
+const DAB = readFileSync('src/pages/Crew/tabs/DailyAssignmentBoard.jsx', 'utf8')
+
+// patchCrewAssignment is imported and used for both notes and status.
+assert(/import\s*\{[^}]*\bpatchCrewAssignment\b[^}]*\}\s*from\s*['"]\.\.\/\.\.\/\.\.\/utils\/assignments\/assignmentsStore['"]/.test(DAB),
+  'DailyAssignmentBoard imports patchCrewAssignment from assignmentsStore')
+assert(/patchCrewAssignment\(assignment\.id,\s*\{\s*notes\s*:/.test(DAB),
+  'notes save calls patchCrewAssignment(assignment.id, { notes: ... })')
+assert(/patchCrewAssignment\(assignment\.id,\s*\{\s*status\s*:/.test(DAB),
+  'status save calls patchCrewAssignment(assignment.id, { status: ... })')
+
+// Crosswinds gate is wired via useSelectedCourseId + the verified slug.
+assert(/import\s*\{\s*useSelectedCourseId\s*\}\s*from\s*['"]\.\.\/\.\.\/\.\.\/utils\/courses\/courseStore['"]/.test(DAB),
+  'DailyAssignmentBoard imports useSelectedCourseId')
+assert(/CROSSWINDS_COURSE_ID\s*=\s*'crossroads-gc'/.test(DAB),
+  "Crosswinds gate uses courseId 'crossroads-gc'")
+assert(/const\s+isCrosswinds\s*=\s*courseId === CROSSWINDS_COURSE_ID/.test(DAB),
+  'isCrosswinds boolean is derived from courseId === CROSSWINDS_COURSE_ID')
+
+// Status options + legacy normalization.
+for (const v of ['pending', 'in-progress', 'complete', 'blocked']) {
+  assert(new RegExp(`['"]${v}['"]`).test(DAB),
+    `status option "${v}" present in source`)
+}
+assert(/ASSIGNMENT_STATUS_OPTIONS\s*=\s*\[\s*'pending'\s*,\s*'in-progress'\s*,\s*'complete'\s*,\s*'blocked'\s*\]/.test(DAB),
+  'ASSIGNMENT_STATUS_OPTIONS lists pending, in-progress, complete, blocked')
+assert(/function\s+normalizeAssignmentStatus\b/.test(DAB),
+  'normalizeAssignmentStatus helper is defined')
+assert(/raw === 'assigned'[\s\S]{0,80}return ASSIGNMENT_STATUS_DEFAULT/.test(DAB),
+  "legacy status 'assigned' normalizes to the default ('pending')")
+assert(/ASSIGNMENT_STATUS_DEFAULT\s*=\s*'pending'/.test(DAB),
+  "default assignment status is 'pending'")
+
+// Notes input + Status select are rendered and Crosswinds-gated.
+assert(/isCrosswinds\s*&&\s*<th>Notes<\/th>/.test(DAB),
+  'Notes column header is Crosswinds-gated')
+assert(/isCrosswinds\s*&&\s*<th>Status<\/th>/.test(DAB),
+  'Status column header is Crosswinds-gated')
+assert(/className=\{styles\.notesInput\}/.test(DAB),
+  'Notes input uses styles.notesInput')
+assert(/className=\{styles\.statusSelect\}/.test(DAB),
+  'Status select uses styles.statusSelect')
+assert(/onBlur=\{\(\)\s*=>\s*handleNotesBlur\(assignment\)\}/.test(DAB),
+  'Notes input saves on blur (not every keystroke)')
+assert(/onChange=\{e\s*=>\s*handleStatusChange\(assignment,\s*e\.target\.value\)\}/.test(DAB),
+  'Status select saves immediately on change')
+
+// CSS surface exists for the two new classes.
+const CSS = readFileSync('src/pages/Crew/tabs/DailyAssignmentBoard.module.css', 'utf8')
+assert(/\.notesInput\s*\{/.test(CSS),
+  'DailyAssignmentBoard.module.css defines .notesInput')
+assert(/\.statusSelect\s*\{/.test(CSS),
+  'DailyAssignmentBoard.module.css defines .statusSelect')
+
+// Regression: the original 4 columns are still present.
+for (const col of ['Operator', 'Role', 'Task', 'Equipment']) {
+  assert(new RegExp(`<th>${col}<\\/th>`).test(DAB),
+    `existing column "${col}" still rendered`)
+}
+
+// Cross-file: assignmentsStore still exports patchCrewAssignment (couples the write path).
+const STORE = readFileSync('src/utils/assignments/assignmentsStore.js', 'utf8')
+assert(/export\s+async\s+function\s+patchCrewAssignment\b/.test(STORE),
+  'assignmentsStore still exports patchCrewAssignment')
+
+// Cross-file guard: DisplayBoard.jsx is NOT modified by Phase 8A.3a.
+// Static check — the file carries no Phase 8A.3a marker. (Mutation
+// checks here are limited to source-only; the spec promise is that
+// DisplayBoard's data shape and renderer are untouched.)
+const DB = readFileSync('src/pages/DisplayBoard/DisplayBoard.jsx', 'utf8')
+assert(!DB.includes('Phase 8A.3a'),
+  'DisplayBoard.jsx carries no Phase 8A.3a edits')
+
 // ── Summary ─────────────────────────────────────────────────────────────
 console.log(`\n${failed === 0 ? '✅' : '❌'}  ${passed} passed, ${failed} failed`)
 if (failed > 0) process.exit(1)

@@ -13,14 +13,33 @@ import { useMemo, useState } from 'react'
 import {
   createCrewAssignment,
   deleteCrewAssignment,
+  patchCrewAssignment,
   createEquipmentReservation,
   patchEquipmentReservation,
 } from '../../../utils/assignments/assignmentsStore'
+import { useSelectedCourseId } from '../../../utils/courses/courseStore'
 import { useToast } from '../../../utils/feedback/toastContext'
 import { useEmployeeSchedulesData } from '../../../utils/schedules/schedulesStore'
 import EquipmentPickerModal from './EquipmentPickerModal'
 import TasksManagerModal from './TasksManagerModal'
 import styles from './DailyAssignmentBoard.module.css'
+
+// Phase 8A.3a — Crosswinds-only Notes + Status per assignment row.
+// The crew_assignments table already carries `notes` and `status`
+// columns; this slice just surfaces them in the UI. Status options
+// match the TaskTracker vocabulary the user requested. Legacy
+// 'assigned' rows render as 'pending' until a steward chooses a
+// new value (no DB rewrite). UI-only; no schema, no worker, no
+// DisplayBoard change.
+const CROSSWINDS_COURSE_ID = 'crossroads-gc'
+const ASSIGNMENT_STATUS_OPTIONS = ['pending', 'in-progress', 'complete', 'blocked']
+const ASSIGNMENT_STATUS_DEFAULT = 'pending'
+
+function normalizeAssignmentStatus(raw) {
+  if (raw === 'assigned' || raw == null || raw === '') return ASSIGNMENT_STATUS_DEFAULT
+  if (ASSIGNMENT_STATUS_OPTIONS.includes(raw)) return raw
+  return ASSIGNMENT_STATUS_DEFAULT
+}
 
 function shiftDate(iso, days) {
   const d = new Date(`${iso}T00:00:00`)
@@ -107,6 +126,16 @@ export default function DailyAssignmentBoard({
   const [busyEmpId,    setBusyEmpId]    = useState(null)
   const [quickFilter,  setQuickFilter]  = useState(null)   // category key | null
   const [bulkBusy,     setBulkBusy]     = useState(null)   // 'copy' | 'clear' | null
+
+  // Phase 8A.3a — Crosswinds gate. The new Notes + Status columns
+  // are only rendered when the active course is Crosswinds. Every
+  // other course keeps the existing 4-column table unchanged.
+  const courseId        = useSelectedCourseId()
+  const isCrosswinds    = courseId === CROSSWINDS_COURSE_ID
+
+  // Local draft buffer for the notes input so we save on blur, not
+  // on every keystroke. Keyed by assignment id; clears on save.
+  const [notesDraft, setNotesDraft] = useState({})
 
   // ── Day-scoped derivations ────────────────────────────────────────────
   // Dropdown only surfaces tasks the operator could still perform —
@@ -307,6 +336,46 @@ export default function DailyAssignmentBoard({
 
   function handleClear(emp) {
     return handleTaskChange(emp, '')
+  }
+
+  // Phase 8A.3a — Notes + Status handlers (Crosswinds-gated render).
+  // Both write through patchCrewAssignment, which already does
+  // optimistic local update + server reconcile + refresh-on-error.
+  function handleNotesChange(assignmentId, value) {
+    setNotesDraft(prev => ({ ...prev, [assignmentId]: value }))
+  }
+  async function handleNotesBlur(assignment) {
+    if (!assignment) return
+    const draft = notesDraft[assignment.id]
+    if (draft === undefined) return
+    const next = draft.trim()
+    const current = (assignment.notes ?? '').trim()
+    if (next === current) {
+      setNotesDraft(prev => {
+        const { [assignment.id]: _, ...rest } = prev
+        return rest
+      })
+      return
+    }
+    try {
+      await patchCrewAssignment(assignment.id, { notes: next })
+      setNotesDraft(prev => {
+        const { [assignment.id]: _, ...rest } = prev
+        return rest
+      })
+    } catch (err) {
+      toast.error(`Notes save failed: ${err.message}`)
+    }
+  }
+  async function handleStatusChange(assignment, nextStatus) {
+    if (!assignment) return
+    if (!ASSIGNMENT_STATUS_OPTIONS.includes(nextStatus)) return
+    if (normalizeAssignmentStatus(assignment.status) === nextStatus) return
+    try {
+      await patchCrewAssignment(assignment.id, { status: nextStatus })
+    } catch (err) {
+      toast.error(`Status save failed: ${err.message}`)
+    }
   }
 
   // ── Copy Yesterday ────────────────────────────────────────────────────
@@ -589,7 +658,7 @@ export default function DailyAssignmentBoard({
           Employee Management to start assigning.
         </p>
       ) : (
-        <table className={styles.assignTable}>
+        <table className={styles.assignTable} data-crosswinds={isCrosswinds ? 'true' : 'false'}>
           <thead>
             <tr>
               <th>Operator</th>
@@ -597,6 +666,8 @@ export default function DailyAssignmentBoard({
               <th>Task</th>
               <th>Equipment</th>
               <th aria-label="Open equipment picker" />
+              {isCrosswinds && <th>Notes</th>}
+              {isCrosswinds && <th>Status</th>}
             </tr>
           </thead>
           <tbody>
@@ -688,6 +759,44 @@ export default function DailyAssignmentBoard({
                       {equipLabel}
                     </button>
                   </td>
+                  {isCrosswinds && (
+                    <td className={styles.notesCell}>
+                      {assignment ? (
+                        <input
+                          type="text"
+                          className={styles.notesInput}
+                          placeholder="Notes…"
+                          value={notesDraft[assignment.id] ?? assignment.notes ?? ''}
+                          onChange={e => handleNotesChange(assignment.id, e.target.value)}
+                          onBlur={() => handleNotesBlur(assignment)}
+                          disabled={busyEmpId === emp.id}
+                          aria-label={`Notes for ${emp.name}`}
+                        />
+                      ) : (
+                        <span className={styles.chipsEmpty}>—</span>
+                      )}
+                    </td>
+                  )}
+                  {isCrosswinds && (
+                    <td className={styles.statusCell}>
+                      {assignment ? (
+                        <select
+                          className={styles.statusSelect}
+                          data-status={normalizeAssignmentStatus(assignment.status)}
+                          value={normalizeAssignmentStatus(assignment.status)}
+                          onChange={e => handleStatusChange(assignment, e.target.value)}
+                          disabled={busyEmpId === emp.id}
+                          aria-label={`Status for ${emp.name}`}
+                        >
+                          {ASSIGNMENT_STATUS_OPTIONS.map(s => (
+                            <option key={s} value={s}>{s}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className={styles.chipsEmpty}>—</span>
+                      )}
+                    </td>
+                  )}
                 </tr>
               )
             })}
