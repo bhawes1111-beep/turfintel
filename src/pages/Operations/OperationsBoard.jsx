@@ -228,12 +228,19 @@ export default function OperationsBoard() {
   const { employees: EMPLOYEES }    = useCrewData()
 
   // ── Tab / layout ─────────────────────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState('center')
   // Phase 8A.1 — routing is course-aware and persisted per course in
   // localStorage. The initializer reads the live selected course id and
   // hydrates from storage; the effect below keeps the selection valid
   // and re-hydrated when the user switches courses.
   const courseId               = useSelectedCourseId()
+  // Phase 8A.2 — Crosswinds defaults to the employee-first Assignments
+  // tab (TaskTracker-style). Every other course keeps the original
+  // Daily Operations Center default. The initializer only runs on
+  // first render, so a mid-session course switch will not bounce the
+  // user away from a tab they are already on.
+  const [activeTab, setActiveTab] = useState(() =>
+    courseId === CROSSWINDS_COURSE_ID ? 'assignments' : 'center'
+  )
   const [routing, setRouting]  = useState(() => loadRoutingForCourse(courseId))
   const [panelOpen, setPanelOpen] = useState(false)
 

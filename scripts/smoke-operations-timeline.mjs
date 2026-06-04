@@ -421,6 +421,47 @@ for (const phrase of ['ROUTING_TAG_OPTIONS', 'routingChipsFromTags']) {
 assert(!tagsSrc.includes('Phase 8A.1'),
   'routingTags.js carries no Phase 8A.1 edits')
 
+// ── Phase 8A.2 — Crosswinds defaults Operations to Assignments ──────────
+// Source-only checks against OperationsBoard.jsx + a tiny cross-file
+// guard on CrewAssignments.jsx. Crosswinds (courseId 'crossroads-gc')
+// must land on the employee-first Assignments tab; every other course
+// keeps the original Daily Operations Center default. The task-first
+// 'board' tab must still exist (gated, not deleted) so non-Crosswinds
+// courses and direct navigation continue to work.
+section('Phase 8A.2 — default Crosswinds Operations to Assignments')
+
+// activeTab initializer is function-based (computed default, not literal).
+assert(/useState\(\(\)\s*=>\s*[\s\S]{0,200}\bCROSSWINDS_COURSE_ID\b[\s\S]{0,200}\)/.test(OB),
+  'activeTab initializer is a function (computed default)')
+
+// Crosswinds branch uses 'assignments'; non-Crosswinds falls back to 'center'.
+assert(/courseId === CROSSWINDS_COURSE_ID \? 'assignments' : 'center'/.test(OB),
+  "Crosswinds → 'assignments'; other courses → 'center'")
+
+// Both literal tab IDs appear in source.
+for (const tab of ['assignments', 'center']) {
+  assert(new RegExp(`['"]${tab}['"]`).test(OB),
+    `tab id "${tab}" present in source`)
+}
+
+// Reuse the Phase 8A.1 Crosswinds guard literal (couples 8A.1 + 8A.2).
+assert(/CROSSWINDS_COURSE_ID\s*=\s*'crossroads-gc'/.test(OB),
+  "Phase 8A.2 reuses the Phase 8A.1 CROSSWINDS_COURSE_ID ('crossroads-gc')")
+
+// The task-first board tab must still be registered in TABS.
+assert(/\{\s*id:\s*'board'\s*,\s*label:\s*'Operations Board'\s*\}/.test(OB),
+  "task-first 'board' tab is still registered in TABS")
+
+// The assignments tab still mounts <CrewAssignments />.
+assert(/activeTab === 'assignments'\s*&&\s*<CrewAssignments \/>/.test(OB),
+  "'assignments' tab still mounts <CrewAssignments />")
+
+// Cross-file guard: CrewAssignments.jsx still imports DailyAssignmentBoard
+// so the new default landing actually reaches the employee-first board.
+const CA = readFileSync('src/pages/Crew/tabs/CrewAssignments.jsx', 'utf8')
+assert(/import DailyAssignmentBoard from '\.\/DailyAssignmentBoard'/.test(CA),
+  'CrewAssignments.jsx still imports DailyAssignmentBoard')
+
 // ── Summary ─────────────────────────────────────────────────────────────
 console.log(`\n${failed === 0 ? '✅' : '❌'}  ${passed} passed, ${failed} failed`)
 if (failed > 0) process.exit(1)
