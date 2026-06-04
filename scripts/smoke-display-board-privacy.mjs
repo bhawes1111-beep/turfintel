@@ -97,5 +97,100 @@ function assert(cond, label, ctx) {
   assert(/if \(canViewPrivate\) out\.privateNotes = row\.private_notes/.test(api), 'serializer omits privateNotes unless authorized')
 }
 
+// ── Phase 8B.1a — Crosswinds shop-style Display Board layout shell ──────
+// Source-only checks against DisplayBoard.jsx + DisplayBoard.module.css.
+// The shell is Crosswinds-gated via courseId === 'crossroads-gc'; the
+// existing JSX subtrees are reused in place (sidebar / taskBoard /
+// notesColumn / dateStrip) — CSS Grid template areas do the layout
+// work via a data-shop-layout="true" attribute. No iteration model
+// change yet. boardMode + printMode preserved. Other courses get the
+// legacy layout byte-for-byte.
+{
+  console.log('— Phase 8B.1a: Crosswinds shop Display Board layout shell —')
+  const db  = readFileSync('src/pages/DisplayBoard/DisplayBoard.jsx', 'utf8')
+  const css = readFileSync('src/pages/DisplayBoard/DisplayBoard.module.css', 'utf8')
+
+  // Crosswinds gate.
+  assert(/useSelectedCourseId/.test(db),
+    'DisplayBoard imports/uses useSelectedCourseId')
+  assert(/courseId === 'crossroads-gc'/.test(db),
+    "DisplayBoard gates the shop layout on courseId === 'crossroads-gc'")
+  assert(/const\s+isCrosswinds\s*=\s*courseId === 'crossroads-gc'/.test(db),
+    'isCrosswinds boolean is derived from courseId')
+
+  // Shop layout marker on the root.
+  assert(/data-shop-layout=\{isCrosswinds \? 'true' : undefined\}/.test(db),
+    'root carries data-shop-layout="true" only for Crosswinds')
+  assert(/styles\.dbWrapShop/.test(db),
+    'Crosswinds root receives the styles.dbWrapShop class')
+
+  // Four region classes are used in JSX (dbLeft / dbCenter / dbRight / dbBottom).
+  for (const region of ['dbLeft', 'dbCenter', 'dbRight', 'dbBottom']) {
+    assert(new RegExp(`styles\\.${region}`).test(db),
+      `DisplayBoard.jsx wires styles.${region}`)
+  }
+
+  // Legacy classes still exist in JSX (other courses use them; the shop
+  // layout reuses the same subtrees so they need both classes).
+  for (const legacy of ['sidebar', 'taskBoard', 'notesColumn', 'dateStrip']) {
+    assert(new RegExp(`styles\\.${legacy}\\b`).test(db),
+      `legacy class styles.${legacy} still present in JSX`)
+  }
+
+  // CSS gates the layout on the data attribute and defines all five
+  // shop classes.
+  assert(/\.root\[data-shop-layout="true"\]/.test(css),
+    'CSS gates shop layout on .root[data-shop-layout="true"]')
+  for (const region of ['dbLeft', 'dbCenter', 'dbRight', 'dbBottom', 'dbAlertBanner']) {
+    assert(new RegExp(`\\.${region}\\b`).test(css),
+      `CSS defines .${region}`)
+  }
+  assert(/\.dbWrapShop\b/.test(css),
+    'CSS defines .dbWrapShop')
+
+  // The shop layout uses CSS Grid template areas.
+  assert(/grid-template-areas:\s*\n?\s*"left center right"/.test(css)
+      || /grid-template-areas:[^;]*"left center right"/.test(css),
+    'shop layout uses grid-template-areas: left center right / left bottom right')
+
+  // Legacy CSS classes preserved for non-Crosswinds courses.
+  for (const legacy of ['root', 'sidebar', 'taskBoard', 'notesColumn', 'dateStrip']) {
+    assert(new RegExp(`\\.${legacy}\\s*\\{`).test(css),
+      `legacy CSS class .${legacy} still defined`)
+  }
+
+  // Bottom alert banner is gated on high-priority alerts only.
+  assert(/liveAlerts\.find\(a => a\.priority === 'high'\)/.test(db),
+    'bottom alert banner picks only high-priority alerts')
+  assert(/isCrosswinds && topAlert &&/.test(db),
+    'bottom alert banner renders only when Crosswinds AND a topAlert exists')
+
+  // Print mode + board mode wiring preserved on the root.
+  assert(/data-print-mode=\{printMode \? 'true' : undefined\}/.test(db),
+    'data-print-mode attribute preserved on root')
+  assert(/data-board-mode=\{boardMode \? 'true' : undefined\}/.test(db),
+    'data-board-mode attribute added/preserved on root')
+  assert(/rootBoard/.test(db) && /rootPrint/.test(db),
+    'rootBoard + rootPrint classes still computed in rootCls')
+
+  // Media queries mirror the existing breakpoints so the shell
+  // collapses safely on tablet/mobile.
+  for (const bp of ['1280', '900', '600']) {
+    assert(new RegExp(`@media \\(max-width:\\s*${bp}px\\)`).test(css),
+      `CSS includes @media (max-width: ${bp}px) breakpoint`)
+  }
+
+  // Cross-file guard: stores / worker / D1 were NOT modified by 8B.1a.
+  const store = readFileSync('src/utils/assignments/assignmentsStore.js', 'utf8')
+  assert(!store.includes('Phase 8B.1a'),
+    'assignmentsStore.js carries no Phase 8B.1a edits')
+  const notes = readFileSync('src/utils/operations/notesStore.js', 'utf8')
+  assert(!notes.includes('Phase 8B.1a'),
+    'notesStore.js carries no Phase 8B.1a edits')
+  const app = readFileSync('src/App.jsx', 'utf8')
+  assert(!app.includes('Phase 8B.1a'),
+    'App.jsx carries no Phase 8B.1a edits')
+}
+
 console.log(`\n${passed} passed, ${failed} failed`)
 process.exit(failed === 0 ? 0 : 1)

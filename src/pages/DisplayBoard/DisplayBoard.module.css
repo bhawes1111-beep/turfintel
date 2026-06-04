@@ -1605,3 +1605,102 @@
   background: rgba(56, 189, 248, 0.16);
   border-color: rgba(56, 189, 248, 0.3);
 }
+
+/* ── Phase 8B.1a — Crosswinds shop-style Display Board layout shell ──
+   Gates on the root's data-shop-layout="true" attribute. Re-arranges
+   the four existing subtrees (sidebar / taskBoard / notesColumn /
+   dateStrip) into a 4-region grid via grid-template-areas. No
+   iteration model change — the center still renders event-first
+   TaskCards. The bottom region adds an optional high-priority alert
+   banner that lives inside the dateStrip footer.
+
+   Non-Crosswinds courses never receive this class / attribute and
+   keep the legacy 3-column + bottom-strip layout.
+
+   Print mode + board mode both still flow through the existing
+   .rootPrint / .rootBoard classes and the data-print-mode /
+   data-board-mode attributes; this block deliberately does NOT
+   override print rules. */
+
+.dbWrapShop {
+  /* The legacy `.root` already declares display: grid + the legacy
+     template. data-shop-layout overrides the template; other
+     property cascades stay. */
+}
+
+.root[data-shop-layout="true"] {
+  grid-template-areas:
+    "left center right"
+    "left bottom right";
+  grid-template-columns: var(--db-sidebar-w, 280px) 1fr var(--db-notes-w, 320px);
+  grid-template-rows: 1fr auto;
+  gap: 14px;
+}
+
+.root[data-shop-layout="true"] .dbLeft   { grid-area: left;   }
+.root[data-shop-layout="true"] .dbCenter { grid-area: center; }
+.root[data-shop-layout="true"] .dbRight  { grid-area: right;  }
+.root[data-shop-layout="true"] .dbBottom { grid-area: bottom; }
+
+.dbAlertBanner {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  padding: 10px 14px;
+  margin: 0 0 10px 0;
+  background: linear-gradient(90deg, rgba(239, 68, 68, 0.22), rgba(239, 68, 68, 0.08));
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  border-radius: 6px;
+  color: #fecaca;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.dbAlertBannerTitle {
+  font-size: calc(var(--db-base, 14px) + 2px);
+  text-transform: uppercase;
+}
+.dbAlertBannerMsg {
+  font-weight: 500;
+  font-size: var(--db-base, 14px);
+  color: #fee2e2;
+  opacity: 0.92;
+}
+
+/* TV / desktop — already covered by the default template above.
+   Mirror the existing breakpoints (1280 / 900 / 600) so the shell
+   collapses gracefully on tablet/mobile. The legacy non-Crosswinds
+   media queries already handle non-shop layouts. */
+@media (max-width: 1280px) {
+  .root[data-shop-layout="true"] {
+    grid-template-areas:
+      "left   center"
+      "left   right"
+      "bottom bottom";
+    grid-template-columns: var(--db-sidebar-w, 280px) 1fr;
+    grid-template-rows: 1fr auto auto;
+  }
+}
+@media (max-width: 900px) {
+  .root[data-shop-layout="true"] {
+    grid-template-areas:
+      "left"
+      "center"
+      "right"
+      "bottom";
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto auto;
+  }
+  .dbAlertBanner {
+    font-size: 13px;
+    padding: 8px 10px;
+  }
+}
+@media (max-width: 600px) {
+  .dbAlertBanner {
+    font-size: 12px;
+    padding: 7px 9px;
+    gap: 6px;
+  }
+}

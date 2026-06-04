@@ -27,7 +27,7 @@ import { useAssignmentsData, refreshAssignmentsData, patchCrewAssignment } from 
 import { useAlertsData,      refreshAlertsData }      from '../../utils/alerts/alertsStore'
 import { useCrewData,        refreshCrewData }        from '../../utils/crew/crewStore'
 import { useWeather }         from '../../utils/weather/useWeather'
-import { useSelectedCourse }  from '../../utils/courses/courseStore'
+import { useSelectedCourse, useSelectedCourseId } from '../../utils/courses/courseStore'
 import { useOperationsNotesData, refreshOperationsNotesData } from '../../utils/operations/notesStore'
 import { useAttachmentsForParent } from '../../utils/attachments/attachmentsStore'
 import { useToast } from '../../utils/feedback/toastContext'
@@ -138,6 +138,13 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
   const { employees }                               = useCrewData()
   const { current, forecast, sourceLabel: weatherSource } = useWeather()
   const selectedCourse                              = useSelectedCourse()
+  // Phase 8B.1a — Crosswinds shop-style Display Board layout shell.
+  // Drives `data-shop-layout="true"` on the root, which CSS uses to
+  // re-arrange the existing sidebar / taskBoard / notesColumn /
+  // dateStrip subtrees into a 4-region grid (left / center / right /
+  // bottom). No iteration model change yet — that's Phase 8B.1b.
+  const courseId       = useSelectedCourseId()
+  const isCrosswinds   = courseId === 'crossroads-gc'
   const { notes: dailyNotes }                       = useOperationsNotesData()
   const { observations: moistureObs }               = useMoistureData()
 
@@ -310,15 +317,28 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
   const weekIsos = weekOf(selectedDate)
   const todayIso = isoToday()
 
+  // Phase 8B.1a — pick a high-priority alert (if any) to surface in
+  // the bottom banner of the shop layout. Falls back silently to
+  // no-banner when none exist. Read only — pulls from liveAlerts,
+  // which is already capped/cleaned upstream.
+  const topAlert = isCrosswinds
+    ? (liveAlerts.find(a => a.priority === 'high') ?? null)
+    : null
+
   return (
-    <div className={rootCls} data-print-mode={printMode ? 'true' : undefined}>
+    <div
+      className={`${rootCls}${isCrosswinds ? ' ' + styles.dbWrapShop : ''}`}
+      data-print-mode={printMode ? 'true' : undefined}
+      data-board-mode={boardMode ? 'true' : undefined}
+      data-shop-layout={isCrosswinds ? 'true' : undefined}
+    >
 
       <div className={styles.printHeader} aria-hidden="true">
         {selectedCourse?.shortName ?? selectedCourse?.name ?? 'TurfIntel'}
         {' · '}{prettyDate(selectedDate)}
       </div>
 
-      <aside className={styles.sidebar}>
+      <aside className={`${styles.sidebar}${isCrosswinds ? ' ' + styles.dbLeft : ''}`}>
         <BrandHeader course={selectedCourse} />
 
         <DateClockPanel
@@ -345,7 +365,7 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
         <ModeToggle boardMode={boardMode} navigate={navigate} />
       </aside>
 
-      <main className={styles.taskBoard}>
+      <main className={`${styles.taskBoard}${isCrosswinds ? ' ' + styles.dbCenter : ''}`}>
         <header className={styles.taskBoardHeader}>
           <h1 className={styles.taskBoardTitle}>Daily Operations Board</h1>
           <span className={styles.taskBoardSubtitle}>
@@ -382,7 +402,7 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
         )}
       </main>
 
-      <aside className={styles.notesColumn}>
+      <aside className={`${styles.notesColumn}${isCrosswinds ? ' ' + styles.dbRight : ''}`}>
         <OperationalIntelligencePanel />
         <CrewBriefingPanel notes={dayNotes} alerts={liveAlerts} events={dayEvents} />
         <FieldConditionsPanel watchAreas={watchAreas} sprays={daySprays} />
@@ -412,7 +432,20 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
         </div>
       )}
 
-      <footer className={styles.dateStrip}>
+      <footer className={`${styles.dateStrip}${isCrosswinds ? ' ' + styles.dbBottom : ''}`}>
+        {isCrosswinds && topAlert && (
+          <div
+            className={styles.dbAlertBanner}
+            data-priority="high"
+            role="alert"
+            aria-live="polite"
+          >
+            <span className={styles.dbAlertBannerTitle}>{topAlert.title}</span>
+            {topAlert.message && (
+              <span className={styles.dbAlertBannerMsg}>{topAlert.message}</span>
+            )}
+          </div>
+        )}
         {weekIsos.map((iso, i) => {
           const dnum = Number(iso.slice(8, 10))
           const isSelected = iso === selectedDate
