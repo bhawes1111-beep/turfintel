@@ -192,5 +192,131 @@ function assert(cond, label, ctx) {
     'App.jsx carries no Phase 8B.1a edits')
 }
 
+// ── Phase 8B.1b — Operator-first Display Board cards (Crosswinds) ───────
+// Source-only checks against DisplayBoard.jsx + DisplayBoard.module.css.
+// The center grid renders one card per operator with a numbered list
+// of that operator's assignments. Per-assignment equipment chips use
+// the Phase 10 crewAssignmentId linkage. Falls back to legacy
+// TaskCard render when Crosswinds has tasks but no DB-backed crew
+// assignments yet. Non-Crosswinds courses keep the legacy event-first
+// TaskCard grid byte-for-byte.
+{
+  console.log('— Phase 8B.1b: Crosswinds operator-first Display Board cards —')
+  const db  = readFileSync('src/pages/DisplayBoard/DisplayBoard.jsx', 'utf8')
+  const css = readFileSync('src/pages/DisplayBoard/DisplayBoard.module.css', 'utf8')
+
+  // operatorCards useMemo derivation exists with the right dependencies.
+  assert(/const\s+operatorCards\s*=\s*useMemo\(/.test(db),
+    'operatorCards useMemo derivation defined')
+  assert(/\[dayCrew,\s*dayEvents,\s*equipByEvent,\s*employeeNameLookup\]/.test(db),
+    'operatorCards depends on dayCrew, dayEvents, equipByEvent, employeeNameLookup')
+
+  // Grouping key uses employeeId first, fallback to employeeName.
+  assert(/a\.employeeId\s*\?\?\s*a\.employeeName/.test(db),
+    'operator grouping key is employeeId ?? employeeName')
+
+  // Orphan rows skipped (no key, missing event).
+  assert(/if \(!key\) continue/.test(db),
+    'rows with no employee key are skipped')
+  assert(/if \(!event\) continue/.test(db),
+    'rows pointing to a missing event are skipped')
+
+  // Equipment chips: filter by crewAssignmentId === a.id (Phase 10 linkage).
+  assert(/r\.crewAssignmentId === a\.id/.test(db),
+    'equipment chips filter by reservation.crewAssignmentId === assignment.id')
+
+  // Fallback to event.equipment[] only when no linked AND no event chips.
+  assert(/event\.equipment[\s\S]{0,80}\.map\(\(name, i\) =>/.test(db),
+    'event.equipment[] fallback path exists for legacy events')
+  assert(/linkedChips\.length === 0 && allChipsForEvent\.length === 0/.test(db),
+    'fallback chips only when no linked AND no reservation rows exist')
+
+  // Sorts: assignments by startTime then priority; operators by name.
+  assert(/x\.startTime\b[\s\S]{0,60}localeCompare\(y\.startTime/.test(db),
+    'assignments sort by startTime')
+  assert(/PRIORITY_ORDER\[x\.priority\][\s\S]{0,60}PRIORITY_ORDER\[y\.priority\]/.test(db),
+    'assignments break ties by priority')
+  assert(/x\.employeeName[\s\S]{0,60}localeCompare\(y\.employeeName/.test(db),
+    'operators sort by employee name')
+
+  // Center grid render branches on isCrosswinds && operatorCards.length > 0.
+  assert(/\(isCrosswinds && operatorCards\.length > 0\)/.test(db),
+    "center grid branches on 'isCrosswinds && operatorCards.length > 0'")
+  assert(/operatorCards\.map\(op => \(\s*<OperatorCard /.test(db),
+    'operator-first branch maps operatorCards → <OperatorCard>')
+
+  // Legacy TaskCard render still present (fallback + non-Crosswinds).
+  assert(/dayEvents\.map\(ev => \(\s*<TaskCard/.test(db),
+    'legacy <TaskCard> render still present in the fallback / non-Crosswinds branch')
+
+  // OperatorCard helper component exists.
+  assert(/function\s+OperatorCard\s*\(\s*\{\s*operator\s*\}\s*\)/.test(db),
+    'OperatorCard local helper function is defined')
+  assert(/function\s+operatorInitials\s*\(/.test(db),
+    'operatorInitials helper for avatar text is defined')
+
+  // Numbered assignment list uses idx + 1.
+  assert(/\{idx \+ 1\}/.test(db),
+    'numbered assignment list renders {idx + 1}')
+
+  // Notes + status surfaces.
+  assert(/className=\{styles\.operatorAssignNotes\}/.test(db),
+    'assignment notes render via .operatorAssignNotes')
+  assert(/<CrewStatusControl\s*[\s\S]{0,200}assignmentId=\{a\.id\}/.test(db),
+    'OperatorCard mounts CrewStatusControl per assignment line')
+
+  // Equipment chip rendering inside the operator assignment row.
+  assert(/className=\{styles\.operatorAssignChips\}/.test(db),
+    'per-assignment equipment chips render via .operatorAssignChips')
+
+  // New CSS classes exist.
+  for (const cls of [
+    'operatorCard', 'operatorCardHeader', 'operatorAvatar',
+    'operatorNameBlock', 'operatorName', 'operatorRole',
+    'operatorCount', 'operatorAssignList', 'operatorAssignRow',
+    'operatorAssignTop', 'operatorAssignNum', 'operatorAssignTitle',
+    'operatorAssignMeta', 'operatorAssignNotes', 'operatorAssignChips',
+    'operatorEmpty',
+  ]) {
+    assert(new RegExp(`\\.${cls}\\b`).test(css),
+      `CSS defines .${cls}`)
+  }
+
+  // Print-safe: break-inside: avoid on the operator card.
+  assert(/\.operatorCard\b[\s\S]{0,400}break-inside:\s*avoid/.test(css),
+    'operator card carries break-inside: avoid for print')
+
+  // Existing 8B.1a / boardMode / printMode root attrs still preserved.
+  assert(/data-shop-layout=\{isCrosswinds \? 'true' : undefined\}/.test(db),
+    'Phase 8B.1a shop-layout marker still present')
+  assert(/data-print-mode=\{printMode \? 'true' : undefined\}/.test(db),
+    'data-print-mode attribute preserved')
+  assert(/data-board-mode=\{boardMode \? 'true' : undefined\}/.test(db),
+    'data-board-mode attribute preserved')
+  assert(/rootBoard/.test(db) && /rootPrint/.test(db),
+    'rootBoard + rootPrint classes still computed in rootCls')
+
+  // Status vocabulary unchanged (we reuse CrewStatusControl as-is).
+  for (const sym of ['PROGRESS_STATUSES', 'PROGRESS_LABEL', 'PROGRESS_SHORT']) {
+    assert(new RegExp(`\\b${sym}\\b`).test(db),
+      `status vocabulary symbol ${sym} still present`)
+  }
+
+  // Cross-file guards: stores / worker / app / Operations / Crew files
+  // carry no Phase 8B.1b marker.
+  for (const path of [
+    'src/utils/assignments/assignmentsStore.js',
+    'src/utils/operations/notesStore.js',
+    'src/App.jsx',
+    'src/pages/Operations/OperationsBoard.jsx',
+    'src/pages/Crew/tabs/DailyAssignmentBoard.jsx',
+    'src/pages/Crew/tabs/CrewAssignments.jsx',
+  ]) {
+    const src = readFileSync(path, 'utf8')
+    assert(!src.includes('Phase 8B.1b'),
+      `${path} carries no Phase 8B.1b edits`)
+  }
+}
+
 console.log(`\n${passed} passed, ${failed} failed`)
 process.exit(failed === 0 ? 0 : 1)

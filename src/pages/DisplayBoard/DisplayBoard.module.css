@@ -1704,3 +1704,157 @@
     gap: 6px;
   }
 }
+
+/* ── Phase 8B.1b — Operator-first cards (Crosswinds shop view) ──────────
+   Slots into the existing .tasksGrid auto-fill layout — no grid
+   changes needed. Inherits dark turf palette + --db-base scaling so
+   it grows in boardMode for TV viewing. break-inside: avoid keeps
+   one operator's tasks together when printed. */
+
+.operatorCard {
+  background: linear-gradient(165deg, rgba(13, 26, 19, 0.95), rgba(6, 18, 12, 0.95));
+  border: 1px solid rgba(74, 222, 128, 0.18);
+  border-left: 3px solid rgba(74, 222, 128, 0.55);
+  border-radius: 8px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: var(--db-fg, #d4edd4);
+  break-inside: avoid;
+}
+
+.operatorCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(74, 222, 128, 0.12);
+}
+
+.operatorAvatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(74, 222, 128, 0.18);
+  color: #4ade80;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  font-size: calc(var(--db-base, 14px) + 2px);
+  letter-spacing: 0.5px;
+  flex: 0 0 38px;
+}
+
+.operatorNameBlock {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.operatorName {
+  font-size: calc(var(--db-base, 14px) + 4px);
+  font-weight: 600;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.operatorRole {
+  font-size: calc(var(--db-base, 14px) - 1px);
+  color: var(--db-fg-mute, rgba(212, 237, 212, 0.55));
+  margin-top: 2px;
+}
+
+.operatorCount {
+  font-size: calc(var(--db-base, 14px) - 1px);
+  color: var(--db-fg-mute, rgba(212, 237, 212, 0.55));
+  background: rgba(74, 222, 128, 0.08);
+  border: 1px solid rgba(74, 222, 128, 0.18);
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.operatorAssignList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.operatorAssignRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  background: rgba(74, 222, 128, 0.04);
+  border-left: 3px solid rgba(74, 222, 128, 0.4);
+  border-radius: 4px;
+}
+
+.operatorAssignRow[data-progress="completed"] { border-left-color: #4ade80; opacity: 0.78; }
+.operatorAssignRow[data-progress="delayed"]   { border-left-color: #fbbf24; }
+.operatorAssignRow[data-progress="blocked"]   { border-left-color: #ef4444; }
+
+.operatorAssignTop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.operatorAssignNum {
+  font-weight: 700;
+  color: #4ade80;
+  font-size: calc(var(--db-base, 14px));
+  min-width: 1.5em;
+}
+
+.operatorAssignTitle {
+  font-size: calc(var(--db-base, 14px) + 2px);
+  font-weight: 500;
+  flex: 1 1 auto;
+}
+
+.operatorAssignMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: calc(var(--db-base, 14px) - 1px);
+  color: var(--db-fg-mute, rgba(212, 237, 212, 0.55));
+}
+
+.operatorAssignNotes {
+  font-size: calc(var(--db-base, 14px) - 1px);
+  color: rgba(212, 237, 212, 0.82);
+  margin: 4px 0 0 0;
+  padding: 6px 8px;
+  background: rgba(74, 222, 128, 0.06);
+  border-left: 2px solid rgba(74, 222, 128, 0.3);
+  border-radius: 3px;
+}
+
+.operatorAssignChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.operatorEmpty {
+  font-size: var(--db-base, 14px);
+  color: var(--db-fg-mute, rgba(212, 237, 212, 0.55));
+  margin: 0;
+  padding: 8px 10px;
+  font-style: italic;
+}
+
+@media (max-width: 600px) {
+  .operatorCard         { padding: 10px 12px; }
+  .operatorAvatar       { width: 32px; height: 32px; flex: 0 0 32px; }
+  .operatorName         { font-size: calc(var(--db-base, 14px) + 2px); }
+  .operatorAssignTitle  { font-size: var(--db-base, 14px); }
+}

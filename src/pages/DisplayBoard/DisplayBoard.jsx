@@ -281,6 +281,69 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
     return m
   }, [dayCrew])
 
+  // ── Phase 8B.1b — operator-first card derivation (Crosswinds shop view) ─
+  // Re-buckets the existing dayCrew rows by operator instead of by event.
+  // Each operator → numbered assignment list, status, notes, and the
+  // Phase 10 linked equipment chips for that specific assignment.
+  // Orphan rows (no employee key, or pointing to a missing event) are
+  // skipped. Unlinked task-level chips are intentionally omitted here
+  // to avoid duplication across multiple operators on the same event;
+  // they remain visible in the EquipmentStatusPanel in the sidebar.
+  const operatorCards = useMemo(() => {
+    const eventsById = new Map(dayEvents.map(e => [e.id, e]))
+    const byOperator = new Map()
+    for (const a of dayCrew) {
+      const key = a.employeeId ?? a.employeeName
+      if (!key) continue
+      const event = eventsById.get(a.calendarEventId)
+      if (!event) continue
+      if (!byOperator.has(key)) {
+        byOperator.set(key, {
+          key,
+          employeeId:   a.employeeId ?? null,
+          employeeName: a.employeeId
+                          ? (employeeNameLookup.get(a.employeeId) ?? a.employeeName)
+                          : a.employeeName,
+          role:         a.role ?? null,
+          assignments:  [],
+        })
+      }
+      const op = byOperator.get(key)
+      const allChipsForEvent = equipByEvent.get(event.id) ?? []
+      const linkedChips = allChipsForEvent
+        .filter(r => r.crewAssignmentId === a.id)
+        .map(r => ({ id: r.id, name: r.equipmentName, status: r.status }))
+      // Fallback to event.equipment[] payload only when the event has
+      // zero reservation rows at all (legacy data path).
+      const fallbackChips = (linkedChips.length === 0 && allChipsForEvent.length === 0)
+        ? (event.equipment ?? []).map((name, i) => ({
+            id: `eq-${event.id}-${i}`, name, status: null,
+          }))
+        : []
+      op.assignments.push({
+        id:        a.id,
+        title:     event.title,
+        startTime: event.startTime ?? null,
+        location:  event.location  ?? null,
+        eventType: event.eventType ?? null,
+        priority:  event.priority  ?? null,
+        status:    a.status ?? 'assigned',
+        notes:     a.notes  ?? '',
+        chips:     linkedChips.length > 0 ? linkedChips : fallbackChips,
+      })
+    }
+    for (const op of byOperator.values()) {
+      op.assignments.sort((x, y) => {
+        const t = (x.startTime ?? '').localeCompare(y.startTime ?? '')
+        if (t !== 0) return t
+        return (PRIORITY_ORDER[x.priority] ?? 9) - (PRIORITY_ORDER[y.priority] ?? 9)
+      })
+    }
+    return [...byOperator.values()].sort((x, y) =>
+      (x.employeeName ?? '').localeCompare(y.employeeName ?? '')
+    )
+  }, [dayCrew, dayEvents, equipByEvent, employeeNameLookup])
+
   // ── Crew-facing weather impacts (rule-based, from existing weather) ─────
   const impacts = useMemo(
     () => weatherImpacts(current ?? {}, forecast ?? []),
@@ -386,6 +449,16 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
                 </p>
               </>
             )}
+          </div>
+        ) : (isCrosswinds && operatorCards.length > 0) ? (
+          /* Phase 8B.1b — Crosswinds operator-first cards.
+             Fall back to the legacy TaskCard grid when Crosswinds has
+             tasks but no DB-backed crew assignments yet, so the board
+             never goes blank. */
+          <div className={styles.tasksGrid}>
+            {operatorCards.map(op => (
+              <OperatorCard key={op.key} operator={op} />
+            ))}
           </div>
         ) : (
           <div className={styles.tasksGrid}>
@@ -620,6 +693,94 @@ function ModeToggle({ boardMode, navigate }) {
     >
       Board Mode →
     </button>
+  )
+}
+
+/* ── Operator card (Phase 8B.1b — Crosswinds shop view) ─────────────────
+ * Renders one card per assigned operator with a numbered list of that
+ * operator's assignments for the selected day. Each assignment line
+ * carries: title + time + location + meta, optional notes, linked
+ * equipment chips, and the existing CrewStatusControl picker so the
+ * shop can mark progress directly from the TV. Read-only on layout —
+ * the only mutating affordance is the status/notes picker, which
+ * writes through patchCrewAssignment exactly like TaskCard does. */
+
+function operatorInitials(name) {
+  if (!name) return '?'
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '?'
+  if (parts.length === 1) return parts[0][0].toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+}
+
+function OperatorCard({ operator }) {
+  const { employeeName, role, assignments } = operator
+  return (
+    <article className={styles.operatorCard}>
+      <header className={styles.operatorCardHeader}>
+        <span className={styles.operatorAvatar} aria-hidden="true">
+          {operatorInitials(employeeName)}
+        </span>
+        <div className={styles.operatorNameBlock}>
+          <h2 className={styles.operatorName}>{employeeName ?? 'Unassigned'}</h2>
+          {role && <span className={styles.operatorRole}>{role}</span>}
+        </div>
+        <span className={styles.operatorCount}>
+          {assignments.length} {assignments.length === 1 ? 'task' : 'tasks'}
+        </span>
+      </header>
+
+      {assignments.length === 0 ? (
+        <p className={styles.operatorEmpty}>No assignments today.</p>
+      ) : (
+        <ol className={styles.operatorAssignList}>
+          {assignments.map((a, idx) => (
+            <li
+              key={a.id}
+              className={styles.operatorAssignRow}
+              data-progress={a.status}
+              data-priority={a.priority ?? undefined}
+            >
+              <div className={styles.operatorAssignTop}>
+                <span className={styles.operatorAssignNum}>{idx + 1}.</span>
+                <span className={styles.operatorAssignTitle}>{a.title}</span>
+                <CrewStatusControl
+                  assignmentId={a.id}
+                  status={a.status}
+                  notes={a.notes}
+                />
+              </div>
+              {(a.startTime || a.location || a.eventType) && (
+                <div className={styles.operatorAssignMeta}>
+                  {a.startTime && <span>{fmtTime(a.startTime)}</span>}
+                  {a.location  && <span>{a.location}</span>}
+                  {a.eventType && (
+                    <span>{EVENT_TYPE_LABEL[a.eventType] ?? a.eventType}</span>
+                  )}
+                </div>
+              )}
+              {a.notes && (
+                <p className={styles.operatorAssignNotes}>{a.notes}</p>
+              )}
+              {a.chips.length > 0 && (
+                <div className={styles.operatorAssignChips}>
+                  {a.chips.map(chip => (
+                    <span
+                      key={chip.id}
+                      className={styles.chip}
+                      data-status={chip.status}
+                      title={chip.status ? `${chip.name} · ${chip.status}` : chip.name}
+                    >
+                      {chip.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </li>
+          ))}
+        </ol>
+      )}
+    </article>
   )
 }
 
