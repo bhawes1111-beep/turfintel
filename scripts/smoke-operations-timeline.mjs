@@ -349,6 +349,78 @@ assert(/useEffect\(\s*\(\)\s*=>\s*\{\s*saveTimelineDefault\(timelineOpen\)\s*\}\
 assert(/sec\.title === 'Timeline Options' \?/.test(OB),
   'settings panel branches on Timeline Options to render the toggle')
 
+// ── Phase 8A.1 — Crosswinds course-aware routing options ────────────────
+// Source-only checks against OperationsBoard.jsx + a routingTags
+// "do-not-touch" guard. Crosswinds (courseId 'crossroads-gc') is
+// limited to Front 9 First / Back 9 First; every other course
+// keeps the original 5 options. Selection is persisted per course
+// in localStorage under turfintel:operations:routing/<courseId>/v1.
+section('Phase 8A.1 — Crosswinds routing options')
+
+// Verified Crosswinds courseId guard literal.
+assert(/CROSSWINDS_COURSE_ID\s*=\s*'crossroads-gc'/.test(OB),
+  "Crosswinds courseId is 'crossroads-gc' (per courseStore default)")
+
+// Crosswinds-specific options.
+assert(/CROSSWINDS_ROUTING_OPTIONS\s*=\s*\[\s*'Front 9 First'\s*,\s*'Back 9 First'\s*\]/.test(OB),
+  'Crosswinds branch returns only Front 9 First and Back 9 First')
+for (const v of ['Front 9 First', 'Back 9 First']) {
+  assert(new RegExp(`['"]${v}['"]`).test(OB),
+    `routing option "${v}" present in source`)
+}
+
+// Non-Crosswinds default options preserved verbatim.
+for (const v of ['Press & Roll', 'Hammer', 'Normal', 'Modified', 'Event Prep']) {
+  assert(new RegExp(`['"]${v}['"]`).test(OB),
+    `default routing option "${v}" preserved for non-Crosswinds courses`)
+}
+
+// Helper functions exist.
+for (const fn of ['routingOptionsFor', 'defaultRoutingFor', 'routingStorageKey',
+                  'loadRoutingForCourse', 'saveRoutingForCourse']) {
+  assert(new RegExp(`function\\s+${fn}\\b`).test(OB),
+    `OperationsBoard defines ${fn}() helper`)
+}
+
+// localStorage key format includes the per-course namespace.
+assert(/`turfintel:operations:routing\/\$\{courseId\}\/v1`/.test(OB),
+  'routing localStorage key is per-course: turfintel:operations:routing/<courseId>/v1')
+
+// Crosswinds branch is the only one that returns the 2-option list;
+// every other courseId falls back to the 5-option default.
+assert(/courseId === CROSSWINDS_COURSE_ID\) return CROSSWINDS_ROUTING_OPTIONS/.test(OB),
+  'routingOptionsFor branches on CROSSWINDS_COURSE_ID')
+assert(/return DEFAULT_ROUTING_OPTIONS/.test(OB),
+  'routingOptionsFor falls back to DEFAULT_ROUTING_OPTIONS for non-Crosswinds')
+
+// Invalid saved routing must fall back safely (loader checks
+// includes(raw) against the per-course list and returns the default).
+assert(/routingOptionsFor\(courseId\)\.includes\(raw\)/.test(OB),
+  'loadRoutingForCourse validates saved value against the per-course list')
+
+// State wiring: routing state is initialized from loadRoutingForCourse,
+// re-hydrated on course change, and persisted on each routing change.
+assert(/useState\(\s*\(\)\s*=>\s*loadRoutingForCourse\(courseId\)\s*\)/.test(OB),
+  'routing state initialized from loadRoutingForCourse(courseId)')
+assert(/setRouting\(loadRoutingForCourse\(courseId\)\)/.test(OB),
+  'routing re-hydrates when courseId changes')
+assert(/saveRoutingForCourse\(courseId,\s*routing\)/.test(OB),
+  'routing persists per course on change')
+
+// The dropdown renders the course-aware list, not the legacy constant.
+assert(/routingOptionsFor\(courseId\)\.map\(r =>/.test(OB),
+  'routing <select> maps over routingOptionsFor(courseId)')
+
+// "Do not touch routingTags" guard — Phase 8A.1 must not modify the
+// separate event-tag system in src/utils/routing/routingTags.js.
+const tagsSrc = readFileSync('src/utils/routing/routingTags.js', 'utf8')
+for (const phrase of ['ROUTING_TAG_OPTIONS', 'routingChipsFromTags']) {
+  assert(tagsSrc.includes(phrase),
+    `routingTags.js still exports ${phrase} (Phase 8A.1 left it untouched)`)
+}
+assert(!tagsSrc.includes('Phase 8A.1'),
+  'routingTags.js carries no Phase 8A.1 edits')
+
 // ── Summary ─────────────────────────────────────────────────────────────
 console.log(`\n${failed === 0 ? '✅' : '❌'}  ${passed} passed, ${failed} failed`)
 if (failed > 0) process.exit(1)

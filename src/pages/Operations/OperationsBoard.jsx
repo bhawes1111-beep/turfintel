@@ -23,13 +23,51 @@ import {
   createEquipmentReservation,
   deleteCrewAssignment,
 } from '../../utils/assignments/assignmentsStore'
+import { useSelectedCourseId } from '../../utils/courses/courseStore'
 import TagPicker from '../../components/routing/TagPicker'
 import workspace from '../../styles/workspace.module.css'
 import styles from './OperationsBoard.module.css'
 
 const TODAY = '2026-05-08'
 
-const ROUTING_OPTIONS = ['Press & Roll', 'Hammer', 'Normal', 'Modified', 'Event Prep']
+// Phase 8A.1 — Routing options are now course-aware.
+//
+// Crosswinds (courseId 'crossroads-gc') only uses two routings:
+// Front 9 First / Back 9 First. Every other course keeps the
+// original 5-option list. The selection persists per course in
+// localStorage so the supervisor's last choice survives reload.
+// UI-only; never touches D1 or any API.
+const CROSSWINDS_COURSE_ID    = 'crossroads-gc'
+const CROSSWINDS_ROUTING_OPTIONS = ['Front 9 First', 'Back 9 First']
+const DEFAULT_ROUTING_OPTIONS    = ['Press & Roll', 'Hammer', 'Normal', 'Modified', 'Event Prep']
+
+function routingOptionsFor(courseId) {
+  if (courseId === CROSSWINDS_COURSE_ID) return CROSSWINDS_ROUTING_OPTIONS
+  return DEFAULT_ROUTING_OPTIONS
+}
+function defaultRoutingFor(courseId) {
+  return routingOptionsFor(courseId)[0]
+}
+function routingStorageKey(courseId) {
+  return `turfintel:operations:routing/${courseId}/v1`
+}
+function loadRoutingForCourse(courseId) {
+  const fallback = defaultRoutingFor(courseId)
+  if (!courseId) return fallback
+  if (typeof window === 'undefined' || !window.localStorage) return fallback
+  try {
+    const raw = window.localStorage.getItem(routingStorageKey(courseId))
+    if (raw && routingOptionsFor(courseId).includes(raw)) return raw
+  } catch { /* privacy / quota */ }
+  return fallback
+}
+function saveRoutingForCourse(courseId, value) {
+  if (!courseId) return
+  if (typeof window === 'undefined' || !window.localStorage) return
+  if (!routingOptionsFor(courseId).includes(value)) return
+  try { window.localStorage.setItem(routingStorageKey(courseId), value) } catch { /* no-op */ }
+}
+
 const NOTES_TABS      = ['Daily', 'Weather', 'Super', 'Geo', 'Alerts']
 
 const TIMELINE_START = 5
@@ -191,7 +229,12 @@ export default function OperationsBoard() {
 
   // ── Tab / layout ─────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState('center')
-  const [routing,   setRouting]   = useState('Press & Roll')
+  // Phase 8A.1 — routing is course-aware and persisted per course in
+  // localStorage. The initializer reads the live selected course id and
+  // hydrates from storage; the effect below keeps the selection valid
+  // and re-hydrated when the user switches courses.
+  const courseId               = useSelectedCourseId()
+  const [routing, setRouting]  = useState(() => loadRoutingForCourse(courseId))
   const [panelOpen, setPanelOpen] = useState(false)
 
   // ── Board interaction ─────────────────────────────────────────────────────
@@ -229,6 +272,21 @@ export default function OperationsBoard() {
 
   // ── Phase 7Y.2: persist timeline open/collapsed whenever it changes ────
   useEffect(() => { saveTimelineDefault(timelineOpen) }, [timelineOpen])
+
+  // ── Phase 8A.1: re-hydrate routing whenever the active course changes ─
+  // so that Crosswinds users land on Front 9 First and other courses fall
+  // back to their saved selection or 'Press & Roll'. Also guards against
+  // a saved value that is invalid for the new course.
+  useEffect(() => {
+    setRouting(loadRoutingForCourse(courseId))
+  }, [courseId])
+
+  // ── Phase 8A.1: persist routing per course whenever it changes ────────
+  useEffect(() => {
+    if (!courseId) return
+    if (!routingOptionsFor(courseId).includes(routing)) return
+    saveRoutingForCourse(courseId, routing)
+  }, [courseId, routing])
 
   // ── Live clock ────────────────────────────────────────────────────────────
   const [now, setNow] = useState(() => new Date())
@@ -673,7 +731,7 @@ export default function OperationsBoard() {
                   value={routing}
                   onChange={e => setRouting(e.target.value)}
                 >
-                  {ROUTING_OPTIONS.map(r => <option key={r}>{r}</option>)}
+                  {routingOptionsFor(courseId).map(r => <option key={r}>{r}</option>)}
                 </select>
               </div>
               {weatherWarnings.length > 0 && (
