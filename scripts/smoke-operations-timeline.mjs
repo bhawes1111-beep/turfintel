@@ -542,6 +542,62 @@ const DB = readFileSync('src/pages/DisplayBoard/DisplayBoard.jsx', 'utf8')
 assert(!DB.includes('Phase 8A.3a'),
   'DisplayBoard.jsx carries no Phase 8A.3a edits')
 
+// ── Phase 8A.3b — Reduce clutter on Crosswinds Assignments board ────────
+// Three top-of-board sections (schedule notice, summary chips,
+// quick-assign category strip) must be wrapped behind !isCrosswinds
+// so the Crosswinds view is quieter. Other courses keep them.
+// CrewAssignments.jsx (StatusBoard / Unassigned / Pressure Signals)
+// and DisplayBoard.jsx are explicitly untouched.
+section('Phase 8A.3b — Crosswinds Assignments board declutter')
+
+// Schedule notice block is gated behind !isCrosswinds. The wrapper
+// immediately precedes the existing usingScheduleFallback ternary.
+assert(/\{\s*!isCrosswinds\s*&&\s*\(usingScheduleFallback\s*\?/.test(DAB),
+  'schedule notice block is wrapped behind !isCrosswinds')
+
+// Summary chips row is gated behind !isCrosswinds.
+assert(/\{\s*!isCrosswinds\s*&&\s*\(\s*[\s\S]{0,200}<div className=\{styles\.summaryRow\}/.test(DAB),
+  'summary chips row is wrapped behind !isCrosswinds')
+
+// Quick-assign category strip is gated behind !isCrosswinds.
+assert(/\{\s*!isCrosswinds\s*&&\s*\(\s*[\s\S]{0,200}<div className=\{styles\.quickStrip\}/.test(DAB),
+  'quick-assign category strip is wrapped behind !isCrosswinds')
+
+// The assignTable itself must NOT be wrapped behind !isCrosswinds —
+// it has to render for Crosswinds too. Sanity-check the open tag.
+assert(/<table className=\{styles\.assignTable\}/.test(DAB),
+  'assignTable still renders (not Crosswinds-gated)')
+
+// Phase 8A.3a Notes + Status columns still present (regression
+// couple — 8A.3a ↔ 8A.3b).
+assert(/isCrosswinds\s*&&\s*<th>Notes<\/th>/.test(DAB),
+  'Phase 8A.3a Notes column header still present')
+assert(/isCrosswinds\s*&&\s*<th>Status<\/th>/.test(DAB),
+  'Phase 8A.3a Status column header still present')
+
+// Header buttons (Tasks / Copy Yesterday / Clear Day) are still
+// rendered unconditionally — per spec they stay visible for now.
+assert(/Tasks \(\{dayEvents\.length\}\)/.test(DAB),
+  'Tasks button still visible (not Crosswinds-gated yet)')
+assert(/Copy Yesterday/.test(DAB),
+  'Copy Yesterday button still visible (not Crosswinds-gated yet)')
+assert(/Clear Day/.test(DAB),
+  'Clear Day button still visible (not Crosswinds-gated yet)')
+
+// Non-Crosswinds copy still present (other courses still see these).
+assert(/Using active employee fallback/.test(DAB),
+  'non-Crosswinds schedule fallback copy still in source')
+assert(/Scheduled crew:/.test(DAB),
+  'non-Crosswinds scheduled-crew copy still in source')
+
+// Cross-file guard: CrewAssignments.jsx carries no Phase 8A.3b marker.
+assert(!CA.includes('Phase 8A.3b'),
+  'CrewAssignments.jsx carries no Phase 8A.3b edits')
+
+// Cross-file guard: DisplayBoard.jsx carries no Phase 8A.3b marker.
+assert(!DB.includes('Phase 8A.3b'),
+  'DisplayBoard.jsx carries no Phase 8A.3b edits')
+
 // ── Summary ─────────────────────────────────────────────────────────────
 console.log(`\n${failed === 0 ? '✅' : '❌'}  ${passed} passed, ${failed} failed`)
 if (failed > 0) process.exit(1)

@@ -574,7 +574,10 @@ export default function DailyAssignmentBoard({
         </div>
       </header>
 
-      {usingScheduleFallback ? (
+      {/* Phase 8A.3b — schedule notice, summary chips, and quick-assign
+          category strip are hidden on Crosswinds to declutter the board.
+          Other courses keep the full Phase 11/12 surface. */}
+      {!isCrosswinds && (usingScheduleFallback ? (
         <div className={styles.scheduleNotice}>
           <strong>Using active employee fallback —</strong> no schedules
           configured. Add weekly shifts in
@@ -587,63 +590,67 @@ export default function DailyAssignmentBoard({
           {prettyDate(selectedDate)}. Edit shifts in
           <strong> Employee Management &gt; Schedule</strong>.
         </div>
+      ))}
+
+      {/* Summary chips (Phase 12) — hidden on Crosswinds (Phase 8A.3b). */}
+      {!isCrosswinds && (
+        <div className={styles.summaryRow}>
+          <div className={styles.summaryChip} data-tone="info">
+            <span className={styles.summaryChipNum}>{summary.assigned}</span>
+            <span className={styles.summaryChipLabel}>Assigned</span>
+          </div>
+          <div className={styles.summaryChip} data-tone={summary.unassigned > 0 ? 'warn' : 'ok'}>
+            <span className={styles.summaryChipNum}>{summary.unassigned}</span>
+            <span className={styles.summaryChipLabel}>Unassigned</span>
+          </div>
+          <div className={styles.summaryChip} data-tone="info">
+            <span className={styles.summaryChipNum}>{summary.linkedEquipment}</span>
+            <span className={styles.summaryChipLabel}>Equipment Linked</span>
+          </div>
+          <div className={styles.summaryChip} data-tone={summary.openTasks > 0 ? 'warn' : 'ok'}>
+            <span className={styles.summaryChipNum}>{summary.openTasks}</span>
+            <span className={styles.summaryChipLabel}>Open Tasks</span>
+          </div>
+        </div>
       )}
 
-      {/* Summary chips (Phase 12) */}
-      <div className={styles.summaryRow}>
-        <div className={styles.summaryChip} data-tone="info">
-          <span className={styles.summaryChipNum}>{summary.assigned}</span>
-          <span className={styles.summaryChipLabel}>Assigned</span>
-        </div>
-        <div className={styles.summaryChip} data-tone={summary.unassigned > 0 ? 'warn' : 'ok'}>
-          <span className={styles.summaryChipNum}>{summary.unassigned}</span>
-          <span className={styles.summaryChipLabel}>Unassigned</span>
-        </div>
-        <div className={styles.summaryChip} data-tone="info">
-          <span className={styles.summaryChipNum}>{summary.linkedEquipment}</span>
-          <span className={styles.summaryChipLabel}>Equipment Linked</span>
-        </div>
-        <div className={styles.summaryChip} data-tone={summary.openTasks > 0 ? 'warn' : 'ok'}>
-          <span className={styles.summaryChipNum}>{summary.openTasks}</span>
-          <span className={styles.summaryChipLabel}>Open Tasks</span>
-        </div>
-      </div>
-
-      {/* Quick-assign category strip (Phase 12) */}
-      <div className={styles.quickStrip} role="tablist">
-        {QUICK_CATEGORIES.map(c => {
-          const count    = categoryCounts[c.key] ?? 0
-          const isActive = quickFilter === c.key
-          return (
+      {/* Quick-assign category strip (Phase 12) — hidden on Crosswinds (Phase 8A.3b). */}
+      {!isCrosswinds && (
+        <div className={styles.quickStrip} role="tablist">
+          {QUICK_CATEGORIES.map(c => {
+            const count    = categoryCounts[c.key] ?? 0
+            const isActive = quickFilter === c.key
+            return (
+              <button
+                key={c.key}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                className={`${styles.quickChip} ${isActive ? styles.quickChipOn : ''}`}
+                data-key={c.key}
+                disabled={count === 0}
+                onClick={() => setQuickFilter(isActive ? null : c.key)}
+                title={count > 0
+                  ? `Filter dropdowns to ${count} ${c.label} task${count !== 1 ? 's' : ''}`
+                  : `No ${c.label} tasks today`}
+              >
+                {c.label}
+                <span className={styles.quickChipCount}>{count}</span>
+              </button>
+            )
+          })}
+          {quickFilter && (
             <button
-              key={c.key}
               type="button"
-              role="tab"
-              aria-selected={isActive}
-              className={`${styles.quickChip} ${isActive ? styles.quickChipOn : ''}`}
-              data-key={c.key}
-              disabled={count === 0}
-              onClick={() => setQuickFilter(isActive ? null : c.key)}
-              title={count > 0
-                ? `Filter dropdowns to ${count} ${c.label} task${count !== 1 ? 's' : ''}`
-                : `No ${c.label} tasks today`}
+              className={styles.quickChipClear}
+              onClick={() => setQuickFilter(null)}
+              title="Show all tasks"
             >
-              {c.label}
-              <span className={styles.quickChipCount}>{count}</span>
+              Clear filter
             </button>
-          )
-        })}
-        {quickFilter && (
-          <button
-            type="button"
-            className={styles.quickChipClear}
-            onClick={() => setQuickFilter(null)}
-            title="Show all tasks"
-          >
-            Clear filter
-          </button>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       {dayEvents.length === 0 && (
         <p className={styles.empty}>
