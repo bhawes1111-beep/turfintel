@@ -453,7 +453,9 @@ console.log('— Sprays workspace registers Program Planner tab')
 
   assert(/from\s+['"]\.\/tabs\/SprayProgramPlanner['"]/.test(shell),
     "Sprays imports the new SprayProgramPlanner tab")
-  const tabsMatch = shell.match(/const\s+TABS\s*=\s*\[([^\]]+)\]/)
+  // Phase 9B.1 renamed the constant to LEGACY_TABS while preserving
+  // the same 10-label payload for non-Crosswinds courses.
+  const tabsMatch = shell.match(/const\s+(?:LEGACY_TABS|TABS)\s*=\s*\[([^\]]+)\]/)
   assert(tabsMatch && /'Program Planner'/.test(tabsMatch[1]),
     "'Program Planner' present in TABS")
   assert(/activeTab\s*===\s*'Program Planner'\s*&&\s*<SprayProgramPlanner/.test(shell),

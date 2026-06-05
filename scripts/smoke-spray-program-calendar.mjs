@@ -368,7 +368,9 @@ console.log('— Sprays workspace registers Program Calendar tab')
   assert(/from\s+['"]\.\/tabs\/SprayProgramCalendar['"]/.test(shell),
     'Sprays imports SprayProgramCalendar tab')
 
-  const tabsMatch = shell.match(/const\s+TABS\s*=\s*\[([^\]]+)\]/)
+  // Phase 9B.1 renamed the constant to LEGACY_TABS while preserving
+  // the same 10-label payload for non-Crosswinds courses.
+  const tabsMatch = shell.match(/const\s+(?:LEGACY_TABS|TABS)\s*=\s*\[([^\]]+)\]/)
   assert(tabsMatch && /'Program Calendar'/.test(tabsMatch[1]),
     "'Program Calendar' present in TABS array")
 
