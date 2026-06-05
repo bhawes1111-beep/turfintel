@@ -21,6 +21,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { Icon } from '../shared/icons'
 import { loadSync, save } from '../../utils/persistence/persistence'
 import { useAuth } from '../../context/AuthContext'
+import { useSelectedCourseId } from '../../utils/courses/courseStore'
 import styles from './Sidebar.module.css'
 
 /* ── Inline SVG icons (24×24 viewBox, stroke-based) ──────────────────────── */
@@ -268,18 +269,65 @@ const NAV_TREE = [
   { id: 'admin',      label: 'Admin',      icon: 'administration', to: '/admin', requires: 'canManageUsers' },
 ]
 
+/* ── Phase 9A.1 — Crosswinds-only simplified nav ─────────────────────────
+   A shorter daily-use top level for Crosswinds (`crossroads-gc`), with
+   secondary surfaces tucked under a collapsible "More" group. Every
+   route mounted in App.jsx is still reachable — items just live under
+   More instead of the top level. Non-Crosswinds courses keep the
+   legacy NAV_TREE byte-for-byte. Routes/components/permission gates
+   are unchanged; this is sidebar reorganization only. */
+const CROSSWINDS_COURSE_ID = 'crossroads-gc'
+
+const NAV_TREE_CROSSWINDS = [
+  { id: 'dashboard',     label: 'Dashboard',     icon: 'dashboard',     to: '/dashboard'      },
+  // Phase 8A.2 made Crosswinds default the /crew workspace to its
+  // Assignments tab. Relabel the entry so the nav matches the landing.
+  { id: 'assignments',   label: 'Assignments',   icon: 'operations',    to: '/crew'           },
+  { id: 'display-board', label: 'Display Board', icon: 'display',       to: '/display-board'  },
+  { id: 'spray',         label: 'Spray',         icon: 'spray',         to: '/spray'          },
+  { id: 'inventory',     label: 'Inventory',     icon: 'inventory',     to: '/inventory'      },
+  { id: 'equipment',     label: 'Equipment',     icon: 'equipment',     to: '/equipment'      },
+  { id: 'irrigation',    label: 'Irrigation',    icon: 'irrigation',    to: '/irrigation'     },
+  { id: 'settings',      label: 'Settings',      icon: 'settings',      to: '/settings'       },
+  // Collapsible "More" group — secondary surfaces. Children keep their
+  // own permission gates (Admin still uses requires: 'canManageUsers').
+  {
+    id: 'more',
+    label: 'More',
+    icon: 'dashboard',
+    children: [
+      { id: 'morning-brief', label: 'Morning Brief', icon: 'morning-brief',   to: '/morning-brief' },
+      { id: 'weather',       label: 'Weather',       icon: 'weather',         to: '/weather'       },
+      { id: 'activity',      label: 'Activity',      icon: 'activity',        to: '/activity'      },
+      { id: 'turf-health',   label: 'Turf Health',   icon: 'turf-health',     to: '/turf-health'   },
+      { id: 'reports',       label: 'Reports',       icon: 'reports',         to: '/reports'       },
+      { id: 'disease',       label: 'Disease',       icon: 'agronomy',        to: '/disease'       },
+      { id: 'employees',     label: 'Employees',     icon: 'crew',            to: '/employees'     },
+      { id: 'admin',         label: 'Admin',         icon: 'administration',  to: '/admin', requires: 'canManageUsers' },
+    ],
+  },
+]
+
 /* ── Persistence ──────────────────────────────────────────────────────── */
 
 const PREFS_KEY = 'turfintel-sidebar-prefs'
 
 // First-load default for grouped sections: closed.
 // Newly-added groups also fall back to closed when a returning user has
-// saved state but no entry for the new group.
+// saved state but no entry for the new group. Walks both NAV_TREE and
+// NAV_TREE_CROSSWINDS so a course switch picks up new group ids.
 function defaultExpanded() {
   const acc = {}
-  for (const node of NAV_TREE) {
-    if (node.children) acc[node.id] = false
+  function walk(nodes) {
+    for (const node of nodes) {
+      if (node.children) {
+        acc[node.id] = false
+        walk(node.children)
+      }
+    }
   }
+  walk(NAV_TREE)
+  walk(NAV_TREE_CROSSWINDS)
   return acc
 }
 
@@ -400,13 +448,40 @@ function NavGroup({
 
 /* ── Sidebar shell ────────────────────────────────────────────────────── */
 
+// Phase 9A.1 — recursive permission filter. Walks both leaves and groups
+// so a permission-gated child (e.g. Admin under More) is hidden when the
+// user lacks the permission. Empty groups (every child filtered) are
+// dropped so we don't render an open-able stub.
+function filterByPermissions(tree, can) {
+  const out = []
+  for (const node of tree) {
+    if (node.requires && !can(node.requires)) continue
+    if (node.children) {
+      const kept = filterByPermissions(node.children, can)
+      if (kept.length === 0) continue
+      out.push({ ...node, children: kept })
+    } else {
+      out.push(node)
+    }
+  }
+  return out
+}
+
 export default function Sidebar({ isOpen, onClose }) {
   const location = useLocation()
   const { can } = useAuth()
+  const courseId = useSelectedCourseId()
   const [prefs, setPrefs] = useState(loadInitialPrefs)
 
-  // Hide permission-gated nodes the current user can't access.
-  const navTree = NAV_TREE.filter(node => !node.requires || can(node.requires))
+  // Phase 9A.1 — Crosswinds gets a simplified nav with a "More" group.
+  // Every other course keeps the legacy flat NAV_TREE byte-for-byte.
+  const sourceTree = courseId === CROSSWINDS_COURSE_ID
+    ? NAV_TREE_CROSSWINDS
+    : NAV_TREE
+
+  // Hide permission-gated nodes the current user can't access (recurses
+  // into the More group so /admin stays gated on canManageUsers).
+  const navTree = filterByPermissions(sourceTree, can)
 
   useEffect(() => {
     save(PREFS_KEY, prefs)
