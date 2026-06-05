@@ -5,7 +5,11 @@ import styles from './OperationsCalendar.module.css'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const TODAY = '2026-05-08'
+// Phase 9C.1 — Default the operations calendar to today's date.
+// Was previously pinned to a May 2026 fixture; now uses a fresh
+// today computation on every module load. No persistence.
+const todayIso = () => new Date().toISOString().slice(0, 10)
+const TODAY = todayIso()
 
 const CATEGORY_META = {
   spray:       { label: 'Spray',       color: '#2980b9' },

@@ -28,7 +28,12 @@ import TagPicker from '../../components/routing/TagPicker'
 import workspace from '../../styles/workspace.module.css'
 import styles from './OperationsBoard.module.css'
 
-const TODAY = '2026-05-08'
+// Phase 9C.1 — Default the task board to today's date. Was previously
+// pinned to a May 2026 fixture; now uses a fresh today computation on
+// every module load (TODAY) and on first render (selectedDate via the
+// useState initializer below). No persistence, no localStorage.
+const todayIso = () => new Date().toISOString().slice(0, 10)
+const TODAY = todayIso()
 
 // Phase 8A.1 — Routing options are now course-aware.
 //
@@ -285,7 +290,11 @@ export default function OperationsBoard() {
   const [openMenuId,      setOpenMenuId]      = useState(null)
 
   // ── Date selector ─────────────────────────────────────────────────────────
-  const [selectedDate, setSelectedDate] = useState('2026-05-09')
+  // Phase 9C.1 — Function initializer so a fresh today is computed on
+  // first render. The user can still navigate dates via the picker; the
+  // selected date does not persist across reloads (deliberate — board
+  // re-opens on today every visit).
+  const [selectedDate, setSelectedDate] = useState(() => todayIso())
 
   // ── Delete state ──────────────────────────────────────────────────────────
   const [deletedTaskIds, setDeletedTaskIds] = useState(new Set())
