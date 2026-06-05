@@ -178,6 +178,30 @@ const TAB_LABELS  = TABS.map(t => t.label)
 const LABEL_TO_ID = Object.fromEntries(TABS.map(t => [t.label, t.id]))
 const ID_TO_LABEL = Object.fromEntries(TABS.map(t => [t.id, t.label]))
 
+// Phase 9B.6 — Crosswinds-only simplified /crew nav. Five visible
+// items (4 daily + a synthetic 'more' pill) and 2 advanced surfaces
+// tucked under More. State stays id-keyed (we never rename a
+// canonical id); only the displayed labels are remapped. PageShell
+// is unchanged; the board render shell, the "+ Task" button target,
+// and every existing 'activeTab === X' branch keep working byte-
+// for-byte. Non-Crosswinds courses see the legacy 6-tab strip.
+const CROSSWINDS_TAB_IDS = ['assignments', 'board', 'notes', 'condition', 'more']
+const CROSSWINDS_MORE_IDS = ['brief', 'center']
+const CROSSWINDS_LABEL_REMAP = {
+  'Operations Board': 'Tasks',
+  'Daily Briefing':   'Briefing',
+  'Condition Log':    'Conditions',
+}
+// Crosswinds display labels keyed by canonical id, including the
+// synthetic 'more' pill. Built from the legacy ID_TO_LABEL + remap.
+const CROSSWINDS_LABEL_BY_ID = {
+  assignments: ID_TO_LABEL.assignments,                                      // 'Assignments'
+  board:       CROSSWINDS_LABEL_REMAP[ID_TO_LABEL.board]       ?? ID_TO_LABEL.board,        // 'Tasks'
+  notes:       CROSSWINDS_LABEL_REMAP[ID_TO_LABEL.notes]       ?? ID_TO_LABEL.notes,        // 'Briefing'
+  condition:   CROSSWINDS_LABEL_REMAP[ID_TO_LABEL.condition]   ?? ID_TO_LABEL.condition,    // 'Conditions'
+  more:        'More',
+}
+
 function parseHour(timeStr) {
   if (!timeStr) return null
   const [time, meridiem] = timeStr.split(' ')
@@ -241,6 +265,12 @@ export default function OperationsBoard() {
   const [activeTab, setActiveTab] = useState(() =>
     courseId === CROSSWINDS_COURSE_ID ? 'assignments' : 'center'
   )
+  // Phase 9B.6 — Crosswinds-only simplified tab strip. moreTab
+  // remembers which advanced surface the supervisor last visited
+  // under More, so clicking the More pill re-enters that surface
+  // (rather than always landing on the first child).
+  const isCrosswinds            = courseId === CROSSWINDS_COURSE_ID
+  const [moreTab, setMoreTab]   = useState('brief')
   const [routing, setRouting]  = useState(() => loadRoutingForCourse(courseId))
   const [panelOpen, setPanelOpen] = useState(false)
 
@@ -679,13 +709,38 @@ export default function OperationsBoard() {
 
   // ── Render ────────────────────────────────────────────────────────────────
 
+  // Phase 9B.6 — Crosswinds tab strip derivations. State stays
+  // id-keyed; only the displayed labels change. PageShell receives
+  // pageTabs / activeDisplayLabel / handleTabClick on every course;
+  // the Crosswinds branch lights up only when isCrosswinds is true.
+  const pageTabs = isCrosswinds
+    ? CROSSWINDS_TAB_IDS.map(id => CROSSWINDS_LABEL_BY_ID[id])
+    : TAB_LABELS
+  const activeDisplayLabel = isCrosswinds
+    ? (CROSSWINDS_MORE_IDS.includes(activeTab) ? 'More' : CROSSWINDS_LABEL_BY_ID[activeTab])
+    : ID_TO_LABEL[activeTab]
+  function handleTabClick(label) {
+    if (!isCrosswinds) {
+      setActiveTab(LABEL_TO_ID[label])
+      return
+    }
+    if (label === 'More') {
+      setActiveTab(moreTab)
+      return
+    }
+    // Reverse-map Crosswinds display label → canonical id.
+    const id = Object.entries(CROSSWINDS_LABEL_BY_ID).find(([, l]) => l === label)?.[0]
+    if (id) setActiveTab(id)
+  }
+  const showMoreInnerRow = isCrosswinds && CROSSWINDS_MORE_IDS.includes(activeTab)
+
   return (
     <PageShell
       title="Operations"
       description="Daily crew management, routing, scheduling, assignments, and operational coordination."
-      tabs={TAB_LABELS}
-      activeTab={ID_TO_LABEL[activeTab]}
-      onTabChange={label => setActiveTab(LABEL_TO_ID[label])}
+      tabs={pageTabs}
+      activeTab={activeDisplayLabel}
+      onTabChange={handleTabClick}
       actions={
         <WorkspaceActions>
           <span className={styles.obClockChip} aria-label="Current time">{timeStr}</span>
@@ -714,6 +769,30 @@ export default function OperationsBoard() {
       {/* ── Operations sub-tabs ───────────────────────────────────────────── */}
       {activeTab !== 'board' && (
         <div className={styles.obSecondary}>
+          {/* Phase 9B.6 — Crosswinds-only More inner pill row. Renders
+              only when the supervisor is on a More-group canonical id
+              (brief / center). Pill click sets both moreTab AND
+              activeTab so the strip keeps remembering the last More
+              child across primary-tab round-trips. */}
+          {showMoreInnerRow && (
+            <div className={styles.moreInner}>
+              <div className={styles.moreNav} role="tablist" aria-label="Additional operations surfaces">
+                {CROSSWINDS_MORE_IDS.map(id => (
+                  <button
+                    key={id}
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === id}
+                    data-active={activeTab === id ? 'true' : undefined}
+                    className={styles.moreNavBtn}
+                    onClick={() => { setMoreTab(id); setActiveTab(id) }}
+                  >
+                    {ID_TO_LABEL[id]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           {activeTab === 'brief'       && <MorningBriefTab />}
           {activeTab === 'center'      && <DailyOperationsCenter />}
           {activeTab === 'assignments' && <CrewAssignments />}
