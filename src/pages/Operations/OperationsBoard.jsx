@@ -24,6 +24,7 @@ import {
   deleteCrewAssignment,
 } from '../../utils/assignments/assignmentsStore'
 import { useSelectedCourseId } from '../../utils/courses/courseStore'
+import { deleteTaskCascade } from '../../utils/tasks/deleteTaskCascade'
 import TagPicker from '../../components/routing/TagPicker'
 import workspace from '../../styles/workspace.module.css'
 import styles from './OperationsBoard.module.css'
@@ -253,7 +254,10 @@ export default function OperationsBoard() {
   const { current: weatherCurrent } = useWeather()
   const { equipment, serviceLog }   = useEquipmentData()
   const { events: calendarEvents }  = useCalendarData()
-  const { crewAssignments }         = useAssignmentsData()
+  // Phase 9C.3a — also pull equipmentReservations so the task delete
+  // cascade helper can clean up linked rows alongside crew_assignments
+  // before the calendar_event is removed.
+  const { crewAssignments, equipmentReservations } = useAssignmentsData()
   const { employees: EMPLOYEES }    = useCrewData()
 
   // ── Tab / layout ─────────────────────────────────────────────────────────
@@ -297,7 +301,12 @@ export default function OperationsBoard() {
   const [selectedDate, setSelectedDate] = useState(() => todayIso())
 
   // ── Delete state ──────────────────────────────────────────────────────────
-  const [deletedTaskIds, setDeletedTaskIds] = useState(new Set())
+  // Phase 9C.3a — deletedTaskIds local-only Set removed. The rich
+  // delete-confirmation modal still gates the action via the
+  // deleteConfirm state below; handleDelete now performs a real
+  // cascade delete via deleteTaskCascade(), so the task disappears
+  // from D1 (and therefore from DisplayBoard + Assignments) and never
+  // resurrects on reload.
   const [deleteConfirm,  setDeleteConfirm]  = useState(null)
 
   // ── Task creation ─────────────────────────────────────────────────────────
@@ -407,13 +416,12 @@ export default function OperationsBoard() {
 
   const effectiveTasks = useMemo(() =>
     allSourceTasks
-      .filter(t => !deletedTaskIds.has(t.id))
       .map(t => ({
         ...t,
         status:     taskOverrides[t.id]?.status ?? t.status,
         assignedTo: taskAssignments[t.id]       ?? t.assignedTo,
       })),
-  [taskOverrides, taskAssignments, deletedTaskIds, allSourceTasks])
+  [taskOverrides, taskAssignments, allSourceTasks])
 
   const groupedTasks = useMemo(() =>
     TASK_GROUPS.map(g => ({
@@ -537,12 +545,22 @@ export default function OperationsBoard() {
     setDeleteConfirm({ id: task.id, title: task.title })
   }
 
-  function handleDelete() {
+  // Phase 9C.3a — real cascade delete. Replaces the legacy local-only
+  // hide (deletedTaskIds Set). Cleans up linked crew_assignments +
+  // equipment_reservations and finally removes the calendar_event so
+  // the task disappears from Display Board, the Assignments tab, and
+  // any other consumer.
+  async function handleDelete() {
     if (!deleteConfirm) return
     const { id, title } = deleteConfirm
-    setDeletedTaskIds(prev => new Set([...prev, id]))
-    toast.info(`"${title}" deleted`)
-    setDeleteConfirm(null)
+    try {
+      await deleteTaskCascade(id, { crewAssignments, equipmentReservations })
+      toast.success(`"${title}" deleted`)
+    } catch (err) {
+      toast.error(`Delete failed: ${err.message}`)
+    } finally {
+      setDeleteConfirm(null)
+    }
   }
 
   function setNewTaskField(key, val) {
@@ -1440,23 +1458,46 @@ export default function OperationsBoard() {
           {/* Overflow menu backdrop */}
           {openMenuId && <div className={styles.obMenuBackdrop} onClick={() => setOpenMenuId(null)} />}
 
-          {/* ── Delete confirmation modal ─────────────────────────────── */}
-          {deleteConfirm && (
-            <>
-              <div className={styles.obModalBackdrop} onClick={() => setDeleteConfirm(null)} />
-              <div className={styles.obModal} role="dialog" aria-modal="true">
-                <div className={styles.obModalTitle}>Delete Task</div>
-                <p className={styles.obModalMsg}>
-                  Are you sure you want to delete <strong>"{deleteConfirm.title}"</strong>?
-                  This action cannot be undone.
-                </p>
-                <div className={styles.obModalActions}>
-                  <button className={styles.obModalCancel} onClick={() => setDeleteConfirm(null)}>Cancel</button>
-                  <button className={styles.obModalDelete} onClick={handleDelete}>Delete</button>
+          {/* ── Delete confirmation modal ───────────────────────────────
+              Phase 9C.3a — copy now summarizes the cascade impact when
+              crew or equipment are linked so the supervisor sees what
+              they're agreeing to before the orphan-cleanup runs. */}
+          {deleteConfirm && (() => {
+            const linkedCrewCount = crewAssignments.filter(a => a.calendarEventId === deleteConfirm.id).length
+            const linkedEqCount   = equipmentReservations.filter(r => r.calendarEventId === deleteConfirm.id).length
+            const hasLinks = linkedCrewCount > 0 || linkedEqCount > 0
+            const crewPhrase = linkedCrewCount === 1
+              ? '1 crew member is assigned'
+              : `${linkedCrewCount} crew members are assigned`
+            const eqPhrase = linkedEqCount === 1
+              ? '1 piece of equipment is linked'
+              : `${linkedEqCount} pieces of equipment are linked`
+            const summary = (linkedCrewCount > 0 && linkedEqCount > 0)
+              ? `${crewPhrase} and ${eqPhrase}.`
+              : (linkedCrewCount > 0 ? `${crewPhrase}.` : `${eqPhrase}.`)
+            return (
+              <>
+                <div className={styles.obModalBackdrop} onClick={() => setDeleteConfirm(null)} />
+                <div className={styles.obModal} role="dialog" aria-modal="true">
+                  <div className={styles.obModalTitle}>Delete Task</div>
+                  <p className={styles.obModalMsg}>
+                    Delete <strong>"{deleteConfirm.title}"</strong> for today?<br />
+                    This will remove the task from the Assignments board and the Display Board.
+                    {hasLinks && (
+                      <>
+                        <br />{summary}<br />
+                        Their assignment and equipment links for this task will also be cleared.
+                      </>
+                    )}
+                  </p>
+                  <div className={styles.obModalActions}>
+                    <button className={styles.obModalCancel} onClick={() => setDeleteConfirm(null)}>Cancel</button>
+                    <button className={styles.obModalDelete} onClick={handleDelete}>Delete Task</button>
+                  </div>
                 </div>
-              </div>
-            </>
-          )}
+              </>
+            )
+          })()}
 
           {/* ── Settings modal ───────────────────────────────────────── */}
           {settingsOpen && (

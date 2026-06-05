@@ -10,8 +10,9 @@ import { useEffect, useState } from 'react'
 import {
   createCalendarEvent,
   patchCalendarEvent,
-  deleteCalendarEvent,
 } from '../../../utils/calendar/calendarStore'
+import { useAssignmentsData } from '../../../utils/assignments/assignmentsStore'
+import { deleteTaskCascade } from '../../../utils/tasks/deleteTaskCascade'
 import { useToast } from '../../../utils/feedback/toastContext'
 import { useSelectedCourse } from '../../../utils/courses/courseStore'
 import styles from './DailyAssignmentBoard.module.css'
@@ -57,6 +58,10 @@ function fmtTime(t) {
 export default function TasksManagerModal({ selectedDate, dayEvents, onClose }) {
   const toast          = useToast()
   const selectedCourse = useSelectedCourse()
+  // Phase 9C.3a — pull live assignments + reservations so the delete
+  // cascade helper can clean up the dependent rows on this task before
+  // the calendar_event is removed. Used only by handleDelete.
+  const { crewAssignments, equipmentReservations } = useAssignmentsData()
 
   const [draft, setDraft]     = useState(() => blankDraft(selectedDate))
   const [editing, setEditing] = useState(false)
@@ -132,10 +137,30 @@ export default function TasksManagerModal({ selectedDate, dayEvents, onClose }) 
   }
 
   async function handleDelete(ev) {
-    if (!confirm(`Delete "${ev.title}"?\n\nThis removes the task from the assignment board, Display Board, and any other consumers.`)) return
+    // Phase 9C.3a — confirmation copy now summarizes the cascade impact
+    // when crew or equipment are linked, so the supervisor sees what
+    // they're agreeing to before the orphan-cleanup runs.
+    const linkedCrewCount = crewAssignments.filter(a => a.calendarEventId === ev.id).length
+    const linkedEqCount   = equipmentReservations.filter(r => r.calendarEventId === ev.id).length
+    let message = `Delete "${ev.title}" for today?\n\n` +
+                  `This removes the task from the Assignments board and the Display Board.`
+    if (linkedCrewCount > 0 || linkedEqCount > 0) {
+      const crewPhrase = linkedCrewCount === 1
+        ? '1 crew member is assigned'
+        : `${linkedCrewCount} crew members are assigned`
+      const eqPhrase   = linkedEqCount === 1
+        ? '1 piece of equipment is linked'
+        : `${linkedEqCount} pieces of equipment are linked`
+      const summary = (linkedCrewCount > 0 && linkedEqCount > 0)
+        ? `${crewPhrase} and ${eqPhrase}.`
+        : (linkedCrewCount > 0 ? `${crewPhrase}.` : `${eqPhrase}.`)
+      message += `\n${summary}\n` +
+                 `Their assignment and equipment links for this task will also be cleared.`
+    }
+    if (!confirm(message)) return
     setBusy(true)
     try {
-      await deleteCalendarEvent(ev.id)
+      await deleteTaskCascade(ev.id, { crewAssignments, equipmentReservations })
       toast.success('Task deleted')
     } catch (err) {
       toast.error(`Delete failed: ${err.message}`)
