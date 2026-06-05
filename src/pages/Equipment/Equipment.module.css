@@ -826,3 +826,51 @@
   .mlPartsHeader > span:nth-child(2),
   .mlPartsRow > span:nth-child(2) { display: none; }
 }
+
+/* ── Phase 9B.3 — Crosswinds Equipment "More" inner secondary tab row ────
+   Pill-row mounted inside the More tab body. Non-Crosswinds courses
+   never see these classes (the legacy 7-tab branch never renders
+   the More tab). Mirrors the 9B.1 Spray / 9B.2 Inventory pattern so
+   all three workspaces feel consistent on phones and TVs. */
+
+.moreInner {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.moreNav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 0 10px 0;
+  border-bottom: 1px solid rgba(74, 158, 74, 0.18);
+}
+
+.moreNavBtn {
+  appearance: none;
+  background: rgba(4, 12, 6, 0.6);
+  color: rgba(212, 237, 212, 0.78);
+  border: 1px solid rgba(74, 158, 74, 0.22);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.moreNavBtn:hover {
+  background: rgba(74, 158, 74, 0.12);
+  color: rgba(212, 237, 212, 0.95);
+}
+.moreNavBtn[data-active='true'] {
+  background: rgba(74, 222, 128, 0.16);
+  border-color: rgba(74, 222, 128, 0.55);
+  color: #4ade80;
+}
+
+@media (max-width: 600px) {
+  .moreNavBtn { font-size: 12px; padding: 5px 11px; }
+  .moreNav    { gap: 5px; }
+}
