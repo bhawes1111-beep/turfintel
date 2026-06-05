@@ -710,6 +710,77 @@ const NOTES = readFileSync('src/utils/operations/notesStore.js', 'utf8')
 assert(!NOTES.includes('Phase 8A.3c'),
   'notesStore.js carries no Phase 8A.3c edits')
 
+// ── Phase 9C.2 — Assignment row clear/change polish (Crosswinds) ────────
+// Source-only checks against DailyAssignmentBoard.jsx + its CSS.
+// On Crosswinds the per-row clear control renders a labeled "Clear"
+// pill instead of the tiny × glyph, with clarifying tooltip / aria
+// copy. Toasts now mention equipment unlinking when applicable.
+// Non-Crosswinds courses keep the legacy × button + legacy toast
+// copy byte-for-byte. The underlying data path (unlinkReservationsFor
+// → deleteCrewAssignment) is unchanged.
+section('Phase 9C.2 — Assignment row clear/change polish')
+
+// Crosswinds clear button: text label, tooltip, aria-label, modifier class.
+assert(/isCrosswinds \? \([\s\S]{0,1200}<button[\s\S]{0,800}>Clear<\/button>/.test(DAB),
+  'Crosswinds branch renders <button>Clear</button>')
+assert(/title="Clear this employee's assignment\. The task itself is not deleted\."/.test(DAB),
+  'Crosswinds tooltip: "Clear this employee\'s assignment. The task itself is not deleted."')
+assert(/aria-label=\{`Clear assignment for \$\{emp\.name\}`\}/.test(DAB),
+  'Crosswinds aria-label: `Clear assignment for ${emp.name}`')
+assert(/className=\{`\$\{styles\.clearBtn\} \$\{styles\.clearBtnLabeled\}`\}/.test(DAB),
+  'Crosswinds clear button gets styles.clearBtn + styles.clearBtnLabeled')
+
+// Non-Crosswinds clear button: × glyph + legacy tooltip + legacy aria preserved.
+assert(/>×<\/button>/.test(DAB),
+  'non-Crosswinds branch still renders the × glyph button')
+assert(/title="Clear task and unlink equipment"/.test(DAB),
+  'non-Crosswinds tooltip preserved: "Clear task and unlink equipment"')
+assert(/aria-label=\{`Clear task for \$\{emp\.name\}`\}/.test(DAB),
+  'non-Crosswinds aria-label preserved: `Clear task for ${emp.name}`')
+
+// Linked equipment count is captured BEFORE unlinking.
+assert(/const\s+linkedCountPrev\s*=\s*existing[\s\S]{0,200}reservationsByAssignment\.get\(existing\.id\)/.test(DAB),
+  'linkedCountPrev captured before unlinkReservationsFor() runs')
+
+// Toast copy — Crosswinds clear paths.
+assert(/`Cleared \$\{emp\.name\}'s assignment\. Equipment unlinked\.`/.test(DAB),
+  "Crosswinds clear-with-equipment toast: \"Cleared ${emp.name}'s assignment. Equipment unlinked.\"")
+assert(/`Cleared \$\{emp\.name\}'s assignment\.`/.test(DAB),
+  "Crosswinds clear-no-equipment toast: \"Cleared ${emp.name}'s assignment.\"")
+
+// Toast copy — Crosswinds task switch with equipment includes both phrases.
+assert(/equipment from \$\{oldEventTitle\} unlinked/.test(DAB),
+  'Crosswinds task-switch-with-equipment toast includes "equipment from … unlinked"')
+
+// Non-Crosswinds clear toast preserved byte-for-byte.
+assert(/`Cleared task for \$\{emp\.name\}`/.test(DAB),
+  'non-Crosswinds clear toast preserved: `Cleared task for ${emp.name}`')
+
+// CSS modifier class defined.
+const DABCSS = readFileSync('src/pages/Crew/tabs/DailyAssignmentBoard.module.css', 'utf8')
+assert(/\.clearBtnLabeled\b/.test(DABCSS),
+  'CSS defines .clearBtnLabeled modifier')
+
+// Data path unchanged — handleClear still delegates to handleTaskChange
+// with the empty-string sentinel, and the unlink-then-delete order is
+// preserved inside handleTaskChange.
+assert(/function\s+handleClear\(emp\)\s*\{\s*return handleTaskChange\(emp,\s*''\)/.test(DAB),
+  "handleClear(emp) still calls handleTaskChange(emp, '')")
+assert(/await unlinkReservationsFor\(existing\.id\)[\s\S]{0,200}await deleteCrewAssignment\(existing\.id\)/.test(DAB),
+  'unlinkReservationsFor still runs before deleteCrewAssignment')
+
+// Cross-file guards — Phase 9C.2 must not touch these.
+for (const path of [
+  'src/utils/assignments/assignmentsStore.js',
+  'src/pages/DisplayBoard/DisplayBoard.jsx',
+  'src/pages/Crew/tabs/TasksManagerModal.jsx',
+  'src/pages/Operations/OperationsBoard.jsx',
+]) {
+  const src = readFileSync(path, 'utf8')
+  assert(!src.includes('Phase 9C.2'),
+    `${path} carries no Phase 9C.2 edits`)
+}
+
 // ── Summary ─────────────────────────────────────────────────────────────
 console.log(`\n${failed === 0 ? '✅' : '❌'}  ${passed} passed, ${failed} failed`)
 if (failed > 0) process.exit(1)

@@ -329,11 +329,27 @@ export default function DailyAssignmentBoard({
     setBusyEmpId(emp.id)
     try {
       const existing = assignmentByEmpId.get(emp.id) ?? assignmentByEmpId.get(emp.name)
+      // Phase 9C.2 — compute how many equipment reservations were linked
+      // to the prior assignment BEFORE unlinking, so the toast can tell
+      // the supervisor that equipment was actually unlinked (vs cases
+      // where there was nothing to unlink).
+      const linkedCountPrev = existing
+        ? (reservationsByAssignment.get(existing.id) ?? []).length
+        : 0
+      const oldEventTitle = existing
+        ? (events.find(e => e.id === existing.calendarEventId)?.title ?? '')
+        : ''
       if (newEventId === '') {
         if (existing) {
           await unlinkReservationsFor(existing.id)
           await deleteCrewAssignment(existing.id)
-          toast.success(`Cleared task for ${emp.name}`)
+          if (isCrosswinds) {
+            toast.success(linkedCountPrev > 0
+              ? `Cleared ${emp.name}'s assignment. Equipment unlinked.`
+              : `Cleared ${emp.name}'s assignment.`)
+          } else {
+            toast.success(`Cleared task for ${emp.name}`)
+          }
         }
         return
       }
@@ -352,9 +368,12 @@ export default function DailyAssignmentBoard({
         role:            emp.role ?? null,
         status:          'assigned',
       })
-      toast.success(`${emp.name} → ${
-        dayEvents.find(e => e.id === newEventId)?.title ?? 'task'
-      }`)
+      const newTitle = dayEvents.find(e => e.id === newEventId)?.title ?? 'task'
+      if (isCrosswinds && existing && linkedCountPrev > 0) {
+        toast.success(`${emp.name} → ${newTitle} · equipment from ${oldEventTitle} unlinked`)
+      } else {
+        toast.success(`${emp.name} → ${newTitle}`)
+      }
     } catch (err) {
       toast.error(`Task update failed: ${err.message}`)
     } finally {
@@ -824,7 +843,20 @@ export default function DailyAssignmentBoard({
                         ))}
                       </select>
                     )}
-                    {assignment && (
+                    {assignment && (isCrosswinds ? (
+                      // Phase 9C.2 — Crosswinds clear button: explicit
+                      // "Clear" label + clarifying tooltip so shop-floor
+                      // staff know this removes only this employee from
+                      // the task (it does not delete the task itself).
+                      <button
+                        type="button"
+                        className={`${styles.clearBtn} ${styles.clearBtnLabeled}`}
+                        onClick={() => handleClear(emp)}
+                        disabled={busyEmpId === emp.id}
+                        title="Clear this employee's assignment. The task itself is not deleted."
+                        aria-label={`Clear assignment for ${emp.name}`}
+                      >Clear</button>
+                    ) : (
                       <button
                         type="button"
                         className={styles.clearBtn}
@@ -833,7 +865,7 @@ export default function DailyAssignmentBoard({
                         title="Clear task and unlink equipment"
                         aria-label={`Clear task for ${emp.name}`}
                       >×</button>
-                    )}
+                    ))}
                   </td>
                   <td>
                     {linkedRes.length > 0 ? (

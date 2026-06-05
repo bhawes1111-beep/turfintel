@@ -901,3 +901,27 @@
   .notesInput { min-width: 100px; }
   .statusSelect { min-width: 96px; }
 }
+
+/* ── Phase 9C.2 — Crosswinds labeled "Clear" button modifier ─────────────
+   Overrides the legacy 22×22 circular .clearBtn shape with a wider
+   pill so the shop-floor staff sees a clear, tappable "Clear" affordance
+   that is visually distinct from a full destructive delete. Stays in
+   the same red-tinted family but reads as a labeled secondary action,
+   not a full danger button. Non-Crosswinds courses never see this
+   modifier (the Crosswinds branch is the only one that applies it). */
+
+.clearBtnLabeled {
+  width: auto;
+  min-width: 64px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 14px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  letter-spacing: 0.02em;
+}
+
+@media (max-width: 600px) {
+  .clearBtnLabeled { min-width: 56px; height: 26px; font-size: 11px; padding: 0 10px; }
+}
