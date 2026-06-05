@@ -74,19 +74,35 @@ console.log('— Inventory.jsx location.state plumbing')
   assert(/seedFocus/.test(src) && /seedSource/.test(src),
     'Inventory.jsx assigns local seedFocus + seedSource')
 
-  // Threaded through to InventoryProducts.
+  // Threaded through to InventoryProducts. Phase 9B.2 — the four
+  // Products props are now bundled into a `productsProps` object
+  // spread onto <InventoryProducts {...productsProps} />, so accept
+  // either form: inline props or the spread backed by a productsProps
+  // declaration that names each key.
   const products = src.match(/<InventoryProducts[\s\S]*?\/>/)
   assert(!!products, '<InventoryProducts ... /> mount is intact')
   if (products) {
     const m = products[0]
-    assert(/initialSelectedId=\{seedProduct\}/.test(m),
-      'InventoryProducts still receives initialSelectedId={seedProduct}')
-    assert(/initialFocus=\{seedFocus\}/.test(m),
-      'InventoryProducts receives initialFocus={seedFocus}')
-    assert(/initialSource=\{seedSource\}/.test(m),
-      'InventoryProducts receives initialSource={seedSource}')
-    assert(/onOpenCatalog=\{openCatalogProduct\}/.test(m),
-      'InventoryProducts still receives onOpenCatalog (regression)')
+    const usesSpread = /\{\.\.\.productsProps\}/.test(m)
+    if (usesSpread) {
+      assert(/productsProps\s*=\s*\{[\s\S]{0,400}initialSelectedId:\s*seedProduct/.test(src),
+        'productsProps declares initialSelectedId: seedProduct')
+      assert(/productsProps\s*=\s*\{[\s\S]{0,400}initialFocus:\s*seedFocus/.test(src),
+        'productsProps declares initialFocus: seedFocus')
+      assert(/productsProps\s*=\s*\{[\s\S]{0,400}initialSource:\s*seedSource/.test(src),
+        'productsProps declares initialSource: seedSource')
+      assert(/productsProps\s*=\s*\{[\s\S]{0,400}onOpenCatalog:\s*openCatalogProduct/.test(src),
+        'productsProps declares onOpenCatalog: openCatalogProduct')
+    } else {
+      assert(/initialSelectedId=\{seedProduct\}/.test(m),
+        'InventoryProducts still receives initialSelectedId={seedProduct}')
+      assert(/initialFocus=\{seedFocus\}/.test(m),
+        'InventoryProducts receives initialFocus={seedFocus}')
+      assert(/initialSource=\{seedSource\}/.test(m),
+        'InventoryProducts receives initialSource={seedSource}')
+      assert(/onOpenCatalog=\{openCatalogProduct\}/.test(m),
+        'InventoryProducts still receives onOpenCatalog (regression)')
+    }
   }
 }
 
@@ -233,8 +249,15 @@ console.log('— direct Inventory entry preserved')
   // fromReview gate stays false, so neither the banner nor the
   // pulse triggers.
   const src = readFileSync('src/pages/Inventory/Inventory.jsx', 'utf8')
-  assert(/seedTab\s*=\s*TABS\.includes\(location\.state\?\.activeTab\)\s*\?\s*location\.state\.activeTab\s*:\s*['"]Overview['"]/.test(src),
-    'seedTab still defaults to Overview when state.activeTab is absent')
+  // Phase 9B.2 — the seedTab string literal was replaced by a course-
+  // aware resolveSeedTabs() helper. Accept EITHER the legacy literal
+  // OR the new resolver shape with a non-Crosswinds fallback to 'Overview'.
+  const seedDefaultsToOverview =
+    /seedTab\s*=\s*TABS\.includes\(location\.state\?\.activeTab\)\s*\?\s*location\.state\.activeTab\s*:\s*['"]Overview['"]/.test(src)
+    || (/function\s+resolveSeedTabs\b/.test(src)
+        && /activeTab:\s*['"]Overview['"]/.test(src))
+  assert(seedDefaultsToOverview,
+    'seedTab/resolver still defaults to Overview when state.activeTab is absent (legacy or Crosswinds courses)')
   assert(/seedProduct\s*=\s*location\.state\?\.productId\s*\?\?\s*null/.test(src),
     'seedProduct still defaults to null')
   // The new keys also default to null.

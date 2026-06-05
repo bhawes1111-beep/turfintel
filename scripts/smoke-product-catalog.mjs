@@ -502,10 +502,12 @@ console.log('— src/pages/Inventory/Inventory.jsx (Catalog tab registered)')
     'imports InventoryCatalog tab body')
   assert(/'Catalog'/.test(shell),
     "'Catalog' literal appears in Inventory shell")
-  // Confirm 'Catalog' is in the TABS array (registered, not just imported).
-  const tabsMatch = shell.match(/const\s+TABS\s*=\s*\[([^\]]+)\]/)
+  // Confirm 'Catalog' is in the legacy TABS array (registered, not just imported).
+  // Phase 9B.2 renamed the constant to LEGACY_TABS while preserving the
+  // same 11-label payload for non-Crosswinds courses.
+  const tabsMatch = shell.match(/const\s+(?:LEGACY_TABS|TABS)\s*=\s*\[([^\]]+)\]/)
   assert(tabsMatch && /'Catalog'/.test(tabsMatch[1]),
-    "'Catalog' present in TABS array")
+    "'Catalog' present in legacy TABS array")
   assert(/activeTab\s*===\s*'Catalog'\s*&&\s*<InventoryCatalog/.test(shell),
     'Catalog tab body wired to activeTab === Catalog')
 
@@ -650,10 +652,16 @@ console.log('— Inventory shell: navigation state for catalog jump')
   assert(/setActiveTab\(['"]Catalog['"]\)/.test(src),
     'callback switches activeTab to Catalog')
 
-  // Each linkable tab receives onOpenCatalog.
+  // Each linkable tab receives onOpenCatalog — either as an inline prop
+  // OR via a {...productsProps}-style spread whose object declaration
+  // names onOpenCatalog. Phase 9B.2 spreads InventoryProducts' four
+  // props through productsProps, so the inline regex stops matching it.
   for (const tab of ['InventoryProducts', 'InventoryChemicals', 'InventoryFertilizer']) {
-    assert(new RegExp(`<${tab}\\b[^>]*onOpenCatalog`).test(src),
-      `${tab} receives onOpenCatalog prop`)
+    const inline = new RegExp(`<${tab}\\b[^>]*onOpenCatalog`).test(src)
+    const spread = new RegExp(`<${tab} \\{\\.\\.\\.productsProps\\}`).test(src)
+                && /productsProps\s*=\s*\{[\s\S]{0,400}onOpenCatalog:\s*openCatalogProduct/.test(src)
+    assert(inline || spread,
+      `${tab} receives onOpenCatalog prop (inline or via productsProps spread)`)
   }
 
   // InventoryCatalog receives initialSelectedId + onConsumeSeed.
@@ -1575,9 +1583,11 @@ console.log('— Inventory shell: Link Review tab registered')
     'imports InventoryLinkReview')
   assert(/'Link Review'/.test(shell),
     "'Link Review' literal present in shell")
-  const tabsMatch = shell.match(/const\s+TABS\s*=\s*\[([^\]]+)\]/)
+  // Phase 9B.2 renamed the constant to LEGACY_TABS while preserving
+  // the same 11-label payload for non-Crosswinds courses.
+  const tabsMatch = shell.match(/const\s+(?:LEGACY_TABS|TABS)\s*=\s*\[([^\]]+)\]/)
   assert(tabsMatch && /'Link Review'/.test(tabsMatch[1]),
-    "'Link Review' present in TABS array")
+    "'Link Review' present in legacy TABS array")
   assert(/activeTab\s*===\s*'Link Review'\s*&&\s*<InventoryLinkReview/.test(shell),
     "Link Review tab wired to activeTab === 'Link Review'")
   // Pre-existing 9 tabs still present.
