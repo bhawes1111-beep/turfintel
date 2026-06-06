@@ -49,14 +49,26 @@ export default function App() {
 
         {/* Full-screen Display Board mode — outside Layout AND outside the
             auth guard, so a TV / tablet kiosk can show it without a login.
-            It is read-only (GET) and carries no private data. */}
+            It is read-only (GET) and carries no private data.
+            Phase 9C.4a — /display-board/board is the only public kiosk/data
+            route in the app. Every other route (including normal
+            /display-board and the print fallback below) requires a session. */}
         <Route path="/display-board/board" element={<DisplayBoard boardMode />} />
 
         {/* Phase 6B.3 — printable fallback. Same data path as Board Mode,
             but emits a paper-friendly layout and auto-opens the print
-            dialog once on mount. Outside the auth guard for the same
-            reason as /board: read-only, no private data. */}
-        <Route path="/display-board/print" element={<DisplayBoard printMode />} />
+            dialog once on mount.
+            Phase 9C.4a — /display-board/print now requires a session; it
+            is supervisor-only and is no longer the second public route.
+            The kiosk path is /display-board/board (still public). */}
+        <Route
+          path="/display-board/print"
+          element={
+            <RequireAuth>
+              <DisplayBoard printMode />
+            </RequireAuth>
+          }
+        />
 
         {/* All app routes share the sidebar Layout and require a session */}
         <Route path="/" element={<RequireAuth><Layout /></RequireAuth>}>

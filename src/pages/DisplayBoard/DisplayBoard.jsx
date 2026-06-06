@@ -58,6 +58,13 @@ const PROGRESS_LABEL = Object.fromEntries(PROGRESS_STATUSES.map(s => [s.key, s.l
 // shows up without anyone touching the screen.
 const BOARD_REFRESH_MS = 3 * 60 * 1000
 
+// Phase 9C.4a — kiosk (boardMode) refresh interval. /display-board/board
+// is the unauthenticated kiosk view, so a faster cadence keeps the TV
+// in sync without anyone touching it. Normal /display-board keeps the
+// existing 3-minute cadence above; /display-board/print is gated to
+// null below so it never re-pulls after the initial mount.
+const KIOSK_REFRESH_MS = 60 * 1000
+
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 const PRIORITY_ORDER = { high: 0, medium: 1, routine: 2, low: 3 }
@@ -182,7 +189,13 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
   // stays live without a manual reload. Weather already self-refreshes
   // inside useWeather.
   const [lastSync, setLastSync] = useState(() => new Date())
+  // Phase 9C.4a — mode-aware refresh cadence.
+  //   printMode  → null  (no auto-refresh; the page prints once)
+  //   boardMode  → 60s   (public kiosk needs a fast feed)
+  //   normal     → 3min  (legacy behaviour preserved)
+  const intervalMs = printMode ? null : (boardMode ? KIOSK_REFRESH_MS : BOARD_REFRESH_MS)
   useEffect(() => {
+    if (intervalMs == null) return
     const id = setInterval(() => {
       Promise.allSettled([
         refreshCalendarData(),
@@ -193,9 +206,18 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
         refreshOperationsNotesData(),
         refreshMoisture(),
       ]).then(() => setLastSync(new Date()))
-    }, BOARD_REFRESH_MS)
+      // Phase 9C.4a — midnight rollover for the public kiosk view.
+      // If the kiosk has been up since yesterday, snap selectedDate
+      // forward to today so the bars show the current day's work.
+      // Only fires in boardMode — normal /display-board users keep
+      // whichever date they manually picked.
+      if (boardMode) {
+        const todayNow = isoToday()
+        if (selectedDate !== todayNow) setSelectedDate(todayNow)
+      }
+    }, intervalMs)
     return () => clearInterval(id)
-  }, [])
+  }, [intervalMs, boardMode, selectedDate])
 
   // First-paint guard — before the calendar store resolves, every
   // section would otherwise render its empty state ("No tasks…"),
