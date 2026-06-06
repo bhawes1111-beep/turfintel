@@ -242,15 +242,21 @@ function assert(cond, label, ctx) {
   // Center grid render branches on isCrosswinds && operatorCards.length > 0.
   assert(/\(isCrosswinds && operatorCards\.length > 0\)/.test(db),
     "center grid branches on 'isCrosswinds && operatorCards.length > 0'")
-  assert(/operatorCards\.map\(op => \(\s*<OperatorCard /.test(db),
+  // Phase 9C.3b — render is now multi-line because <OperatorCard>
+  // receives additional canDeleteTasks + onDeleteEvent props. Match
+  // either the legacy single-line form or any whitespace/newline
+  // followed by the element opener.
+  assert(/operatorCards\.map\(op => \(\s*<OperatorCard[\s>]/.test(db),
     'operator-first branch maps operatorCards → <OperatorCard>')
 
   // Legacy TaskCard render still present (fallback + non-Crosswinds).
   assert(/dayEvents\.map\(ev => \(\s*<TaskCard/.test(db),
     'legacy <TaskCard> render still present in the fallback / non-Crosswinds branch')
 
-  // OperatorCard helper component exists.
-  assert(/function\s+OperatorCard\s*\(\s*\{\s*operator\s*\}\s*\)/.test(db),
+  // OperatorCard helper component exists. Phase 9C.3b widened the
+  // destructure to include canDeleteTasks + onDeleteEvent — accept any
+  // signature that starts with `operator`.
+  assert(/function\s+OperatorCard\s*\(\s*\{\s*operator[\s,}]/.test(db),
     'OperatorCard local helper function is defined')
   assert(/function\s+operatorInitials\s*\(/.test(db),
     'operatorInitials helper for avatar text is defined')

@@ -12,7 +12,7 @@ import {
   patchCalendarEvent,
 } from '../../../utils/calendar/calendarStore'
 import { useAssignmentsData } from '../../../utils/assignments/assignmentsStore'
-import { deleteTaskCascade } from '../../../utils/tasks/deleteTaskCascade'
+import { deleteTaskCascade, buildDeleteConfirmMessage } from '../../../utils/tasks/deleteTaskCascade'
 import { useToast } from '../../../utils/feedback/toastContext'
 import { useSelectedCourse } from '../../../utils/courses/courseStore'
 import styles from './DailyAssignmentBoard.module.css'
@@ -137,27 +137,12 @@ export default function TasksManagerModal({ selectedDate, dayEvents, onClose }) 
   }
 
   async function handleDelete(ev) {
-    // Phase 9C.3a — confirmation copy now summarizes the cascade impact
-    // when crew or equipment are linked, so the supervisor sees what
-    // they're agreeing to before the orphan-cleanup runs.
+    // Phase 9C.3b — copy now comes from the shared
+    // buildDeleteConfirmMessage helper so TasksManagerModal,
+    // OperationsBoard, and DisplayBoard all speak with the same voice.
     const linkedCrewCount = crewAssignments.filter(a => a.calendarEventId === ev.id).length
     const linkedEqCount   = equipmentReservations.filter(r => r.calendarEventId === ev.id).length
-    let message = `Delete "${ev.title}" for today?\n\n` +
-                  `This removes the task from the Assignments board and the Display Board.`
-    if (linkedCrewCount > 0 || linkedEqCount > 0) {
-      const crewPhrase = linkedCrewCount === 1
-        ? '1 crew member is assigned'
-        : `${linkedCrewCount} crew members are assigned`
-      const eqPhrase   = linkedEqCount === 1
-        ? '1 piece of equipment is linked'
-        : `${linkedEqCount} pieces of equipment are linked`
-      const summary = (linkedCrewCount > 0 && linkedEqCount > 0)
-        ? `${crewPhrase} and ${eqPhrase}.`
-        : (linkedCrewCount > 0 ? `${crewPhrase}.` : `${eqPhrase}.`)
-      message += `\n${summary}\n` +
-                 `Their assignment and equipment links for this task will also be cleared.`
-    }
-    if (!confirm(message)) return
+    if (!confirm(buildDeleteConfirmMessage(ev.title, linkedCrewCount, linkedEqCount))) return
     setBusy(true)
     try {
       await deleteTaskCascade(ev.id, { crewAssignments, equipmentReservations })

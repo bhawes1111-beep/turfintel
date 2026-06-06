@@ -76,3 +76,40 @@ export async function deleteTaskCascade(eventId, { crewAssignments = [], equipme
 
   return { ok: true, eventId }
 }
+
+// Phase 9C.3b — Shared confirm-message builder. Centralises the
+// impact-aware copy previously duplicated inline in
+// TasksManagerModal + OperationsBoard, so every delete surface
+// (including the new Display Board delete) speaks with the same
+// voice. Pure string composition; no React, no hooks.
+//
+//   buildDeleteConfirmMessage('Mow Greens', 0, 0)
+//   → 'Delete "Mow Greens" for today?\n\nThis removes the task from
+//      the Assignments board and the Display Board.'
+//
+//   buildDeleteConfirmMessage('Mow Greens', 3, 2)
+//   → same opener + a second paragraph naming the cascade impact:
+//     '3 crew members are assigned and 2 pieces of equipment are linked.
+//      Their assignment and equipment links for this task will also be cleared.'
+//
+// Singular/plural variants for crew (member/members, is/are) and
+// equipment (piece/pieces, is/are) are handled inline.
+export function buildDeleteConfirmMessage(title, linkedCrewCount = 0, linkedEqCount = 0) {
+  const safeTitle = title ?? ''
+  let message = `Delete "${safeTitle}" for today?\n\n` +
+                `This removes the task from the Assignments board and the Display Board.`
+  if (linkedCrewCount > 0 || linkedEqCount > 0) {
+    const crewPhrase = linkedCrewCount === 1
+      ? '1 crew member is assigned'
+      : `${linkedCrewCount} crew members are assigned`
+    const eqPhrase = linkedEqCount === 1
+      ? '1 piece of equipment is linked'
+      : `${linkedEqCount} pieces of equipment are linked`
+    const summary = (linkedCrewCount > 0 && linkedEqCount > 0)
+      ? `${crewPhrase} and ${eqPhrase}.`
+      : (linkedCrewCount > 0 ? `${crewPhrase}.` : `${eqPhrase}.`)
+    message += `\n${summary}\n` +
+               `Their assignment and equipment links for this task will also be cleared.`
+  }
+  return message
+}

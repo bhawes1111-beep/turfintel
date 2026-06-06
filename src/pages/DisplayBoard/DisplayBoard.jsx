@@ -31,6 +31,7 @@ import { useSelectedCourse, useSelectedCourseId } from '../../utils/courses/cour
 import { useOperationsNotesData, refreshOperationsNotesData } from '../../utils/operations/notesStore'
 import { useAttachmentsForParent } from '../../utils/attachments/attachmentsStore'
 import { useToast } from '../../utils/feedback/toastContext'
+import { deleteTaskCascade, buildDeleteConfirmMessage } from '../../utils/tasks/deleteTaskCascade'
 import { routingChipsFromTags } from '../../utils/routing/routingTags'
 import { weatherImpacts } from '../../utils/weather/weatherImpacts'
 // Moisture observations are crew-relevant FIELD FACTS (location + wilt/dry-spot/
@@ -147,6 +148,25 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
   const isCrosswinds   = courseId === 'crossroads-gc'
   const { notes: dailyNotes }                       = useOperationsNotesData()
   const { observations: moistureObs }               = useMoistureData()
+  const toast                                       = useToast()
+
+  // Phase 9C.3b — task delete handler. Reuses the Phase 9C.3a cascade
+  // helper + shared confirm copy. Gated by canDeleteTasks below so the
+  // affordance never renders in TV (boardMode) or print mode, where an
+  // accidental tap could be catastrophic.
+  const canDeleteTasks = !boardMode && !printMode
+  async function handleDeleteEvent(event) {
+    if (!event?.id) return
+    const linkedCrewCount = crewAssignments.filter(a => a.calendarEventId === event.id).length
+    const linkedEqCount   = equipmentReservations.filter(r => r.calendarEventId === event.id).length
+    if (!confirm(buildDeleteConfirmMessage(event.title ?? '', linkedCrewCount, linkedEqCount))) return
+    try {
+      await deleteTaskCascade(event.id, { crewAssignments, equipmentReservations })
+      toast?.success?.(`"${event.title ?? 'Task'}" deleted`)
+    } catch (err) {
+      toast?.error?.(`Delete failed: ${err.message}`)
+    }
+  }
 
   // Display date — defaults to today, can shift via the date selector.
   const [selectedDate, setSelectedDate] = useState(isoToday)
@@ -322,6 +342,10 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
         : []
       op.assignments.push({
         id:        a.id,
+        // Phase 9C.3b — carry the source calendar_event id so the
+        // OperatorCard delete handler can route to deleteTaskCascade
+        // by event, not by crew_assignment.
+        eventId:   event.id,
         title:     event.title,
         startTime: event.startTime ?? null,
         location:  event.location  ?? null,
@@ -457,7 +481,12 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
              never goes blank. */
           <div className={styles.tasksGrid}>
             {operatorCards.map(op => (
-              <OperatorCard key={op.key} operator={op} />
+              <OperatorCard
+                key={op.key}
+                operator={op}
+                canDeleteTasks={canDeleteTasks}
+                onDeleteEvent={handleDeleteEvent}
+              />
             ))}
           </div>
         ) : (
@@ -469,6 +498,8 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
                 equipment={equipByEvent.get(ev.id) ?? []}
                 crew={crewByEvent.get(ev.id) ?? []}
                 resolveName={empId => employeeNameLookup.get(empId)}
+                canDeleteTasks={canDeleteTasks}
+                onDeleteEvent={handleDeleteEvent}
               />
             ))}
           </div>
@@ -713,7 +744,7 @@ function operatorInitials(name) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }
 
-function OperatorCard({ operator }) {
+function OperatorCard({ operator, canDeleteTasks = false, onDeleteEvent }) {
   const { employeeName, role, assignments } = operator
   return (
     <article className={styles.operatorCard}>
@@ -749,6 +780,15 @@ function OperatorCard({ operator }) {
                   status={a.status}
                   notes={a.notes}
                 />
+                {canDeleteTasks && a.eventId && (
+                  <button
+                    type="button"
+                    className={styles.assignDeleteBtn}
+                    onClick={() => onDeleteEvent?.({ id: a.eventId, title: a.title })}
+                    title="Delete task"
+                    aria-label="Delete task"
+                  >⋮</button>
+                )}
               </div>
               {(a.startTime || a.location || a.eventType) && (
                 <div className={styles.operatorAssignMeta}>
@@ -786,7 +826,7 @@ function OperatorCard({ operator }) {
 
 /* ── Task card ──────────────────────────────────────────────────────── */
 
-function TaskCard({ event, equipment, crew, resolveName }) {
+function TaskCard({ event, equipment, crew, resolveName, canDeleteTasks = false, onDeleteEvent }) {
   // ── Phase 10 chip resolution ──────────────────────────────────────────
   // Priority order per spec:
   //   1. linked employee equipment       (chip rendered beside the crew row)
@@ -871,6 +911,15 @@ function TaskCard({ event, equipment, crew, resolveName }) {
           <span className={styles.priorityPill} data-priority={event.priority}>
             {PRIORITY_LABEL[event.priority] ?? 'TASK'}
           </span>
+          {canDeleteTasks && (
+            <button
+              type="button"
+              className={styles.assignDeleteBtn}
+              onClick={() => onDeleteEvent?.(event)}
+              title="Delete task"
+              aria-label="Delete task"
+            >⋮</button>
+          )}
         </div>
       </header>
 

@@ -74,7 +74,10 @@ section('TasksManagerModal — uses cascade, no direct event delete')
 
 const TMM = readFileSync(TMM_PATH, 'utf8')
 
-assert(/import\s+\{\s*deleteTaskCascade\s*\}\s+from\s+['"]\.\.\/\.\.\/\.\.\/utils\/tasks\/deleteTaskCascade['"]/.test(TMM),
+// Phase 9C.3b — broadened to accept a multi-name import block since
+// TasksManagerModal now also pulls buildDeleteConfirmMessage from the
+// same helper module.
+assert(/import\s*\{[^}]*\bdeleteTaskCascade\b[^}]*\}\s+from\s+['"]\.\.\/\.\.\/\.\.\/utils\/tasks\/deleteTaskCascade['"]/.test(TMM),
   'TasksManagerModal imports deleteTaskCascade')
 assert(/import\s+\{\s*useAssignmentsData\s*\}\s+from\s+['"]\.\.\/\.\.\/\.\.\/utils\/assignments\/assignmentsStore['"]/.test(TMM),
   'TasksManagerModal imports useAssignmentsData')
@@ -89,22 +92,21 @@ assert(/await deleteTaskCascade\(ev\.id,\s*\{\s*crewAssignments,\s*equipmentRese
 assert(!/deleteCalendarEvent\(/.test(TMM),
   'TasksManagerModal no longer calls deleteCalendarEvent directly')
 
-// Confirmation copy is anchored to the user-visible boards.
-assert(/Assignments board/.test(TMM),
-  'TasksManagerModal confirm copy mentions "Assignments board"')
-assert(/Display Board/.test(TMM),
-  'TasksManagerModal confirm copy mentions "Display Board"')
-assert(/crew member/.test(TMM),
-  'TasksManagerModal confirm copy mentions "crew member" (cascade impact summary)')
-assert(/equipment/.test(TMM),
-  'TasksManagerModal confirm copy mentions "equipment" (cascade impact summary)')
+// Phase 9C.3b — TasksManagerModal's inline confirm copy was extracted
+// into buildDeleteConfirmMessage. Assert the modal now calls the shared
+// helper; the helper's content is asserted separately by
+// smoke-display-board-delete.mjs.
+assert(/buildDeleteConfirmMessage\(ev\.title,\s*linkedCrewCount,\s*linkedEqCount\)/.test(TMM),
+  'TasksManagerModal calls the shared buildDeleteConfirmMessage helper')
 
 // ── OperationsBoard ────────────────────────────────────────────────────
 section('OperationsBoard — local-only hide removed, cascade wired')
 
 const OB = readFileSync(OB_PATH, 'utf8')
 
-assert(/import\s+\{\s*deleteTaskCascade\s*\}\s+from\s+['"]\.\.\/\.\.\/utils\/tasks\/deleteTaskCascade['"]/.test(OB),
+// Phase 9C.3b — broadened to accept multi-name import (OperationsBoard
+// also imports buildDeleteConfirmMessage from the same helper module).
+assert(/import\s*\{[^}]*\bdeleteTaskCascade\b[^}]*\}\s+from\s+['"]\.\.\/\.\.\/utils\/tasks\/deleteTaskCascade['"]/.test(OB),
   'OperationsBoard imports deleteTaskCascade')
 
 // equipmentReservations is now destructured alongside crewAssignments.
@@ -147,11 +149,11 @@ assert(/`Cleared \$\{emp\.name\}'s assignment\. Equipment unlinked\.`/.test(DAB)
   "Phase 9C.2: clear-with-equipment toast still in source")
 
 // ── Cross-file guards ──────────────────────────────────────────────────
-section('Cross-file guards — DisplayBoard / DailyAssignmentBoard / worker / D1 untouched')
+// Phase 9C.3b — DisplayBoard now consumes the Phase 9C.3a cascade and
+// shared confirm helper, so the legacy "no Phase 9C.3a edits" guard is
+// dropped. DailyAssignmentBoard remains untouched.
+section('Cross-file guards — DailyAssignmentBoard / worker / D1 untouched')
 
-const DB = readFileSync('src/pages/DisplayBoard/DisplayBoard.jsx', 'utf8')
-assert(!DB.includes('Phase 9C.3a'),
-  'DisplayBoard.jsx carries no Phase 9C.3a edits')
 assert(!DAB.includes('Phase 9C.3a'),
   'DailyAssignmentBoard.jsx carries no Phase 9C.3a edits')
 

@@ -24,7 +24,7 @@ import {
   deleteCrewAssignment,
 } from '../../utils/assignments/assignmentsStore'
 import { useSelectedCourseId } from '../../utils/courses/courseStore'
-import { deleteTaskCascade } from '../../utils/tasks/deleteTaskCascade'
+import { deleteTaskCascade, buildDeleteConfirmMessage } from '../../utils/tasks/deleteTaskCascade'
 import TagPicker from '../../components/routing/TagPicker'
 import workspace from '../../styles/workspace.module.css'
 import styles from './OperationsBoard.module.css'
@@ -1459,33 +1459,37 @@ export default function OperationsBoard() {
           {openMenuId && <div className={styles.obMenuBackdrop} onClick={() => setOpenMenuId(null)} />}
 
           {/* ── Delete confirmation modal ───────────────────────────────
-              Phase 9C.3a — copy now summarizes the cascade impact when
-              crew or equipment are linked so the supervisor sees what
-              they're agreeing to before the orphan-cleanup runs. */}
+              Phase 9C.3b — accessible label and impact summary now
+              come from the shared buildDeleteConfirmMessage helper so
+              every delete surface (this modal, TasksManagerModal, and
+              the Display Board overflow) speaks with the same voice.
+              The visual JSX still renders the rich red-modal layout. */}
           {deleteConfirm && (() => {
             const linkedCrewCount = crewAssignments.filter(a => a.calendarEventId === deleteConfirm.id).length
             const linkedEqCount   = equipmentReservations.filter(r => r.calendarEventId === deleteConfirm.id).length
             const hasLinks = linkedCrewCount > 0 || linkedEqCount > 0
-            const crewPhrase = linkedCrewCount === 1
-              ? '1 crew member is assigned'
-              : `${linkedCrewCount} crew members are assigned`
-            const eqPhrase = linkedEqCount === 1
-              ? '1 piece of equipment is linked'
-              : `${linkedEqCount} pieces of equipment are linked`
-            const summary = (linkedCrewCount > 0 && linkedEqCount > 0)
-              ? `${crewPhrase} and ${eqPhrase}.`
-              : (linkedCrewCount > 0 ? `${crewPhrase}.` : `${eqPhrase}.`)
+            const a11yMessage = buildDeleteConfirmMessage(deleteConfirm.title, linkedCrewCount, linkedEqCount)
+            // Reuse the helper to derive the conditional summary line
+            // shown in JSX, so the user-visible copy and the aria copy
+            // never drift apart.
+            const summaryLine = hasLinks
+              ? (linkedCrewCount > 0 && linkedEqCount > 0
+                  ? `${linkedCrewCount === 1 ? '1 crew member is assigned' : `${linkedCrewCount} crew members are assigned`} and ${linkedEqCount === 1 ? '1 piece of equipment is linked' : `${linkedEqCount} pieces of equipment are linked`}.`
+                  : (linkedCrewCount > 0
+                      ? (linkedCrewCount === 1 ? '1 crew member is assigned.' : `${linkedCrewCount} crew members are assigned.`)
+                      : (linkedEqCount === 1 ? '1 piece of equipment is linked.' : `${linkedEqCount} pieces of equipment are linked.`)))
+              : null
             return (
               <>
                 <div className={styles.obModalBackdrop} onClick={() => setDeleteConfirm(null)} />
-                <div className={styles.obModal} role="dialog" aria-modal="true">
+                <div className={styles.obModal} role="dialog" aria-modal="true" aria-label={a11yMessage}>
                   <div className={styles.obModalTitle}>Delete Task</div>
                   <p className={styles.obModalMsg}>
                     Delete <strong>"{deleteConfirm.title}"</strong> for today?<br />
                     This will remove the task from the Assignments board and the Display Board.
                     {hasLinks && (
                       <>
-                        <br />{summary}<br />
+                        <br />{summaryLine}<br />
                         Their assignment and equipment links for this task will also be cleared.
                       </>
                     )}
