@@ -5,6 +5,7 @@ import { TASKS, HOURS_LOG } from '../../data/crew'
 // Schedule, Employees, and Hours tabs moved to the Employee Management
 // workspace in Phase 4 — Operations now focuses on daily field execution.
 import CrewAssignments    from '../Crew/tabs/CrewAssignments'
+import TasksManagerModal  from '../Crew/tabs/TasksManagerModal'
 import DailyBriefingPanel        from './DailyBriefingPanel'
 import DailyOperationsCenter    from './DailyOperationsCenter'
 import ConditionLogTab          from './ConditionLogTab'
@@ -315,6 +316,11 @@ export default function OperationsBoard() {
 
   // ── Settings ──────────────────────────────────────────────────────────────
   const [settingsOpen, setSettingsOpen] = useState(false)
+  // Phase 9C.3c — Manage Tasks modal state. Opens the existing
+  // TasksManagerModal (mounted below) which already supports edit +
+  // delete via patchCalendarEvent / deleteTaskCascade. No new write
+  // logic — same modal as the Assignments tab's "Tasks (N)" button.
+  const [tasksModalOpen, setTasksModalOpen] = useState(false)
 
   // ── DnD state ─────────────────────────────────────────────────────────────
   const [taskAssignments, setTaskAssignments] = useState({})
@@ -413,6 +419,18 @@ export default function OperationsBoard() {
   }, [])
 
   const allSourceTasks = useMemo(() => [...TASKS, ...createdTasks], [createdTasks])
+
+  // Phase 9C.3c — calendar_event rows scoped to the selected date,
+  // filtered the same way DailyAssignmentBoard scopes its task
+  // dropdown so TasksManagerModal sees an identical list whether
+  // opened from Assignments tab "Tasks (N)" or from the new Manage
+  // Tasks button on this tab. Excludes cancelled / completed events.
+  const dayCalendarEvents = useMemo(() => {
+    return calendarEvents
+      .filter(e => (e.startDate ?? e.date) === selectedDate)
+      .filter(e => e.status !== 'cancelled' && e.status !== 'completed')
+      .sort((a, b) => (a.startTime ?? '').localeCompare(b.startTime ?? ''))
+  }, [calendarEvents, selectedDate])
 
   const effectiveTasks = useMemo(() =>
     allSourceTasks
@@ -1099,6 +1117,18 @@ export default function OperationsBoard() {
                         <button className={styles.obAddTaskClear} onClick={() => setNewTask(BLANK_TASK)}>
                           Clear
                         </button>
+                        {/* Phase 9C.3c — opens the existing TasksManagerModal so
+                            the supervisor can rename / delete tasks for today
+                            without flipping to the Assignments tab. Reuses the
+                            same modal (no new edit/delete logic). */}
+                        <button
+                          type="button"
+                          className={styles.obManageTasksBtn}
+                          onClick={() => setTasksModalOpen(true)}
+                          title="Rename or delete today's tasks"
+                        >
+                          Manage Tasks
+                        </button>
                       </div>
                     </div>
 
@@ -1565,6 +1595,35 @@ export default function OperationsBoard() {
                 </div>
               </div>
             </>
+          )}
+
+          {/* Phase 9C.3c — Floating "+ Add Task" jump button. Always
+              visible on the Tasks tab so the supervisor can reach the
+              add-task form from anywhere on the board without scrolling
+              from the top. Same scrollIntoView target as the page-header
+              "+ Task" button. Hidden below 600px via media query so it
+              doesn't compete with the inline form on phones. */}
+          <button
+            type="button"
+            className={styles.obAddTaskFab}
+            onClick={() => addTaskRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            title="Jump to Add Task"
+            aria-label="Jump to Add Task"
+          >
+            + Add Task
+          </button>
+
+          {/* Phase 9C.3c — Manage Tasks modal. Reuses the same
+              TasksManagerModal mounted from the Assignments tab's
+              "Tasks (N)" button. Edit + delete are owned by the modal
+              (patchCalendarEvent + deleteTaskCascade); this site just
+              opens it pre-scoped to the same day events. */}
+          {tasksModalOpen && (
+            <TasksManagerModal
+              selectedDate={selectedDate}
+              dayEvents={dayCalendarEvents}
+              onClose={() => setTasksModalOpen(false)}
+            />
           )}
 
         </div>

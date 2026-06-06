@@ -1942,3 +1942,75 @@
   .moreNavBtn { font-size: 12px; padding: 5px 11px; }
   .moreNav    { gap: 5px; }
 }
+
+/* ── Phase 9C.3c — Tasks tab quick-access controls ───────────────────────
+   Two new affordances on the Tasks (task-first board) view:
+   1. .obAddTaskFab — bottom-right floating jump button anchored to the
+      viewport. Always visible on desktop/tablet so the supervisor can
+      reach the add-task form without scrolling from the top.
+   2. .obManageTasksBtn — secondary button sitting next to Add Task /
+      Clear inside the add-task form's button row. Opens the existing
+      TasksManagerModal (same one reachable from the Assignments tab),
+      so rename/delete reuse Phase 9C.3a's cascade path. */
+
+.obAddTaskFab {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 40;             /* below modal backdrops (which sit at 50+) */
+  appearance: none;
+  background: linear-gradient(135deg, #2d8a2d, #3bae3b);
+  color: #ffffff;
+  border: 1px solid rgba(74, 222, 128, 0.55);
+  border-radius: 999px;
+  padding: 12px 22px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45),
+              0 0 0 1px rgba(74, 222, 128, 0.18);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+}
+.obAddTaskFab:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5),
+              0 0 0 1px rgba(74, 222, 128, 0.3);
+}
+.obAddTaskFab:focus-visible {
+  outline: 2px solid rgba(74, 222, 128, 0.75);
+  outline-offset: 2px;
+}
+
+.obManageTasksBtn {
+  appearance: none;
+  background: rgba(4, 12, 6, 0.55);
+  border: 1px solid rgba(74, 158, 74, 0.32);
+  color: rgba(212, 237, 212, 0.88);
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.obManageTasksBtn:hover {
+  background: rgba(74, 158, 74, 0.14);
+  color: rgba(212, 237, 212, 0.98);
+  border-color: rgba(74, 222, 128, 0.48);
+}
+.obManageTasksBtn:focus-visible {
+  outline: 2px solid rgba(74, 222, 128, 0.55);
+  outline-offset: 1px;
+}
+
+/* Hide the FAB on narrow viewports — the inline Add Task form is
+   already in tap range when the supervisor is on a phone, and the
+   FAB would float over the keyboard / soft input area. */
+@media (max-width: 600px) {
+  .obAddTaskFab { display: none; }
+}
