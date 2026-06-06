@@ -434,6 +434,27 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
     ? (liveAlerts.find(a => a.priority === 'high') ?? null)
     : null
 
+  // Phase 9C.4b — Simplified kiosk layout for /display-board/board.
+  // No sidebar, no notes column, no weather/intelligence cards, no
+  // 7-day strip, no exit link, no delete buttons. Just one wide bar
+  // per assigned operator showing name + task(s) + notes, with the
+  // selected date anchored at the bottom. View-only by design (the
+  // route stays public per Phase 9C.4a). Guarded against printMode
+  // so the print path never reaches this branch.
+  if (boardMode && !printMode) {
+    return (
+      <div
+        className={`${styles.root} ${styles.rootBoard} ${styles.boardSimple}`}
+        data-board-mode="true"
+      >
+        <BoardModeCrewBars operatorCards={operatorCards} />
+        <footer className={styles.boardDateOnly}>
+          {prettyDate(selectedDate)}
+        </footer>
+      </div>
+    )
+  }
+
   return (
     <div
       className={`${rootCls}${isCrosswinds ? ' ' + styles.dbWrapShop : ''}`}
@@ -843,6 +864,47 @@ function OperatorCard({ operator, canDeleteTasks = false, onDeleteEvent }) {
         </ol>
       )}
     </article>
+  )
+}
+
+/* ── BoardModeCrewBars (Phase 9C.4b — simplified kiosk layout) ──────────
+ * Renders one wide bar per assigned operator with their name + each
+ * assigned task + per-task notes. Drives the public /display-board/board
+ * kiosk view only. No equipment chips, status chips, status pickers,
+ * delete buttons, or any other interaction — view-only by design (the
+ * kiosk route is the one public no-login surface in the app).
+ *
+ * Multi-task operators get one stacked mini-row per task. Notes render
+ * only when the trimmed string is non-empty. When no operators have
+ * assignments today, the empty-state copy is centered. */
+
+function BoardModeCrewBars({ operatorCards }) {
+  if (!operatorCards || operatorCards.length === 0) {
+    return (
+      <div className={styles.boardBars}>
+        <p className={styles.boardEmpty}>No assignments for today.</p>
+      </div>
+    )
+  }
+  return (
+    <div className={styles.boardBars}>
+      {operatorCards.map(op => (
+        <article key={op.key} className={styles.boardPersonBar}>
+          <h2 className={styles.boardPersonName}>{op.employeeName ?? 'Unassigned'}</h2>
+          {op.assignments.map((a, idx) => {
+            const trimmedNotes = (a.notes ?? '').trim()
+            return (
+              <div key={a.id ?? idx} className={styles.boardTaskBlock}>
+                <p className={styles.boardTaskText}>{a.title}</p>
+                {trimmedNotes.length > 0 && (
+                  <p className={styles.boardNotesText}>{trimmedNotes}</p>
+                )}
+              </div>
+            )
+          })}
+        </article>
+      ))}
+    </div>
   )
 }
 

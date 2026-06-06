@@ -1895,3 +1895,108 @@
 @media (max-width: 600px) {
   .assignDeleteBtn { font-size: 15px; padding: 2px 7px; }
 }
+
+/* ── Phase 9C.4b — Simplified kiosk board layout ─────────────────────────
+   Used only by /display-board/board. The early-return branch wraps in
+   .root + .rootBoard + .boardSimple — the first two already supply the
+   full-viewport fixed-position dark turf background; .boardSimple just
+   strips the grid template areas and stacks the crew bars + bottom date.
+   No sidebar, no notes column, no 7-day strip, no interactive controls.
+   View-only by design. */
+
+.boardSimple {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 32px clamp(24px, 4vw, 64px);
+  /* Override the dbWrapShop / legacy grid templates from earlier phases. */
+  grid-template-areas: none;
+  grid-template-columns: none;
+  grid-template-rows: none;
+}
+
+.boardBars {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  overflow-y: auto;
+  padding-right: 4px;   /* keep the scrollbar away from card edges */
+}
+
+.boardPersonBar {
+  background: linear-gradient(165deg, rgba(13, 26, 19, 0.95), rgba(6, 18, 12, 0.95));
+  border: 1px solid rgba(74, 222, 128, 0.22);
+  border-left: 4px solid rgba(74, 222, 128, 0.55);
+  border-radius: 10px;
+  padding: 20px 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.boardPersonName {
+  margin: 0 0 4px 0;
+  font-size: clamp(28px, 3.2vw, 48px);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #4ade80;
+  line-height: 1.1;
+}
+
+.boardTaskBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 0 8px 0;
+  border-top: 1px dashed rgba(74, 222, 128, 0.18);
+}
+.boardTaskBlock:first-of-type { border-top: none; padding-top: 0; }
+
+.boardTaskText {
+  margin: 0;
+  font-size: clamp(22px, 2.4vw, 36px);
+  font-weight: 600;
+  color: var(--db-fg, #d4edd4);
+  line-height: 1.2;
+}
+
+.boardNotesText {
+  margin: 0;
+  font-size: clamp(18px, 1.8vw, 26px);
+  font-weight: 400;
+  color: rgba(212, 237, 212, 0.78);
+  line-height: 1.3;
+  font-style: italic;
+}
+
+.boardEmpty {
+  margin: auto;
+  text-align: center;
+  font-size: clamp(24px, 2.6vw, 40px);
+  color: rgba(212, 237, 212, 0.55);
+  font-weight: 500;
+  padding: 60px 20px;
+}
+
+.boardDateOnly {
+  flex: 0 0 auto;
+  text-align: center;
+  font-size: clamp(26px, 3vw, 44px);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgba(212, 237, 212, 0.85);
+  padding: 18px 0 8px 0;
+  border-top: 1px solid rgba(74, 222, 128, 0.22);
+}
+
+@media (max-width: 900px) {
+  .boardSimple { padding: 20px clamp(16px, 4vw, 32px); gap: 16px; }
+  .boardBars   { gap: 12px; }
+  .boardPersonBar { padding: 16px 18px; }
+}
+@media (max-width: 600px) {
+  .boardSimple { padding: 16px; gap: 12px; }
+  .boardPersonBar { padding: 14px 16px; }
+}
