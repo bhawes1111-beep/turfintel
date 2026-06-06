@@ -886,8 +886,26 @@ function BoardModeCrewBars({ operatorCards }) {
       </div>
     )
   }
+  // Phase 9C.4c — Auto-fit density. Pick a bucket based on how many
+  // operators and total assignments the board has today, then hand
+  // off to CSS attribute selectors so the rest of the responsiveness
+  // (text scaling, single-vs-two columns, notes line-clamp) is pure
+  // CSS. No ResizeObserver, no DOM measurement, no JS reflow loop.
+  //
+  //   compact     — 10+ operators OR 16+ total assignments
+  //   comfortable — 6+ operators OR 10+ total assignments
+  //   spacious    — everything else (preserves the 9C.4b look)
+  const operatorCount   = operatorCards.length
+  const assignmentCount = operatorCards.reduce(
+    (n, op) => n + (op.assignments?.length ?? 0),
+    0,
+  )
+  const density =
+    operatorCount >= 10 || assignmentCount >= 16 ? 'compact'
+    : operatorCount >= 6 || assignmentCount >= 10 ? 'comfortable'
+    : 'spacious'
   return (
-    <div className={styles.boardBars}>
+    <div className={styles.boardBars} data-density={density}>
       {operatorCards.map(op => (
         <article key={op.key} className={styles.boardPersonBar}>
           <h2 className={styles.boardPersonName}>{op.employeeName ?? 'Unassigned'}</h2>

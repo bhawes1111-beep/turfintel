@@ -1909,6 +1909,11 @@
   flex-direction: column;
   gap: 24px;
   padding: 32px clamp(24px, 4vw, 64px);
+  /* Phase 9C.4c — guarantee the simplified kiosk always fills the
+     viewport even on mobile browsers whose URL bar shifts; falls
+     back gracefully to inherit-from-.rootBoard's position:fixed
+     when 100dvh isn't supported. */
+  min-height: 100dvh;
   /* Override the dbWrapShop / legacy grid templates from earlier phases. */
   grid-template-areas: none;
   grid-template-columns: none;
@@ -1999,4 +2004,82 @@
 @media (max-width: 600px) {
   .boardSimple { padding: 16px; gap: 12px; }
   .boardPersonBar { padding: 14px 16px; }
+}
+
+/* ── Phase 9C.4c — Auto-fit density overrides ────────────────────────────
+   The kiosk computes one of three density buckets in JS based on roster
+   and assignment counts, then sets `data-density` on .boardBars. These
+   attribute selectors layer tighter spacing / smaller text / line-clamp
+   on top of the base 9C.4b classes. Spacious keeps the existing visual
+   identity (no overrides — empty selectors below documented for clarity).
+
+   Buckets:
+     spacious    — < 6 operators AND < 10 assignments (preserves 9C.4b)
+     comfortable — 6+ operators OR 10+ assignments
+     compact     — 10+ operators OR 16+ assignments (also 2-col on wide TVs)
+
+   Notes line-clamp:
+     spacious    — unlimited (no clamp; full wrap)
+     comfortable — 3 lines
+     compact     — 2 lines */
+
+/* Spacious is the no-override default. The empty rule keeps the
+   selector authored so future tweaks can layer on without re-deriving
+   it. Comments rather than `{}` so the build doesn't ship a no-op. */
+
+/* .boardBars[data-density='spacious'] {} */
+
+.boardBars[data-density='comfortable'] {
+  gap: 12px;
+}
+.boardBars[data-density='comfortable'] .boardPersonBar {
+  padding: 16px 22px;
+  gap: 8px;
+}
+.boardBars[data-density='comfortable'] .boardPersonName {
+  font-size: clamp(24px, 2.6vw, 38px);
+}
+.boardBars[data-density='comfortable'] .boardTaskText {
+  font-size: clamp(20px, 2vw, 30px);
+}
+.boardBars[data-density='comfortable'] .boardNotesText {
+  font-size: clamp(16px, 1.6vw, 22px);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.boardBars[data-density='compact'] {
+  gap: 8px;
+}
+.boardBars[data-density='compact'] .boardPersonBar {
+  padding: 12px 16px;
+  gap: 6px;
+}
+.boardBars[data-density='compact'] .boardPersonName {
+  font-size: clamp(20px, 2.2vw, 30px);
+}
+.boardBars[data-density='compact'] .boardTaskText {
+  font-size: clamp(18px, 1.7vw, 24px);
+}
+.boardBars[data-density='compact'] .boardNotesText {
+  font-size: clamp(14px, 1.4vw, 18px);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Compact + wide viewport → 2-column grid so a 12-person crew on a
+   large shop TV uses both halves of the screen instead of forcing a
+   long scroll. Below 1100px (tablets / phones) compact stays single
+   column so each bar still spans the full width. */
+@media (min-width: 1100px) {
+  .boardBars[data-density='compact'] {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 14px;
+    row-gap: 10px;
+  }
 }
