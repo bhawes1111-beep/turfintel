@@ -24,17 +24,59 @@
 // Manual *_es values authored via Phase 9C.5b2 are never touched here;
 // the caller's UPDATE clause enforces that contract.
 
-// Domain prompt — tells the LLM to preserve groundskeeping vocabulary
-// the way crew leads actually use it (greens, fairway, REI, etc.).
-// Spanish output is requested without explanation or markdown so the
-// raw response can be written straight into the *_es column.
+// Domain prompt — tells the LLM how a real golf-course superintendent
+// would write a note to the Spanish-speaking maintenance crew, not how
+// a textbook would translate one. We want natural Latin American /
+// Mexican crew Spanish, short, direct, action-first. Word-for-word
+// translation reads as foreign to the crew (e.g. "lado del par 3" is
+// understandable but a real superintendent would say "el par 3").
+//
+// Phase 9C.5c3f — Quality-tuned prompt. Adds explicit verb mappings
+// crews actually use in the field, glossary guidance, and four
+// canonical English↔Spanish example pairs so the model has concrete
+// patterns to imitate. The kiosk renders the model's raw output
+// straight into the *_es column, so the prompt enforces "Spanish only,
+// no quotes, no markdown, no explanations" as a hard constraint.
 const TURF_SYSTEM_PROMPT =
   'You translate short English golf course operations notes into Spanish ' +
-  'for a crew display board. Preserve turf / golf terms when the Spanish-' +
-  'speaking groundskeeping crew would expect them in English: greens, ' +
-  'fairway, tee, bunker, rough, REI, cart path, irrigation, hand water, ' +
-  'mow, roll, blow. Return ONLY the translated Spanish text. Do not add ' +
-  'explanations, prefixes, quotes, or markdown.'
+  'for a crew display board. Write natural Latin American / Mexican crew ' +
+  'Spanish — the way a golf course superintendent would actually speak to ' +
+  'the maintenance crew. Keep it simple and direct. Do NOT translate ' +
+  'word-for-word if it sounds awkward; choose the natural phrasing a real ' +
+  'crew would use.\n' +
+  '\n' +
+  'Glossary — keep these turf / golf terms in English because the ' +
+  'Spanish-speaking groundskeeping crew expects them: greens, fairway, ' +
+  'tee, tees, bunker, bunkers, rough, REI, cart path. Translate working ' +
+  'verbs to the everyday crew form:\n' +
+  '  mow         → corta\n' +
+  '  roll        → rueda (or "pasa el rodillo en …")\n' +
+  '  blow        → sopla\n' +
+  '  hand water  → riega a mano\n' +
+  '  irrigate    → riega\n' +
+  '\n' +
+  'Phrasing notes:\n' +
+  '  "par 3 side"          → "el par 3" or "campo par 3" (NOT "lado del par 3")\n' +
+  '  "championship course" → "campo de campeonato"\n' +
+  '  "dry spots on N green" → "áreas secas del green N"\n' +
+  '  "debris off tees"      → "la basura de los tees"\n' +
+  '\n' +
+  'Examples:\n' +
+  '\n' +
+  'English: Mow par 3 side then the championship course.\n' +
+  'Spanish: Corta el par 3 y después el campo de campeonato.\n' +
+  '\n' +
+  'English: Roll greens and follow the mowers.\n' +
+  'Spanish: Pasa el rodillo en los greens y sigue a los que están cortando.\n' +
+  '\n' +
+  'English: Hand water dry spots on 7 green.\n' +
+  'Spanish: Riega a mano las áreas secas del green 7.\n' +
+  '\n' +
+  'English: Blow debris off tees.\n' +
+  'Spanish: Sopla la basura de los tees.\n' +
+  '\n' +
+  'Return ONLY the translated Spanish text. Do not add explanations, ' +
+  'prefixes, quotes, or markdown. Output Spanish only.'
 
 /**
  * extractAiText — pulls the translated string out of whatever shape
