@@ -210,8 +210,10 @@ for (const forbidden of [
 }
 
 // Whole DisplayBoard.jsx file shouldn't gain a Phase 9C.7 marker.
-assert(!DB.includes('Phase 9C.7'),
-  'DisplayBoard.jsx carries no Phase 9C.7 edits (kiosk untouched)')
+// (Later sub-phases like Phase 9C.7a / 9C.7b are explicitly allowed —
+// the regex requires no letter immediately after the 7.)
+assert(!/Phase 9C\.7(?![a-z\d])/.test(DB),
+  'DisplayBoard.jsx carries no Phase 9C.7 edits (kiosk untouched; sub-phases allowed)')
 
 // ── Worker endpoint unchanged ─────────────────────────────────────────
 section('Worker endpoint /api/admin/translate/run preserved unchanged')
@@ -222,8 +224,8 @@ assert(/pathname === ['"]\/api\/admin\/translate\/run['"]\s*&&\s*method === ['"]
 assert(/actorHasPermission\(actor,\s*['"]canSystemSettings['"]\)/.test(IDX),
   '9C.5c3b: canSystemSettings auth gate preserved')
 
-assert(!IDX.includes('Phase 9C.7'),
-  'worker/index.js carries no Phase 9C.7 edits (UI-only sub-phase)')
+assert(!/Phase 9C\.7(?![a-z\d])/.test(IDX),
+  'worker/index.js carries no Phase 9C.7 edits (UI-only sub-phase; sub-phases allowed)')
 
 // ── No new D1 migration ───────────────────────────────────────────────
 section('No D1 schema change — migrations ledger preserved')
@@ -255,8 +257,8 @@ for (const path of [
   'wrangler.jsonc',
 ]) {
   const src = readFileSync(path, 'utf8')
-  assert(!src.includes('Phase 9C.7'),
-    `${path} carries no Phase 9C.7 edits (UI-only sub-phase)`)
+  assert(!/Phase 9C\.7(?![a-z\d])/.test(src),
+    `${path} carries no Phase 9C.7 edits (UI-only sub-phase; sub-phases allowed)`)
 }
 
 // ── Global Translate Now (9C.5d) still in place ───────────────────────

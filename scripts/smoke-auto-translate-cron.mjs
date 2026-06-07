@@ -139,26 +139,37 @@ assert(/UPDATE alerts[\s\S]{0,200}title_es\s*=\s*\?[\s\S]{0,200}WHERE id = \?[\s
 assert(/UPDATE alerts[\s\S]{0,200}message_es\s*=\s*\?[\s\S]{0,200}WHERE id = \?[\s\S]{0,200}\(message_es IS NULL OR TRIM\(message_es\) = ''\)/.test(AT),
   'alerts message UPDATE has race-safe WHERE guard')
 
-// SELECT scope — assignments only translate today's rows.
+// SELECT scope — assignments translate across all dates (Phase 9C.7a).
 //
-// Phase 9C.5c3a — the assignment sweep now mirrors the kiosk's dayCrew
-// derivation by JOINing through calendar_events.start_date instead of
-// filtering on crew_assignments.assigned_at (which is a creation
-// timestamp, not a board-date scope). An assignment authored yesterday
-// for today's event has assigned_at=yesterday but renders on today's
-// kiosk; this fix lets the sweep see it.
-assert(/SELECT[\s\S]{0,400}crew_assignments\s+AS\s+a[\s\S]{0,400}JOIN\s+calendar_events\s+AS\s+e\s+ON\s+e\.id\s*=\s*a\.calendar_event_id/.test(AT),
-  'assignments sweep JOINs crew_assignments → calendar_events on e.id = a.calendar_event_id')
-assert(/AND\s+e\.start_date\s*=\s*\?/.test(AT),
-  "assignments sweep filters by e.start_date = today (matches kiosk dayCrew scope)")
+// Phase 9C.5c3a JOINed calendar_events.start_date = today to mirror
+// the kiosk's dayCrew derivation. That was correct for the TV view
+// but wrong for the Translate Now / Regenerate UX, where supervisors
+// expected blank rows for any date to translate. 9C.7a removes the
+// calendar_events JOIN entirely and gates eligibility on the linked
+// employee's translation prefs instead.
+assert(/SELECT[\s\S]{0,400}crew_assignments\s+AS\s+a[\s\S]{0,400}LEFT JOIN\s+crew_employees\s+AS\s+emp/.test(AT),
+  'assignments sweep LEFT JOINs crew_assignments → crew_employees (employee opt-in gate)')
+assert(/emp\.id\s*=\s*a\.employee_id/.test(AT),
+  'employee join uses emp.id = a.employee_id (preferred linkage)')
+assert(/emp\.name\s*=\s*a\.employee_name/.test(AT),
+  'employee join falls back to emp.name = a.employee_name (legacy rows without employee_id)')
+assert(/emp\.status\s*=\s*'active'/.test(AT),
+  "assignments sweep requires emp.status = 'active'")
+assert(/emp\.auto_translate_board_notes\s*=\s*1/.test(AT),
+  'assignments sweep requires emp.auto_translate_board_notes = 1')
+assert(/emp\.board_language\s*=\s*'es'/.test(AT),
+  "assignments sweep requires emp.board_language = 'es'")
 assert(/AND\s+a\.status\s*!=\s*'cancelled'/.test(AT),
-  "assignments sweep excludes a.status = 'cancelled' (matches kiosk dayCrew filter)")
+  "assignments sweep still excludes a.status = 'cancelled'")
 
-// Negative guards — the broken 9C.5c3 scope must NOT come back.
+// Negative guards — neither the original 9C.5c3 nor the 9C.5c3a
+// date-scoped forms may come back.
 assert(!/DATE\(assigned_at\)\s*=\s*\?/.test(AT),
-  'old DATE(assigned_at) = ? filter is NOT present (replaced by calendar_events join)')
-assert(!/SELECT id, notes FROM crew_assignments\s+WHERE/.test(AT),
-  'old unaliased SELECT from crew_assignments is NOT present (replaced by aliased a.* JOIN form)')
+  'old DATE(assigned_at) = ? filter is NOT present (removed by 9C.5c3a, must stay removed)')
+assert(!/JOIN\s+calendar_events/.test(AT),
+  'assignment sweep no longer JOINs calendar_events (9C.7a — translates across all dates)')
+assert(!/e\.start_date\s*=\s*\?/.test(AT),
+  'assignment sweep no longer filters by e.start_date = today (9C.7a)')
 
 // SELECT scope — daily notes only translate today.
 assert(/SELECT[\s\S]{0,400}operations_daily_notes[\s\S]{0,400}note_date\s*=\s*\?/.test(AT),
@@ -202,15 +213,16 @@ for (const privateField of ['pay_rate', 'emergency_contact', 'pesticide_license'
 
 // Translation only reads from public-safe tables. Parse SQL contexts
 // explicitly: `FROM <table>` / `JOIN <table>` / `UPDATE <table>` /
-// `INSERT INTO <table>`. Phase 9C.5c3a added a JOIN on calendar_events
-// to the assignment sweep (scope mirrors the kiosk's dayCrew logic);
-// calendar_events is read-only here, joined only to filter by start_date.
+// `INSERT INTO <table>`. Phase 9C.5c3a JOINed calendar_events for
+// date scope; 9C.7a removed that JOIN and gates eligibility on
+// crew_employees prefs instead. calendar_events remains on the
+// allow-list as a no-op safety net in case a future phase needs it.
 const PUBLIC_TABLES = [
   'crew_assignments',
   'operations_daily_notes',
   'alerts',
   'crew_employees',
-  'calendar_events',         // Phase 9C.5c3a — JOIN target for date scope
+  'calendar_events',         // historical (9C.5c3a); not actively used post-9C.7a
 ]
 const sqlTableMatches = [
   ...AT_CODE.matchAll(/\b(?:FROM|JOIN|UPDATE|INTO)\s+(\w+)/gi),

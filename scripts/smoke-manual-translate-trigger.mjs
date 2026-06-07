@@ -228,8 +228,10 @@ assert(/autoTranslateBoardNotes:\s*row\.auto_translate_board_notes\s*===\s*1/.te
 
 assert(/export\s+async\s+function\s+runAutoTranslateSweep\(env\)/.test(AT),
   '9C.5c3: runAutoTranslateSweep still exported from worker/lib/autoTranslate.js')
-assert(/JOIN\s+calendar_events\s+AS\s+e\s+ON\s+e\.id\s*=\s*a\.calendar_event_id/.test(AT),
-  '9C.5c3a: assignment sweep still JOINs calendar_events')
+// Phase 9C.7a — sweep no longer JOINs calendar_events; employee opt-in
+// gate via crew_employees replaces date-scoping.
+assert(/LEFT JOIN\s+crew_employees\s+AS\s+emp/.test(AT),
+  '9C.7a: assignment sweep LEFT JOINs crew_employees (employee opt-in gate)')
 
 const DB = readFileSync('src/pages/DisplayBoard/DisplayBoard.jsx', 'utf8')
 assert(/function\s+employeeNeedsSpanish\(employee\)/.test(DB),

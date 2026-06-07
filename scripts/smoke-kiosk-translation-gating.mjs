@@ -298,8 +298,10 @@ assert(/boardLanguage:\s*row\.board_language\s*\?\?\s*['"]en['"]/.test(CREW),
 // 9C.5c3 + 9C.5c3a sweep.
 assert(/export\s+async\s+function\s+runAutoTranslateSweep\(env\)/.test(AT),
   '9C.5c3: runAutoTranslateSweep still exported')
-assert(/JOIN\s+calendar_events\s+AS\s+e\s+ON\s+e\.id\s*=\s*a\.calendar_event_id/.test(AT),
-  '9C.5c3a: assignment sweep still JOINs calendar_events')
+// Phase 9C.7a — sweep no longer JOINs calendar_events; employee opt-in
+// gate via crew_employees replaces date-scoping.
+assert(/LEFT JOIN\s+crew_employees\s+AS\s+emp/.test(AT),
+  '9C.7a: assignment sweep LEFT JOINs crew_employees (employee opt-in gate)')
 
 // Provider abstraction intact.
 assert(/export\s+function\s+getTranslateProvider\(env\)/.test(TR),

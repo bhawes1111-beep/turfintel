@@ -54,39 +54,57 @@ async function anyEmployeeNeedsTranslation(env) {
 /**
  * Translation sweep for crew_assignments.notes → notes_es.
  *
- * Scope matches the kiosk's dayCrew derivation in DisplayBoard.jsx:
- * an assignment is "for today" when its linked calendar_event has
- * start_date = today AND its own status is not cancelled. We JOIN
- * through calendar_events.start_date instead of using the row's own
- * assigned_at, because assigned_at is a creation timestamp (set to
- * now() at insert time), not a board-date scope — a row created
- * yesterday afternoon for today's event has assigned_at = yesterday.
+ * Phase 9C.7a — Scope widened to ALL eligible assignment rows across
+ * ALL dates. Previously the sweep JOINed calendar_events.start_date =
+ * today (9C.5c3a), which mirrored the kiosk's dayCrew derivation for
+ * the public TV view. That was correct for the kiosk but wrong for the
+ * Translate Now / Regenerate UX — a supervisor toggling Spanish on for
+ * Jose, then clicking Regenerate on a row for tomorrow's task, would
+ * see assignments.scanned: 0 and assume the system was broken.
  *
- * Phase 9C.5c3 originally filtered by DATE(assigned_at) = today, which
- * caused assignments that appeared on today's kiosk to silently miss
- * the sweep when they were authored on any prior day. 9C.5c3a fixes
- * this by mirroring the kiosk's join logic exactly: if it's on the
- * board, the sweep can see and translate it.
+ * Eligibility is now driven by the assignment itself + the linked
+ * employee's translation prefs, not by today's calendar:
+ *   • notes is non-blank
+ *   • notes_es is blank (preserves manual override — 9C.5b2)
+ *   • status != 'cancelled'
+ *   • linked employee (by employee_id, falling back to employee_name)
+ *     is active AND has auto_translate_board_notes=1 AND board_language='es'
  *
- * Both indexed columns participate in the join — idx_cal_start_date on
- * calendar_events, and the unique (calendar_event_id, employee_name)
- * index on crew_assignments — so the JOIN stays cheap.
+ * The TRANSLATE_MAX_PER_RUN budget still caps each run, so a backlog
+ * of 100 blank rows drains over ~2-3 ticks at the default 50 limit.
+ *
+ * Ordering: `assigned_at DESC` so recently-created tasks (typically
+ * today or tomorrow) translate first — the supervisor sees the most
+ * relevant rows fill in immediately, and any historical backlog
+ * follows behind.
+ *
+ * Manual override protection is unchanged: the UPDATE statement still
+ * carries the race-safe `WHERE notes_es IS NULL OR TRIM = ''` guard.
  */
 async function sweepAssignments(env, budget) {
   if (budget <= 0) return { scanned: 0, translated: 0 }
-  const today = todayIso()
+  // Employee-opt-in filter joins to crew_employees by employee_id when
+  // populated (Phase 5.6b backfilled this for matching rows), falling
+  // back to employee_name for legacy rows that never linked to a
+  // crew_employees.id. LEFT JOIN + the WHERE clause's employee status
+  // checks together enforce eligibility — rows with no matching
+  // employee are excluded by the `emp.status = 'active'` predicate.
   const { results } = await env.DB.prepare(
     `SELECT a.id, a.notes
        FROM crew_assignments AS a
-       JOIN calendar_events  AS e ON e.id = a.calendar_event_id
+       LEFT JOIN crew_employees AS emp
+         ON  emp.id   = a.employee_id
+         OR  emp.name = a.employee_name
       WHERE a.notes IS NOT NULL
         AND TRIM(a.notes) != ''
         AND (a.notes_es IS NULL OR TRIM(a.notes_es) = '')
-        AND e.start_date = ?
         AND a.status != 'cancelled'
+        AND emp.status = 'active'
+        AND emp.auto_translate_board_notes = 1
+        AND emp.board_language = 'es'
       ORDER BY datetime(a.assigned_at) DESC
       LIMIT ?`,
-  ).bind(today, budget).all()
+  ).bind(budget).all()
 
   let translated = 0
   for (const row of results ?? []) {

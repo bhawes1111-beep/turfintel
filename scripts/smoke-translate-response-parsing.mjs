@@ -199,8 +199,11 @@ assert(!AT.includes('Phase 9C.5c3c'),
 
 assert(/export\s+async\s+function\s+runAutoTranslateSweep\(env\)/.test(AT),
   'runAutoTranslateSweep still exported (regression)')
-assert(/JOIN\s+calendar_events\s+AS\s+e\s+ON\s+e\.id\s*=\s*a\.calendar_event_id/.test(AT),
-  '9C.5c3a JOIN preserved (regression)')
+// Phase 9C.7a — 9C.5c3a's calendar_events JOIN was replaced by an
+// employee-opt-in JOIN. The sweep is still defined and reachable; we
+// just check the post-9C.7a shape now.
+assert(/LEFT JOIN\s+crew_employees\s+AS\s+emp/.test(AT),
+  '9C.7a: assignment sweep LEFT JOINs crew_employees (employee opt-in gate)')
 
 // ── Manual trigger route from 9C.5c3b remains ─────────────────────────
 section('worker/index.js — manual trigger route preserved')
