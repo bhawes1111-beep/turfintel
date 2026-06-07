@@ -632,6 +632,11 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
             ›
           </button>
         </header>
+        {/* Phase 9C.10 — Daily Notes strip. Reuses the already-derived
+            dayNotes memo (selectedDate-filtered, active-only, pinned-and-
+            priority-sorted). Renders null when empty so the kiosk stays
+            clean on calm mornings — no wasted TV real-estate. */}
+        <BoardModeDailyNotes notes={dayNotes} />
         <BoardModeAlertMarquee alerts={kioskAlerts} />
         <BoardModeCrewBars operatorCards={operatorCards} />
       </div>
@@ -1047,6 +1052,61 @@ function OperatorCard({ operator, canDeleteTasks = false, onDeleteEvent }) {
         </ol>
       )}
     </article>
+  )
+}
+
+/* ── BoardModeDailyNotes (Phase 9C.10 — kiosk daily-notes strip) ────────
+ * Compact read-only strip directly under the date header that surfaces
+ * the operations team's authored daily notes for selectedDate. Sits
+ * above the alert marquee so a supervisor's "frost delay until 7:30"
+ * note is the first thing crew read off the TV.
+ *
+ * Filtering + sort happen upstream in the dayNotes useMemo: archived
+ * and deleted statuses are stripped at the source (status === 'active'
+ * only), and notes are pinned-first then priority-ordered. This
+ * component renders what it's given, no slicing.
+ *
+ * Spanish (titleEs/bodyEs) renders below the English copy in italic
+ * mint with lang="es" so screen readers switch voice profiles. No
+ * private-notes field is referenced — the operations_daily_notes shape
+ * exposes only title/body/titleEs/bodyEs/priority/pinned/status/
+ * noteDate (see worker/api/operationsNotes.js rowToNote).
+ *
+ * View-only by design (the kiosk route is the one public no-login
+ * surface in the app). No buttons / onClick / mutation handlers. */
+function BoardModeDailyNotes({ notes }) {
+  if (!notes || notes.length === 0) return null
+  return (
+    <section className={styles.boardDailyNotes} aria-label="Daily notes">
+      <div className={styles.boardDailyNotesHeader}>Daily Notes</div>
+      <ul className={styles.boardDailyNotesList}>
+        {notes.map(n => {
+          const titleTrim   = (n.title   ?? '').trim()
+          const bodyTrim    = (n.body    ?? '').trim()
+          const titleEsTrim = (n.titleEs ?? '').trim()
+          const bodyEsTrim  = (n.bodyEs  ?? '').trim()
+          const hasSpanish  = titleEsTrim.length > 0 || bodyEsTrim.length > 0
+          return (
+            <li
+              key={n.id}
+              className={styles.boardDailyNoteItem}
+              data-priority={n.priority}
+              data-pinned={n.pinned ? 'true' : undefined}
+            >
+              {titleTrim && <strong className={styles.boardDailyNoteTitle}>{titleTrim}</strong>}
+              {bodyTrim  && <span  className={styles.boardDailyNoteBody}>{bodyTrim}</span>}
+              {hasSpanish && (
+                <span className={styles.boardDailyNoteSpanish} lang="es">
+                  {titleEsTrim && <strong>{titleEsTrim}</strong>}
+                  {titleEsTrim && bodyEsTrim ? ' — ' : ''}
+                  {bodyEsTrim}
+                </span>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+    </section>
   )
 }
 

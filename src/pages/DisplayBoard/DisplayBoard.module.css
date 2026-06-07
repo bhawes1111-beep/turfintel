@@ -2156,6 +2156,81 @@
   }
 }
 
+/* ── Phase 9C.10 — kiosk Daily Notes strip ────────────────────────────
+   Compact bilingual note strip under the date header on /display-board/
+   board. Dark green translucent panel so it visually subordinates to
+   the red alert marquee below it (alerts > notes for crew attention)
+   while still reading from across a shop bay. Renders nothing when the
+   day has no notes — JS guard, not display:none — so the kiosk never
+   reserves empty vertical real-estate.
+
+   Scales with --board-bar-scale where practical so the strip tightens
+   in lock-step with the rest of the kiosk when --board-bar-scale falls
+   on dense rosters. */
+.boardDailyNotes {
+  flex: 0 0 auto;
+  background: rgba(20, 64, 38, 0.62);
+  color: #ecfdf5;
+  border: 1px solid rgba(74, 222, 128, 0.32);
+  border-radius: 6px;
+  padding: calc(8px * var(--board-bar-scale, 1)) calc(14px * var(--board-bar-scale, 1));
+  max-height: 26vh;
+  overflow-y: auto;
+  font-size: clamp(14px, 1.5vw, calc(20px * var(--board-bar-scale, 1)));
+  line-height: 1.3;
+}
+
+.boardDailyNotesHeader {
+  font-size: clamp(10px, 1.1vw, 13px);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(187, 247, 208, 0.85);
+  margin: 0 0 4px 0;
+}
+
+.boardDailyNotesList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(6px * var(--board-bar-scale, 1));
+}
+
+.boardDailyNoteItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: calc(4px * var(--board-bar-scale, 1)) calc(6px * var(--board-bar-scale, 1));
+  border-left: 3px solid rgba(148, 163, 184, 0.55);
+  background: rgba(15, 42, 26, 0.4);
+  border-radius: 4px;
+}
+.boardDailyNoteItem[data-priority="urgent"]    { border-left-color: #f87171; }
+.boardDailyNoteItem[data-priority="safety"]    { border-left-color: #fbbf24; }
+.boardDailyNoteItem[data-priority="weather"]   { border-left-color: #38bdf8; }
+.boardDailyNoteItem[data-priority="important"] { border-left-color: #4ade80; }
+.boardDailyNoteItem[data-priority="routine"]   { border-left-color: rgba(148, 163, 184, 0.6); }
+.boardDailyNoteItem[data-pinned="true"] {
+  box-shadow: 0 0 0 1px rgba(74, 222, 128, 0.35);
+}
+
+.boardDailyNoteTitle {
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.boardDailyNoteBody {
+  color: #ecfdf5;
+}
+
+.boardDailyNoteSpanish {
+  font-style: italic;
+  color: rgba(187, 247, 208, 0.78);
+  font-size: 0.9em;
+}
+
 .boardAlertMarquee {
   flex: 0 0 auto;
   background: #b91c1c;            /* deep red, sunlight-readable from across a shop bay */
@@ -2360,5 +2435,15 @@
   .boardDateOnly {
     font-size: clamp(20px, 2.4vw, calc(28px * var(--board-bar-scale, 1)));
     padding: calc(10px * var(--board-bar-scale, 1)) 0 calc(6px * var(--board-bar-scale, 1)) 0;
+  }
+  /* Phase 9C.10 — Tighten the daily-notes strip on short TVs so it
+     does not steal vertical space from the crew bars below. */
+  .boardDailyNotes {
+    max-height: 18vh;
+    padding: calc(6px * var(--board-bar-scale, 1)) calc(10px * var(--board-bar-scale, 1));
+    font-size: clamp(13px, 1.3vw, calc(17px * var(--board-bar-scale, 1)));
+  }
+  .boardDailyNotesHeader {
+    font-size: clamp(9px, 0.95vw, 11px);
   }
 }
