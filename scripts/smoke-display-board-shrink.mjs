@@ -238,8 +238,10 @@ assert(/if \(boardMode && !printMode\)\s*\{\s*return \(/.test(DB),
   'boardMode early-return guard preserved')
 assert(/<BoardModeCrewBars operatorCards=\{operatorCards\}\s*\/>/.test(DB),
   'early return still renders <BoardModeCrewBars operatorCards={operatorCards} />')
-assert(/<footer className=\{styles\.boardDateOnly\}>[\s\S]{0,200}\{prettyDate\(selectedDate\)\}/.test(DB),
-  'early return still renders bottom date via prettyDate(selectedDate)')
+// Phase 9C.5a — accept either the new top header (boardDateTop) or the
+// legacy bottom footer (boardDateOnly) for prettyDate(selectedDate).
+assert(/<(?:header|footer) className=\{styles\.(?:boardDateTop|boardDateOnly)\}>[\s\S]{0,200}\{prettyDate\(selectedDate\)\}/.test(DB),
+  'early return still renders the date via prettyDate(selectedDate) (top header or legacy footer)')
 assert(/No assignments for today\./.test(DB),
   'empty-state copy "No assignments for today." preserved')
 

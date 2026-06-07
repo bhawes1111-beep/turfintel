@@ -434,23 +434,56 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
     ? (liveAlerts.find(a => a.priority === 'high') ?? null)
     : null
 
+  // Phase 9C.5a — Public-safe alert stream that feeds the kiosk marquee.
+  // Derived above the early-return so the `if (boardMode && !printMode)
+  // { return ( ... ) }` block stays a one-liner (matches the existing
+  // regression-couple regexes in the display-board smokes).
+  //
+  // Sources (both already filtered to non-dismissed, crew-visible items
+  // by their respective stores / derivations):
+  //   • liveAlerts                                — alerts table
+  //   • dayNotes restricted to crew-broadcast       — operations_daily_notes
+  //     priorities (urgent | safety | weather)
+  //
+  // Routine + important notes intentionally stay on the admin board.
+  // The private superintendent-only condition log fields are never
+  // touched here; the privacy smoke continues to assert that this
+  // source file does not reference them by name.
+  const kioskAlerts = [
+    ...liveAlerts.map(a => ({
+      key:      `alert:${a.id}`,
+      text:     a.title ? `${a.title}${a.message ? ' — ' + a.message : ''}` : (a.message ?? ''),
+      priority: a.priority,
+    })),
+    ...dayNotes
+      .filter(n => n.priority === 'urgent' || n.priority === 'safety' || n.priority === 'weather')
+      .map(n => ({
+        key:      `note:${n.id}`,
+        text:     n.title ? `${n.title}${n.body ? ' — ' + n.body : ''}` : (n.body ?? ''),
+        priority: n.priority,
+      })),
+  ].filter(a => (a.text ?? '').trim().length > 0)
+
   // Phase 9C.4b — Simplified kiosk layout for /display-board/board.
   // No sidebar, no notes column, no weather/intelligence cards, no
   // 7-day strip, no exit link, no delete buttons. Just one wide bar
-  // per assigned operator showing name + task(s) + notes, with the
-  // selected date anchored at the bottom. View-only by design (the
-  // route stays public per Phase 9C.4a). Guarded against printMode
-  // so the print path never reaches this branch.
+  // per assigned operator showing name + task(s) + notes. View-only
+  // by design (the route stays public per Phase 9C.4a). Guarded
+  // against printMode so the print path never reaches this branch.
+  //
+  // Phase 9C.5a — Date moved from a bottom <footer> to a top <header>,
+  // and a red scrolling alert marquee renders immediately below it.
   if (boardMode && !printMode) {
     return (
       <div
         className={`${styles.root} ${styles.rootBoard} ${styles.boardSimple}`}
         data-board-mode="true"
       >
-        <BoardModeCrewBars operatorCards={operatorCards} />
-        <footer className={styles.boardDateOnly}>
+        <header className={styles.boardDateTop}>
           {prettyDate(selectedDate)}
-        </footer>
+        </header>
+        <BoardModeAlertMarquee alerts={kioskAlerts} />
+        <BoardModeCrewBars operatorCards={operatorCards} />
       </div>
     )
   }
@@ -864,6 +897,44 @@ function OperatorCard({ operator, canDeleteTasks = false, onDeleteEvent }) {
         </ol>
       )}
     </article>
+  )
+}
+
+/* ── BoardModeAlertMarquee (Phase 9C.5a — kiosk alert ticker) ───────────
+ * Red horizontal marquee that scrolls a public-safe alert stream across
+ * the top of /display-board/board, immediately below the date header.
+ * Renders nothing when there are no alerts so the kiosk stays clean on
+ * calm mornings.
+ *
+ * View-only by design. No dismiss / close / edit / delete controls. The
+ * track is duplicated (aria-hidden second copy) so the CSS animation
+ * loop reads as continuous without a visible cut.
+ *
+ * Honors prefers-reduced-motion via the CSS module — the marquee track
+ * still renders but the keyframe is disabled. Items are joined with a
+ * clear separator so accessibility tools and reduced-motion viewers can
+ * still read each alert distinctly.
+ */
+function BoardModeAlertMarquee({ alerts }) {
+  if (!alerts || alerts.length === 0) return null
+  return (
+    <div className={styles.boardAlertMarquee} role="status" aria-live="polite">
+      <div className={styles.boardAlertMarqueeTrack}>
+        {alerts.map(a => (
+          <span key={a.key} className={styles.boardAlertItem} data-priority={a.priority}>
+            {a.text}
+            <span className={styles.boardAlertSep} aria-hidden="true"> • </span>
+          </span>
+        ))}
+        {/* Duplicate the run for a seamless wrap-around. */}
+        {alerts.map(a => (
+          <span key={`${a.key}::dup`} className={styles.boardAlertItem} data-priority={a.priority} aria-hidden="true">
+            {a.text}
+            <span className={styles.boardAlertSep}> • </span>
+          </span>
+        ))}
+      </div>
+    </div>
   )
 }
 

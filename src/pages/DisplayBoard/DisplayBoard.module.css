@@ -2008,7 +2008,9 @@
 .boardDateOnly {
   /* Phase 9C.4d — explicit flex: 0 0 auto declaration documents that
      the date footer never grows or shrinks; it anchors the bottom of
-     the kiosk regardless of how many crew bars sit above it. */
+     the kiosk regardless of how many crew bars sit above it.
+     Phase 9C.5a — kept defined for backwards compatibility, but the
+     boardMode early return now uses .boardDateTop (date moved to top). */
   flex: 0 0 auto;
   text-align: center;
   font-size: clamp(26px, 3vw, 44px);
@@ -2017,6 +2019,85 @@
   color: rgba(212, 237, 212, 0.85);
   padding: 18px 0 8px 0;
   border-top: 1px solid rgba(74, 222, 128, 0.22);
+}
+
+/* ── Phase 9C.5a — Kiosk date (top) + scrolling alert marquee ────────────
+   Top-row date replaces the bottom-row date used through 9C.4d. Anchored
+   at the top of .boardSimple via flex: 0 0 auto. The crew bars now own
+   their own scroll area beneath this header + marquee.
+
+   The marquee scrolls liveAlerts + crew-broadcast-safe daily notes
+   (urgent / safety / weather only) across the screen with a red
+   background + white text, visible from across the shop bay. View-only —
+   no dismiss / edit / close controls. Renders nothing when no alerts
+   exist (the component early-returns null). */
+.boardDateTop {
+  flex: 0 0 auto;
+  text-align: center;
+  font-size: clamp(26px, 3vw, 44px);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgba(212, 237, 212, 0.92);
+  padding: 4px 0 12px 0;
+  border-bottom: 1px solid rgba(74, 222, 128, 0.22);
+}
+
+.boardAlertMarquee {
+  flex: 0 0 auto;
+  background: #b91c1c;            /* deep red, sunlight-readable from across a shop bay */
+  color: #ffffff;                  /* white letters, mandated */
+  border: 1px solid #7f1d1d;
+  border-radius: 6px;
+  overflow: hidden;                /* clip the off-screen portion of the scrolling track */
+  position: relative;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  /* Track is one row; height is driven by the inner font-size +
+     padding so the marquee never eats more than its share of the
+     viewport on a short TV. */
+  padding: 8px 0;
+  font-size: clamp(16px, 1.8vw, 24px);
+  line-height: 1.2;
+}
+
+.boardAlertMarqueeTrack {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  white-space: nowrap;
+  will-change: transform;
+  /* The track is wider than the parent because we render two copies of
+     the alert list back-to-back; the second is aria-hidden. Scrolling
+     -50% wraps seamlessly because the duplicate copy backfills the gap. */
+  animation: marquee-scroll 30s linear infinite;
+}
+
+.boardAlertItem {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 14px;
+  color: #ffffff;
+}
+
+.boardAlertSep {
+  color: rgba(255, 255, 255, 0.7);
+  padding: 0 6px;
+}
+
+@keyframes marquee-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }   /* half — the duplicate row makes -50% land on the seam */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Reduced-motion fallback: stop the keyframe so the alerts sit
+     statically. The duplicated track still renders, but it's clipped
+     by .boardAlertMarquee's overflow: hidden so only the first run is
+     visible. */
+  .boardAlertMarqueeTrack {
+    animation: none;
+    transform: none;
+  }
 }
 
 @media (max-width: 900px) {

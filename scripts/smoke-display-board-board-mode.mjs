@@ -42,8 +42,14 @@ assert(/data-board-mode="true"/.test(DB),
 // Content: BoardModeCrewBars + the bottom date.
 assert(/<BoardModeCrewBars operatorCards=\{operatorCards\}\s*\/>/.test(DB),
   'early return renders <BoardModeCrewBars operatorCards={operatorCards} />')
-assert(/<footer className=\{styles\.boardDateOnly\}>[\s\S]{0,200}\{prettyDate\(selectedDate\)\}/.test(DB),
-  'early return renders <footer styles.boardDateOnly>{prettyDate(selectedDate)}</footer>')
+// Phase 9C.5a — Date moved from the bottom <footer> to a top <header>
+// (.boardDateTop). The boardMode early return now renders the date FIRST,
+// then the alert marquee, then the crew bars. Accept either the new
+// .boardDateTop header or the legacy .boardDateOnly footer so this smoke
+// keeps green across the transition; the dedicated marquee smoke pins
+// down the new ordering precisely.
+assert(/<(?:header|footer) className=\{styles\.(?:boardDateTop|boardDateOnly)\}>[\s\S]{0,200}\{prettyDate\(selectedDate\)\}/.test(DB),
+  'early return renders the date via .boardDateTop (top, 9C.5a) or .boardDateOnly (legacy bottom)')
 
 // ── BoardModeCrewBars component ────────────────────────────────────────
 section('BoardModeCrewBars component')
