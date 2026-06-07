@@ -2043,67 +2043,113 @@
    exist (the component early-returns null). */
 .boardDateTop {
   flex: 0 0 auto;
-  /* Phase 9C.6 — flex layout to host ‹ date › arrows. The label
-     stays centered via .boardDateLabel's text-align + the gap rule;
-     the row width is governed by the kiosk wrapper. */
+  /* Phase 9C.6 — flex layout to host ‹ date › arrows.
+     Phase 9C.6a — tightened gap so the arrows feel paired with the
+     date instead of floating in space, and slightly trimmed top
+     padding to bring the row up against the kiosk's top edge. The
+     label stays centered via .boardDateLabel's text-align + a stable
+     min-width so weekday-length changes don't shift arrow positions. */
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: clamp(16px, 3vw, 36px);
+  gap: clamp(12px, 2.4vw, 28px);
   text-align: center;
   font-size: clamp(26px, 3vw, 44px);
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
   color: rgba(212, 237, 212, 0.92);
-  padding: 4px 0 12px 0;
+  padding: 2px 0 12px 0;
   border-bottom: 1px solid rgba(74, 222, 128, 0.22);
 }
 
-/* Phase 9C.6 — Kiosk date navigation arrow buttons. Large touch
-   target (clamp keeps them tappable on small TVs without bloating
-   on 4K), pill shape, subtle dark background, green border + text
-   consistent with the rest of the kiosk's turf palette. */
+/* Phase 9C.6a — Polished kiosk date navigation arrows. Circular pill
+   button with a subtle dark fill + soft green glow border. Sized via
+   clamp() so the same button reads well on a 720p shop TV, a 4K wall
+   display, and an admin laptop preview without media-query churn.
+   Hover lifts the button by 1px; active pushes it back down and
+   tightens slightly for tactile feedback. Focus-visible draws a
+   thicker green ring 3px out so keyboard navigation is unambiguous
+   even from across a shop bay. */
 .boardDateArrow {
   flex: 0 0 auto;
-  border: 1px solid rgba(74, 222, 128, 0.35);
-  background: rgba(15, 23, 42, 0.55);
-  color: #bbf7d0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width:  clamp(38px, 4.2vw, 58px);
+  height: clamp(38px, 4.2vw, 58px);
+  padding: 0;
+  border: 1px solid rgba(74, 222, 128, 0.38);
   border-radius: 999px;
-  width:  clamp(44px, 5vw, 72px);
-  height: clamp(44px, 5vw, 72px);
-  font-size: clamp(30px, 4vw, 52px);
+  background: linear-gradient(
+    165deg,
+    rgba(20, 38, 26, 0.62) 0%,
+    rgba(10, 22, 14, 0.78) 100%
+  );
+  color: #bbf7d0;
+  font-family: inherit;
+  font-size: clamp(26px, 3.4vw, 42px);
   line-height: 1;
   cursor: pointer;
-  font-family: inherit;
-  padding: 0;
-  transition: background 0.12s ease, border-color 0.12s ease;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 1px 2px rgba(0, 0, 0, 0.35);
+  transition:
+    background 0.14s ease,
+    border-color 0.14s ease,
+    box-shadow 0.14s ease,
+    transform 0.08s ease;
+  user-select: none;
 }
 .boardDateArrow:hover {
-  background: rgba(34, 197, 94, 0.18);
-  border-color: rgba(74, 222, 128, 0.6);
+  background: linear-gradient(
+    165deg,
+    rgba(34, 197, 94, 0.22) 0%,
+    rgba(15, 64, 32, 0.78) 100%
+  );
+  border-color: rgba(134, 239, 172, 0.65);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 4px 10px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(74, 222, 128, 0.18);
+  transform: translateY(-1px);
+}
+.boardDateArrow:active {
+  transform: translateY(0) scale(0.97);
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.4),
+    0 1px 2px rgba(0, 0, 0, 0.3);
 }
 .boardDateArrow:focus-visible {
-  outline: 2px solid rgba(74, 222, 128, 0.6);
-  outline-offset: 2px;
+  outline: 2px solid rgba(134, 239, 172, 0.8);
+  outline-offset: 3px;
 }
 
-/* The centered date label. min-width keeps the label from collapsing
-   to its content width when the date string is short — so the arrows
-   stay anchored at consistent positions regardless of weekday length
-   (e.g. "Mon" vs "Wednesday"). */
+/* The centered date label. min-width keeps the label at a stable
+   width so the arrows stay anchored regardless of weekday length
+   (e.g. "Mon" vs "Wednesday" both render the same row width). The
+   text-wrap balance hint helps on narrow viewports where the date
+   string might wrap.
+   Phase 9C.6a — relaxed lower bound of the clamp so smaller TVs and
+   tablet viewports don't waste horizontal whitespace. */
 .boardDateLabel {
   flex: 0 1 auto;
-  min-width: min(620px, 70vw);
+  min-width: clamp(280px, 42vw, 620px);
   text-align: center;
+  text-wrap: balance;
 }
 
-/* Mobile/small-screen pin-down so the arrows still fit alongside
-   the date label without wrapping. */
+/* Mobile/small-screen pin-down — arrows shrink, label drops its
+   min-width so the row fits comfortably on a phone. */
 @media (max-width: 600px) {
+  .boardDateTop {
+    gap: 10px;
+    padding: 2px 0 10px 0;
+  }
   .boardDateArrow {
-    width:  44px;
-    height: 44px;
-    font-size: 28px;
+    width:  40px;
+    height: 40px;
+    font-size: 26px;
   }
   .boardDateLabel {
     min-width: 0;

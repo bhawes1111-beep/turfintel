@@ -134,9 +134,12 @@ assert(/\.boardDateLabel\s*\{/.test(CSS),
   '.boardDateLabel class defined')
 
 // .boardDateTop becomes a flex row so ‹ <date> › lay out side by side.
-assert(/\.boardDateTop\s*\{[\s\S]{0,400}display:\s*flex/.test(CSS),
+// Phase 9C.6a — block grew (longer guidance comment + position: relative
+// + relaxed padding/gap clamps) so the regex windows widened from 400
+// → 800 to still reach the display: flex / justify-content: center rules.
+assert(/\.boardDateTop\s*\{[\s\S]{0,800}display:\s*flex/.test(CSS),
   '.boardDateTop uses display: flex (was text-align only)')
-assert(/\.boardDateTop\s*\{[\s\S]{0,400}justify-content:\s*center/.test(CSS),
+assert(/\.boardDateTop\s*\{[\s\S]{0,800}justify-content:\s*center/.test(CSS),
   '.boardDateTop uses justify-content: center (label stays centered)')
 
 // Hover state present so the arrows feel interactive on a kiosk laptop
