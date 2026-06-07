@@ -70,34 +70,24 @@ assert(/Promise\.allSettled/.test(HELPER),
   'helper uses Promise.allSettled for the bulk cleanup groups')
 
 // ── TasksManagerModal ──────────────────────────────────────────────────
-section('TasksManagerModal — uses cascade, no direct event delete')
+// Phase 9C.11 — TasksManagerModal was rewritten to manage reusable
+// task_templates instead of per-day calendar_events. The per-event
+// delete cascade flow this section originally pinned no longer applies
+// to TasksManagerModal (templates are archived via PATCH { status:
+// 'archived' }; assignments and equipment reservations are no longer
+// dependent on a template row). The deleteTaskCascade helper itself
+// still lives at src/utils/tasks/deleteTaskCascade.js and is exercised
+// by OperationsBoard (asserted below).
+section('TasksManagerModal — Phase 9C.11 archive-only contract')
 
 const TMM = readFileSync(TMM_PATH, 'utf8')
 
-// Phase 9C.3b — broadened to accept a multi-name import block since
-// TasksManagerModal now also pulls buildDeleteConfirmMessage from the
-// same helper module.
-assert(/import\s*\{[^}]*\bdeleteTaskCascade\b[^}]*\}\s+from\s+['"]\.\.\/\.\.\/\.\.\/utils\/tasks\/deleteTaskCascade['"]/.test(TMM),
-  'TasksManagerModal imports deleteTaskCascade')
-assert(/import\s+\{\s*useAssignmentsData\s*\}\s+from\s+['"]\.\.\/\.\.\/\.\.\/utils\/assignments\/assignmentsStore['"]/.test(TMM),
-  'TasksManagerModal imports useAssignmentsData')
-assert(/const\s+\{\s*crewAssignments,\s*equipmentReservations\s*\}\s*=\s*useAssignmentsData\(\)/.test(TMM),
-  'TasksManagerModal destructures { crewAssignments, equipmentReservations } from useAssignmentsData()')
-
-// handleDelete now calls the cascade helper with the assignments + reservations context.
-assert(/await deleteTaskCascade\(ev\.id,\s*\{\s*crewAssignments,\s*equipmentReservations\s*\}\)/.test(TMM),
-  'handleDelete: await deleteTaskCascade(ev.id, { crewAssignments, equipmentReservations })')
-
-// And no longer calls deleteCalendarEvent directly (the cascade does it).
 assert(!/deleteCalendarEvent\(/.test(TMM),
-  'TasksManagerModal no longer calls deleteCalendarEvent directly')
-
-// Phase 9C.3b — TasksManagerModal's inline confirm copy was extracted
-// into buildDeleteConfirmMessage. Assert the modal now calls the shared
-// helper; the helper's content is asserted separately by
-// smoke-display-board-delete.mjs.
-assert(/buildDeleteConfirmMessage\(ev\.title,\s*linkedCrewCount,\s*linkedEqCount\)/.test(TMM),
-  'TasksManagerModal calls the shared buildDeleteConfirmMessage helper')
+  'TasksManagerModal does not call deleteCalendarEvent (archive-only contract)')
+assert(!/deleteTaskCascade\(/.test(TMM),
+  'TasksManagerModal no longer routes through deleteTaskCascade (templates are not per-day events)')
+assert(/archiveTaskTemplate\(/.test(TMM),
+  'TasksManagerModal uses archiveTaskTemplate for the Archive button (replaces per-day delete)')
 
 // ── OperationsBoard ────────────────────────────────────────────────────
 section('OperationsBoard — local-only hide removed, cascade wired')

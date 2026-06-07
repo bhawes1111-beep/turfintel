@@ -55,13 +55,18 @@ assert(/pieces of equipment are linked/.test(HELPER),
 assert(/Their assignment and equipment links for this task will also be cleared/.test(HELPER),
   'helper appends the "will also be cleared" closer when links exist')
 
-// ── TasksManagerModal — uses shared helper ─────────────────────────────
-section('TasksManagerModal — uses buildDeleteConfirmMessage')
+// ── TasksManagerModal — Phase 9C.11 archive-only contract ──────────────
+// Phase 9C.11 retired the per-day calendar_event delete flow from
+// TasksManagerModal in favor of task-template archive. The shared
+// buildDeleteConfirmMessage helper is no longer consumed here, but is
+// still consumed by OperationsBoard (asserted below) and by the
+// DisplayBoard delete affordance.
+section('TasksManagerModal — Phase 9C.11 archive-only contract')
 
-assert(/import\s*\{[^}]*\bbuildDeleteConfirmMessage\b[^}]*\}\s+from\s+['"]\.\.\/\.\.\/\.\.\/utils\/tasks\/deleteTaskCascade['"]/.test(TMM),
-  'TasksManagerModal imports buildDeleteConfirmMessage')
-assert(/confirm\(buildDeleteConfirmMessage\(ev\.title,\s*linkedCrewCount,\s*linkedEqCount\)\)/.test(TMM),
-  'TasksManagerModal calls confirm(buildDeleteConfirmMessage(ev.title, linkedCrewCount, linkedEqCount))')
+assert(!/buildDeleteConfirmMessage/.test(TMM),
+  'TasksManagerModal no longer references buildDeleteConfirmMessage (templates use archive)')
+assert(/archiveTaskTemplate/.test(TMM),
+  'TasksManagerModal uses archiveTaskTemplate instead of per-event delete')
 
 // ── OperationsBoard — uses shared helper ──────────────────────────────
 section('OperationsBoard — uses buildDeleteConfirmMessage')

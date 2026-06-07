@@ -559,9 +559,12 @@ assert(/\{\s*!isCrosswinds\s*&&\s*\(usingScheduleFallback\s*\?/.test(DAB),
 assert(/\{\s*!isCrosswinds\s*&&\s*\(\s*[\s\S]{0,200}<div className=\{styles\.summaryRow\}/.test(DAB),
   'summary chips row is wrapped behind !isCrosswinds')
 
-// Quick-assign category strip is gated behind !isCrosswinds.
-assert(/\{\s*!isCrosswinds\s*&&\s*\(\s*[\s\S]{0,200}<div className=\{styles\.quickStrip\}/.test(DAB),
-  'quick-assign category strip is wrapped behind !isCrosswinds')
+// Phase 9C.11 — Legacy Phase 12 quick-assign category strip was
+// removed when the DAB dropdown was rewired to read from
+// task_templates. The strip was already !isCrosswinds-gated; both
+// branches are now retired.
+assert(!/<div className=\{styles\.quickStrip\}/.test(DAB),
+  'quick-assign category strip removed in Phase 9C.11 (replaced by task library)')
 
 // The assignTable itself must NOT be wrapped behind !isCrosswinds —
 // it has to render for Crosswinds too. Sanity-check the open tag.
@@ -576,9 +579,10 @@ assert(/isCrosswinds\s*&&\s*<th>Status<\/th>/.test(DAB),
   'Phase 8A.3a Status column header still present')
 
 // Header buttons (Tasks / Copy Yesterday / Clear Day) are still
-// rendered unconditionally — per spec they stay visible for now.
-assert(/Tasks \(\{dayEvents\.length\}\)/.test(DAB),
-  'Tasks button still visible (not Crosswinds-gated yet)')
+// rendered unconditionally. Phase 9C.11 — the Tasks button label now
+// shows the active task-templates count instead of dayEvents.length.
+assert(/Tasks \(\{activeTaskTemplates\.length\}\)/.test(DAB),
+  'Tasks button label shows active task-templates count (Phase 9C.11)')
 assert(/Copy Yesterday/.test(DAB),
   'Copy Yesterday button still visible (not Crosswinds-gated yet)')
 assert(/Clear Day/.test(DAB),
@@ -598,43 +602,44 @@ assert(!CA.includes('Phase 8A.3b'),
 assert(!DB.includes('Phase 8A.3b'),
   'DisplayBoard.jsx carries no Phase 8A.3b edits')
 
-// ── Phase 8A.3c — Crosswinds simple task dropdown ───────────────────────
-// Source-only checks against DailyAssignmentBoard.jsx + calendarStore.js.
-// The Crosswinds task cell now renders a curated 14-item list. Picking
-// a name looks up an existing crew-type event by date+title (case-
-// insensitive) or silently creates one via createCalendarEvent with a
-// stable sourceId so two operators picking the same task on the same
-// day land on one event server-side. Non-Crosswinds courses keep the
-// legacy event-id dropdown unchanged. Notes + Status from 8A.3a and
-// the declutter gates from 8A.3b are explicitly preserved.
-section('Phase 8A.3c — Crosswinds simple task dropdown')
+// ── Phase 9C.11 — Reusable task library replaces the 8A.3c flow ─────────
+// Phase 8A.3c's Crosswinds-only curated dropdown + the non-Crosswinds
+// per-day event-id dropdown were both replaced by a unified template-
+// driven dropdown reading from task_templates. The pickOrCreate /
+// handleQuickTaskChange plumbing is retained but now keyed by template
+// id. Notes + Status writes (8A.3a) and the 8A.3b declutter gates
+// (schedule notice, summary chips) are still in scope.
+section('Phase 9C.11 — Reusable task library replaces 8A.3c flow')
 
-// createCalendarEvent imported from the calendar store.
+// createCalendarEvent still imported (selecting a template still
+// creates / finds a calendar_event for selectedDate).
 assert(/import\s*\{\s*createCalendarEvent\s*\}\s*from\s*['"]\.\.\/\.\.\/\.\.\/utils\/calendar\/calendarStore['"]/.test(DAB),
-  'DailyAssignmentBoard imports createCalendarEvent')
+  'DailyAssignmentBoard still imports createCalendarEvent (template select → calendar_event)')
 
-// Curated task list constant exists with all 14 spec items.
-assert(/CROSSWINDS_TASK_LIST\s*=\s*\[/.test(DAB),
-  'CROSSWINDS_TASK_LIST constant is defined')
-for (const t of [
-  'Mow Greens', 'Roll Greens', 'Course Setup', 'Bunkers',
-  'Spray', 'Hand Water', 'Irrigation', 'Detail Work',
-  'Mow Tees', 'Mow Fairways', 'Mow Rough', 'Cups',
-  'Cleanup', 'Project Work',
-]) {
-  assert(new RegExp(`['"]${t.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}['"]`).test(DAB),
-    `task "${t}" present in source`)
-}
+// New 9C.11 task-template store wiring.
+assert(/import\s*\{\s*useTaskTemplatesData\s*\}\s*from\s*['"]\.\.\/\.\.\/\.\.\/utils\/tasks\/taskTemplateStore['"]/.test(DAB),
+  'DailyAssignmentBoard imports useTaskTemplatesData')
+assert(/const\s+activeTaskTemplates\s*=\s*useMemo/.test(DAB),
+  'activeTaskTemplates useMemo defined')
+assert(/\.filter\(t => t\.status === 'active'\)/.test(DAB),
+  'activeTaskTemplates filters to status === "active" (excludes archived)')
 
-// slug helper lowercases + dash-joins.
+// CROSSWINDS_TASK_LIST hardcoded JS constant is gone.
+assert(!/CROSSWINDS_TASK_LIST\s*=\s*\[/.test(DAB),
+  'legacy CROSSWINDS_TASK_LIST hardcoded constant retired in Phase 9C.11')
+
+// slug helper still exists (used by the legacy fallback in
+// pickOrCreateEventForTask for ad-hoc task names without a template id).
 assert(/function\s+slug\s*\(\s*s\s*\)/.test(DAB),
-  'slug(s) helper is defined')
+  'slug(s) helper still defined')
 assert(/toLowerCase\(\)\.replace\(\/\[\^a-z0-9\]\+\/g,\s*'-'\)/.test(DAB),
   'slug lowercases and dash-joins non-alphanumeric runs')
 
-// pickOrCreateEventForTask lookup invariants.
-assert(/async\s+function\s+pickOrCreateEventForTask\s*\(\s*taskName,\s*dateIso\s*\)/.test(DAB),
-  'pickOrCreateEventForTask(taskName, dateIso) is defined')
+// pickOrCreateEventForTask now takes a third (optional) templateId arg
+// so the calendar_event's sourceId can collapse same-template / same-
+// date duplicates server-side.
+assert(/async\s+function\s+pickOrCreateEventForTask\s*\(\s*taskName,\s*dateIso,\s*templateId/.test(DAB),
+  'pickOrCreateEventForTask(taskName, dateIso, templateId) is defined')
 assert(/\(e\.startDate\s*\?\?\s*e\.date\)\s*===\s*dateIso/.test(DAB),
   'event lookup matches date via startDate ?? date')
 assert(/\(e\.title\s*\?\?\s*''\)\.trim\(\)\.toLowerCase\(\)\s*===\s*wanted/.test(DAB),
@@ -642,8 +647,8 @@ assert(/\(e\.title\s*\?\?\s*''\)\.trim\(\)\.toLowerCase\(\)\s*===\s*wanted/.test
 assert(/e\.eventType\s*===\s*'crew'/.test(DAB),
   "event lookup requires eventType === 'crew'")
 
-// Silent create payload uses the existing dedupe-friendly shape.
-assert(/createCalendarEvent\(\s*\{[\s\S]{0,300}\btitle:\s*taskName/.test(DAB),
+// Silent create payload still uses the existing dedupe-friendly shape.
+assert(/createCalendarEvent\(\s*\{[\s\S]{0,400}\btitle:\s*taskName/.test(DAB),
   'createCalendarEvent payload includes title')
 assert(/\bstartDate:\s*dateIso\b/.test(DAB),
   'createCalendarEvent payload includes startDate: dateIso')
@@ -651,34 +656,28 @@ assert(/eventType:\s*'crew'/.test(DAB),
   "createCalendarEvent payload sets eventType: 'crew'")
 assert(/sourceModule:\s*'assignment-board'/.test(DAB),
   "createCalendarEvent payload sets sourceModule: 'assignment-board'")
-assert(/sourceId:\s*`\$\{dateIso\}:\$\{slug\(taskName\)\}`/.test(DAB),
-  'createCalendarEvent payload sourceId is `${dateIso}:${slug(taskName)}`')
+assert(/`task-template:\$\{templateId\}:\$\{dateIso\}`/.test(DAB),
+  'createCalendarEvent payload uses stable sourceId task-template:<id>:<date> (Phase 9C.11)')
 
-// handleQuickTaskChange wraps the existing handleTaskChange flow.
-assert(/async\s+function\s+handleQuickTaskChange\s*\(\s*emp,\s*taskName\s*\)/.test(DAB),
-  'handleQuickTaskChange(emp, taskName) is defined')
-assert(/if \(!taskName\) return handleClear\(emp\)/.test(DAB),
+// handleQuickTaskChange now takes the templateId (was the task name).
+assert(/async\s+function\s+handleQuickTaskChange\s*\(\s*emp,\s*templateId\s*\)/.test(DAB),
+  'handleQuickTaskChange(emp, templateId) is defined')
+assert(/if \(!templateId\) return handleClear\(emp\)/.test(DAB),
   'empty selection clears via the existing handleClear path')
-assert(/await pickOrCreateEventForTask\(taskName,\s*selectedDate\)/.test(DAB),
-  'handleQuickTaskChange calls pickOrCreateEventForTask')
+assert(/pickOrCreateEventForTask\(template\.name,\s*selectedDate,\s*template\.id\)/.test(DAB),
+  'handleQuickTaskChange calls pickOrCreateEventForTask(template.name, selectedDate, template.id)')
 assert(/await handleTaskChange\(emp,\s*event\.id\)/.test(DAB),
   'handleQuickTaskChange hands the resolved event id to handleTaskChange')
 
-// Crosswinds task cell uses the curated list dropdown.
-assert(/isCrosswinds \?\s*\(\s*\/\*[\s\S]*?\*\/\s*<select/.test(DAB)
-    || /isCrosswinds \? \(\s*<select/.test(DAB)
-    || /isCrosswinds\s*\?\s*\(/.test(DAB),
-  'task cell branches on isCrosswinds for the new dropdown')
-assert(/CROSSWINDS_TASK_LIST\.map\(t =>/.test(DAB),
-  'Crosswinds branch renders <option> per CROSSWINDS_TASK_LIST entry')
-assert(/onChange=\{e =>\s*handleQuickTaskChange\(emp,\s*e\.target\.value\)\}/.test(DAB),
-  'Crosswinds dropdown wires onChange → handleQuickTaskChange')
-
-// Non-Crosswinds legacy event-id dropdown still present.
-assert(/dropdownOptionsFor\(assignment\)\.map\(ev =>/.test(DAB),
-  'legacy non-Crosswinds event-id dropdown still rendered')
-assert(/onChange=\{e =>\s*handleTaskChange\(emp,\s*e\.target\.value\)\}/.test(DAB),
-  'legacy onChange still calls handleTaskChange directly')
+// Unified template dropdown — no more isCrosswinds branch.
+assert(/activeTaskTemplates\.map\(tmpl =>/.test(DAB),
+  'task dropdown maps over activeTaskTemplates (unified for all courses)')
+assert(/onChange=\{e => handleQuickTaskChange\(emp, e\.target\.value\)\}/.test(DAB),
+  'dropdown onChange unifies via handleQuickTaskChange')
+assert(!/CROSSWINDS_TASK_LIST\.map/.test(DAB),
+  'legacy CROSSWINDS_TASK_LIST.map() removed')
+assert(!/dropdownOptionsFor\(/.test(DAB),
+  'legacy dropdownOptionsFor() helper removed')
 
 // Phase 8A.3a Notes + Status writes preserved.
 assert(/patchCrewAssignment\(assignment\.id,\s*\{\s*notes\s*:/.test(DAB),
@@ -686,13 +685,11 @@ assert(/patchCrewAssignment\(assignment\.id,\s*\{\s*notes\s*:/.test(DAB),
 assert(/patchCrewAssignment\(assignment\.id,\s*\{\s*status\s*:/.test(DAB),
   'Phase 8A.3a status write via patchCrewAssignment still present')
 
-// Phase 8A.3b declutter gates preserved.
+// Phase 8A.3b declutter gates preserved (the gates that survived 9C.11).
 assert(/\{\s*!isCrosswinds\s*&&\s*\(usingScheduleFallback\s*\?/.test(DAB),
   'Phase 8A.3b schedule notice gate preserved')
 assert(/\{\s*!isCrosswinds\s*&&\s*\(\s*[\s\S]{0,200}<div className=\{styles\.summaryRow\}/.test(DAB),
   'Phase 8A.3b summary chips gate preserved')
-assert(/\{\s*!isCrosswinds\s*&&\s*\(\s*[\s\S]{0,200}<div className=\{styles\.quickStrip\}/.test(DAB),
-  'Phase 8A.3b quick-assign strip gate preserved')
 
 // Cross-file guards.
 const CAL = readFileSync('src/utils/calendar/calendarStore.js', 'utf8')

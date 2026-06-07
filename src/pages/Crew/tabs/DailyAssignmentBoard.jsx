@@ -32,6 +32,13 @@ import { runTranslationSweep, scheduleTranslationSweep } from '../../../utils/tr
 import { useAuth } from '../../../context/AuthContext'
 import EquipmentPickerModal from './EquipmentPickerModal'
 import TasksManagerModal from './TasksManagerModal'
+// Phase 9C.11 — Reusable task library. The dropdown reads its options
+// from active task_templates rows instead of (a) per-day calendar_events
+// for non-Crosswinds courses, or (b) the legacy hardcoded Crosswinds
+// task list. Selecting a template still creates / finds a calendar_event
+// for selectedDate via pickOrCreateEventForTask so the downstream
+// crew_assignment + kiosk join paths are unchanged.
+import { useTaskTemplatesData } from '../../../utils/tasks/taskTemplateStore'
 import styles from './DailyAssignmentBoard.module.css'
 
 // Phase 8A.3a — Crosswinds-only Notes + Status per assignment row.
@@ -51,28 +58,11 @@ function normalizeAssignmentStatus(raw) {
   return ASSIGNMENT_STATUS_DEFAULT
 }
 
-// Phase 8A.3c — Crosswinds-only curated task list. The dropdown
-// shows these names instead of forcing the supervisor through the
-// full 6-field TasksManagerModal. Selecting a name looks up an
-// existing crew-type calendar_event for the day or silently creates
-// one via the existing dedupe-friendly createCalendarEvent path.
-// No new schema; reuses sourceModule + sourceId for idempotency.
-const CROSSWINDS_TASK_LIST = [
-  'Mow Greens',
-  'Roll Greens',
-  'Course Setup',
-  'Bunkers',
-  'Spray',
-  'Hand Water',
-  'Irrigation',
-  'Detail Work',
-  'Mow Tees',
-  'Mow Fairways',
-  'Mow Rough',
-  'Cups',
-  'Cleanup',
-  'Project Work',
-]
+// Phase 9C.11 — the legacy Crosswinds hardcoded task list (14 names)
+// was retired in favor of the reusable task_templates table. The
+// original names were seeded into task_templates by
+// worker/migrations/0051_task_templates.sql. Supervisors now edit the
+// library from the Tasks tab modal at runtime.
 
 function slug(s) {
   return (s ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
@@ -94,60 +84,6 @@ function prettyDate(iso) {
 
 const TODAY_ISO = () => new Date().toISOString().slice(0, 10)
 
-function fmtTime(t) {
-  if (!t) return ''
-  const [h, m] = t.split(':')
-  const hour = parseInt(h, 10)
-  if (!Number.isFinite(hour)) return t
-  const am  = hour < 12
-  const h12 = ((hour + 11) % 12) + 1
-  return `${h12}:${m} ${am ? 'AM' : 'PM'}`
-}
-
-function taskOptionLabel(event) {
-  const time = fmtTime(event.startTime)
-  const location = event.location ? ` (${event.location})` : ''
-  return time
-    ? `${time} · ${event.title}${location}`
-    : `${event.title}${location}`
-}
-
-// ── Quick-assign category patterns ────────────────────────────────────
-// Heuristic title-matching keeps us schema-free: real-world task names
-// like "Mow Greens 1-9", "Rake Bunkers Front", "Hand Water Fairways"
-// all fall into these buckets by keyword. Spray is also event-type-aware
-// so a "Tribute Total" spray task without the word "spray" still
-// matches. 'misc' is the catch-all for tasks none of the above caught.
-const QUICK_CATEGORIES = [
-  { key: 'greens',   label: 'Greens',   pattern: /\bgreen/i },
-  { key: 'tees',     label: 'Tees',     pattern: /\btee/i },
-  { key: 'fairways', label: 'Fairways', pattern: /\bfairway|\bfwy\b/i },
-  { key: 'setup',    label: 'Setup',    pattern: /setup|cup|flag|pin|hole change/i },
-  { key: 'bunkers',  label: 'Bunkers',  pattern: /bunker|sand|rake/i },
-  { key: 'detail',   label: 'Detail',   pattern: /detail|trim|edge|weed|blow\b/i },
-  { key: 'spray',    label: 'Spray',    pattern: /spray|apply|chem/i },
-  { key: 'misc',     label: 'Misc',     pattern: null },
-]
-
-function eventMatchesCategory(event, key) {
-  if (!key) return true
-  const cat = QUICK_CATEGORIES.find(c => c.key === key)
-  if (!cat) return true
-  if (cat.pattern) {
-    if (cat.pattern.test(event.title ?? '')) return true
-    if (key === 'spray' && event.eventType === 'spray') return true
-    return false
-  }
-  // 'misc' = doesn't match any specific category
-  const matchedAnySpecific = QUICK_CATEGORIES
-    .filter(c => c.pattern)
-    .some(c =>
-      c.pattern.test(event.title ?? '')
-      || (c.key === 'spray' && event.eventType === 'spray'),
-    )
-  return !matchedAnySpecific
-}
-
 export default function DailyAssignmentBoard({
   employees,
   events,
@@ -157,11 +93,12 @@ export default function DailyAssignmentBoard({
 }) {
   const toast = useToast()
   const { schedules: weeklySchedules } = useEmployeeSchedulesData()
+  // Phase 9C.11 — reusable task library. Backs the DAB dropdown.
+  const { templates: taskTemplates } = useTaskTemplatesData()
   const [selectedDate, setSelectedDate] = useState(TODAY_ISO)
   const [modalEmpId,   setModalEmpId]   = useState(null)
   const [tasksModalOpen, setTasksModalOpen] = useState(false)
   const [busyEmpId,    setBusyEmpId]    = useState(null)
-  const [quickFilter,  setQuickFilter]  = useState(null)   // category key | null
   const [bulkBusy,     setBulkBusy]     = useState(null)   // 'copy' | 'clear' | null
 
   // Phase 8A.3a — Crosswinds gate. The new Notes + Status columns
@@ -210,6 +147,22 @@ export default function DailyAssignmentBoard({
     () => new Set(dayEvents.map(e => e.id)),
     [dayEvents],
   )
+
+  // Phase 9C.11 — Active task templates drive the dropdown options. The
+  // archived toggle in the Tasks Library modal is intentionally a
+  // server-side fetch flag; here we still defensively filter by
+  // status === 'active' so archived templates can never leak into the
+  // assignment picker even if the underlying store includes them.
+  const activeTaskTemplates = useMemo(() => {
+    return (taskTemplates ?? [])
+      .filter(t => t.status === 'active')
+      .sort((a, b) => {
+        const sa = a.sortOrder ?? 0
+        const sb = b.sortOrder ?? 0
+        if (sa !== sb) return sa - sb
+        return (a.name ?? '').localeCompare(b.name ?? '')
+      })
+  }, [taskTemplates])
 
   // Scheduled employees (Phase 13):
   //   - If the employee_schedules table has any rows for this course,
@@ -281,29 +234,6 @@ export default function DailyAssignmentBoard({
     }
     return m
   }, [equipmentReservations])
-
-  // ── Quick-assign filter derivations ───────────────────────────────────
-  const categoryCounts = useMemo(() => {
-    const m = {}
-    for (const c of QUICK_CATEGORIES) {
-      m[c.key] = dayEvents.filter(e => eventMatchesCategory(e, c.key)).length
-    }
-    return m
-  }, [dayEvents])
-
-  // dropdownOptionsFor — returns the list of events visible in a single
-  // row's dropdown. Honors the current quick filter but always keeps the
-  // row's currently-assigned event in the list so the select value
-  // doesn't go orphan when the filter excludes it.
-  function dropdownOptionsFor(assignment) {
-    if (!quickFilter) return dayEvents
-    const base = dayEvents.filter(e => eventMatchesCategory(e, quickFilter))
-    if (assignment && !base.some(e => e.id === assignment.calendarEventId)) {
-      const pinned = dayEvents.find(e => e.id === assignment.calendarEventId)
-      if (pinned) return [pinned, ...base]
-    }
-    return base
-  }
 
   // ── Summary chips ─────────────────────────────────────────────────────
   const summary = useMemo(() => {
@@ -415,12 +345,14 @@ export default function DailyAssignmentBoard({
     return handleTaskChange(emp, '')
   }
 
-  // Phase 8A.3c — pick an existing crew-type event by date + title (case-
-  // insensitive) or silently create one via the existing dedupe-friendly
-  // createCalendarEvent path. The stable sourceId (`<date>:<slug>`) means
-  // two operators picking the same task on the same day resolve to one
-  // event server-side, so DisplayBoard's operator/event joins stay clean.
-  async function pickOrCreateEventForTask(taskName, dateIso) {
+  // Phase 9C.11 — Picks an existing crew-type calendar_event for
+  // (template, date) or silently creates one. The stable sourceId is
+  // now keyed off the template id (`task-template:<templateId>:<date>`)
+  // so two operators picking the same template on the same day resolve
+  // to one event server-side. Falls back to a slug-based sourceId for
+  // ad-hoc task names without a template id (mirrors the pre-9C.11
+  // shape so legacy callers stay compatible).
+  async function pickOrCreateEventForTask(taskName, dateIso, templateId = null) {
     const wanted = (taskName ?? '').trim().toLowerCase()
     if (!wanted || !dateIso) return null
     const existing = events.find(e =>
@@ -429,24 +361,33 @@ export default function DailyAssignmentBoard({
       (e.eventType === 'crew')
     )
     if (existing) return existing
+    const sourceId = templateId
+      ? `task-template:${templateId}:${dateIso}`
+      : `${dateIso}:${slug(taskName)}`
     return await createCalendarEvent({
       title:        taskName,
       startDate:    dateIso,
       eventType:    'crew',
       sourceModule: 'assignment-board',
-      sourceId:     `${dateIso}:${slug(taskName)}`,
+      sourceId,
     })
   }
 
-  // Phase 8A.3c — Crosswinds quick-task handler. Empty selection clears
-  // via the existing handleClear path. Any non-empty selection picks-or-
-  // creates the calendar_event and then hands its id to the existing
-  // handleTaskChange flow (which does the crew_assignment write).
-  async function handleQuickTaskChange(emp, taskName) {
-    if (!taskName) return handleClear(emp)
+  // Phase 9C.11 — Quick-task handler. Receives a template-id-or-empty
+  // selection from the dropdown. Empty selection clears via the existing
+  // handleClear path. Any non-empty selection looks up the template,
+  // picks-or-creates the calendar_event keyed by template id, then hands
+  // the event id to the existing handleTaskChange flow.
+  async function handleQuickTaskChange(emp, templateId) {
+    if (!templateId) return handleClear(emp)
+    const template = activeTaskTemplates.find(t => t.id === templateId)
+    if (!template) {
+      toast.error('Task assignment failed: template not found')
+      return
+    }
     setBusyEmpId(emp.id)
     try {
-      const event = await pickOrCreateEventForTask(taskName, selectedDate)
+      const event = await pickOrCreateEventForTask(template.name, selectedDate, template.id)
       if (!event?.id) {
         toast.error('Task assignment failed: no event id returned')
         return
@@ -828,9 +769,9 @@ export default function DailyAssignmentBoard({
             type="button"
             className={styles.tasksBtn}
             onClick={() => setTasksModalOpen(true)}
-            title="Add or edit the day's tasks"
+            title="Open the reusable task library — add / rename / archive templates that show up in this dropdown"
           >
-            Tasks ({dayEvents.length})
+            Tasks ({activeTaskTemplates.length})
           </button>
           {canTranslate && (
             <button
@@ -907,48 +848,15 @@ export default function DailyAssignmentBoard({
         </div>
       )}
 
-      {/* Quick-assign category strip (Phase 12) — hidden on Crosswinds (Phase 8A.3b). */}
-      {!isCrosswinds && (
-        <div className={styles.quickStrip} role="tablist">
-          {QUICK_CATEGORIES.map(c => {
-            const count    = categoryCounts[c.key] ?? 0
-            const isActive = quickFilter === c.key
-            return (
-              <button
-                key={c.key}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                className={`${styles.quickChip} ${isActive ? styles.quickChipOn : ''}`}
-                data-key={c.key}
-                disabled={count === 0}
-                onClick={() => setQuickFilter(isActive ? null : c.key)}
-                title={count > 0
-                  ? `Filter dropdowns to ${count} ${c.label} task${count !== 1 ? 's' : ''}`
-                  : `No ${c.label} tasks today`}
-              >
-                {c.label}
-                <span className={styles.quickChipCount}>{count}</span>
-              </button>
-            )
-          })}
-          {quickFilter && (
-            <button
-              type="button"
-              className={styles.quickChipClear}
-              onClick={() => setQuickFilter(null)}
-              title="Show all tasks"
-            >
-              Clear filter
-            </button>
-          )}
-        </div>
-      )}
+      {/* Phase 9C.11 — Legacy Phase 12 quick-assign category strip
+          removed. It filtered the per-row dropdown by event_type /
+          title keyword over per-day calendar_events; now that the
+          dropdown reads from active task_templates the supervisor
+          curates the list directly in the Task Library modal. */}
 
-      {dayEvents.length === 0 && (
+      {activeTaskTemplates.length === 0 && (
         <p className={styles.empty}>
-          No tasks scheduled for {prettyDate(selectedDate)}.
-          Add tasks on the Operations Board before assigning crew.
+          No active task templates yet. Click <strong>Tasks</strong> above to add tasks to your library.
         </p>
       )}
 
@@ -1007,44 +915,33 @@ export default function DailyAssignmentBoard({
                     })()}
                   </td>
                   <td className={styles.taskCell}>
-                    {isCrosswinds ? (
-                      /* Phase 8A.3c — Crosswinds curated task dropdown.
-                         The value resolves back to a list option by
-                         case-insensitive title match on the linked
-                         event; if no match, falls through to empty so
-                         the supervisor can pick a list task explicitly
-                         without losing the underlying assignment row. */
-                      <select
-                        className={styles.taskSelect}
-                        value={(() => {
-                          if (!assignment) return ''
-                          const ev = events.find(e => e.id === assignment.calendarEventId)
-                          const t  = (ev?.title ?? '').trim().toLowerCase()
-                          return CROSSWINDS_TASK_LIST.find(opt =>
-                            opt.toLowerCase() === t,
-                          ) ?? ''
-                        })()}
-                        disabled={busyEmpId === emp.id}
-                        onChange={e => handleQuickTaskChange(emp, e.target.value)}
-                      >
-                        <option value="">— Unassigned —</option>
-                        {CROSSWINDS_TASK_LIST.map(t => (
-                          <option key={t} value={t}>{t}</option>
-                        ))}
-                      </select>
-                    ) : (
-                      <select
-                        className={styles.taskSelect}
-                        value={assignment?.calendarEventId ?? ''}
-                        disabled={busyEmpId === emp.id || dayEvents.length === 0}
-                        onChange={e => handleTaskChange(emp, e.target.value)}
-                      >
-                        <option value="">— Unassigned —</option>
-                        {dropdownOptionsFor(assignment).map(ev => (
-                          <option key={ev.id} value={ev.id}>{taskOptionLabel(ev)}</option>
-                        ))}
-                      </select>
-                    )}
+                    {/* Phase 9C.11 — Unified task-library dropdown.
+                        Options come from active task_templates on every
+                        course. The value resolves back to a template
+                        id by case-insensitive title match on the
+                        currently linked event; if no match (e.g. the
+                        template was renamed or archived after the
+                        assignment was created), the select falls
+                        through to empty but the assignment row still
+                        displays via the linked event's title. */}
+                    <select
+                      className={styles.taskSelect}
+                      value={(() => {
+                        if (!assignment) return ''
+                        const ev = events.find(e => e.id === assignment.calendarEventId)
+                        const t  = (ev?.title ?? '').trim().toLowerCase()
+                        return activeTaskTemplates.find(tmpl =>
+                          (tmpl.name ?? '').trim().toLowerCase() === t,
+                        )?.id ?? ''
+                      })()}
+                      disabled={busyEmpId === emp.id || activeTaskTemplates.length === 0}
+                      onChange={e => handleQuickTaskChange(emp, e.target.value)}
+                    >
+                      <option value="">— Unassigned —</option>
+                      {activeTaskTemplates.map(tmpl => (
+                        <option key={tmpl.id} value={tmpl.id}>{tmpl.name}</option>
+                      ))}
+                    </select>
                     {assignment && (isCrosswinds ? (
                       // Phase 9C.2 — Crosswinds clear button: explicit
                       // "Clear" label + clarifying tooltip so shop-floor
@@ -1196,8 +1093,6 @@ export default function DailyAssignmentBoard({
 
       {tasksModalOpen && (
         <TasksManagerModal
-          selectedDate={selectedDate}
-          dayEvents={dayEvents}
           onClose={() => setTasksModalOpen(false)}
         />
       )}

@@ -139,6 +139,12 @@ import {
   applyScheduleTemplate,
 } from './api/scheduleTemplates.js'
 import {
+  listTaskTemplates,
+  getTaskTemplate,
+  createTaskTemplate,
+  updateTaskTemplate,
+} from './api/taskTemplates.js'
+import {
   getAmbientCurrent,
   createWeatherObservation,
   listWeatherHistory,
@@ -846,6 +852,21 @@ async function handleApi(request, env, url, ctx) {
     const id = decodeURIComponent(sprogItemMatch[1])
     if (method === 'PATCH')  return updateSprayProgramItem(env, id, request)
     if (method === 'DELETE') return deleteSprayProgramItem(env, id)
+  }
+
+  // ── /api/task-templates (Phase 9C.11) ─────────────────────────────────
+  if (pathname === '/api/task-templates') {
+    if (method === 'GET') {
+      const status = url.searchParams.get('status') || null
+      return listTaskTemplates(env, courseId, { status })
+    }
+    if (method === 'POST') return createTaskTemplate(env, request)
+  }
+  const taskTemplateMatch = pathname.match(/^\/api\/task-templates\/([^/]+)$/)
+  if (taskTemplateMatch) {
+    const id = decodeURIComponent(taskTemplateMatch[1])
+    if (method === 'GET')   return getTaskTemplate(env, id)
+    if (method === 'PATCH') return updateTaskTemplate(env, id, request)
   }
 
   // ── /api/calendar-events ──────────────────────────────────────────────

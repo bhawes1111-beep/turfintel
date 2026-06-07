@@ -39,6 +39,7 @@ const MUTATION_RULES = [
   ['/api/disease',                'canEditDisease'],
 
   ['/api/calendar-events',        'canEditAssignments'],
+  ['/api/task-templates',         'canEditAssignments'],   // Phase 9C.11
   ['/api/schedule-templates',     'canEditAssignments'],
   ['/api/employee-schedules',     'canEditAssignments'],
   ['/api/crew-employees',         'canEditAssignments'],

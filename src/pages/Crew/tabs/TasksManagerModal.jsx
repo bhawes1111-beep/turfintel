@@ -1,30 +1,39 @@
-// Phase 11b — Tasks Manager modal.
+// Phase 9C.11 — Task Library modal.
 //
-// Compact add/edit/delete surface for the calendar_events that drive
-// the Daily Assignment Board's task dropdown. Lets a supervisor manage
-// a day's task list without flipping tabs to the Operations Board task
-// editor. Both views write to the same persistent calendar_events
-// table — they're just two doors into the same data.
+// Manages the reusable task_templates that back the Daily Assignment
+// Board dropdown. Before 9C.11 this modal authored per-day calendar
+// events (every "Mow Greens" on a new date was a fresh row) AND the
+// Crosswinds DAB branch read its dropdown from a hardcoded
+// CROSSWINDS_TASK_LIST JS constant. Both are now retired in favor of
+// task_templates — supervisors rename / archive / add templates here,
+// and the DAB dropdown reads active rows from the same table.
+//
+// Selecting a template in the DAB still creates a calendar_event for
+// selectedDate via the existing pickOrCreateEventForTask path (now keyed
+// off task-template:<templateId>:<date> for server-side dedupe), so the
+// downstream crew_assignment / equipment_reservation flows are
+// unchanged.
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
-  createCalendarEvent,
-  patchCalendarEvent,
-} from '../../../utils/calendar/calendarStore'
-import { useAssignmentsData } from '../../../utils/assignments/assignmentsStore'
-import { deleteTaskCascade, buildDeleteConfirmMessage } from '../../../utils/tasks/deleteTaskCascade'
+  useTaskTemplatesData,
+  refreshTaskTemplatesData,
+  createTaskTemplate,
+  patchTaskTemplate,
+  archiveTaskTemplate,
+  unarchiveTaskTemplate,
+} from '../../../utils/tasks/taskTemplateStore'
 import { useToast } from '../../../utils/feedback/toastContext'
-import { useSelectedCourse } from '../../../utils/courses/courseStore'
-// Phase 9C.8 — Auto-translate after task create/edit. The sweep is
-// debounced + race-safe, so adding it here costs nothing when no
-// translatable English content actually changed; it's a no-op for
-// already-cached rows and respects manual Spanish overrides.
+// Phase 9C.8 — Auto-translate after task add/edit. The sweep is
+// debounced + race-safe; safe to call on every save even when no
+// translatable content changed. Gated on canSystemSettings so non-admin
+// authors don't fire a 403'd request.
 import { scheduleTranslationSweep } from '../../../utils/translate/translateClient'
 import { useAuth } from '../../../context/AuthContext'
 import styles from './DailyAssignmentBoard.module.css'
 
-const EVENT_TYPE_OPTS = [
-  { value: '',            label: '— Type —' },
+const CATEGORY_OPTS = [
+  { value: '',            label: '— Category —' },
   { value: 'crew',        label: 'Crew' },
   { value: 'spray',       label: 'Spray' },
   { value: 'maintenance', label: 'Maintenance' },
@@ -32,51 +41,29 @@ const EVENT_TYPE_OPTS = [
   { value: 'irrigation',  label: 'Irrigation' },
 ]
 
-const PRIORITY_OPTS = [
-  { value: 'routine', label: 'Routine' },
-  { value: 'medium',  label: 'Medium' },
-  { value: 'high',    label: 'High' },
-  { value: 'low',     label: 'Low' },
-]
-
-function blankDraft(noteDate) {
+function blankDraft() {
   return {
-    id:          null,
-    title:       '',
-    startTime:   '',
-    eventType:   '',
-    location:    '',
-    priority:    'routine',
-    description: '',
-    startDate:   noteDate,
+    id:                null,
+    name:              '',
+    category:          '',
+    defaultStartTime:  '',
+    defaultLocation:   '',
+    defaultNotes:      '',
+    sortOrder:         0,
   }
 }
 
-function fmtTime(t) {
-  if (!t) return ''
-  const [h, m] = t.split(':')
-  const hour = parseInt(h, 10)
-  const am   = hour < 12
-  const h12  = ((hour + 11) % 12) + 1
-  return `${h12}:${m} ${am ? 'AM' : 'PM'}`
-}
+export default function TasksManagerModal({ onClose }) {
+  const toast        = useToast()
+  const { can }      = useAuth()
+  const canTranslate = can('canSystemSettings')
 
-export default function TasksManagerModal({ selectedDate, dayEvents, onClose }) {
-  const toast          = useToast()
-  const selectedCourse = useSelectedCourse()
-  // Phase 9C.8 — Gate the auto-translate scheduler on canSystemSettings
-  // so non-admin authors don't fire a request that the worker would
-  // reject with 403. Cron still picks up their changes at the next tick.
-  const { can }        = useAuth()
-  const canTranslate   = can('canSystemSettings')
-  // Phase 9C.3a — pull live assignments + reservations so the delete
-  // cascade helper can clean up the dependent rows on this task before
-  // the calendar_event is removed. Used only by handleDelete.
-  const { crewAssignments, equipmentReservations } = useAssignmentsData()
+  const { templates, includeArchived } = useTaskTemplatesData()
 
-  const [draft, setDraft]     = useState(() => blankDraft(selectedDate))
+  const [draft, setDraft]     = useState(() => blankDraft())
   const [editing, setEditing] = useState(false)
   const [busy, setBusy]       = useState(false)
+  const [showArchived, setShowArchived] = useState(includeArchived)
 
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') onClose() }
@@ -84,66 +71,67 @@ export default function TasksManagerModal({ selectedDate, dayEvents, onClose }) 
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
+  // Refresh server-side when toggling archive visibility so the list
+  // reflects ?status=all instead of just status=active.
+  useEffect(() => {
+    if (showArchived !== includeArchived) {
+      refreshTaskTemplatesData({ includeArchived: showArchived })
+    }
+  }, [showArchived, includeArchived])
+
   function setField(k, v) { setDraft(prev => ({ ...prev, [k]: v })) }
 
   function startNew() {
-    setDraft(blankDraft(selectedDate))
+    setDraft(blankDraft())
     setEditing(true)
   }
 
-  function startEdit(ev) {
+  function startEdit(t) {
     setDraft({
-      id:          ev.id,
-      title:       ev.title ?? '',
-      startTime:   ev.startTime ?? '',
-      eventType:   ev.eventType ?? '',
-      location:    ev.location ?? '',
-      priority:    ev.priority ?? 'routine',
-      description: ev.description ?? '',
-      startDate:   ev.startDate ?? selectedDate,
+      id:                t.id,
+      name:              t.name ?? '',
+      category:          t.category ?? '',
+      defaultStartTime:  t.defaultStartTime ?? '',
+      defaultLocation:   t.defaultLocation ?? '',
+      defaultNotes:      t.defaultNotes ?? '',
+      sortOrder:         t.sortOrder ?? 0,
     })
     setEditing(true)
   }
 
   function cancelEdit() {
-    setDraft(blankDraft(selectedDate))
+    setDraft(blankDraft())
     setEditing(false)
   }
 
   async function handleSave(e) {
     e?.preventDefault?.()
-    if (!draft.title.trim()) {
-      toast.info('Task title is required.')
+    if (!draft.name.trim()) {
+      toast.info('Task name is required.')
       return
     }
     setBusy(true)
     try {
       const payload = {
-        title:       draft.title.trim(),
-        startDate:   draft.startDate,
-        startTime:   draft.startTime || null,
-        eventType:   draft.eventType || null,
-        location:    draft.location.trim() || null,
-        priority:    draft.priority,
-        description: draft.description.trim() || null,
+        name:              draft.name.trim(),
+        category:          draft.category || null,
+        defaultStartTime:  draft.defaultStartTime || null,
+        defaultLocation:   draft.defaultLocation.trim() || null,
+        defaultNotes:      draft.defaultNotes.trim() || null,
+        sortOrder:         Number.isFinite(Number(draft.sortOrder)) ? Number(draft.sortOrder) : 0,
       }
       if (draft.id) {
-        await patchCalendarEvent(draft.id, payload)
+        await patchTaskTemplate(draft.id, payload)
         toast.success('Task updated')
       } else {
-        await createCalendarEvent({
-          ...payload,
-          sourceType: 'manual',
-          status:     'scheduled',
-          course:     selectedCourse?.shortName ?? selectedCourse?.name ?? null,
-        })
+        await createTaskTemplate(payload)
         toast.success('Task added')
       }
       // Phase 9C.8 — schedule a translation sweep after task add/edit.
-      // Editing a task may cascade into new English crew_assignment
-      // notes downstream; the sweep will pick those up once they're
-      // authored. Sweep is a no-op when nothing eligible is blank, so
-      // calling it here is cheap.
+      // Renaming a template doesn't directly create translatable English
+      // content, but downstream crew_assignments inherit the new title
+      // when selected on the DAB; the sweep picks those up at the next
+      // tick if they're cached blank. Safe no-op when nothing changed.
       if (canTranslate) scheduleTranslationSweep()
       cancelEdit()
     } catch (err) {
@@ -153,28 +141,47 @@ export default function TasksManagerModal({ selectedDate, dayEvents, onClose }) 
     }
   }
 
-  async function handleDelete(ev) {
-    // Phase 9C.3b — copy now comes from the shared
-    // buildDeleteConfirmMessage helper so TasksManagerModal,
-    // OperationsBoard, and DisplayBoard all speak with the same voice.
-    const linkedCrewCount = crewAssignments.filter(a => a.calendarEventId === ev.id).length
-    const linkedEqCount   = equipmentReservations.filter(r => r.calendarEventId === ev.id).length
-    if (!confirm(buildDeleteConfirmMessage(ev.title, linkedCrewCount, linkedEqCount))) return
+  async function handleArchive(t) {
+    if (!confirm(
+      `Archive "${t.name}"? It will no longer appear in the task dropdown. ` +
+      `Existing assignments that use this task name will still display, ` +
+      `and you can reactivate the template at any time from "Show archived".`,
+    )) return
     setBusy(true)
     try {
-      await deleteTaskCascade(ev.id, { crewAssignments, equipmentReservations })
-      toast.success('Task deleted')
+      await archiveTaskTemplate(t.id)
+      toast.success(`Archived "${t.name}"`)
     } catch (err) {
-      toast.error(`Delete failed: ${err.message}`)
+      toast.error(`Archive failed: ${err.message}`)
     } finally {
       setBusy(false)
     }
   }
 
-  // Sort tasks by start time for the supervisor's quick scan.
-  const sortedTasks = [...dayEvents].sort((a, b) =>
-    (a.startTime ?? '').localeCompare(b.startTime ?? '')
-  )
+  async function handleUnarchive(t) {
+    setBusy(true)
+    try {
+      await unarchiveTaskTemplate(t.id)
+      toast.success(`Reactivated "${t.name}"`)
+    } catch (err) {
+      toast.error(`Reactivate failed: ${err.message}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const sortedTemplates = useMemo(() => {
+    return [...templates]
+      .filter(t => showArchived ? true : t.status === 'active')
+      .sort((a, b) => {
+        const sa = a.sortOrder ?? 0
+        const sb = b.sortOrder ?? 0
+        if (sa !== sb) return sa - sb
+        return (a.name ?? '').localeCompare(b.name ?? '')
+      })
+  }, [templates, showArchived])
+
+  const activeCount = templates.filter(t => t.status === 'active').length
 
   return (
     <div className={styles.modalOverlay} onClick={onClose} role="dialog">
@@ -182,9 +189,10 @@ export default function TasksManagerModal({ selectedDate, dayEvents, onClose }) 
 
         <header className={styles.modalHeader}>
           <div>
-            <h2 className={styles.modalTitle}>Manage Tasks</h2>
+            <h2 className={styles.modalTitle}>Task Library</h2>
             <p className={styles.modalSub}>
-              {selectedDate} · {sortedTasks.length} task{sortedTasks.length !== 1 ? 's' : ''}
+              {activeCount} active task{activeCount !== 1 ? 's' : ''}
+              {' · '}reusable across all dates
             </p>
           </div>
           <button
@@ -204,6 +212,14 @@ export default function TasksManagerModal({ selectedDate, dayEvents, onClose }) 
             >
               + New Task
             </button>
+            <label className={styles.taskFormLabel} style={{ marginLeft: 12, gap: 4 }}>
+              <input
+                type="checkbox"
+                checked={showArchived}
+                onChange={e => setShowArchived(e.target.checked)}
+              />
+              <span>Show archived</span>
+            </label>
           </div>
         )}
 
@@ -211,82 +227,70 @@ export default function TasksManagerModal({ selectedDate, dayEvents, onClose }) 
           <form className={styles.taskForm} onSubmit={handleSave}>
             <div className={styles.taskFormGrid}>
               <label className={styles.taskFormLabelWide}>
-                <span>Title *</span>
+                <span>Name *</span>
                 <input
                   type="text"
                   className={styles.modalSearchInput}
-                  value={draft.title}
-                  onChange={e => setField('title', e.target.value)}
-                  placeholder="e.g. Mow Greens, Hand water 18"
+                  value={draft.name}
+                  onChange={e => setField('name', e.target.value)}
+                  placeholder="e.g. Mow Greens, Hand Water, Course Setup"
                   autoFocus
                 />
               </label>
 
               <label className={styles.taskFormLabel}>
-                <span>Date</span>
-                <input
-                  type="date"
-                  className={styles.modalSearchInput}
-                  value={draft.startDate}
-                  onChange={e => setField('startDate', e.target.value)}
-                />
-              </label>
-
-              <label className={styles.taskFormLabel}>
-                <span>Start time</span>
-                <input
-                  type="time"
-                  className={styles.modalSearchInput}
-                  value={draft.startTime}
-                  onChange={e => setField('startTime', e.target.value)}
-                />
-              </label>
-
-              <label className={styles.taskFormLabel}>
-                <span>Type</span>
+                <span>Category</span>
                 <select
                   className={styles.modalSearchInput}
-                  value={draft.eventType}
-                  onChange={e => setField('eventType', e.target.value)}
+                  value={draft.category}
+                  onChange={e => setField('category', e.target.value)}
                 >
-                  {EVENT_TYPE_OPTS.map(o => (
+                  {CATEGORY_OPTS.map(o => (
                     <option key={o.value || 'none'} value={o.value}>{o.label}</option>
                   ))}
                 </select>
               </label>
 
               <label className={styles.taskFormLabel}>
-                <span>Priority</span>
-                <select
+                <span>Default start time</span>
+                <input
+                  type="time"
                   className={styles.modalSearchInput}
-                  value={draft.priority}
-                  onChange={e => setField('priority', e.target.value)}
-                >
-                  {PRIORITY_OPTS.map(o => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
+                  value={draft.defaultStartTime}
+                  onChange={e => setField('defaultStartTime', e.target.value)}
+                />
               </label>
 
-              <label className={styles.taskFormLabelWide}>
-                <span>Location</span>
+              <label className={styles.taskFormLabel}>
+                <span>Sort order</span>
                 <input
-                  type="text"
+                  type="number"
                   className={styles.modalSearchInput}
-                  value={draft.location}
-                  onChange={e => setField('location', e.target.value)}
-                  placeholder="e.g. Front 9, Greens 7-12"
+                  value={draft.sortOrder}
+                  onChange={e => setField('sortOrder', e.target.value)}
+                  step={10}
                 />
               </label>
 
               <label className={styles.taskFormLabelWide}>
-                <span>Notes</span>
+                <span>Default location</span>
+                <input
+                  type="text"
+                  className={styles.modalSearchInput}
+                  value={draft.defaultLocation}
+                  onChange={e => setField('defaultLocation', e.target.value)}
+                  placeholder="e.g. Front 9, Greens 7-12 (optional)"
+                />
+              </label>
+
+              <label className={styles.taskFormLabelWide}>
+                <span>Default notes</span>
                 <textarea
                   className={styles.modalSearchInput}
                   rows={2}
-                  value={draft.description}
-                  onChange={e => setField('description', e.target.value)}
-                  placeholder="Crew-visible notes (routing direction, equipment quirks, conditions)…"
+                  value={draft.defaultNotes}
+                  onChange={e => setField('defaultNotes', e.target.value)}
+                  placeholder="Crew-visible default notes used as a starter when this task is assigned (optional)"
                   style={{ resize: 'vertical', minHeight: 50, fontFamily: 'inherit' }}
                 />
               </label>
@@ -313,19 +317,19 @@ export default function TasksManagerModal({ selectedDate, dayEvents, onClose }) 
         )}
 
         <ul className={styles.equipmentList}>
-          {sortedTasks.length === 0 ? (
+          {sortedTemplates.length === 0 ? (
             <li className={styles.equipmentEmpty}>
-              No tasks for {selectedDate} yet. Click <strong>+ New Task</strong> to add one.
+              No task templates yet. Click <strong>+ New Task</strong> to add one.
             </li>
-          ) : sortedTasks.map(ev => (
-            <li key={ev.id} className={styles.equipmentRow}>
+          ) : sortedTemplates.map(t => (
+            <li key={t.id} className={styles.equipmentRow} data-status={t.status}>
               <div className={styles.equipmentMain}>
-                <span className={styles.equipmentName}>{ev.title}</span>
+                <span className={styles.equipmentName}>{t.name}</span>
                 <span className={styles.equipmentCategory}>
                   {[
-                    ev.startTime && fmtTime(ev.startTime),
-                    ev.eventType,
-                    ev.location,
+                    t.category,
+                    t.defaultStartTime,
+                    t.defaultLocation,
                   ].filter(Boolean).join(' · ') || '—'}
                 </span>
               </div>
@@ -333,13 +337,9 @@ export default function TasksManagerModal({ selectedDate, dayEvents, onClose }) 
               <div className={styles.equipmentStatusCol}>
                 <span
                   className={styles.statusPill}
-                  data-status={
-                    ev.priority === 'high'   ? 'maintenance'
-                  : ev.priority === 'medium' ? 'reserved'
-                  : 'available'
-                  }
+                  data-status={t.status === 'archived' ? 'maintenance' : 'available'}
                 >
-                  {ev.priority ?? 'routine'}
+                  {t.status}
                 </span>
               </div>
 
@@ -347,19 +347,32 @@ export default function TasksManagerModal({ selectedDate, dayEvents, onClose }) 
                 <button
                   type="button"
                   className={styles.btnSecondary}
-                  onClick={() => startEdit(ev)}
+                  onClick={() => startEdit(t)}
                   disabled={busy}
                 >
                   Edit
                 </button>
-                <button
-                  type="button"
-                  className={styles.btnDanger}
-                  onClick={() => handleDelete(ev)}
-                  disabled={busy}
-                >
-                  Delete
-                </button>
+                {t.status === 'active' ? (
+                  <button
+                    type="button"
+                    className={styles.btnDanger}
+                    onClick={() => handleArchive(t)}
+                    disabled={busy}
+                    title="Hide from the task dropdown. Existing assignments keep their label."
+                  >
+                    Archive
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className={styles.btnSecondary}
+                    onClick={() => handleUnarchive(t)}
+                    disabled={busy}
+                    title="Reactivate this template so it appears in the dropdown again."
+                  >
+                    Reactivate
+                  </button>
+                )}
               </div>
             </li>
           ))}
