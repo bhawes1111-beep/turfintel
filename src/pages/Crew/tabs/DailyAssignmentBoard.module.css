@@ -912,6 +912,38 @@
 .notesInputEs:focus    { outline: none; border-color: rgba(74, 222, 128, 0.4); }
 .notesInputEs:disabled { opacity: 0.5; cursor: not-allowed; }
 
+/* Phase 9C.7 — Per-row "Regenerate" button sits inside the same
+   .notesStack as the Spanish input. Small, low-contrast — we don't
+   want a noisy button in every row of a long table; the supervisor
+   should notice it only when looking for it. */
+.notesRegenerateBtn {
+  align-self: flex-end;
+  padding: 3px 9px;
+  background: rgba(74, 222, 128, 0.08);
+  border: 1px solid rgba(74, 222, 128, 0.28);
+  border-radius: 999px;
+  color: rgba(187, 247, 208, 0.85);
+  font-size: 10.5px;
+  font-family: inherit;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+.notesRegenerateBtn:hover:not(:disabled) {
+  background: rgba(74, 222, 128, 0.16);
+  border-color: rgba(134, 239, 172, 0.55);
+  color: #bbf7d0;
+}
+.notesRegenerateBtn:focus-visible {
+  outline: 2px solid rgba(134, 239, 172, 0.7);
+  outline-offset: 2px;
+}
+.notesRegenerateBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .statusSelect {
   min-width: 110px;
   padding: 6px 10px;
@@ -939,6 +971,8 @@
 @media (max-width: 600px) {
   .notesInput, .notesInputEs, .statusSelect { font-size: 11px; padding: 5px 8px; }
   .notesInput, .notesInputEs { min-width: 100px; }
+  /* Phase 9C.7 — tighter Regenerate button on phones. */
+  .notesRegenerateBtn { font-size: 10px; padding: 2px 7px; }
   .statusSelect { min-width: 96px; }
 }
 

@@ -188,6 +188,13 @@ export default function DailyAssignmentBoard({
   const canTranslate = can('canSystemSettings')
   const [translating, setTranslating] = useState(false)
 
+  // Phase 9C.7 — Per-assignment Spanish regeneration. regeneratingId
+  // holds the assignment.id whose Spanish translation is currently
+  // being refreshed; only one row regenerates at a time so the user
+  // can read the toast feedback cleanly. The button is also disabled
+  // while the global Translate Now is running.
+  const [regeneratingId, setRegeneratingId] = useState(null)
+
   // ── Day-scoped derivations ────────────────────────────────────────────
   // Dropdown only surfaces tasks the operator could still perform —
   // cancelled / completed events are filtered out so the dropdown stays
@@ -664,6 +671,75 @@ export default function DailyAssignmentBoard({
     }
   }
 
+  // ── Regenerate Spanish for one assignment (Phase 9C.7) ───────────────
+  // Clears the row's notes_es, then fires the same sweep the cron and
+  // the global "Translate Now" button use. The race-safe `WHERE
+  // notes_es IS NULL` guard in the sweep then lets the worker write
+  // a fresh translation for this row. Other blank rows on today's
+  // board will translate too — the sweep is intentionally batch-
+  // oriented.
+  //
+  // Safety: if the row already has a non-empty Spanish value (manual
+  // or previously auto-generated), confirm before clobbering. Manual
+  // authoring via 9C.5b2 still wins for every other path — only an
+  // explicit click on this button overwrites it.
+  async function handleRegenerateSpanish(assignment) {
+    if (!assignment?.id) return
+    if (regeneratingId !== null || translating) return
+    const englishTrim = (assignment.notes ?? '').trim()
+    if (!englishTrim) {
+      toast.info('Add an English note before regenerating Spanish.')
+      return
+    }
+    const hasSpanish = Boolean((assignment.notesEs ?? '').trim())
+    if (hasSpanish && !window.confirm('Replace this Spanish note with a new auto-translation?')) {
+      return
+    }
+    setRegeneratingId(assignment.id)
+    try {
+      // Step 1 — clear the cached Spanish so the sweep's `WHERE
+      // notes_es IS NULL` guard picks the row up. Bypass the
+      // notesEsDraft buffer by going straight to the store.
+      await patchCrewAssignment(assignment.id, { notesEs: '' })
+
+      // Step 2 — fire the sweep. This is the same call the global
+      // Translate Now button makes; it batches all eligible blank
+      // rows for today.
+      const { summary } = await runTranslationSweep()
+
+      // Step 3 — refresh assignments so the new notesEs lands in
+      // client state without waiting for the next polling tick.
+      await refreshAssignmentsData()
+
+      // Optional info toast — when the sweep ran but translated 0
+      // rows (provider failure, kill switch flipped between clicks,
+      // employee no longer needs Spanish), surface that to the user
+      // so they don't keep clicking expecting fresh text.
+      if (summary?.assignments?.translated > 0) {
+        toast.success('Spanish translation regenerated.')
+      } else if (summary?.skipped) {
+        // Most likely reason in this flow: the employee toggle was
+        // turned off between the click and the call. Re-surface the
+        // sweep's reason so the user knows why nothing translated.
+        toast.info(summary.reason === 'no-employee-needs-translation'
+          ? "No employee on today's board needs Spanish translation."
+          : `Translation skipped: ${summary.reason}`)
+      } else {
+        toast.info('No new Spanish translation was generated.')
+      }
+    } catch (err) {
+      if (err?.status === 401) {
+        toast.error('Sign in required.')
+      } else if (err?.status === 403) {
+        toast.error("You don't have permission to regenerate translations.")
+      } else {
+        toast.error(`Regenerate failed: ${err?.message ?? 'Try again.'}`)
+      }
+    } finally {
+      setRegeneratingId(null)
+    }
+  }
+
   // ── Clear Day ─────────────────────────────────────────────────────────
   async function handleClearDay() {
     if (!confirm(`Clear all assignments for ${prettyDate(selectedDate)}?`)) return
@@ -1041,6 +1117,31 @@ export default function DailyAssignmentBoard({
                             disabled={busyEmpId === emp.id}
                             aria-label={`Spanish notes for ${emp.name}`}
                           />
+                          {/* Phase 9C.7 — Per-row Regenerate Spanish.
+                              Visible only to canSystemSettings (same gate
+                              as the global Translate Now button). Disabled
+                              when this row is in flight OR the global
+                              translate sweep is running. The server
+                              endpoint enforces canSystemSettings
+                              independently — both layers must hold. */}
+                          {canTranslate && (
+                            <button
+                              type="button"
+                              className={styles.notesRegenerateBtn}
+                              data-variant="regenerate"
+                              onClick={() => handleRegenerateSpanish(assignment)}
+                              disabled={
+                                regeneratingId === assignment.id
+                                || translating
+                                || regeneratingId !== null
+                                || !(assignment.notes ?? '').trim()
+                              }
+                              title="Clear and regenerate this Spanish note"
+                              aria-label={`Regenerate Spanish notes for ${emp.name}`}
+                            >
+                              {regeneratingId === assignment.id ? 'Regenerating…' : 'Regenerate'}
+                            </button>
+                          )}
                         </div>
                       ) : (
                         <span className={styles.chipsEmpty}>—</span>
