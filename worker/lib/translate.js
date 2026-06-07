@@ -34,6 +34,93 @@ const TURF_SYSTEM_PROMPT =
   'explanations, prefixes, quotes, or markdown.'
 
 /**
+ * extractAiText — pulls the translated string out of whatever shape
+ * Workers AI returns. The llama family normally responds with
+ * `{ response: '...' }`, but the runtime has shipped variants where
+ * the payload lives under `result`, `text`, `output`, or the
+ * OpenAI-style `choices[0].message.content`. Some routes (especially
+ * when streaming is implicit) return the string directly.
+ *
+ * Phase 9C.5c3c — Phase 9C.5c3 originally checked only `response` and
+ * `choices[0].message.content`, which silently dropped translations
+ * whenever the runtime returned anything else. The kiosk fell back to
+ * English-only display, and `assignments.translated` came back 0 even
+ * when the sweep found rows.
+ *
+ * Priority order walks the most-common shapes first. Each branch
+ * recurses through `extractAiText` so nested wrappers (e.g.
+ * `{ result: { response: '...' } }`) resolve uniformly. Returns the
+ * trimmed string (with stray quotes/markdown stripped) or null when
+ * no usable text is found. NEVER throws.
+ */
+export function extractAiText(result) {
+  if (result == null) return null
+  // Primitive string response (some routes hand it back unwrapped).
+  if (typeof result === 'string') {
+    const trimmed = result.trim()
+    if (trimmed.length === 0) return null
+    return stripStrayMarkdown(trimmed) || null
+  }
+  if (typeof result !== 'object') return null
+  // Walk the known field names in priority order. Each recurses so
+  // wrapped shapes like { result: { response: '...' } } resolve too.
+  // `choices` is OpenAI-style (and some Workers AI runtimes mirror it).
+  const candidates = [
+    result.response,
+    result.text,
+    result.result,
+    result.output,
+    result.output_text,
+    result.choices?.[0]?.message?.content,
+    result.choices?.[0]?.text,
+    result.message?.content,
+    result.data,
+  ]
+  for (const c of candidates) {
+    if (c == null) continue
+    const out = extractAiText(c)
+    if (out) return out
+  }
+  return null
+}
+
+// Strip surrounding quotes, leading/trailing whitespace, and markdown
+// fences the model sometimes wraps the answer in. Returns the cleaned
+// string or '' when nothing usable remains; callers convert '' to null.
+function stripStrayMarkdown(s) {
+  if (!s) return ''
+  let out = s.trim()
+  // Strip triple-backtick code fences with optional language tag.
+  out = out.replace(/^```[a-zA-Z]*\s*\n?/, '').replace(/\n?```\s*$/, '')
+  // Strip surrounding single/double/backtick quotes and whitespace.
+  out = out.replace(/^["'`\s]+|["'`\s]+$/g, '')
+  return out.trim()
+}
+
+// Privacy-safe diagnostic — describe a Workers AI response's TOP-LEVEL
+// keys and value types so a cron log can show why parsing failed,
+// without leaking translated content (which is crew-visible but capped
+// anyway) or any private field. Returns a short string like
+// `{response:string(72),choices:array(1)}` or `string(243)` etc.
+function describeAiShape(result) {
+  if (result == null) return 'null'
+  if (typeof result === 'string') return `string(${result.length})`
+  if (typeof result !== 'object') return typeof result
+  if (Array.isArray(result)) return `array(${result.length})`
+  const parts = []
+  for (const k of Object.keys(result).slice(0, 8)) {
+    const v = result[k]
+    let t
+    if (v == null) t = 'null'
+    else if (typeof v === 'string') t = `string(${v.length})`
+    else if (Array.isArray(v)) t = `array(${v.length})`
+    else t = typeof v
+    parts.push(`${k}:${t}`)
+  }
+  return `{${parts.join(',')}}`
+}
+
+/**
  * getTranslateProvider — resolves the active provider from env.
  * Returns an object with `{ name, translate(text, opts) }` shape.
  *   provider.translate(text, opts) → Promise<string | null>
@@ -86,13 +173,26 @@ export function getTranslateProvider(env) {
             temperature: 0.2,
             max_tokens:  400,
           })
-          // Workers AI returns { response: string } for the llama family.
-          const raw = (response?.response ?? response?.choices?.[0]?.message?.content ?? '').trim()
-          if (raw.length === 0) return null
-          // Strip stray surrounding quotes the model sometimes adds.
-          return raw.replace(/^["'\s]+|["'\s]+$/g, '').trim() || null
+          // Phase 9C.5c3c — Walk every known Workers AI response shape
+          // via extractAiText. The llama-instruct runtime has shipped
+          // variants with the text under `response`, `result`, `text`,
+          // `output`, `output_text`, `choices[0].message.content`, and
+          // bare strings; trying them in priority order keeps us robust
+          // across runtime changes.
+          const out = extractAiText(response)
+          if (out) return out
+          // Translation came back unparseable. Log the response shape
+          // (top-level keys only, no source / no translated content)
+          // so future runtime changes are diagnosable from the cron log
+          // without leaking note text into Worker logs.
+          const shape = describeAiShape(response)
+          console.warn(`[translate] cf-ai returned no usable text — shape=${shape}, model=${model}`)
+          return null
         } catch (err) {
-          console.warn(`[translate] cf-ai failure on "${trimmed.slice(0, 40)}…": ${err?.message ?? err}`)
+          // Include only a tiny prefix of the source (40 chars). Source
+          // is crew-visible English, not private — same exposure level
+          // the kiosk itself already has — but cap it anyway.
+          console.warn(`[translate] cf-ai threw on "${trimmed.slice(0, 40)}…": ${err?.message ?? err}`)
           return null
         }
       },
