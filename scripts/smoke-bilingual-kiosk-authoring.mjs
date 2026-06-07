@@ -121,7 +121,9 @@ assert(/\.notesStack\s*\{[\s\S]{0,200}flex-direction:\s*column/.test(DAB_CSS),
 assert(/\.notesInputEs\s*\{/.test(DAB_CSS),
   '.notesInputEs class defined')
 // Visual differentiation — italic OR dimmer color/border than .notesInput.
-assert(/\.notesInputEs\s*\{[\s\S]{0,400}font-style:\s*italic/.test(DAB_CSS),
+// Phase 9C.9 — block grew (longer guidance comment + padding tweak) so the
+// regex window widened from 400 → 800 to still reach the font-style rule.
+assert(/\.notesInputEs\s*\{[\s\S]{0,800}font-style:\s*italic/.test(DAB_CSS),
   '.notesInputEs uses italic styling (visual differentiation from English)')
 
 // Mobile breakpoint includes the new class.

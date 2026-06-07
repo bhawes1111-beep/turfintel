@@ -37,9 +37,15 @@
 /* ── Date selector ──────────────────────────────────────────────────── */
 
 .dateNav {
+  /* Phase 9C.9 — flex-wrap + row-gap so the now-fuller action row
+     (Today / Tasks / Translate Now / Copy Yesterday / Clear Day)
+     wraps cleanly onto a second line on narrower viewports without
+     overflowing the page or crowding the date arrows. */
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+  row-gap: 8px;
 }
 
 .dateNavBtn {
@@ -77,8 +83,11 @@
 }
 
 .tasksBtn {
-  margin-left: 10px;
-  padding: 5px 14px;
+  /* Phase 9C.9 — drop the margin-left (the .dateNav gap rule now
+     spaces the buttons uniformly), tighten padding a touch so 4
+     action buttons + the date arrows fit on one row on a 1280px+
+     viewport. Subtle transition so hover feels intentional, not snappy. */
+  padding: 5px 12px;
   background: rgba(34, 197, 94, 0.16);
   border: 1px solid rgba(34, 197, 94, 0.42);
   border-radius: 6px;
@@ -87,6 +96,8 @@
   font-weight: 600;
   letter-spacing: 0.02em;
   cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s ease, border-color 0.12s ease;
 }
 
 .tasksBtn:hover:not(:disabled) { background: rgba(34, 197, 94, 0.26); }
@@ -115,14 +126,19 @@
    benign affirmative action (vs. the destructive red of Clear Day
    and the alternative blue of Copy Yesterday). Visible only when
    the actor has canSystemSettings (owner_admin); the JSX gate
-   already hides it otherwise. */
+   already hides it otherwise.
+   Phase 9C.9 — slightly stronger green border + subtle inset
+   highlight so Translate Now stands out from Copy Yesterday / Clear
+   Day in the action row without overpowering them. */
 .tasksBtn[data-variant="translate"] {
-  background: rgba(74, 222, 128, 0.12);
-  border-color: rgba(74, 222, 128, 0.42);
-  color: #4ade80;
+  background: rgba(74, 222, 128, 0.14);
+  border-color: rgba(134, 239, 172, 0.5);
+  color: #bbf7d0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 .tasksBtn[data-variant="translate"]:hover:not(:disabled) {
-  background: rgba(74, 222, 128, 0.22);
+  background: rgba(74, 222, 128, 0.24);
+  border-color: rgba(134, 239, 172, 0.7);
 }
 
 /* ── Summary chip row (Phase 12) ────────────────────────────────────── */
@@ -869,37 +885,48 @@
 .notesCell,
 .statusCell {
   vertical-align: middle;
+  /* Phase 9C.9 — tighter cell padding so the row doesn't tower when
+     the notes column carries English + Spanish inputs + Regenerate. */
+  padding-top: 6px;
+  padding-bottom: 6px;
 }
 
 .notesInput {
   width: 100%;
   min-width: 120px;
-  padding: 6px 10px;
+  /* Phase 9C.9 — English input is now the visual "primary" — a touch
+     more padding-y to anchor it as the main note, slightly stronger
+     border so it reads as the canonical field. */
+  padding: 7px 10px;
   background: rgba(4, 12, 6, 0.85);
-  border: 1px solid rgba(74, 158, 74, 0.28);
+  border: 1px solid rgba(74, 158, 74, 0.42);
   border-radius: 5px;
-  color: rgba(212, 237, 212, 0.92);
+  color: rgba(212, 237, 212, 0.95);
   font-size: 12px;
   font-family: inherit;
 }
 .notesInput::placeholder { color: rgba(212, 237, 212, 0.4); }
-.notesInput:focus    { outline: none; border-color: rgba(74, 222, 128, 0.55); }
+.notesInput:focus    { outline: none; border-color: rgba(74, 222, 128, 0.65); }
 .notesInput:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* Phase 9C.5b2 — Spanish translation input stacks under the English
    one in the same notes cell. The italic styling + slightly dimmer
    border make the bilingual nature glanceable so a crew lead doesn't
-   confuse the two. Empty is the default; blank Spanish saves as null. */
+   confuse the two. Empty is the default; blank Spanish saves as null.
+   Phase 9C.9 — slightly larger gap so the English + Spanish inputs +
+   Regenerate read as three distinct visual layers, not a wall of text. */
 .notesStack {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
 }
 
 .notesInputEs {
   width: 100%;
   min-width: 120px;
-  padding: 6px 10px;
+  /* Phase 9C.9 — Spanish input stays clearly secondary: a touch less
+     padding-y so it visually subordinates to the English line above. */
+  padding: 5px 10px;
   background: rgba(4, 12, 6, 0.85);
   border: 1px solid rgba(74, 158, 74, 0.18);   /* dimmer border than English */
   border-radius: 5px;
@@ -915,24 +942,29 @@
 /* Phase 9C.7 — Per-row "Regenerate" button sits inside the same
    .notesStack as the Spanish input. Small, low-contrast — we don't
    want a noisy button in every row of a long table; the supervisor
-   should notice it only when looking for it. */
+   should notice it only when looking for it.
+   Phase 9C.9 — shrunk slightly + uppercase + tighter letter-spacing
+   so Regenerate reads as a quiet utility action, not a primary
+   button. Sits right-aligned and pulled to the right edge so it
+   doesn't push the Spanish input around. */
 .notesRegenerateBtn {
   align-self: flex-end;
-  padding: 3px 9px;
+  padding: 2px 9px;
   background: rgba(74, 222, 128, 0.08);
   border: 1px solid rgba(74, 222, 128, 0.28);
   border-radius: 999px;
-  color: rgba(187, 247, 208, 0.85);
-  font-size: 10.5px;
+  color: rgba(187, 247, 208, 0.78);
+  font-size: 9.5px;
   font-family: inherit;
-  font-weight: 500;
-  letter-spacing: 0.02em;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   cursor: pointer;
   transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
 }
 .notesRegenerateBtn:hover:not(:disabled) {
-  background: rgba(74, 222, 128, 0.16);
-  border-color: rgba(134, 239, 172, 0.55);
+  background: rgba(74, 222, 128, 0.18);
+  border-color: rgba(134, 239, 172, 0.6);
   color: #bbf7d0;
 }
 .notesRegenerateBtn:focus-visible {
@@ -940,7 +972,7 @@
   outline-offset: 2px;
 }
 .notesRegenerateBtn:disabled {
-  opacity: 0.4;
+  opacity: 0.35;
   cursor: not-allowed;
 }
 
@@ -967,13 +999,21 @@
 /* Mobile: keep the new columns usable on phones — stack labels above
    inputs by letting the table go to a tighter padding profile. The
    table itself stays a table (no flex/grid restructure) so the
-   Crosswinds gate's added columns just inherit narrower paddings. */
+   Crosswinds gate's added columns just inherit narrower paddings.
+   Phase 9C.9 — extended to also tighten the header action row buttons
+   and ensure the .dateNav row wraps cleanly. */
 @media (max-width: 600px) {
   .notesInput, .notesInputEs, .statusSelect { font-size: 11px; padding: 5px 8px; }
   .notesInput, .notesInputEs { min-width: 100px; }
   /* Phase 9C.7 — tighter Regenerate button on phones. */
-  .notesRegenerateBtn { font-size: 10px; padding: 2px 7px; }
+  .notesRegenerateBtn { font-size: 9px; padding: 2px 7px; letter-spacing: 0.04em; }
   .statusSelect { min-width: 96px; }
+  /* Phase 9C.9 — header action row: tighten the action buttons so
+     Tasks / Translate Now / Copy Yesterday / Clear Day all fit on
+     a phone-sized viewport without ugly overflow. The .dateNav rule
+     above already enables flex-wrap so wrapping is graceful. */
+  .tasksBtn { padding: 4px 9px; font-size: 11px; }
+  .dateNav { gap: 6px; row-gap: 6px; }
 }
 
 /* ── Phase 9C.2 — Crosswinds labeled "Clear" button modifier ─────────────
