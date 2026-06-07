@@ -144,6 +144,18 @@ export async function updateCrewAssignment(env, id, request) {
       binds.push(body[apiKey])
     }
   }
+
+  // Phase 9C.5c3 — English-edit invalidation. When an author changes
+  // the English notes WITHOUT supplying a fresh Spanish translation in
+  // the same PATCH, NULL the cached notes_es so the next cron sweep
+  // re-translates the new English. A PATCH that supplies notesEs
+  // explicitly (manual authoring) takes the human-supplied value
+  // verbatim and the loop above already covered it.
+  if (Object.prototype.hasOwnProperty.call(body, 'notes')
+      && !Object.prototype.hasOwnProperty.call(body, 'notesEs')) {
+    sets.push('notes_es = NULL')
+  }
+
   if (sets.length === 0) return badRequest('No mutable fields supplied')
 
   sets.push(`updated_at = datetime('now')`)

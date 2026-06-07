@@ -37,8 +37,33 @@
   // snapshot per course into the weather_observations table. Window-guard
   // + a UNIQUE(course_id, observed_at) partial index prevent duplicates.
   // Requires the AMBIENT_WEATHER_* secrets to be set (no-op without them).
+  //
+  // Phase 9C.5c3 — the same scheduled() handler also runs the auto-
+  // translation sweep on each 30 min tick. The sweep is gated server-side
+  // on "any active employee needs Spanish today?" so it's a cheap no-op
+  // when no employee has auto-translate enabled.
   "triggers": {
     "crons": ["*/30 * * * *"]
+  },
+
+  // Phase 9C.5c3 — Cloudflare Workers AI binding. Used by worker/lib/
+  // translate.js to translate crew-broadcast kiosk content (assignment
+  // notes, daily-briefing notes, alert text) from English to Spanish.
+  // The kiosk renders the cached *_es columns; translation happens
+  // server-side via cron, never from the browser.
+  "ai": {
+    "binding": "AI"
+  },
+
+  // Phase 9C.5c3 — Translation config. TRANSLATE_PROVIDER doubles as a
+  // kill switch: setting it to 'none' (via `npx wrangler deploy --var
+  // TRANSLATE_PROVIDER:none` or by editing this file) disables auto-
+  // translation entirely without a code change. Manual *_es authoring
+  // (Phase 9C.5b2) continues to work in either state.
+  "vars": {
+    "TRANSLATE_PROVIDER":     "cf-ai",
+    "TRANSLATE_MODEL":        "@cf/meta/llama-3-8b-instruct",
+    "TRANSLATE_MAX_PER_RUN":  "50"
   }
 
   //

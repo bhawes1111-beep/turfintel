@@ -247,10 +247,11 @@ for (const term of ['i18next', 'react-intl', 'formatjs', '@cloudflare/ai', 'work
   assert(!pkg.includes(term),
     `package.json does NOT depend on "${term}" (translation provider deferred)`)
 }
-assert(!/binding[\s\S]{0,40}["']AI["']/.test(wrangler),
-  'wrangler.jsonc does NOT bind a Workers AI service')
+// Phase 9C.5c1 was provider-agnostic; the AI binding lands in 9C.5c3.
+// 9C.5c1 only stores the per-employee preference; whether a provider is
+// configured does not affect the employee form behavior asserted above.
 assert(!/OPENAI_API_KEY|DEEPL_API_KEY|GOOGLE_TRANSLATE/i.test(wrangler),
-  'wrangler.jsonc does NOT reference a translation-provider secret')
+  'wrangler.jsonc does NOT reference a non-CF translation-provider secret')
 
 // ── 9C.5a.5 + 9C.5b1/b2/b3 regression preservation ─────────────────────
 section('Phase 9C.5a.5 + 9C.5b1/b2/b3 regression couples')

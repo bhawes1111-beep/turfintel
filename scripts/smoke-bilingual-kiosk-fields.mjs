@@ -194,8 +194,10 @@ for (const term of ['i18next', 'react-intl', 'formatjs', '@cloudflare/ai', 'work
   assert(!pkg.includes(term),
     `package.json does NOT depend on "${term}" (manual stored translations only)`)
 }
-assert(!/\bAI\s*:\s*\{/.test(wrangler) && !/binding[\s\S]{0,40}["']AI["']/.test(wrangler),
-  'wrangler.jsonc does NOT bind a Workers AI service (no external translation path)')
+// Phase 9C.5b1 was provider-agnostic; later phases (9C.5c3) legitimately
+// added the Workers AI binding. The 9C.5b1 storage layer still does not
+// require any provider — manual *_es authoring continues to work in
+// either state.
 
 // ── Privacy contract — kiosk crew employee gate still intact ───────────
 section('Phase 9C.5a.5 crew employee privacy contract — still intact')

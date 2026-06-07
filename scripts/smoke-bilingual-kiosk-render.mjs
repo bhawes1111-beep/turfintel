@@ -267,8 +267,10 @@ for (const term of ['i18next', 'react-intl', 'formatjs', '@cloudflare/ai', 'work
   assert(!pkg.includes(term),
     `package.json does NOT depend on "${term}" (manual stored translations only)`)
 }
-assert(!/binding[\s\S]{0,40}["']AI["']/.test(wrangler),
-  'wrangler.jsonc does NOT bind a Workers AI service')
+// Phase 9C.5b3 was provider-agnostic; later phases (9C.5c3) legitimately
+// added the Workers AI binding. The 9C.5b3 kiosk render continues to
+// work whether or not a provider is configured — it reads cached *_es
+// values, never calls a translation service from the browser.
 
 // ── 9C.5b1 + 9C.5b2 + 9C.5a.5 regression preservation ─────────────────
 section('Phase 9C.5b1 + 9C.5b2 + 9C.5a.5 regression couples')

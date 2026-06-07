@@ -132,6 +132,20 @@ export async function updateAlert(env, id, request) {
       binds.push(body[apiKey])
     }
   }
+
+  // Phase 9C.5c3 — English-edit invalidation. Title/message PATCHes
+  // without matching Spanish in the same body NULL the cached *_es so
+  // the next cron sweep re-translates. Manual titleEs / messageEs in
+  // the body take precedence and were already written by the loop.
+  if (Object.prototype.hasOwnProperty.call(body, 'title')
+      && !Object.prototype.hasOwnProperty.call(body, 'titleEs')) {
+    sets.push('title_es = NULL')
+  }
+  if (Object.prototype.hasOwnProperty.call(body, 'message')
+      && !Object.prototype.hasOwnProperty.call(body, 'messageEs')) {
+    sets.push('message_es = NULL')
+  }
+
   if (sets.length === 0) return badRequest('No mutable fields supplied')
 
   sets.push(`updated_at = datetime('now')`)

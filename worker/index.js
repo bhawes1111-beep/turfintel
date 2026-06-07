@@ -213,6 +213,8 @@ import {
 } from './api/users.js'
 import { resolveActor, actorHasPermission } from './lib/actor.js'
 import { isMutationAllowed, ruleNeedsBody } from './lib/mutationPermissions.js'
+// Phase 9C.5c3 — Auto-translate kiosk content via Cloudflare Workers AI.
+import { runAutoTranslateSweep } from './lib/autoTranslate.js'
 import {
   isCourseScopedReadPath,
   courseReadDecision,
@@ -252,6 +254,16 @@ export default {
         .then(() => rollupAllCourses(env))
         .then(r => console.log('[TurfIntel WaterBalance] cron rollup:', JSON.stringify(r)))
         .catch(err => console.warn('[TurfIntel Weather] cron error:', err?.message)),
+    )
+    // Phase 9C.5c3 — Auto-translate kiosk content for Spanish-needing
+    // crew members. Best-effort: early-returns when no employee needs
+    // translation, never throws, budget-capped via TRANSLATE_MAX_PER_RUN.
+    // Runs alongside the weather job (independent waitUntil so a slow
+    // translation provider doesn't block the weather pipeline).
+    ctx.waitUntil(
+      runAutoTranslateSweep(env)
+        .then(s => console.log('[TurfIntel Translate] cron sweep:', JSON.stringify(s)))
+        .catch(err => console.warn('[TurfIntel Translate] cron error:', err?.message)),
     )
   },
 }

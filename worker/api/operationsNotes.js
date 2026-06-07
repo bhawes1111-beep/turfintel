@@ -146,6 +146,20 @@ export async function updateOperationsNote(env, id, request) {
     binds.push(body.pinned ? 1 : 0)
   }
 
+  // Phase 9C.5c3 — English-edit invalidation. When an author changes
+  // English title/body without supplying matching Spanish in the same
+  // PATCH, NULL the cached *_es so the next cron sweep re-translates.
+  // A PATCH that includes titleEs / bodyEs is treated as manual
+  // authoring and the CORE_COLUMNS loop above already wrote the value.
+  if (Object.prototype.hasOwnProperty.call(body, 'title')
+      && !Object.prototype.hasOwnProperty.call(body, 'titleEs')) {
+    sets.push('title_es = NULL')
+  }
+  if (Object.prototype.hasOwnProperty.call(body, 'body')
+      && !Object.prototype.hasOwnProperty.call(body, 'bodyEs')) {
+    sets.push('body_es = NULL')
+  }
+
   if (sets.length === 0) return badRequest('No mutable fields supplied')
 
   sets.push(`updated_at = datetime('now')`)
