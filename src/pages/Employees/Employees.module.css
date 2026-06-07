@@ -347,6 +347,39 @@
   line-height: 1.5;
 }
 
+/* Phase 9C.5c1 — Translation settings.
+   .formCheckLabel pairs a checkbox with its label inline so the
+   "Auto-translate board notes" control reads at a glance.
+   .translationHint is a muted-green companion to .privateNotice that
+   explains what enabling the toggle does on the public kiosk. */
+.formCheckLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: rgba(212, 237, 212, 0.92);
+  cursor: pointer;
+  padding-top: 18px;            /* visually aligns with the dropdown next to it */
+}
+
+.formCheck {
+  appearance: auto;
+  width: 16px;
+  height: 16px;
+  accent-color: #4ade80;
+  cursor: pointer;
+}
+
+.translationHint {
+  font-size: 10.5px;
+  color: rgba(74, 222, 128, 0.7);
+  background: rgba(74, 222, 128, 0.04);
+  border: 1px solid rgba(74, 222, 128, 0.18);
+  border-radius: 6px;
+  padding: 7px 11px;
+  line-height: 1.5;
+}
+
 .modalActions {
   display: flex;
   justify-content: flex-end;

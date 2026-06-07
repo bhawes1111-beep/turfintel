@@ -229,13 +229,12 @@ for (const path of [
     `${path} carries no Phase 9C.5b2 edits (authoring-only sub-phase)`)
 }
 
-// ── No new migration past 0049 ─────────────────────────────────────────
-section('No D1 schema change — migrations ledger unchanged')
+// ── 9C.5b1 migration still present (forward-compatible with later phases) ─
+section('D1 schema — 9C.5b1 migration preserved')
 
 const migrationFiles = readdirSync('worker/migrations').filter(f => f.endsWith('.sql')).sort()
-const highestMigration = migrationFiles[migrationFiles.length - 1]
-assert(highestMigration === '0049_bilingual_kiosk_fields.sql',
-  `highest migration is still 0049 (found: ${highestMigration})`)
+assert(migrationFiles.includes('0049_bilingual_kiosk_fields.sql'),
+  '0049_bilingual_kiosk_fields.sql still in the migration ledger')
 
 // ── No external translation / i18n / AI dependency added ───────────────
 section('No external translation / i18n / Workers AI dependency added')

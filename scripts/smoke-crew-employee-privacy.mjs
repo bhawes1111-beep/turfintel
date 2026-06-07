@@ -165,21 +165,50 @@ assert(/actorHasPermission\(actor,\s*'canViewEmployeePrivate'\)/.test(idRouteSli
 assert(/return getCrewEmployee\(env,\s*id,\s*canViewPrivate\)/.test(idRouteSlice),
   ':id GET branch passes canViewPrivate to getCrewEmployee(env, id, canViewPrivate)')
 
-// ── No crew_employees D1 schema change introduced by 9C.5a.5 ───────────
-section('Phase 9C.5a.5 — no crew_employees migration was added')
+// ── crew_employees migrations must NOT add private fields ──────────────
+section('Post-9C.5a.5 crew_employees migrations stay public-safe')
 
 const migrationFiles = readdirSync('worker/migrations').filter(f => f.endsWith('.sql')).sort()
 // 9C.5a.5 is a server-side serializer/auth hardening — no schema change.
-// Later sub-phases (e.g. 9C.5b1 bilingual kiosk fields) may add their own
-// migrations that touch crew_assignments / operations_daily_notes /
-// alerts, but NONE may touch crew_employees without re-asserting the
-// privacy contract. Verify that no migration mentions crew_employees
-// from 0049 onward (the pre-9C.5a.5 migrations are out of scope).
+// Later sub-phases (e.g. 9C.5b1 bilingual kiosk fields, 9C.5c1 employee
+// translation preferences) may add their own migrations. The privacy
+// contract for crew_employees is upheld in two ways:
+//   1. Migrations may add columns to crew_employees ONLY when the new
+//      columns are classified as public-safe (kiosk-rendering hints,
+//      not HR/management data). Phase 9C.5c1 adds
+//      `auto_translate_board_notes` and `board_language` — both public.
+//   2. The new columns MUST appear in rowToEmployee's unconditional
+//      half, NEVER inside the `if (canViewPrivate)` block. The
+//      'rowToEmployee gates private fields' section above already
+//      asserts that the canonical 7 private fields stay gated; the
+//      check below confirms no NEW private columns sneak past.
+
+// Allow-list: new crew_employees columns approved as public-safe.
+const PUBLIC_SAFE_NEW_EMP_COLUMNS = [
+  'auto_translate_board_notes',   // Phase 9C.5c1
+  'board_language',               // Phase 9C.5c1
+]
 const postPrivacyMigrations = migrationFiles.filter(f => /^00(4[9]|[5-9]\d|\d{3,})/.test(f))
 for (const file of postPrivacyMigrations) {
   const sql = readFileSync(`worker/migrations/${file}`, 'utf8')
-  assert(!/\bcrew_employees\b/i.test(sql),
-    `${file} does NOT touch crew_employees (the 9C.5a.5 privacy gate must stay intact)`)
+  if (!/\bcrew_employees\b/i.test(sql)) continue
+  // The migration touches crew_employees. Verify every ADD COLUMN
+  // targets a column on the public-safe allow-list.
+  const addColMatches = [...sql.matchAll(/ALTER\s+TABLE\s+crew_employees\s+ADD\s+COLUMN\s+(\w+)/gi)]
+  for (const m of addColMatches) {
+    const col = m[1]
+    assert(PUBLIC_SAFE_NEW_EMP_COLUMNS.includes(col),
+      `${file} ADD COLUMN ${col} is on the public-safe allow-list (private fields must stay gated)`)
+  }
+}
+
+// Belt-and-suspenders: the Phase 9C.5c1 columns are positively asserted
+// to live OUTSIDE the `if (canViewPrivate)` block in worker/api/crew.js.
+if (ifBranchSrc) {
+  for (const publicCol of ['autoTranslateBoardNotes', 'boardLanguage']) {
+    assert(!new RegExp(`out\\.${publicCol}\\s*=`).test(ifBranchSrc),
+      `9C.5c1 public-safe field '${publicCol}' does NOT appear inside the canViewPrivate branch`)
+  }
 }
 
 // ── Cross-file guards — Phase 9C.5a.5 touches only worker + permissions ─

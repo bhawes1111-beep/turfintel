@@ -21,6 +21,14 @@ const DEPT_OPTS = [
   '', 'Grounds', 'Spray', 'Irrigation', 'Equipment', 'Supervisory',
 ]
 
+// Phase 9C.5c1 — Board translation language options. Stored as ISO 639-1
+// codes for forward-compatibility (fr, pt, etc. can be added later
+// without a migration).
+const BOARD_LANGUAGE_OPTS = [
+  { value: 'en', label: 'English' },
+  { value: 'es', label: 'Spanish' },
+]
+
 function makeInitial(employee) {
   return {
     name:              employee?.name              ?? '',
@@ -35,6 +43,11 @@ function makeInitial(employee) {
     pesticideLicense:  employee?.pesticideLicense  ?? '',
     emergencyContact:  employee?.emergencyContact  ?? '',
     notes:             employee?.notes             ?? '',
+    // Phase 9C.5c1 — translation preferences. The kiosk render gating
+    // in 9C.5c4 reads these per-operator to decide whether to surface
+    // the Spanish line; for now they are storage-only.
+    autoTranslateBoardNotes: Boolean(employee?.autoTranslateBoardNotes),
+    boardLanguage:           employee?.boardLanguage ?? 'en',
   }
 }
 
@@ -53,6 +66,10 @@ function toPayload(form) {
     pesticideLicense:  form.pesticideLicense.trim() || null,
     emergencyContact:  form.emergencyContact.trim() || null,
     notes:             form.notes              || null,
+    // Phase 9C.5c1 — translation preferences. Worker normalizes the
+    // boolean to 0/1 for SQLite; boardLanguage defaults to 'en'.
+    autoTranslateBoardNotes: Boolean(form.autoTranslateBoardNotes),
+    boardLanguage:           form.boardLanguage || 'en',
   }
 }
 
@@ -246,6 +263,43 @@ export default function EmployeeFormModal({ employee, onClose }) {
               onChange={e => setField('notes', e.target.value)}
               rows={2}
             />
+          </div>
+
+          {/* Phase 9C.5c1 — Translation preferences. Checkbox on the
+              left, language dropdown on the right, helper text spans
+              the row below. No translation actually fires yet; this
+              just stores the per-employee preference. */}
+          <div className={styles.formField}>
+            <label className={styles.formCheckLabel}>
+              <input
+                type="checkbox"
+                className={styles.formCheck}
+                checked={form.autoTranslateBoardNotes}
+                onChange={e => setField('autoTranslateBoardNotes', e.target.checked)}
+              />
+              <span>Auto-translate board notes</span>
+            </label>
+          </div>
+
+          <div className={styles.formField}>
+            <label className={styles.formLabel}>Language</label>
+            <select
+              className={styles.formSelect}
+              value={form.boardLanguage}
+              onChange={e => setField('boardLanguage', e.target.value)}
+              disabled={!form.autoTranslateBoardNotes}
+            >
+              {BOARD_LANGUAGE_OPTS.map(o => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className={`${styles.formField} ${styles.formFieldWide}`}>
+            <div className={styles.translationHint}>
+              When enabled, board notes and task notes are automatically
+              translated for this employee on the public board.
+            </div>
           </div>
         </div>
 

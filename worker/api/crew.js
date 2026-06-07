@@ -53,6 +53,11 @@ function rowToEmployee(row, canViewPrivate = false) {
     assignedArea:      row.assigned_area,
     skills:            parseJsonArray(row.skills_json),
     certifications:    parseJsonArray(row.certifications_json),
+    // Phase 9C.5c1 — translation preferences. Public-safe by design:
+    // the anonymous kiosk needs them to decide whether to auto-translate
+    // board / task notes for this operator (gating lands in 9C.5c4).
+    autoTranslateBoardNotes: row.auto_translate_board_notes === 1,
+    boardLanguage:           row.board_language ?? 'en',
     courseId:          row.course_id,
     createdAt:         row.created_at,
     updatedAt:         row.updated_at,
@@ -71,7 +76,8 @@ function rowToEmployee(row, canViewPrivate = false) {
 
 // Mutable column map. JSON-encoded array fields are handled separately
 // in updateCrewEmployee so callers can pass real arrays instead of
-// pre-stringified blobs.
+// pre-stringified blobs. Boolean-valued fields are normalized to 0/1
+// when binding (see BOOLEAN_COLUMNS below).
 const CORE_COLUMNS = {
   name:              'name',
   fullName:          'name',           // legacy alias accepted on write
@@ -86,6 +92,22 @@ const CORE_COLUMNS = {
   hireDate:          'hire_date',
   pesticideLicense:  'pesticide_license',
   emergencyContact:  'emergency_contact',
+  // Phase 9C.5c1 — translation preferences.
+  autoTranslateBoardNotes: 'auto_translate_board_notes',
+  boardLanguage:           'board_language',
+}
+
+// Phase 9C.5c1 — keys whose JS values need 0/1 normalization before
+// binding to a SQLite INTEGER column. Booleans, 'true'/'false' strings,
+// and JS truthy/falsy all collapse to 0 or 1.
+const BOOLEAN_COLUMNS = new Set(['autoTranslateBoardNotes'])
+function normalizeBoolean(v) {
+  if (v === 1 || v === 0) return v
+  if (v === true)  return 1
+  if (v === false) return 0
+  if (v === 'true')  return 1
+  if (v === 'false') return 0
+  return v ? 1 : 0
 }
 
 // ── List + Get ────────────────────────────────────────────────────────────
@@ -122,8 +144,9 @@ export async function createCrewEmployee(env, request) {
       id, name, role, department, status, phone, email,
       assigned_area, skills_json, certifications_json, notes,
       pay_rate, hire_date, pesticide_license, emergency_contact,
+      auto_translate_board_notes, board_language,
       course_id
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id,
     name,
@@ -140,6 +163,11 @@ export async function createCrewEmployee(env, request) {
     body.hireDate         ?? null,
     body.pesticideLicense ?? null,
     body.emergencyContact ?? null,
+    // Phase 9C.5c1 — translation preferences. The boolean is normalized
+    // to 0/1 for SQLite INTEGER storage; board_language defaults to 'en'
+    // when not supplied so existing English-only callers stay happy.
+    body.autoTranslateBoardNotes ? 1 : 0,
+    body.boardLanguage    ?? 'en',
     resolveCourseId(body),
   ).run()
 
@@ -157,7 +185,11 @@ export async function updateCrewEmployee(env, id, request) {
   for (const [apiKey, dbCol] of Object.entries(CORE_COLUMNS)) {
     if (Object.prototype.hasOwnProperty.call(body, apiKey)) {
       sets.push(`${dbCol} = ?`)
-      binds.push(body[apiKey])
+      // Phase 9C.5c1 — boolean PATCH values (e.g. autoTranslateBoardNotes)
+      // arrive as JS true/false from the UI; SQLite expects 0/1 for the
+      // INTEGER column. normalizeBoolean leaves non-boolean values alone.
+      const raw = body[apiKey]
+      binds.push(BOOLEAN_COLUMNS.has(apiKey) ? normalizeBoolean(raw) : raw)
     }
   }
   // Array fields → JSON.

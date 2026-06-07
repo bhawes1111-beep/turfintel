@@ -64,11 +64,12 @@ assert(!/ADD COLUMN[\s\S]{0,80}NOT NULL/i.test(MIGRATION),
 assert(!/CREATE\s+(?:UNIQUE\s+)?INDEX[\s\S]{0,200}_es\b/i.test(MIGRATION),
   'no CREATE INDEX on the new *_es columns (kiosk reads alongside parent row)')
 
-// Migration is the latest one.
+// 9C.5b1 migration still exists in the ledger (not renamed/removed by
+// later phases). Later phases may add their own migrations on top —
+// that's expected and forward-compatible.
 const migrationFiles = readdirSync('worker/migrations').filter(f => f.endsWith('.sql')).sort()
-const highestMigration = migrationFiles[migrationFiles.length - 1]
-assert(highestMigration === '0049_bilingual_kiosk_fields.sql',
-  `0049_bilingual_kiosk_fields.sql is the highest migration (found: ${highestMigration})`)
+assert(migrationFiles.includes('0049_bilingual_kiosk_fields.sql'),
+  '0049_bilingual_kiosk_fields.sql still in the migration ledger')
 
 // ── worker/api/assignments.js wiring ───────────────────────────────────
 section('worker/api/assignments.js — notesEs mapper + writer')
