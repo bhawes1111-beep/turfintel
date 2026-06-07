@@ -22,9 +22,6 @@ import { createCalendarEvent } from '../../../utils/calendar/calendarStore'
 import { useSelectedCourseId } from '../../../utils/courses/courseStore'
 import { useToast } from '../../../utils/feedback/toastContext'
 import { useEmployeeSchedulesData } from '../../../utils/schedules/schedulesStore'
-// Phase 9C.10 — Read-only daily notes panel on the DAB. Pulls from the
-// same store the Operations Daily Briefing surface authors into.
-import { useOperationsNotesData } from '../../../utils/operations/notesStore'
 // Phase 9C.5d — Translation controls. The refresh hooks for the two
 // other stores pull fresh title_es / body_es / message_es values into
 // client state after a successful sweep, so the DAB notes inputs and
@@ -47,14 +44,6 @@ import styles from './DailyAssignmentBoard.module.css'
 const CROSSWINDS_COURSE_ID = 'crossroads-gc'
 const ASSIGNMENT_STATUS_OPTIONS = ['pending', 'in-progress', 'complete', 'blocked']
 const ASSIGNMENT_STATUS_DEFAULT = 'pending'
-
-// Phase 9C.10 — Daily notes sort priority. Mirrors the DailyBriefingPanel
-// ordering: urgent/safety/weather lead, important follows, routine last.
-// Any unknown priority defaults to 9 (sorted to the end) so a partial
-// migration doesn't break the panel.
-const NOTE_PRIORITY_ORDER = {
-  urgent: 0, safety: 1, weather: 2, important: 3, routine: 4,
-}
 
 function normalizeAssignmentStatus(raw) {
   if (raw === 'assigned' || raw == null || raw === '') return ASSIGNMENT_STATUS_DEFAULT
@@ -168,10 +157,6 @@ export default function DailyAssignmentBoard({
 }) {
   const toast = useToast()
   const { schedules: weeklySchedules } = useEmployeeSchedulesData()
-  // Phase 9C.10 — read-only daily briefing source for the on-board
-  // panel. Authoring still happens in DailyBriefingPanel (Operations);
-  // here we just surface today's notes inline with the assignment work.
-  const { notes: operationsNotes } = useOperationsNotesData()
   const [selectedDate, setSelectedDate] = useState(TODAY_ISO)
   const [modalEmpId,   setModalEmpId]   = useState(null)
   const [tasksModalOpen, setTasksModalOpen] = useState(false)
@@ -225,24 +210,6 @@ export default function DailyAssignmentBoard({
     () => new Set(dayEvents.map(e => e.id)),
     [dayEvents],
   )
-
-  // Phase 9C.10 — Daily notes for the selected board date. Read-only on
-  // this surface; authoring stays in DailyBriefingPanel (Operations).
-  // Active notes only — archived / deleted entries never surface to
-  // the crew board. Sort: pinned first, then by priority
-  // (urgent/safety/weather lead), then newest-first as tiebreaker.
-  const dailyNotesForDate = useMemo(() => {
-    return (operationsNotes ?? [])
-      .filter(n => (n.noteDate ?? n.date) === selectedDate)
-      .filter(n => n.status !== 'archived' && n.status !== 'deleted')
-      .sort((a, b) => {
-        if (a.pinned !== b.pinned) return a.pinned ? -1 : 1
-        const pa = NOTE_PRIORITY_ORDER[a.priority] ?? 9
-        const pb = NOTE_PRIORITY_ORDER[b.priority] ?? 9
-        if (pa !== pb) return pa - pb
-        return (b.updatedAt ?? '').localeCompare(a.updatedAt ?? '')
-      })
-  }, [operationsNotes, selectedDate])
 
   // Scheduled employees (Phase 13):
   //   - If the employee_schedules table has any rows for this course,
@@ -899,64 +866,6 @@ export default function DailyAssignmentBoard({
           </button>
         </div>
       </header>
-
-      {/* Phase 9C.10 — Daily Notes inline panel. Read-only; pulls from
-          the operations_daily_notes store and follows selectedDate so
-          the ‹ / › arrows on the date row update which day's notes
-          render. Empty state shows a muted "no notes" line so an empty
-          day still confirms the supervisor is on the right surface. */}
-      {dailyNotesForDate.length === 0 ? (
-        <section className={styles.dailyNotesPanel} data-empty="true">
-          <div className={styles.dailyNotesHeader}>
-            <span>Daily Notes</span>
-          </div>
-          <span className={styles.dailyNotesEmpty}>No daily notes for this date.</span>
-        </section>
-      ) : (
-        <section className={styles.dailyNotesPanel}>
-          <div className={styles.dailyNotesHeader}>
-            <span>Daily Notes</span>
-            <span className={styles.dailyNotesCount}>{dailyNotesForDate.length}</span>
-          </div>
-          <div className={styles.dailyNoteList}>
-            {dailyNotesForDate.map(note => {
-              const titleTrim   = (note.title   ?? '').trim()
-              const bodyTrim    = (note.body    ?? '').trim()
-              const titleEsTrim = (note.titleEs ?? '').trim()
-              const bodyEsTrim  = (note.bodyEs  ?? '').trim()
-              const hasSpanish  = titleEsTrim.length > 0 || bodyEsTrim.length > 0
-              return (
-                <article
-                  key={note.id}
-                  className={styles.dailyNoteItem}
-                  data-priority={note.priority}
-                  data-pinned={note.pinned ? 'true' : undefined}
-                >
-                  <div className={styles.dailyNoteMeta}>
-                    {note.priority && (
-                      <span className={styles.dailyNotePriority} data-priority={note.priority}>
-                        {note.priority}
-                      </span>
-                    )}
-                    {note.pinned && (
-                      <span className={styles.dailyNotePinned}>Pinned</span>
-                    )}
-                  </div>
-                  {titleTrim && <strong className={styles.dailyNoteTitle}>{titleTrim}</strong>}
-                  {bodyTrim  && <p className={styles.dailyNoteBody}>{bodyTrim}</p>}
-                  {hasSpanish && (
-                    <p className={styles.dailyNoteSpanish} lang="es">
-                      {titleEsTrim && <strong>{titleEsTrim}</strong>}
-                      {titleEsTrim && bodyEsTrim ? ' — ' : ''}
-                      {bodyEsTrim}
-                    </p>
-                  )}
-                </article>
-              )
-            })}
-          </div>
-        </section>
-      )}
 
       {/* Phase 8A.3b — schedule notice, summary chips, and quick-assign
           category strip are hidden on Crosswinds to declutter the board.
