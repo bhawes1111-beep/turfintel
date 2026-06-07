@@ -1996,6 +1996,16 @@
   font-style: italic;
 }
 
+/* Phase 9C.5b3 — Spanish translation under a crew bar's English note.
+   Applied alongside .boardNotesText so every 9C.4c/9C.4d/9C.4e density,
+   scale, and short-viewport rule keeps governing the Spanish line as
+   well. The mint-green tint distinguishes the bilingual nature at TV
+   distance without competing visually with the English line above. */
+.boardNotesTextEs {
+  color: rgba(187, 247, 208, 0.82);
+  font-style: italic;
+}
+
 .boardEmpty {
   margin: auto;
   text-align: center;

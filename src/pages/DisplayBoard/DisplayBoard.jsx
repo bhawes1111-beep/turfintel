@@ -135,6 +135,28 @@ function titleFromBody(body) {
   return first.length > 60 ? first.slice(0, 57) + '…' : first
 }
 
+// Phase 9C.5b3 — Bilingual marquee text helper. Joins an English
+// {title, body} pair with its Spanish {titleEs, bodyEs} counterpart
+// using a ` • ES: ` separator for the kiosk alert marquee. Handles
+// the three real-world cases:
+//   • English + Spanish — `English — body • ES: Spanish — body`
+//   • English only      — `English — body`
+//   • Spanish only      — `ES: Spanish — body`
+//   • both empty        — '' (caller's filter strips the item)
+//
+// Used by both the liveAlerts arm (passes `body: a.message`) and the
+// dayNotes arm (passes `body: n.body`) of the kioskAlerts derivation,
+// so alerts and daily notes share a single concatenation contract.
+function formatBilingualText({ title, body, titleEs, bodyEs }) {
+  const en = title ? `${title}${body ? ' — ' + body : ''}` : (body ?? '')
+  const es = titleEs ? `${titleEs}${bodyEs ? ' — ' + bodyEs : ''}` : (bodyEs ?? '')
+  const enTrim = en.trim()
+  const esTrim = es.trim()
+  if (enTrim && esTrim) return `${enTrim} • ES: ${esTrim}`
+  if (esTrim)            return `ES: ${esTrim}`
+  return enTrim
+}
+
 // ── Main component ───────────────────────────────────────────────────────
 
 export default function DisplayBoard({ boardMode = false, printMode = false }) {
@@ -374,7 +396,12 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
         eventType: event.eventType ?? null,
         priority:  event.priority  ?? null,
         status:    a.status ?? 'assigned',
-        notes:     a.notes  ?? '',
+        notes:     a.notes   ?? '',
+        // Phase 9C.5b3 — manual Spanish translation surfaced on the
+        // kiosk underneath the English note. Empty string when not
+        // authored; BoardModeCrewBars gates the render on a non-empty
+        // trim so blank Spanish stays invisible.
+        notesEs:   a.notesEs ?? '',
         chips:     linkedChips.length > 0 ? linkedChips : fallbackChips,
       })
     }
@@ -449,17 +476,32 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
   // The private superintendent-only condition log fields are never
   // touched here; the privacy smoke continues to assert that this
   // source file does not reference them by name.
+  // Phase 9C.5b3 — both arms now route through formatBilingualText so
+  // Spanish (when authored) is appended after a ` • ES: ` marker. Empty
+  // Spanish leaves the text English-only; empty English leaves it
+  // Spanish-only with an ES: prefix; both blank → text === '' and the
+  // final .filter strips the item.
   const kioskAlerts = [
     ...liveAlerts.map(a => ({
       key:      `alert:${a.id}`,
-      text:     a.title ? `${a.title}${a.message ? ' — ' + a.message : ''}` : (a.message ?? ''),
+      text:     formatBilingualText({
+        title:   a.title,
+        body:    a.message,
+        titleEs: a.titleEs,
+        bodyEs:  a.messageEs,
+      }),
       priority: a.priority,
     })),
     ...dayNotes
       .filter(n => n.priority === 'urgent' || n.priority === 'safety' || n.priority === 'weather')
       .map(n => ({
         key:      `note:${n.id}`,
-        text:     n.title ? `${n.title}${n.body ? ' — ' + n.body : ''}` : (n.body ?? ''),
+        text:     formatBilingualText({
+          title:   n.title,
+          body:    n.body,
+          titleEs: n.titleEs,
+          bodyEs:  n.bodyEs,
+        }),
         priority: n.priority,
       })),
   ].filter(a => (a.text ?? '').trim().length > 0)
@@ -1005,12 +1047,28 @@ function BoardModeCrewBars({ operatorCards }) {
         <article key={op.key} className={styles.boardPersonBar}>
           <h2 className={styles.boardPersonName}>{op.employeeName ?? 'Unassigned'}</h2>
           {op.assignments.map((a, idx) => {
-            const trimmedNotes = (a.notes ?? '').trim()
+            const trimmedNotes   = (a.notes   ?? '').trim()
+            // Phase 9C.5b3 — Spanish translation renders underneath the
+            // English note when authored. Both lines apply the base
+            // .boardNotesText class so the 9C.4c/9C.4d/9C.4e density +
+            // scale rules continue to drive line-clamp, font-size, and
+            // per-assignment shrink automatically. The .boardNotesTextEs
+            // override only adds visual differentiation (italic, mint
+            // tint) so the bilingual nature is glanceable on a TV.
+            const trimmedNotesEs = (a.notesEs ?? '').trim()
             return (
               <div key={a.id ?? idx} className={styles.boardTaskBlock}>
                 <p className={styles.boardTaskText}>{a.title}</p>
                 {trimmedNotes.length > 0 && (
                   <p className={styles.boardNotesText}>{trimmedNotes}</p>
+                )}
+                {trimmedNotesEs.length > 0 && (
+                  <p
+                    className={`${styles.boardNotesText} ${styles.boardNotesTextEs}`}
+                    lang="es"
+                  >
+                    {trimmedNotesEs}
+                  </p>
                 )}
               </div>
             )
