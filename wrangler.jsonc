@@ -60,9 +60,18 @@
   // TRANSLATE_PROVIDER:none` or by editing this file) disables auto-
   // translation entirely without a code change. Manual *_es authoring
   // (Phase 9C.5b2) continues to work in either state.
+  //
+  // Phase 9C.5c3e — Replaced deprecated @cf/meta/llama-3-8b-instruct
+  // (deprecated by Cloudflare on 2026-05-30; the runtime now returns
+  // error 5028 "This model was deprecated …") with the drop-in
+  // successor @cf/meta/llama-3.1-8b-instruct. Same instruction-tuned
+  // family, supports the same { messages } and { prompt } payloads,
+  // multilingual EN↔ES output is comparable or better. Provider
+  // abstraction (worker/lib/translate.js) didn't need a code change —
+  // only the model identifier.
   "vars": {
     "TRANSLATE_PROVIDER":     "cf-ai",
-    "TRANSLATE_MODEL":        "@cf/meta/llama-3-8b-instruct",
+    "TRANSLATE_MODEL":        "@cf/meta/llama-3.1-8b-instruct",
     "TRANSLATE_MAX_PER_RUN":  "50"
   }
 

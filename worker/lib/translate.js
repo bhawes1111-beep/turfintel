@@ -6,9 +6,12 @@
 //
 // Providers:
 //   'cf-ai' — Cloudflare Workers AI, model env.TRANSLATE_MODEL
-//             (default: @cf/meta/llama-3-8b-instruct). The active model
-//             gets a domain-aware prompt that preserves common turf /
-//             golf-course terminology when appropriate.
+//             (default: @cf/meta/llama-3.1-8b-instruct — replaced the
+//             deprecated @cf/meta/llama-3-8b-instruct in Phase
+//             9C.5c3e after Cloudflare deprecated it on 2026-05-30).
+//             The active model gets a domain-aware prompt that
+//             preserves common turf / golf-course terminology when
+//             appropriate.
 //   'none'  — no-op kill switch. Returns null for every translate call;
 //             callers leave *_es NULL and the kiosk renders English.
 //             Useful for cost emergencies / provider outages /
@@ -205,7 +208,9 @@ export function getTranslateProvider(env) {
         async translate() { return null },
       }
     }
-    const model = env.TRANSLATE_MODEL || '@cf/meta/llama-3-8b-instruct'
+    // Phase 9C.5c3e — fallback updated from @cf/meta/llama-3-8b-instruct
+    // (deprecated 2026-05-30) to its drop-in successor.
+    const model = env.TRANSLATE_MODEL || '@cf/meta/llama-3.1-8b-instruct'
     return {
       name: 'cf-ai',
       async translate(text, opts = {}) {
@@ -220,12 +225,12 @@ export function getTranslateProvider(env) {
 
         // Phase 9C.5c3d — Two-payload retry. Some Workers AI llama
         // runtimes accept the OpenAI-style `messages` array; others
-        // (especially the older `@cf/meta/llama-3-8b-instruct` build)
-        // expect a single composed `prompt` string and return errors
-        // for the messages variant. Try messages first, then prompt
-        // on failure. Each attempt's shape / error is recorded so the
-        // ?debug=1 admin endpoint can surface what the runtime
-        // actually returned without leaking source or translated text.
+        // (especially older instruct builds) expect a single composed
+        // `prompt` string and return errors for the messages variant.
+        // Try messages first, then prompt on failure. Each attempt's
+        // shape / error is recorded so the ?debug=1 admin endpoint
+        // can surface what the runtime actually returned without
+        // leaking source or translated text.
         //
         // The attempts buffer is hung off env.__lastTranslateAttempts
         // (per-request scope; cleared at the start of every call) so

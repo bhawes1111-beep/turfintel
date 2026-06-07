@@ -39,8 +39,16 @@ assert(/"ai"\s*:\s*\{\s*"binding"\s*:\s*"AI"\s*\}/.test(WRANGLER),
 
 assert(/"TRANSLATE_PROVIDER"\s*:\s*"cf-ai"/.test(WRANGLER),
   'wrangler.jsonc vars include TRANSLATE_PROVIDER: "cf-ai"')
-assert(/"TRANSLATE_MODEL"\s*:\s*"@cf\/meta\/llama-3-8b-instruct"/.test(WRANGLER),
-  'wrangler.jsonc vars include TRANSLATE_MODEL: "@cf/meta/llama-3-8b-instruct"')
+// Phase 9C.5c3e — Cloudflare deprecated @cf/meta/llama-3-8b-instruct on
+// 2026-05-30 (error 5028). The replacement is the drop-in successor
+// @cf/meta/llama-3.1-8b-instruct.
+assert(/"TRANSLATE_MODEL"\s*:\s*"@cf\/meta\/llama-3\.1-8b-instruct"/.test(WRANGLER),
+  'wrangler.jsonc vars include TRANSLATE_MODEL: "@cf/meta/llama-3.1-8b-instruct"')
+// Negative guard — the deprecated model literal must not appear as the
+// active TRANSLATE_MODEL value anywhere. (Historical comments still
+// allowed; only the JSON value is gated.)
+assert(!/"TRANSLATE_MODEL"\s*:\s*"@cf\/meta\/llama-3-8b-instruct"/.test(WRANGLER),
+  'wrangler.jsonc TRANSLATE_MODEL is NOT set to the deprecated @cf/meta/llama-3-8b-instruct')
 assert(/"TRANSLATE_MAX_PER_RUN"\s*:\s*"\d+"/.test(WRANGLER),
   'wrangler.jsonc vars include TRANSLATE_MAX_PER_RUN: "<integer>"')
 

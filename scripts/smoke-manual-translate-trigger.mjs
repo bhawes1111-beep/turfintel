@@ -206,8 +206,12 @@ section('Provider config — wrangler.jsonc unchanged')
 const wrangler = readFileSync('wrangler.jsonc', 'utf8')
 assert(/"TRANSLATE_PROVIDER"\s*:\s*"cf-ai"/.test(wrangler),
   'wrangler.jsonc still configures TRANSLATE_PROVIDER: "cf-ai" (regression)')
-assert(/"TRANSLATE_MODEL"\s*:\s*"@cf\/meta\/llama-3-8b-instruct"/.test(wrangler),
-  'wrangler.jsonc still configures TRANSLATE_MODEL: "@cf/meta/llama-3-8b-instruct" (regression)')
+// Phase 9C.5c3e — Cloudflare deprecated @cf/meta/llama-3-8b-instruct on
+// 2026-05-30. The active model is now its drop-in successor.
+assert(/"TRANSLATE_MODEL"\s*:\s*"@cf\/meta\/llama-3\.1-8b-instruct"/.test(wrangler),
+  'wrangler.jsonc still configures TRANSLATE_MODEL: "@cf/meta/llama-3.1-8b-instruct" (regression)')
+assert(!/"TRANSLATE_MODEL"\s*:\s*"@cf\/meta\/llama-3-8b-instruct"/.test(wrangler),
+  'wrangler.jsonc TRANSLATE_MODEL is NOT set to the deprecated @cf/meta/llama-3-8b-instruct')
 assert(/"TRANSLATE_MAX_PER_RUN"\s*:\s*"\d+"/.test(wrangler),
   'wrangler.jsonc still configures TRANSLATE_MAX_PER_RUN (regression)')
 assert(/"ai"\s*:\s*\{\s*"binding"\s*:\s*"AI"\s*\}/.test(wrangler),
