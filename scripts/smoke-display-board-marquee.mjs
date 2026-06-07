@@ -252,8 +252,11 @@ for (const path of [
   'worker/index.js',
 ]) {
   const src = readFileSync(path, 'utf8')
-  assert(!src.includes('Phase 9C.5a'),
-    `${path} carries no Phase 9C.5a edits`)
+  // Match the "Phase 9C.5a" marker but NOT later sub-phases like
+  // "Phase 9C.5a.5" (which legitimately edits worker/api/crew.js +
+  // worker/index.js for the public-GET privacy hardening).
+  assert(!/Phase 9C\.5a(?![.\d])/.test(src),
+    `${path} carries no Phase 9C.5a edits (later sub-phases like 9C.5a.5 are allowed)`)
 }
 
 // ── Summary ────────────────────────────────────────────────────────────

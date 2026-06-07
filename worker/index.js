@@ -829,8 +829,18 @@ async function handleApi(request, env, url, ctx) {
   }
 
   // ── /api/crew-employees ───────────────────────────────────────────────
+  // Phase 9C.5a.5 — Public GETs strip management-only fields. Resolve the
+  // actor and thread canViewEmployeePrivate through the serializer so an
+  // anonymous kiosk caller can never see payRate / emergencyContact /
+  // pesticideLicense / phone / email / employee notes / hireDate over the
+  // wire. owner_admin and superintendent retain full visibility (with the
+  // optional view_employee_private per-user override for assistants).
   if (pathname === '/api/crew-employees') {
-    if (method === 'GET')  return listCrewEmployees(env, courseId)
+    if (method === 'GET') {
+      const actor = await resolveActor(request, env)
+      const canViewPrivate = actorHasPermission(actor, 'canViewEmployeePrivate')
+      return listCrewEmployees(env, courseId, canViewPrivate)
+    }
     if (method === 'POST') return createCrewEmployee(env, request)
   }
 
@@ -838,7 +848,11 @@ async function handleApi(request, env, url, ctx) {
   const empMatch = pathname.match(/^\/api\/crew-employees\/([^/]+)$/)
   if (empMatch) {
     const id = decodeURIComponent(empMatch[1])
-    if (method === 'GET')    return getCrewEmployee(env, id)
+    if (method === 'GET') {
+      const actor = await resolveActor(request, env)
+      const canViewPrivate = actorHasPermission(actor, 'canViewEmployeePrivate')
+      return getCrewEmployee(env, id, canViewPrivate)
+    }
     if (method === 'PATCH')  return updateCrewEmployee(env, id, request)
     if (method === 'DELETE') return deleteCrewEmployee(env, id)
   }

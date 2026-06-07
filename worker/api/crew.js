@@ -24,9 +24,25 @@ function parseJsonArray(raw) {
   }
 }
 
-function rowToEmployee(row) {
+// rowToEmployee — serialize a crew_employees row. `canViewPrivate` gates
+// the management-only fields: when false, the private keys are OMITTED
+// entirely (not null, not ''), mirroring the conditionLog.js privateNotes
+// precedent. Enforcement lives in the serializer so every read path is
+// covered uniformly.
+//
+// Public-safe (always returned):
+//   id, employeeId, name, fullName, role, department, status,
+//   assignedArea, skills, certifications, courseId, createdAt, updatedAt
+//
+// Private (only included when canViewPrivate === true):
+//   phone, email, notes, payRate, hireDate, pesticideLicense, emergencyContact
+//
+// Phase 9C.5a.5 — Closes the gap where /display-board/board (the public
+// kiosk route) could observe pay rates etc. over the wire even though the
+// kiosk itself never rendered them.
+function rowToEmployee(row, canViewPrivate = false) {
   if (!row) return null
-  return {
+  const out = {
     id:                row.id,
     employeeId:        row.id,                              // legacy alias
     name:              row.name,
@@ -34,22 +50,23 @@ function rowToEmployee(row) {
     role:              row.role,
     department:        row.department,
     status:            row.status,
-    phone:             row.phone,
-    email:             row.email,
     assignedArea:      row.assigned_area,
     skills:            parseJsonArray(row.skills_json),
     certifications:    parseJsonArray(row.certifications_json),
-    notes:             row.notes,
-    // Phase 4 — employee management fields. pay_rate is PRIVATE
-    // management data; UI must not render it outside Employee Management.
-    payRate:           row.pay_rate,
-    hireDate:          row.hire_date,
-    pesticideLicense:  row.pesticide_license,
-    emergencyContact:  row.emergency_contact,
     courseId:          row.course_id,
     createdAt:         row.created_at,
     updatedAt:         row.updated_at,
   }
+  if (canViewPrivate) {
+    out.phone            = row.phone
+    out.email            = row.email
+    out.notes            = row.notes
+    out.payRate          = row.pay_rate
+    out.hireDate         = row.hire_date
+    out.pesticideLicense = row.pesticide_license
+    out.emergencyContact = row.emergency_contact
+  }
+  return out
 }
 
 // Mutable column map. JSON-encoded array fields are handled separately
@@ -73,20 +90,22 @@ const CORE_COLUMNS = {
 
 // ── List + Get ────────────────────────────────────────────────────────────
 
-export async function listCrewEmployees(env, courseId = null) {
+// `canViewPrivate` (resolved from the actor in worker/index.js) gates
+// management-only fields per-row via the serializer.
+export async function listCrewEmployees(env, courseId = null, canViewPrivate = false) {
   const { where, binds } = buildCourseFilter(courseId)
   const { results } = await env.DB.prepare(
     `SELECT * FROM crew_employees ${where} ORDER BY name COLLATE NOCASE ASC`,
   ).bind(...binds).all()
-  return json(results.map(rowToEmployee))
+  return json(results.map(r => rowToEmployee(r, canViewPrivate)))
 }
 
-export async function getCrewEmployee(env, id) {
+export async function getCrewEmployee(env, id, canViewPrivate = false) {
   const row = await env.DB.prepare(
     'SELECT * FROM crew_employees WHERE id = ?',
   ).bind(id).first()
   if (!row) return notFound('Crew employee not found')
-  return json(rowToEmployee(row))
+  return json(rowToEmployee(row, canViewPrivate))
 }
 
 // ── Create + Update + Delete ──────────────────────────────────────────────
@@ -124,7 +143,11 @@ export async function createCrewEmployee(env, request) {
     resolveCourseId(body),
   ).run()
 
-  return getCrewEmployee(env, id)
+  // Phase 9C.5a.5 — Mutation handlers are already past the worker mutation
+  // gate, so the caller is an authenticated actor. Echo back the full
+  // record (including private fields) so Employee Management sees the
+  // freshly-saved row it just submitted.
+  return getCrewEmployee(env, id, true)
 }
 
 export async function updateCrewEmployee(env, id, request) {
@@ -156,7 +179,10 @@ export async function updateCrewEmployee(env, id, request) {
   ).bind(...binds).run()
 
   if (!result.success || result.meta.changes === 0) return notFound('Crew employee not found')
-  return getCrewEmployee(env, id)
+  // Phase 9C.5a.5 — see createCrewEmployee comment; the PATCH caller is
+  // already authenticated past the mutation gate, so echo back the full
+  // record.
+  return getCrewEmployee(env, id, true)
 }
 
 export async function deleteCrewEmployee(env, id) {

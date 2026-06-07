@@ -22,6 +22,7 @@ export const PERMISSION_KEYS = [
   'canManageCourses',
   'canSystemSettings',
   'canViewPrivateNotes',
+  'canViewEmployeePrivate',
   'canDeleteRecords',
   'canEditSprays',
   'canEditInventory',
@@ -64,7 +65,8 @@ export const ROLE_PERMISSIONS = {
     canManageUsers:    true,
     canManageCourses:  true,
     canSystemSettings: true,
-    canViewPrivateNotes: true,
+    canViewPrivateNotes:    true,
+    canViewEmployeePrivate: true,
     ...OPERATIONAL,
   },
   superintendent: {
@@ -74,14 +76,16 @@ export const ROLE_PERMISSIONS = {
     canManageUsers:    true,
     canManageCourses:  false,
     canSystemSettings: false,
-    canViewPrivateNotes: true,
+    canViewPrivateNotes:    true,
+    canViewEmployeePrivate: true,
     ...OPERATIONAL,
   },
   assistant_super: {
     canManageUsers:    false,
     canManageCourses:  false,
     canSystemSettings: false,
-    canViewPrivateNotes: false,   // optional per-user override may grant it
+    canViewPrivateNotes:    false,   // optional per-user override may grant it
+    canViewEmployeePrivate: false,   // optional per-user override may grant it
     ...OPERATIONAL,
   },
   crew_lead: {
@@ -104,8 +108,9 @@ export const ROLE_PERMISSIONS = {
 // Per-user override flags (columns on the users row) that can grant a
 // permission the base role does not. Keep this list tiny and explicit.
 const OVERRIDE_FLAGS = {
-  view_private_notes: 'canViewPrivateNotes',
-  send_crew_notes:    'canSendCrewNotes',
+  view_private_notes:     'canViewPrivateNotes',
+  view_employee_private:  'canViewEmployeePrivate',
+  send_crew_notes:        'canSendCrewNotes',
 }
 
 /**

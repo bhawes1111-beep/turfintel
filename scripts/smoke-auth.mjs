@@ -78,6 +78,18 @@ function assert(cond, label, ctx) {
   assert(!can('assistant_super', 'canViewPrivateNotes'), 'assistant cannot view private notes by default')
   assert(can({ role: 'assistant_super', view_private_notes: 1 }, 'canViewPrivateNotes'), 'override grants assistant private notes')
 
+  // Phase 9C.5a.5 — canViewEmployeePrivate gates the new server-side
+  // strip of payRate / emergencyContact / pesticideLicense / phone /
+  // email / employee notes / hireDate on /api/crew-employees GET reads.
+  assert(can('owner_admin',     'canViewEmployeePrivate'), 'owner_admin has canViewEmployeePrivate')
+  assert(can('superintendent',  'canViewEmployeePrivate'), 'super has canViewEmployeePrivate')
+  assert(!can('assistant_super', 'canViewEmployeePrivate'), 'assistant cannot view employee private by default')
+  assert(can({ role: 'assistant_super', view_employee_private: 1 }, 'canViewEmployeePrivate'),
+    'view_employee_private override grants assistant canViewEmployeePrivate')
+  assert(!can('crew_lead', 'canViewEmployeePrivate'), 'crew_lead cannot view employee private')
+  assert(!can('crew',      'canViewEmployeePrivate'), 'crew cannot view employee private')
+  assert(!can('read_only', 'canViewEmployeePrivate'), 'read_only cannot view employee private')
+
   // Crew lead / crew / read-only.
   assert(can('crew_lead', 'canUpdateTaskStatus') && can('crew_lead', 'canEditMoisture'), 'crew_lead: task status + moisture')
   assert(!can('crew_lead', 'canEditSprays'), 'crew_lead cannot edit sprays')
