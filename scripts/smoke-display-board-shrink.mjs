@@ -38,8 +38,10 @@ assert(/const\s+assignmentCount\s*=\s*operatorCards\.reduce\(/.test(DB),
 // The new scale formula. Exact shape: Math.max(0.72, Math.min(1, 1 - Math.max(0, assignmentCount - 2) * 0.035)).
 assert(/const\s+boardBarScale\s*=\s*Math\.max\(/.test(DB),
   'boardBarScale = Math.max(...) defined')
-assert(/Math\.max\(\s*0\.72\s*,/.test(DB),
-  'boardBarScale floor: Math.max(0.72, …)')
+assert(/Math\.max\(\s*0\.5\s*,/.test(DB),
+  'boardBarScale floor: Math.max(0.5, …) — lowered from 0.72 so peak rosters can shrink to half-size')
+assert(!/boardBarScale\s*=\s*Math\.max\(\s*0\.72\s*,/.test(DB),
+  'old 0.72 floor for boardBarScale is not present (replaced by 0.5)')
 assert(/Math\.min\(\s*1\s*,/.test(DB),
   'boardBarScale ceiling: Math.min(1, …)')
 assert(/Math\.max\(\s*0\s*,\s*assignmentCount\s*-\s*2\s*\)\s*\*\s*0\.035/.test(DB),
