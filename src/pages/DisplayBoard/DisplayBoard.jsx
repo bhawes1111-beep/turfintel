@@ -147,14 +147,39 @@ function titleFromBody(body) {
 // Used by both the liveAlerts arm (passes `body: a.message`) and the
 // dayNotes arm (passes `body: n.body`) of the kioskAlerts derivation,
 // so alerts and daily notes share a single concatenation contract.
-function formatBilingualText({ title, body, titleEs, bodyEs }) {
+//
+// Phase 9C.5c4 — opt-out gate. When includeSpanish is false the helper
+// returns the English-only text and never appends `• ES: …`, even when
+// a Spanish translation exists. The caller computes this flag from the
+// employee translation prefs (kioskAlerts derivation passes
+// `boardNeedsSpanish` based on whether any operator on today's board
+// has autoTranslateBoardNotes + boardLanguage='es' enabled). Manual
+// `titleEs`/`bodyEs` stays in the database either way; it just doesn't
+// reach the marquee when no operator on today's board needs it.
+function formatBilingualText({ title, body, titleEs, bodyEs, includeSpanish = true }) {
   const en = title ? `${title}${body ? ' — ' + body : ''}` : (body ?? '')
-  const es = titleEs ? `${titleEs}${bodyEs ? ' — ' + bodyEs : ''}` : (bodyEs ?? '')
   const enTrim = en.trim()
+  if (!includeSpanish) return enTrim
+  const es = titleEs ? `${titleEs}${bodyEs ? ' — ' + bodyEs : ''}` : (bodyEs ?? '')
   const esTrim = es.trim()
   if (enTrim && esTrim) return `${enTrim} • ES: ${esTrim}`
   if (esTrim)            return `ES: ${esTrim}`
   return enTrim
+}
+
+// Phase 9C.5c4 — Per-employee translation gate. Returns true when this
+// employee has BOTH `autoTranslateBoardNotes` enabled AND `boardLanguage`
+// set to a non-English locale ('es' for now; future languages can extend
+// the second condition). Missing/null employee → false (e.g. fallback
+// assignments where employeeId is null and the lookup misses).
+//
+// Used by:
+//   • BoardModeCrewBars  — to gate the Spanish note <p> per operator
+//   • kioskAlerts        — to compute `boardNeedsSpanish` (any operator
+//                          on today's board needing Spanish triggers
+//                          bilingual marquee text)
+function employeeNeedsSpanish(employee) {
+  return Boolean(employee?.autoTranslateBoardNotes) && employee?.boardLanguage === 'es'
 }
 
 // ── Main component ───────────────────────────────────────────────────────
@@ -272,6 +297,19 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
     return m
   }, [employees])
 
+  // Phase 9C.5c4 — Full employee lookup by id, so operatorCards can
+  // read the per-employee translation prefs (autoTranslateBoardNotes,
+  // boardLanguage) when deciding whether to surface the Spanish line.
+  // Stays public-safe by design: the 9C.5a.5 private-fields gate
+  // strips payRate / emergencyContact / etc. from the kiosk's GET, so
+  // this Map only ever holds the public columns + the translation
+  // prefs added in 9C.5c1.
+  const employeeById = useMemo(() => {
+    const m = new Map()
+    for (const e of employees) m.set(e.id, e)
+    return m
+  }, [employees])
+
   // ── Date-scoped derivations ───────────────────────────────────────────
   const dayEvents = useMemo(() => {
     return events
@@ -362,14 +400,24 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
       const event = eventsById.get(a.calendarEventId)
       if (!event) continue
       if (!byOperator.has(key)) {
+        // Phase 9C.5c4 — Resolve the employee row (when known) so we
+        // can pin showSpanishNotes ONCE when the operator card is
+        // created. Per-employee translation prefs don't change inside
+        // a single operatorCards build, so computing here keeps the
+        // hot loop below ignorant of the employees array.
+        const employee = a.employeeId ? employeeById.get(a.employeeId) : null
         byOperator.set(key, {
           key,
-          employeeId:   a.employeeId ?? null,
-          employeeName: a.employeeId
-                          ? (employeeNameLookup.get(a.employeeId) ?? a.employeeName)
-                          : a.employeeName,
-          role:         a.role ?? null,
-          assignments:  [],
+          employeeId:        a.employeeId ?? null,
+          employeeName:      a.employeeId
+                              ? (employeeNameLookup.get(a.employeeId) ?? a.employeeName)
+                              : a.employeeName,
+          role:              a.role ?? null,
+          // Phase 9C.5c4 — per-operator Spanish gate. False when the
+          // employee row is missing (legacy assignments without
+          // employeeId, or an employee deleted after assignment).
+          showSpanishNotes:  employeeNeedsSpanish(employee),
+          assignments:       [],
         })
       }
       const op = byOperator.get(key)
@@ -415,7 +463,7 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
     return [...byOperator.values()].sort((x, y) =>
       (x.employeeName ?? '').localeCompare(y.employeeName ?? '')
     )
-  }, [dayCrew, dayEvents, equipByEvent, employeeNameLookup])
+  }, [dayCrew, dayEvents, equipByEvent, employeeNameLookup, employeeById])
 
   // ── Crew-facing weather impacts (rule-based, from existing weather) ─────
   const impacts = useMemo(
@@ -476,19 +524,33 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
   // The private superintendent-only condition log fields are never
   // touched here; the privacy smoke continues to assert that this
   // source file does not reference them by name.
+  // Phase 9C.5c4 — Board-wide Spanish gate. The kiosk marquee is a
+  // single shared surface (not per-operator), so we only surface
+  // bilingual marquee text when at least one operator on today's board
+  // has translation enabled. Falls to false when no operator needs
+  // Spanish, leaving the marquee English-only even if titleEs / bodyEs
+  // / messageEs are present in the database.
+  const boardNeedsSpanish = operatorCards.some(op => op.showSpanishNotes)
+
   // Phase 9C.5b3 — both arms now route through formatBilingualText so
   // Spanish (when authored) is appended after a ` • ES: ` marker. Empty
   // Spanish leaves the text English-only; empty English leaves it
   // Spanish-only with an ES: prefix; both blank → text === '' and the
   // final .filter strips the item.
+  //
+  // Phase 9C.5c4 — includeSpanish: boardNeedsSpanish opts the whole
+  // marquee in or out of bilingual text based on today's operator
+  // roster. When no operator needs Spanish the helper returns the
+  // English-only string and the ` • ES: ` suffix is suppressed.
   const kioskAlerts = [
     ...liveAlerts.map(a => ({
       key:      `alert:${a.id}`,
       text:     formatBilingualText({
-        title:   a.title,
-        body:    a.message,
-        titleEs: a.titleEs,
-        bodyEs:  a.messageEs,
+        title:          a.title,
+        body:           a.message,
+        titleEs:        a.titleEs,
+        bodyEs:         a.messageEs,
+        includeSpanish: boardNeedsSpanish,
       }),
       priority: a.priority,
     })),
@@ -497,10 +559,11 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
       .map(n => ({
         key:      `note:${n.id}`,
         text:     formatBilingualText({
-          title:   n.title,
-          body:    n.body,
-          titleEs: n.titleEs,
-          bodyEs:  n.bodyEs,
+          title:          n.title,
+          body:           n.body,
+          titleEs:        n.titleEs,
+          bodyEs:         n.bodyEs,
+          includeSpanish: boardNeedsSpanish,
         }),
         priority: n.priority,
       })),
@@ -1055,6 +1118,13 @@ function BoardModeCrewBars({ operatorCards }) {
             // per-assignment shrink automatically. The .boardNotesTextEs
             // override only adds visual differentiation (italic, mint
             // tint) so the bilingual nature is glanceable on a TV.
+            //
+            // Phase 9C.5c4 — additionally gated on op.showSpanishNotes
+            // (computed in operatorCards from the operator's
+            // autoTranslateBoardNotes + boardLanguage prefs). Operators
+            // who don't want Spanish never see the bilingual line,
+            // even if notesEs exists in the database from a previous
+            // configuration or a different operator's translation run.
             const trimmedNotesEs = (a.notesEs ?? '').trim()
             return (
               <div key={a.id ?? idx} className={styles.boardTaskBlock}>
@@ -1062,7 +1132,7 @@ function BoardModeCrewBars({ operatorCards }) {
                 {trimmedNotes.length > 0 && (
                   <p className={styles.boardNotesText}>{trimmedNotes}</p>
                 )}
-                {trimmedNotesEs.length > 0 && (
+                {trimmedNotesEs.length > 0 && op.showSpanishNotes && (
                   <p
                     className={`${styles.boardNotesText} ${styles.boardNotesTextEs}`}
                     lang="es"

@@ -104,9 +104,11 @@ assert(/const\s+trimmedNotesEs\s*=\s*\(a\.notesEs\s*\?\?\s*''\)\.trim\(\)/.test(
 assert(/<p\s*\n?\s*className=\{`\$\{styles\.boardNotesText\}\s+\$\{styles\.boardNotesTextEs\}`\}\s*\n?\s*lang="es"/.test(DB),
   '<p className={`${styles.boardNotesText} ${styles.boardNotesTextEs}`} lang="es"> — Spanish line carries both classes')
 
-// Spanish render gated on trimmedNotesEs.length > 0.
-assert(/trimmedNotesEs\.length > 0 &&\s*\(\s*<p/.test(DB),
-  'Spanish <p> render is gated on trimmedNotesEs.length > 0')
+// Spanish render gated on trimmedNotesEs.length > 0. Phase 9C.5c4
+// added an additional `&& op.showSpanishNotes` gate; accept the leading
+// gate followed by an optional second condition.
+assert(/trimmedNotesEs\.length > 0\s*&&\s*(?:op\.showSpanishNotes\s*&&\s*)?\(\s*\n?\s*<p/.test(DB),
+  'Spanish <p> render begins with trimmedNotesEs.length > 0 gate (optional op.showSpanishNotes added in 9C.5c4)')
 
 // Spanish line uses the trimmed value.
 assert(/\{trimmedNotesEs\}/.test(DB),

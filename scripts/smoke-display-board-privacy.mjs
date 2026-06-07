@@ -208,8 +208,12 @@ function assert(cond, label, ctx) {
   // operatorCards useMemo derivation exists with the right dependencies.
   assert(/const\s+operatorCards\s*=\s*useMemo\(/.test(db),
     'operatorCards useMemo derivation defined')
-  assert(/\[dayCrew,\s*dayEvents,\s*equipByEvent,\s*employeeNameLookup\]/.test(db),
-    'operatorCards depends on dayCrew, dayEvents, equipByEvent, employeeNameLookup')
+  // Phase 9C.5c4 added employeeById to the dep list so per-operator
+  // translation prefs (autoTranslateBoardNotes + boardLanguage) thread
+  // into the showSpanishNotes flag. Accept both the legacy 4-entry list
+  // (pre-9C.5c4) and the 5-entry list with employeeById appended.
+  assert(/\[dayCrew,\s*dayEvents,\s*equipByEvent,\s*employeeNameLookup(?:,\s*employeeById)?\]/.test(db),
+    'operatorCards depends on dayCrew, dayEvents, equipByEvent, employeeNameLookup (+ employeeById from 9C.5c4)')
 
   // Grouping key uses employeeId first, fallback to employeeName.
   assert(/a\.employeeId\s*\?\?\s*a\.employeeName/.test(db),
