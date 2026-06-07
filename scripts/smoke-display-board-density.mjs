@@ -83,9 +83,11 @@ assert(/\.boardNotesText\s*\{[\s\S]{0,200}clamp\(/.test(CSS),
 assert(/\.boardSimple\s*\{[\s\S]{0,800}(?:min-height|height):\s*100dvh/.test(CSS),
   '.boardSimple has height: 100dvh (or min-height: 100dvh)')
 
-// Compact mode has tighter spacing — verify with a small gap value.
-assert(/\.boardBars\[data-density='compact'\]\s*\{[\s\S]{0,80}gap:\s*8px/.test(CSS),
-  "compact mode tightens .boardBars gap to 8px")
+// Compact mode has tighter spacing — verify with a small 8px gap term.
+// Phase 9C.4e wrapped this in calc(8px * var(--board-bar-scale)) so the
+// gap also shrinks with assignmentCount; accept either form.
+assert(/\.boardBars\[data-density='compact'\]\s*\{[\s\S]{0,120}gap:\s*(?:8px|calc\(\s*8px\s*\*\s*var\(--board-bar-scale)/.test(CSS),
+  "compact mode tightens .boardBars gap to 8px (scaled via --board-bar-scale or fixed)")
 
 // Comfortable notes clamp to 3 lines.
 assert(/\.boardBars\[data-density='comfortable'\]\s*\.boardNotesText\s*\{[\s\S]{0,400}-webkit-line-clamp:\s*3/.test(CSS),

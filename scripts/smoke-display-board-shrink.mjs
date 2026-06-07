@@ -119,8 +119,10 @@ assert(/@media\s*\(\s*max-height:\s*760px\s*\)\s*\{/.test(CSS),
 // Short-height block tightens key surfaces.
 const shortHeightMatch = CSS.match(/@media\s*\(\s*max-height:\s*760px\s*\)\s*\{([\s\S]*?)\n\}/)
 const shortHeightBody = shortHeightMatch ? shortHeightMatch[1] : ''
-assert(/\.boardSimple\s*\{[\s\S]{0,200}padding-block:\s*16px/.test(shortHeightBody),
-  'short-height: .boardSimple tightens padding-block to 16px')
+// Phase 9C.4e — short-height block tightens via scaled calc() too, so we
+// accept either the fixed 16px form (legacy) or calc(16px * var(...)).
+assert(/\.boardSimple\s*\{[\s\S]{0,200}padding-block:\s*(?:16px|calc\(\s*16px\s*\*\s*var\(--board-bar-scale)/.test(shortHeightBody),
+  'short-height: .boardSimple padding-block at 16px (scaled or fixed)')
 assert(/\.boardPersonBar\s*\{[\s\S]{0,200}padding:\s*calc/.test(shortHeightBody),
   'short-height: .boardPersonBar tightens padding')
 assert(/\.boardPersonName\s*\{[\s\S]{0,200}font-size:\s*clamp\([\s\S]{0,80}28px/.test(shortHeightBody),
@@ -129,8 +131,8 @@ assert(/\.boardTaskText\s*\{[\s\S]{0,200}font-size:\s*clamp\([\s\S]{0,80}22px/.t
   'short-height: .boardTaskText font-size clamp(min, vw, calc(22px * scale))')
 assert(/\.boardNotesText\s*\{[\s\S]{0,400}-webkit-line-clamp:\s*2/.test(shortHeightBody),
   'short-height: .boardNotesText clamps to 2 lines')
-assert(/\.boardDateOnly\s*\{[\s\S]{0,200}padding:\s*10px/.test(shortHeightBody),
-  'short-height: .boardDateOnly tightens padding')
+assert(/\.boardDateOnly\s*\{[\s\S]{0,400}padding:\s*(?:10px|calc\(\s*10px\s*\*\s*var\(--board-bar-scale)/.test(shortHeightBody),
+  'short-height: .boardDateOnly padding starts at 10px (scaled or fixed)')
 
 // ── 9C.4c density buckets preserved ────────────────────────────────────
 section('Phase 9C.4c regression — density buckets preserved')
@@ -151,6 +153,71 @@ assert(/\.boardBars\[data-density='compact'\][\s\S]{0,200}\.boardNotesText[\s\S]
 
 assert(/@media\s*\(\s*min-width:\s*1100px\s*\)\s*\{[\s\S]{0,400}\.boardBars\[data-density='compact'\][\s\S]{0,300}grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/.test(CSS),
   '9C.4c 2-column compact rule at @media (min-width: 1100px) preserved')
+
+// ── Phase 9C.4e — density rules must be scale-aware ────────────────────
+section('Phase 9C.4e — density overrides scale with --board-bar-scale')
+
+// Comfortable density — every surface goes through calc(* var(--board-bar-scale)).
+assert(/\.boardBars\[data-density='comfortable'\]\s*\{[\s\S]{0,200}gap:\s*calc\([\s\S]{0,40}var\(--board-bar-scale/.test(CSS),
+  "comfortable: .boardBars gap uses calc(... * var(--board-bar-scale))")
+assert(/\.boardBars\[data-density='comfortable'\]\s+\.boardPersonBar\s*\{[\s\S]{0,400}padding:[\s\S]{0,200}var\(--board-bar-scale/.test(CSS),
+  "comfortable: .boardPersonBar padding uses var(--board-bar-scale)")
+assert(/\.boardBars\[data-density='comfortable'\]\s+\.boardPersonBar\s*\{[\s\S]{0,400}gap:\s*calc\([\s\S]{0,40}var\(--board-bar-scale/.test(CSS),
+  "comfortable: .boardPersonBar inner gap uses var(--board-bar-scale)")
+assert(/\.boardBars\[data-density='comfortable'\]\s+\.boardPersonName\s*\{[\s\S]{0,200}clamp\([\s\S]{0,100}calc\([\s\S]{0,40}var\(--board-bar-scale/.test(CSS),
+  "comfortable: .boardPersonName clamp() max uses calc(... * var(--board-bar-scale))")
+assert(/\.boardBars\[data-density='comfortable'\]\s+\.boardTaskText\s*\{[\s\S]{0,200}clamp\([\s\S]{0,100}calc\([\s\S]{0,40}var\(--board-bar-scale/.test(CSS),
+  "comfortable: .boardTaskText clamp() max uses calc(... * var(--board-bar-scale))")
+assert(/\.boardBars\[data-density='comfortable'\]\s+\.boardNotesText\s*\{[\s\S]{0,200}clamp\([\s\S]{0,100}calc\([\s\S]{0,40}var\(--board-bar-scale/.test(CSS),
+  "comfortable: .boardNotesText clamp() max uses calc(... * var(--board-bar-scale))")
+
+// Compact density — same: every surface goes through calc(* var(--board-bar-scale)).
+assert(/\.boardBars\[data-density='compact'\]\s*\{[\s\S]{0,200}gap:\s*calc\([\s\S]{0,40}var\(--board-bar-scale/.test(CSS),
+  "compact: .boardBars gap uses calc(... * var(--board-bar-scale))")
+assert(/\.boardBars\[data-density='compact'\]\s+\.boardPersonBar\s*\{[\s\S]{0,400}padding:[\s\S]{0,200}var\(--board-bar-scale/.test(CSS),
+  "compact: .boardPersonBar padding uses var(--board-bar-scale)")
+assert(/\.boardBars\[data-density='compact'\]\s+\.boardPersonBar\s*\{[\s\S]{0,400}gap:\s*calc\([\s\S]{0,40}var\(--board-bar-scale/.test(CSS),
+  "compact: .boardPersonBar inner gap uses var(--board-bar-scale)")
+assert(/\.boardBars\[data-density='compact'\]\s+\.boardPersonName\s*\{[\s\S]{0,200}clamp\([\s\S]{0,100}calc\([\s\S]{0,40}var\(--board-bar-scale/.test(CSS),
+  "compact: .boardPersonName clamp() max uses calc(... * var(--board-bar-scale))")
+assert(/\.boardBars\[data-density='compact'\]\s+\.boardTaskText\s*\{[\s\S]{0,200}clamp\([\s\S]{0,100}calc\([\s\S]{0,40}var\(--board-bar-scale/.test(CSS),
+  "compact: .boardTaskText clamp() max uses calc(... * var(--board-bar-scale))")
+assert(/\.boardBars\[data-density='compact'\]\s+\.boardNotesText\s*\{[\s\S]{0,200}clamp\([\s\S]{0,100}calc\([\s\S]{0,40}var\(--board-bar-scale/.test(CSS),
+  "compact: .boardNotesText clamp() max uses calc(... * var(--board-bar-scale))")
+
+// 2-column compact grid gaps must also scale.
+assert(/@media\s*\(\s*min-width:\s*1100px\s*\)\s*\{[\s\S]{0,600}\.boardBars\[data-density='compact'\][\s\S]{0,400}column-gap:\s*calc\([\s\S]{0,40}var\(--board-bar-scale/.test(CSS),
+  "2-column compact @1100px: column-gap uses calc(... * var(--board-bar-scale))")
+assert(/@media\s*\(\s*min-width:\s*1100px\s*\)\s*\{[\s\S]{0,600}\.boardBars\[data-density='compact'\][\s\S]{0,400}row-gap:\s*calc\([\s\S]{0,40}var\(--board-bar-scale/.test(CSS),
+  "2-column compact @1100px: row-gap uses calc(... * var(--board-bar-scale))")
+
+// Negative guards — the old fixed-px density shapes must be gone.
+assert(!/\.boardBars\[data-density='comfortable'\]\s*\{\s*gap:\s*12px;\s*\}/.test(CSS),
+  "no fixed 'comfortable { gap: 12px }' rule (replaced by scaled gap)")
+assert(!/\.boardBars\[data-density='comfortable'\]\s+\.boardPersonBar\s*\{\s*padding:\s*16px\s+22px;/.test(CSS),
+  "no fixed 'comfortable .boardPersonBar { padding: 16px 22px }' rule (replaced by scaled padding)")
+assert(!/\.boardBars\[data-density='comfortable'\]\s+\.boardPersonName\s*\{\s*font-size:\s*clamp\(\s*24px\s*,\s*2\.6vw\s*,\s*38px\s*\)/.test(CSS),
+  "no fixed 'comfortable .boardPersonName clamp(24px, 2.6vw, 38px)' (replaced by scaled max)")
+assert(!/\.boardBars\[data-density='comfortable'\]\s+\.boardTaskText\s*\{\s*font-size:\s*clamp\(\s*20px\s*,\s*2vw\s*,\s*30px\s*\)/.test(CSS),
+  "no fixed 'comfortable .boardTaskText clamp(20px, 2vw, 30px)' (replaced by scaled max)")
+assert(!/\.boardBars\[data-density='comfortable'\]\s+\.boardNotesText\s*\{\s*font-size:\s*clamp\(\s*16px\s*,\s*1\.6vw\s*,\s*22px\s*\)/.test(CSS),
+  "no fixed 'comfortable .boardNotesText clamp(16px, 1.6vw, 22px)' (replaced by scaled max)")
+
+assert(!/\.boardBars\[data-density='compact'\]\s*\{\s*gap:\s*8px;\s*\}/.test(CSS),
+  "no fixed 'compact { gap: 8px }' rule (replaced by scaled gap)")
+assert(!/\.boardBars\[data-density='compact'\]\s+\.boardPersonBar\s*\{\s*padding:\s*12px\s+16px;/.test(CSS),
+  "no fixed 'compact .boardPersonBar { padding: 12px 16px }' rule (replaced by scaled padding)")
+assert(!/\.boardBars\[data-density='compact'\]\s+\.boardPersonName\s*\{\s*font-size:\s*clamp\(\s*20px\s*,\s*2\.2vw\s*,\s*30px\s*\)/.test(CSS),
+  "no fixed 'compact .boardPersonName clamp(20px, 2.2vw, 30px)' (replaced by scaled max)")
+assert(!/\.boardBars\[data-density='compact'\]\s+\.boardTaskText\s*\{\s*font-size:\s*clamp\(\s*18px\s*,\s*1\.7vw\s*,\s*24px\s*\)/.test(CSS),
+  "no fixed 'compact .boardTaskText clamp(18px, 1.7vw, 24px)' (replaced by scaled max)")
+assert(!/\.boardBars\[data-density='compact'\]\s+\.boardNotesText\s*\{\s*font-size:\s*clamp\(\s*14px\s*,\s*1\.4vw\s*,\s*18px\s*\)/.test(CSS),
+  "no fixed 'compact .boardNotesText clamp(14px, 1.4vw, 18px)' (replaced by scaled max)")
+
+assert(!/@media\s*\(\s*min-width:\s*1100px\s*\)\s*\{[\s\S]{0,600}\.boardBars\[data-density='compact'\][\s\S]{0,400}column-gap:\s*14px;/.test(CSS),
+  "2-column compact @1100px: no fixed column-gap: 14px (replaced by scaled)")
+assert(!/@media\s*\(\s*min-width:\s*1100px\s*\)\s*\{[\s\S]{0,600}\.boardBars\[data-density='compact'\][\s\S]{0,400}row-gap:\s*10px;/.test(CSS),
+  "2-column compact @1100px: no fixed row-gap: 10px (replaced by scaled)")
 
 // ── 9C.4a + 9C.3b regression couples ──────────────────────────────────
 section('Phase 9C.4a + 9C.3b regression couples')

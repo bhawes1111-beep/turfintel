@@ -2052,21 +2052,35 @@
 
 /* .boardBars[data-density='spacious'] {} */
 
+/* Phase 9C.4e — Density rules must NOT override --board-bar-scale with
+   fixed sizes. In 9C.4c the comfortable/compact selectors used fixed
+   px values (e.g. clamp(…, 38px) for the name); crossing the density
+   threshold then ENLARGED the bars instead of tightening them, because
+   the density override's fixed cap beat the base's scaled cap. Every
+   numeric size below is now wrapped in calc(… * var(--board-bar-scale,
+   1)) so density only ever shrinks relative to the already-scaled base
+   and bars can never grow when assignmentCount climbs.
+
+   Clamp() floors are also lowered (vs the base 9C.4b values) so the
+   clamp min doesn't latch above the scaled max once the floor is hit. */
+
 .boardBars[data-density='comfortable'] {
-  gap: 12px;
+  gap: calc(12px * var(--board-bar-scale, 1));
 }
 .boardBars[data-density='comfortable'] .boardPersonBar {
-  padding: 16px 22px;
-  gap: 8px;
+  padding:
+    calc(16px * var(--board-bar-scale, 1))
+    calc(22px * var(--board-bar-scale, 1));
+  gap: calc(8px * var(--board-bar-scale, 1));
 }
 .boardBars[data-density='comfortable'] .boardPersonName {
-  font-size: clamp(24px, 2.6vw, 38px);
+  font-size: clamp(22px, 2.6vw, calc(38px * var(--board-bar-scale, 1)));
 }
 .boardBars[data-density='comfortable'] .boardTaskText {
-  font-size: clamp(20px, 2vw, 30px);
+  font-size: clamp(18px, 2vw, calc(30px * var(--board-bar-scale, 1)));
 }
 .boardBars[data-density='comfortable'] .boardNotesText {
-  font-size: clamp(16px, 1.6vw, 22px);
+  font-size: clamp(14px, 1.6vw, calc(22px * var(--board-bar-scale, 1)));
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
@@ -2074,20 +2088,22 @@
 }
 
 .boardBars[data-density='compact'] {
-  gap: 8px;
+  gap: calc(8px * var(--board-bar-scale, 1));
 }
 .boardBars[data-density='compact'] .boardPersonBar {
-  padding: 12px 16px;
-  gap: 6px;
+  padding:
+    calc(12px * var(--board-bar-scale, 1))
+    calc(16px * var(--board-bar-scale, 1));
+  gap: calc(6px * var(--board-bar-scale, 1));
 }
 .boardBars[data-density='compact'] .boardPersonName {
-  font-size: clamp(20px, 2.2vw, 30px);
+  font-size: clamp(18px, 2.2vw, calc(30px * var(--board-bar-scale, 1)));
 }
 .boardBars[data-density='compact'] .boardTaskText {
-  font-size: clamp(18px, 1.7vw, 24px);
+  font-size: clamp(15px, 1.7vw, calc(24px * var(--board-bar-scale, 1)));
 }
 .boardBars[data-density='compact'] .boardNotesText {
-  font-size: clamp(14px, 1.4vw, 18px);
+  font-size: clamp(12px, 1.4vw, calc(18px * var(--board-bar-scale, 1)));
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -2102,8 +2118,10 @@
   .boardBars[data-density='compact'] {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: 14px;
-    row-gap: 10px;
+    /* Phase 9C.4e — gaps scale with --board-bar-scale so the 2-column
+       compact grid does not visually re-pad the cards. */
+    column-gap: calc(14px * var(--board-bar-scale, 1));
+    row-gap: calc(10px * var(--board-bar-scale, 1));
   }
 }
 
@@ -2116,8 +2134,8 @@
    a tall TV can afford breathing room. */
 @media (max-height: 760px) {
   .boardSimple {
-    padding-block: 16px;
-    gap: 14px;
+    padding-block: calc(16px * var(--board-bar-scale, 1));
+    gap: calc(14px * var(--board-bar-scale, 1));
   }
   .boardBars {
     gap: calc(10px * var(--board-bar-scale, 1));
@@ -2126,21 +2144,26 @@
     padding: calc(10px * var(--board-bar-scale, 1)) calc(16px * var(--board-bar-scale, 1));
     gap: calc(6px * var(--board-bar-scale, 1));
   }
+  /* Phase 9C.4e — clamp() min values lowered (name 20→18, task 16→15,
+     notes 13→12) so the minimum never latches above the scaled max
+     once --board-bar-scale hits its 0.45 floor. Below the floor the
+     clamp min still owns readability; the change just removes the
+     window where the min could exceed the scaled max. */
   .boardPersonName {
-    font-size: clamp(20px, 2.6vw, calc(28px * var(--board-bar-scale, 1)));
+    font-size: clamp(18px, 2.6vw, calc(28px * var(--board-bar-scale, 1)));
   }
   .boardTaskText {
-    font-size: clamp(16px, 1.9vw, calc(22px * var(--board-bar-scale, 1)));
+    font-size: clamp(15px, 1.9vw, calc(22px * var(--board-bar-scale, 1)));
   }
   .boardNotesText {
-    font-size: clamp(13px, 1.4vw, calc(16px * var(--board-bar-scale, 1)));
+    font-size: clamp(12px, 1.4vw, calc(16px * var(--board-bar-scale, 1)));
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
   .boardDateOnly {
-    font-size: clamp(20px, 2.4vw, 28px);
-    padding: 10px 0 6px 0;
+    font-size: clamp(20px, 2.4vw, calc(28px * var(--board-bar-scale, 1)));
+    padding: calc(10px * var(--board-bar-scale, 1)) 0 calc(6px * var(--board-bar-scale, 1)) 0;
   }
 }
