@@ -49,9 +49,12 @@ for (const bucket of ['spacious', 'comfortable', 'compact']) {
     `density bucket "${bucket}" string literal present`)
 }
 
-// Wrapper render attaches data-density.
-assert(/<div className=\{styles\.boardBars\} data-density=\{density\}>/.test(DB),
-  '<div styles.boardBars data-density={density}>')
+// Wrapper render attaches data-density. Phase 9C.4d added an inline
+// style prop with CSS variables, so the opening tag is now multi-line;
+// the regex tolerates any attribute order/whitespace between the
+// className and the data-density attribute.
+assert(/<div[\s\S]{0,400}className=\{styles\.boardBars\}[\s\S]{0,400}data-density=\{density\}/.test(DB),
+  '<div styles.boardBars data-density={density} ...>')
 
 // ── CSS density-aware rules ────────────────────────────────────────────
 section('CSS — density-aware selectors + 100dvh + 2-col @1100px')
@@ -74,9 +77,11 @@ assert(/\.boardTaskText\s*\{[\s\S]{0,200}clamp\(/.test(CSS),
 assert(/\.boardNotesText\s*\{[\s\S]{0,200}clamp\(/.test(CSS),
   '.boardNotesText uses clamp() for responsive sizing')
 
-// .boardSimple gains 100dvh for mobile-browser URL-bar safety.
-assert(/\.boardSimple\s*\{[\s\S]{0,400}min-height:\s*100dvh/.test(CSS),
-  '.boardSimple has min-height: 100dvh')
+// .boardSimple gains 100dvh for mobile-browser URL-bar safety. Phase
+// 9C.4d strengthened this from min-height to height + overflow:hidden
+// so the inner .boardBars owns the scrollbar; accept either form.
+assert(/\.boardSimple\s*\{[\s\S]{0,800}(?:min-height|height):\s*100dvh/.test(CSS),
+  '.boardSimple has height: 100dvh (or min-height: 100dvh)')
 
 // Compact mode has tighter spacing — verify with a small gap value.
 assert(/\.boardBars\[data-density='compact'\]\s*\{[\s\S]{0,80}gap:\s*8px/.test(CSS),

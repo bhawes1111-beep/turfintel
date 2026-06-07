@@ -904,8 +904,31 @@ function BoardModeCrewBars({ operatorCards }) {
     operatorCount >= 10 || assignmentCount >= 16 ? 'compact'
     : operatorCount >= 6 || assignmentCount >= 10 ? 'comfortable'
     : 'spacious'
+  // Phase 9C.4d — Smooth per-assignment shrink. Starts at 1.0 for the
+  // first 2 assignments, drops 3.5% per assignment thereafter, floors
+  // at 0.72 so the smallest scale is still readable across a shop TV.
+  //   0–2 → 1.000   ·  6 → 0.860  ·  8 → 0.790
+  //   3   → 0.965   ·  7 → 0.825  ·  9 → 0.755
+  //   4   → 0.930   · 10+ → 0.720 (floor)
+  //   5   → 0.895
+  // The discrete 9C.4c bucket density above still controls categorical
+  // decisions (notes line-clamp count, 2-column compact grid); the
+  // continuous scale below tightens padding / gap / max-font caps via
+  // CSS calc() so growth is smooth instead of step-changes.
+  const boardBarScale = Math.max(
+    0.72,
+    Math.min(1, 1 - Math.max(0, assignmentCount - 2) * 0.035),
+  )
   return (
-    <div className={styles.boardBars} data-density={density}>
+    <div
+      className={styles.boardBars}
+      data-density={density}
+      style={{
+        '--board-operator-count':   operatorCount,
+        '--board-assignment-count': assignmentCount,
+        '--board-bar-scale':        boardBarScale,
+      }}
+    >
       {operatorCards.map(op => (
         <article key={op.key} className={styles.boardPersonBar}>
           <h2 className={styles.boardPersonName}>{op.employeeName ?? 'Unassigned'}</h2>
