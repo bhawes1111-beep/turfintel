@@ -22,6 +22,10 @@ import {
   uploadAttachment,
   deleteAttachment as deleteAttachmentApi,
 } from '../../utils/attachments/attachmentsStore'
+// Phase 9C.8 — Auto-translate after a daily briefing save. Gated on
+// canSystemSettings; debounced; quiet failure.
+import { scheduleTranslationSweep } from '../../utils/translate/translateClient'
+import { useAuth } from '../../context/AuthContext'
 import styles from './DailyBriefingPanel.module.css'
 
 const TODAY = () => new Date().toISOString().slice(0, 10)
@@ -58,6 +62,9 @@ export default function DailyBriefingPanel() {
   const { notes, loading, error } = useOperationsNotesData()
   const toast                     = useToast()
   const selectedCourse            = useSelectedCourse()
+  // Phase 9C.8 — Gate auto-translate scheduling on canSystemSettings.
+  const { can }                   = useAuth()
+  const canTranslate              = can('canSystemSettings')
 
   const [draft,          setDraft]          = useState(emptyDraft())
   const [showArchived,   setShowArchived]   = useState(false)
@@ -149,6 +156,12 @@ export default function DailyBriefingPanel() {
         })
         toast.success('Briefing posted to Display Board')
       }
+      // Phase 9C.8 — auto-translate the freshly-authored briefing.
+      // The save sent both English (title/body) and Spanish (titleEs/
+      // bodyEs) fields; the worker's English-edit invalidation NULLs
+      // any *_es that was not provided in this PATCH, so the sweep
+      // fills the gaps automatically. Debounced; quiet failure.
+      if (canTranslate) scheduleTranslationSweep()
       setDraft(emptyDraft())
     } catch (err) {
       toast.error(`Save failed: ${err.message}`)

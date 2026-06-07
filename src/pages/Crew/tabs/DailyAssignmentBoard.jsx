@@ -28,7 +28,7 @@ import { useEmployeeSchedulesData } from '../../../utils/schedules/schedulesStor
 // any active marquee admin view see the new translations immediately.
 import { refreshOperationsNotesData } from '../../../utils/operations/notesStore'
 import { refreshAlertsData } from '../../../utils/alerts/alertsStore'
-import { runTranslationSweep } from '../../../utils/translate/translateClient'
+import { runTranslationSweep, scheduleTranslationSweep } from '../../../utils/translate/translateClient'
 import { useAuth } from '../../../context/AuthContext'
 import EquipmentPickerModal from './EquipmentPickerModal'
 import TasksManagerModal from './TasksManagerModal'
@@ -484,6 +484,13 @@ export default function DailyAssignmentBoard({
         const { [assignment.id]: _, ...rest } = prev
         return rest
       })
+      // Phase 9C.8 — auto-translate the new English note after a brief
+      // debounce. Worker NULLs notes_es on PATCH-without-notesEs (9C.5c3
+      // English-edit invalidation), so the next sweep refills it
+      // automatically. Gated on canTranslate; the worker would 403
+      // non-canSystemSettings actors but we don't even fire the
+      // request for them.
+      if (canTranslate) scheduleTranslationSweep()
     } catch (err) {
       toast.error(`Notes save failed: ${err.message}`)
     }

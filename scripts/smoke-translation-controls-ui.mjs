@@ -65,8 +65,10 @@ section('DailyAssignmentBoard — imports for translation flow')
 assert(/import\s*\{\s*useAuth\s*\}\s*from\s*['"]\.\.\/\.\.\/\.\.\/context\/AuthContext['"]/.test(DAB),
   'DAB imports { useAuth } from ../../../context/AuthContext')
 
-assert(/import\s*\{\s*runTranslationSweep\s*\}\s*from\s*['"]\.\.\/\.\.\/\.\.\/utils\/translate\/translateClient['"]/.test(DAB),
-  'DAB imports { runTranslationSweep } from ../../../utils/translate/translateClient')
+// Phase 9C.8 — the import list widened to include scheduleTranslationSweep.
+// Accept either the single-import form (legacy) or the multi-import form.
+assert(/import\s*\{[^}]*\brunTranslationSweep\b[^}]*\}\s*from\s*['"]\.\.\/\.\.\/\.\.\/utils\/translate\/translateClient['"]/.test(DAB),
+  'DAB imports { runTranslationSweep, ... } from ../../../utils/translate/translateClient')
 
 // Refresh hooks for the three crew-visible stores.
 assert(/refreshAssignmentsData/.test(DAB),

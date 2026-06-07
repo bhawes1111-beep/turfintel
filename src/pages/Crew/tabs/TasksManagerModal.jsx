@@ -15,6 +15,12 @@ import { useAssignmentsData } from '../../../utils/assignments/assignmentsStore'
 import { deleteTaskCascade, buildDeleteConfirmMessage } from '../../../utils/tasks/deleteTaskCascade'
 import { useToast } from '../../../utils/feedback/toastContext'
 import { useSelectedCourse } from '../../../utils/courses/courseStore'
+// Phase 9C.8 — Auto-translate after task create/edit. The sweep is
+// debounced + race-safe, so adding it here costs nothing when no
+// translatable English content actually changed; it's a no-op for
+// already-cached rows and respects manual Spanish overrides.
+import { scheduleTranslationSweep } from '../../../utils/translate/translateClient'
+import { useAuth } from '../../../context/AuthContext'
 import styles from './DailyAssignmentBoard.module.css'
 
 const EVENT_TYPE_OPTS = [
@@ -58,6 +64,11 @@ function fmtTime(t) {
 export default function TasksManagerModal({ selectedDate, dayEvents, onClose }) {
   const toast          = useToast()
   const selectedCourse = useSelectedCourse()
+  // Phase 9C.8 — Gate the auto-translate scheduler on canSystemSettings
+  // so non-admin authors don't fire a request that the worker would
+  // reject with 403. Cron still picks up their changes at the next tick.
+  const { can }        = useAuth()
+  const canTranslate   = can('canSystemSettings')
   // Phase 9C.3a — pull live assignments + reservations so the delete
   // cascade helper can clean up the dependent rows on this task before
   // the calendar_event is removed. Used only by handleDelete.
@@ -128,6 +139,12 @@ export default function TasksManagerModal({ selectedDate, dayEvents, onClose }) 
         })
         toast.success('Task added')
       }
+      // Phase 9C.8 — schedule a translation sweep after task add/edit.
+      // Editing a task may cascade into new English crew_assignment
+      // notes downstream; the sweep will pick those up once they're
+      // authored. Sweep is a no-op when nothing eligible is blank, so
+      // calling it here is cheap.
+      if (canTranslate) scheduleTranslationSweep()
       cancelEdit()
     } catch (err) {
       toast.error(`Save failed: ${err.message}`)
