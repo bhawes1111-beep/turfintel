@@ -124,7 +124,10 @@ section('CSS — .boardDateTop, .boardAlertMarquee*, @keyframes, prefers-reduced
 // keeps the same flex-pin behavior.
 assert(/\.boardDateTop\s*\{[\s\S]{0,400}flex:\s*0\s+0\s+auto/.test(CSS),
   '.boardDateTop is flex: 0 0 auto (does not grow / shrink)')
-assert(/\.boardDateTop\s*\{[\s\S]{0,400}border-bottom:/.test(CSS),
+// Phase 9C.6 — the .boardDateTop block grew (flex layout + new comment)
+// so the regex window widened from 0-400 to 0-800 to accommodate the
+// border-bottom rule that sits near the end of the block.
+assert(/\.boardDateTop\s*\{[\s\S]{0,800}border-bottom:/.test(CSS),
   '.boardDateTop has a border-bottom separator (visually separates date from marquee/bars)')
 
 // Marquee container has red bg + white text + overflow clip.
@@ -170,7 +173,8 @@ assert(/data-density=\{density\}/.test(DB),
   'Phase 9C.4c: data-density attribute still on .boardBars wrapper')
 assert(/const\s+KIOSK_REFRESH_MS\s*=\s*60 \* 1000/.test(DB),
   'Phase 9C.4a: KIOSK_REFRESH_MS = 60 * 1000 preserved')
-assert(/if \(boardMode\)\s*\{[\s\S]{0,200}selectedDate !== todayNow[\s\S]{0,80}setSelectedDate\(todayNow\)/.test(DB),
+// Phase 9C.6 — boardMode rollover gated by !boardDateTouched; accept either form.
+assert(/if \(boardMode(?:\s*&&\s*!boardDateTouched)?\)\s*\{[\s\S]{0,200}selectedDate !== todayNow[\s\S]{0,80}setSelectedDate\(todayNow\)/.test(DB),
   'Phase 9C.4a: midnight rollover preserved')
 assert(/const\s+canDeleteTasks\s*=\s*!boardMode\s*&&\s*!printMode/.test(DB),
   'Phase 9C.3b: canDeleteTasks = !boardMode && !printMode preserved')

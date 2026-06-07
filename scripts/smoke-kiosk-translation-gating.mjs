@@ -239,7 +239,8 @@ assert(!/styles\.assignDeleteBtn/.test(earlyReturnJsx),
 // 9C.5a public route + 60s refresh + midnight rollover.
 assert(/const\s+KIOSK_REFRESH_MS\s*=\s*60 \* 1000/.test(DB),
   'KIOSK_REFRESH_MS = 60 * 1000 preserved (9C.4a)')
-assert(/if \(boardMode\)\s*\{[\s\S]{0,200}selectedDate !== todayNow[\s\S]{0,80}setSelectedDate\(todayNow\)/.test(DB),
+// Phase 9C.6 — boardMode rollover gated by !boardDateTouched; accept either form.
+assert(/if \(boardMode(?:\s*&&\s*!boardDateTouched)?\)\s*\{[\s\S]{0,200}selectedDate !== todayNow[\s\S]{0,80}setSelectedDate\(todayNow\)/.test(DB),
   'midnight rollover preserved (9C.4a)')
 
 // 9C.5a date-top + marquee ordering.

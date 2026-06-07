@@ -225,6 +225,23 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
   // Display date — defaults to today, can shift via the date selector.
   const [selectedDate, setSelectedDate] = useState(isoToday)
 
+  // Phase 9C.6 — Kiosk date navigation arrows. Tracks whether the
+  // user manually shifted the board date (via ‹ / › on the kiosk).
+  // Resets to false on every page load — there's no persistence,
+  // so a refresh always lands on today. The midnight-rollover
+  // effect below gates on !boardDateTouched so a user-pinned
+  // past/future date sticks across 60s polls and across midnight.
+  const [boardDateTouched, setBoardDateTouched] = useState(false)
+
+  // Move the board's displayed date by `delta` days and flag the
+  // session as user-touched so the midnight rollover stops snapping
+  // back to today. Used by the boardMode early-return's date header
+  // arrows; reuses the shared shiftDate helper for ISO arithmetic.
+  function shiftBoardDate(delta) {
+    setBoardDateTouched(true)
+    setSelectedDate(prev => shiftDate(prev, delta))
+  }
+
   // Live clock — tick every second.
   const [now, setNow] = useState(() => new Date())
   useEffect(() => {
@@ -258,13 +275,19 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
       // forward to today so the bars show the current day's work.
       // Only fires in boardMode — normal /display-board users keep
       // whichever date they manually picked.
-      if (boardMode) {
+      //
+      // Phase 9C.6 — Additionally gated on !boardDateTouched so a user
+      // who has shifted the kiosk date with the new ‹ / › arrows is
+      // not yanked back to today on the next 60s tick or at midnight.
+      // boardDateTouched is in-memory only; a page reload resets it
+      // and the kiosk lands on today again.
+      if (boardMode && !boardDateTouched) {
         const todayNow = isoToday()
         if (selectedDate !== todayNow) setSelectedDate(todayNow)
       }
     }, intervalMs)
     return () => clearInterval(id)
-  }, [intervalMs, boardMode, selectedDate])
+  }, [intervalMs, boardMode, selectedDate, boardDateTouched])
 
   // First-paint guard — before the calendar store resolves, every
   // section would otherwise render its empty state ("No tasks…"),
@@ -584,8 +607,30 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
         className={`${styles.root} ${styles.rootBoard} ${styles.boardSimple}`}
         data-board-mode="true"
       >
+        {/* Phase 9C.6 — Date navigation arrows. ‹ / › shift selectedDate
+            by one day in-memory; the date label remains centered. The
+            arrows are view-only (no data mutation), so the public kiosk
+            stays no-login and side-effect-free. */}
         <header className={styles.boardDateTop}>
-          {prettyDate(selectedDate)}
+          <button
+            type="button"
+            className={styles.boardDateArrow}
+            onClick={() => shiftBoardDate(-1)}
+            aria-label="Previous board date"
+            title="Previous day"
+          >
+            ‹
+          </button>
+          <span className={styles.boardDateLabel}>{prettyDate(selectedDate)}</span>
+          <button
+            type="button"
+            className={styles.boardDateArrow}
+            onClick={() => shiftBoardDate(1)}
+            aria-label="Next board date"
+            title="Next day"
+          >
+            ›
+          </button>
         </header>
         <BoardModeAlertMarquee alerts={kioskAlerts} />
         <BoardModeCrewBars operatorCards={operatorCards} />

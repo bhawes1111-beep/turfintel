@@ -2043,6 +2043,13 @@
    exist (the component early-returns null). */
 .boardDateTop {
   flex: 0 0 auto;
+  /* Phase 9C.6 — flex layout to host ‹ date › arrows. The label
+     stays centered via .boardDateLabel's text-align + the gap rule;
+     the row width is governed by the kiosk wrapper. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(16px, 3vw, 36px);
   text-align: center;
   font-size: clamp(26px, 3vw, 44px);
   font-weight: 600;
@@ -2050,6 +2057,57 @@
   color: rgba(212, 237, 212, 0.92);
   padding: 4px 0 12px 0;
   border-bottom: 1px solid rgba(74, 222, 128, 0.22);
+}
+
+/* Phase 9C.6 — Kiosk date navigation arrow buttons. Large touch
+   target (clamp keeps them tappable on small TVs without bloating
+   on 4K), pill shape, subtle dark background, green border + text
+   consistent with the rest of the kiosk's turf palette. */
+.boardDateArrow {
+  flex: 0 0 auto;
+  border: 1px solid rgba(74, 222, 128, 0.35);
+  background: rgba(15, 23, 42, 0.55);
+  color: #bbf7d0;
+  border-radius: 999px;
+  width:  clamp(44px, 5vw, 72px);
+  height: clamp(44px, 5vw, 72px);
+  font-size: clamp(30px, 4vw, 52px);
+  line-height: 1;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 0;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.boardDateArrow:hover {
+  background: rgba(34, 197, 94, 0.18);
+  border-color: rgba(74, 222, 128, 0.6);
+}
+.boardDateArrow:focus-visible {
+  outline: 2px solid rgba(74, 222, 128, 0.6);
+  outline-offset: 2px;
+}
+
+/* The centered date label. min-width keeps the label from collapsing
+   to its content width when the date string is short — so the arrows
+   stay anchored at consistent positions regardless of weekday length
+   (e.g. "Mon" vs "Wednesday"). */
+.boardDateLabel {
+  flex: 0 1 auto;
+  min-width: min(620px, 70vw);
+  text-align: center;
+}
+
+/* Mobile/small-screen pin-down so the arrows still fit alongside
+   the date label without wrapping. */
+@media (max-width: 600px) {
+  .boardDateArrow {
+    width:  44px;
+    height: 44px;
+    font-size: 28px;
+  }
+  .boardDateLabel {
+    min-width: 0;
+  }
 }
 
 .boardAlertMarquee {

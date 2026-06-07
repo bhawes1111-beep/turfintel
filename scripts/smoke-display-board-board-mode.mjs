@@ -48,7 +48,11 @@ assert(/<BoardModeCrewBars operatorCards=\{operatorCards\}\s*\/>/.test(DB),
 // .boardDateTop header or the legacy .boardDateOnly footer so this smoke
 // keeps green across the transition; the dedicated marquee smoke pins
 // down the new ordering precisely.
-assert(/<(?:header|footer) className=\{styles\.(?:boardDateTop|boardDateOnly)\}>[\s\S]{0,200}\{prettyDate\(selectedDate\)\}/.test(DB),
+// Phase 9C.6 — the kiosk date header grew to include ‹ / › arrow
+// buttons around the date label, so the window between the opening
+// <header> tag and the {prettyDate(selectedDate)} expression widened.
+// Accept the legacy direct-child form OR the new arrows-wrapped form.
+assert(/<(?:header|footer) className=\{styles\.(?:boardDateTop|boardDateOnly)\}>[\s\S]{0,1200}\{prettyDate\(selectedDate\)\}/.test(DB),
   'early return renders the date via .boardDateTop (top, 9C.5a) or .boardDateOnly (legacy bottom)')
 
 // ── BoardModeCrewBars component ────────────────────────────────────────
@@ -127,7 +131,8 @@ assert(/const\s+KIOSK_REFRESH_MS\s*=\s*60 \* 1000/.test(DB),
   'Phase 9C.4a: KIOSK_REFRESH_MS = 60 * 1000 preserved')
 assert(/const\s+intervalMs\s*=\s*printMode\s*\?\s*null\s*:\s*\(boardMode\s*\?\s*KIOSK_REFRESH_MS\s*:\s*BOARD_REFRESH_MS\)/.test(DB),
   'Phase 9C.4a: mode-aware intervalMs derivation preserved')
-assert(/if \(boardMode\)\s*\{[\s\S]{0,200}selectedDate !== todayNow[\s\S]{0,80}setSelectedDate\(todayNow\)/.test(DB),
+// Phase 9C.6 — boardMode rollover gated by !boardDateTouched; accept either form.
+assert(/if \(boardMode(?:\s*&&\s*!boardDateTouched)?\)\s*\{[\s\S]{0,200}selectedDate !== todayNow[\s\S]{0,80}setSelectedDate\(todayNow\)/.test(DB),
   'Phase 9C.4a: boardMode midnight rollover preserved')
 
 // ── Normal Display Board layout still intact (outside the boardMode branch) ──

@@ -64,7 +64,9 @@ assert(/const\s+intervalMs\s*=\s*printMode\s*\?\s*null\s*:\s*\(boardMode\s*\?\s*
 // useEffect early-returns when interval is null (printMode), and uses intervalMs.
 assert(/if \(intervalMs == null\) return/.test(DB),
   'refresh effect early-returns when intervalMs is null (printMode)')
-assert(/setInterval\([\s\S]{0,1000}\},\s*intervalMs\)/.test(DB),
+// Phase 9C.6 — the setInterval body grew (added the !boardDateTouched
+// rollover comment block) so the regex window widened from 1000 → 2000.
+assert(/setInterval\([\s\S]{0,2000}\},\s*intervalMs\)/.test(DB),
   'setInterval uses intervalMs (not the legacy BOARD_REFRESH_MS literal)')
 
 // Existing refresh suite still runs inside the tick — regression couple.
@@ -80,8 +82,11 @@ for (const refresher of [
 // Midnight rollover — only in boardMode.
 section('DisplayBoard.jsx — midnight rollover (boardMode only)')
 
-assert(/if \(boardMode\)\s*\{[\s\S]{0,200}selectedDate !== todayNow[\s\S]{0,80}setSelectedDate\(todayNow\)/.test(DB),
-  'boardMode block: if selectedDate !== isoToday(), setSelectedDate(today)')
+// Phase 9C.6 — boardMode rollover is now gated by !boardDateTouched so
+// a user-shifted kiosk date isn't yanked back to today on every 60s
+// tick. Accept either the un-gated (legacy) or gated form.
+assert(/if \(boardMode(?:\s*&&\s*!boardDateTouched)?\)\s*\{[\s\S]{0,200}selectedDate !== todayNow[\s\S]{0,80}setSelectedDate\(todayNow\)/.test(DB),
+  'boardMode block: if selectedDate !== isoToday(), setSelectedDate(today) — gated by !boardDateTouched in 9C.6')
 assert(/const\s+todayNow\s*=\s*isoToday\(\)/.test(DB),
   'todayNow is recomputed inside the refresh tick via isoToday()')
 

@@ -226,7 +226,8 @@ assert(/const\s+KIOSK_REFRESH_MS\s*=\s*60 \* 1000/.test(DB),
   'Phase 9C.4a: KIOSK_REFRESH_MS = 60 * 1000 preserved')
 assert(/const\s+intervalMs\s*=\s*printMode\s*\?\s*null\s*:\s*\(boardMode\s*\?\s*KIOSK_REFRESH_MS\s*:\s*BOARD_REFRESH_MS\)/.test(DB),
   'Phase 9C.4a: mode-aware intervalMs derivation preserved')
-assert(/if \(boardMode\)\s*\{[\s\S]{0,200}selectedDate !== todayNow[\s\S]{0,80}setSelectedDate\(todayNow\)/.test(DB),
+// Phase 9C.6 — boardMode rollover gated by !boardDateTouched; accept either form.
+assert(/if \(boardMode(?:\s*&&\s*!boardDateTouched)?\)\s*\{[\s\S]{0,200}selectedDate !== todayNow[\s\S]{0,80}setSelectedDate\(todayNow\)/.test(DB),
   'Phase 9C.4a: midnight rollover preserved')
 assert(/const\s+canDeleteTasks\s*=\s*!boardMode\s*&&\s*!printMode/.test(DB),
   'Phase 9C.3b: canDeleteTasks = !boardMode && !printMode preserved')
@@ -240,7 +241,9 @@ assert(/<BoardModeCrewBars operatorCards=\{operatorCards\}\s*\/>/.test(DB),
   'early return still renders <BoardModeCrewBars operatorCards={operatorCards} />')
 // Phase 9C.5a — accept either the new top header (boardDateTop) or the
 // legacy bottom footer (boardDateOnly) for prettyDate(selectedDate).
-assert(/<(?:header|footer) className=\{styles\.(?:boardDateTop|boardDateOnly)\}>[\s\S]{0,200}\{prettyDate\(selectedDate\)\}/.test(DB),
+// Phase 9C.6 — window widened to accommodate the arrow buttons that
+// now sit between <header> and the date label.
+assert(/<(?:header|footer) className=\{styles\.(?:boardDateTop|boardDateOnly)\}>[\s\S]{0,1200}\{prettyDate\(selectedDate\)\}/.test(DB),
   'early return still renders the date via prettyDate(selectedDate) (top header or legacy footer)')
 assert(/No assignments for today\./.test(DB),
   'empty-state copy "No assignments for today." preserved')

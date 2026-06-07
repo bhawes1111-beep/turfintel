@@ -168,7 +168,8 @@ assert(/data-density=\{density\}/.test(DB),
   '9C.4c: data-density={density} preserved on wrapper')
 assert(/const\s+KIOSK_REFRESH_MS\s*=\s*60 \* 1000/.test(DB),
   '9C.4a: KIOSK_REFRESH_MS = 60 * 1000 preserved')
-assert(/if \(boardMode\)\s*\{[\s\S]{0,200}selectedDate !== todayNow[\s\S]{0,80}setSelectedDate\(todayNow\)/.test(DB),
+// Phase 9C.6 — boardMode rollover gated by !boardDateTouched; accept either form.
+assert(/if \(boardMode(?:\s*&&\s*!boardDateTouched)?\)\s*\{[\s\S]{0,200}selectedDate !== todayNow[\s\S]{0,80}setSelectedDate\(todayNow\)/.test(DB),
   '9C.4a: midnight rollover preserved')
 assert(/const\s+canDeleteTasks\s*=\s*!boardMode\s*&&\s*!printMode/.test(DB),
   '9C.3b: canDeleteTasks gate preserved')
