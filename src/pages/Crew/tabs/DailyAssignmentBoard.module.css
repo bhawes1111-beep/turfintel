@@ -111,6 +111,20 @@
   background: rgba(239, 68, 68, 0.22);
 }
 
+/* Phase 9C.5d — Translate Now button. Green-tinted to signal a
+   benign affirmative action (vs. the destructive red of Clear Day
+   and the alternative blue of Copy Yesterday). Visible only when
+   the actor has canSystemSettings (owner_admin); the JSX gate
+   already hides it otherwise. */
+.tasksBtn[data-variant="translate"] {
+  background: rgba(74, 222, 128, 0.12);
+  border-color: rgba(74, 222, 128, 0.42);
+  color: #4ade80;
+}
+.tasksBtn[data-variant="translate"]:hover:not(:disabled) {
+  background: rgba(74, 222, 128, 0.22);
+}
+
 /* ── Summary chip row (Phase 12) ────────────────────────────────────── */
 
 .summaryRow {

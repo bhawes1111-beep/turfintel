@@ -16,11 +16,20 @@ import {
   patchCrewAssignment,
   createEquipmentReservation,
   patchEquipmentReservation,
+  refreshAssignmentsData,
 } from '../../../utils/assignments/assignmentsStore'
 import { createCalendarEvent } from '../../../utils/calendar/calendarStore'
 import { useSelectedCourseId } from '../../../utils/courses/courseStore'
 import { useToast } from '../../../utils/feedback/toastContext'
 import { useEmployeeSchedulesData } from '../../../utils/schedules/schedulesStore'
+// Phase 9C.5d — Translation controls. The refresh hooks for the two
+// other stores pull fresh title_es / body_es / message_es values into
+// client state after a successful sweep, so the DAB notes inputs and
+// any active marquee admin view see the new translations immediately.
+import { refreshOperationsNotesData } from '../../../utils/operations/notesStore'
+import { refreshAlertsData } from '../../../utils/alerts/alertsStore'
+import { runTranslationSweep } from '../../../utils/translate/translateClient'
+import { useAuth } from '../../../context/AuthContext'
 import EquipmentPickerModal from './EquipmentPickerModal'
 import TasksManagerModal from './TasksManagerModal'
 import styles from './DailyAssignmentBoard.module.css'
@@ -169,6 +178,15 @@ export default function DailyAssignmentBoard({
   // English notesDraft shape and lifecycle. Same save-on-blur,
   // trim-then-no-op-if-equal, clear-on-success semantics.
   const [notesEsDraft, setNotesEsDraft] = useState({})
+
+  // Phase 9C.5d — Translate Now button state. `translating` is the
+  // in-flight flag (button disables and shows "Translating…"); the
+  // permission gate is recomputed each render via useAuth().can(...).
+  // Server-side endpoint already enforces canSystemSettings (9C.5c3b),
+  // so this client gate is convenience UX, not the authority.
+  const { can } = useAuth()
+  const canTranslate = can('canSystemSettings')
+  const [translating, setTranslating] = useState(false)
 
   // ── Day-scoped derivations ────────────────────────────────────────────
   // Dropdown only surfaces tasks the operator could still perform —
@@ -591,6 +609,61 @@ export default function DailyAssignmentBoard({
     }
   }
 
+  // ── Translate Now (Phase 9C.5d) ──────────────────────────────────────
+  // Fires the same sweep the */30 cron runs, on demand. Refreshes the
+  // three crew-visible content stores after success so the new
+  // `*_es` values land in client state immediately (no 60s wait).
+  // The button is hidden when can('canSystemSettings') is false, AND
+  // the server enforces canSystemSettings independently; both layers
+  // must hold.
+  async function handleTranslateNow() {
+    if (translating) return
+    setTranslating(true)
+    try {
+      const { summary } = await runTranslationSweep()
+      if (summary?.skipped) {
+        if (summary.reason === 'no-employee-needs-translation') {
+          toast.info("No employee on today's board needs Spanish translation.")
+        } else if (summary.reason === 'provider-none-killswitch') {
+          toast.info('Auto-translation is currently disabled.')
+        } else {
+          toast.info(`Translation skipped: ${summary.reason}`)
+        }
+        return
+      }
+      const asnT  = summary?.assignments?.translated ?? 0
+      const noteT = summary?.dailyNotes?.translated  ?? 0
+      const alrT  = summary?.alerts?.translated      ?? 0
+      const total = asnT + noteT + alrT
+      if (total === 0) {
+        toast.info('All translations are up to date.')
+        return
+      }
+      toast.success(
+        `Translation complete: ${asnT} assignments, ${noteT} daily notes, ${alrT} alerts updated.`,
+      )
+      // Pull the freshly-written *_es values into client state so the
+      // DAB Spanish inputs and any open admin views pick up the new
+      // translations without a polling round-trip. Best-effort — a
+      // failed refresh leaves the next polling cycle to recover.
+      await Promise.allSettled([
+        refreshAssignmentsData(),
+        refreshOperationsNotesData(),
+        refreshAlertsData(),
+      ])
+    } catch (err) {
+      if (err?.status === 401) {
+        toast.error('Sign in required.')
+      } else if (err?.status === 403) {
+        toast.error("You don't have permission to run translations.")
+      } else {
+        toast.error('Translation failed. Try again.')
+      }
+    } finally {
+      setTranslating(false)
+    }
+  }
+
   // ── Clear Day ─────────────────────────────────────────────────────────
   async function handleClearDay() {
     if (!confirm(`Clear all assignments for ${prettyDate(selectedDate)}?`)) return
@@ -676,6 +749,18 @@ export default function DailyAssignmentBoard({
           >
             Tasks ({dayEvents.length})
           </button>
+          {canTranslate && (
+            <button
+              type="button"
+              className={styles.tasksBtn}
+              data-variant="translate"
+              onClick={handleTranslateNow}
+              disabled={translating}
+              title="Translate today's notes to Spanish for opted-in crew members"
+            >
+              {translating ? 'Translating…' : 'Translate Now'}
+            </button>
+          )}
           <button
             type="button"
             className={styles.tasksBtn}
