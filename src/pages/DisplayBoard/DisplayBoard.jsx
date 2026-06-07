@@ -904,22 +904,21 @@ function BoardModeCrewBars({ operatorCards }) {
     operatorCount >= 10 || assignmentCount >= 16 ? 'compact'
     : operatorCount >= 6 || assignmentCount >= 10 ? 'comfortable'
     : 'spacious'
-  // Phase 9C.4d — Smooth per-assignment shrink. Starts at 1.0 for the
-  // first 2 assignments, drops 3.5% per assignment thereafter, floors
-  // at 0.5 so a heavily-loaded board can shrink to half-size before
-  // bottoming out. (Updated from the original 0.72 floor so a peak
-  // roster has more vertical breathing room on shop TVs.)
-  //   0–2 →  1.000  ·   6 → 0.860  ·  10 → 0.720
-  //   3   →  0.965  ·   7 → 0.825  ·  12 → 0.650
-  //   4   →  0.930  ·   8 → 0.790  ·  15 → 0.545
-  //   5   →  0.895  ·   9 → 0.755  ·  17+ → 0.500 (floor)
+  // Phase 9C.4d — Smooth per-assignment shrink. Starts at ~2/3 size
+  // (0.66) for the first 2 assignments — shop TVs need a tighter base
+  // layout so multi-person rosters fit without scrolling — then drops
+  // 2.5% per assignment thereafter, floors at 0.45.
+  //   0–2 → 0.660  ·  6 → 0.560  ·  10 → 0.460
+  //   3   → 0.635  ·  7 → 0.535  ·  11 → 0.450 (floor reached)
+  //   4   → 0.610  ·  8 → 0.510  ·  12+ → 0.450 (floor)
+  //   5   → 0.585  ·  9 → 0.485
   // The discrete 9C.4c bucket density above still controls categorical
   // decisions (notes line-clamp count, 2-column compact grid); the
   // continuous scale below tightens padding / gap / max-font caps via
   // CSS calc() so growth is smooth instead of step-changes.
   const boardBarScale = Math.max(
-    0.5,
-    Math.min(1, 1 - Math.max(0, assignmentCount - 2) * 0.035),
+    0.45,
+    Math.min(0.66, 0.66 - Math.max(0, assignmentCount - 2) * 0.025),
   )
   return (
     <div

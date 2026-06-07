@@ -38,18 +38,24 @@ assert(/const\s+assignmentCount\s*=\s*operatorCards\.reduce\(/.test(DB),
 // The new scale formula. Exact shape: Math.max(0.72, Math.min(1, 1 - Math.max(0, assignmentCount - 2) * 0.035)).
 assert(/const\s+boardBarScale\s*=\s*Math\.max\(/.test(DB),
   'boardBarScale = Math.max(...) defined')
-assert(/Math\.max\(\s*0\.5\s*,/.test(DB),
-  'boardBarScale floor: Math.max(0.5, …) — lowered from 0.72 so peak rosters can shrink to half-size')
-assert(!/boardBarScale\s*=\s*Math\.max\(\s*0\.72\s*,/.test(DB),
-  'old 0.72 floor for boardBarScale is not present (replaced by 0.5)')
-assert(/Math\.min\(\s*1\s*,/.test(DB),
-  'boardBarScale ceiling: Math.min(1, …)')
-assert(/Math\.max\(\s*0\s*,\s*assignmentCount\s*-\s*2\s*\)\s*\*\s*0\.035/.test(DB),
-  'boardBarScale uses assignmentCount - 2 multiplied by 0.035 (shrink starts at 3rd assignment)')
+assert(/boardBarScale\s*=\s*Math\.max\(\s*0\.45\s*,/.test(DB),
+  'boardBarScale floor: Math.max(0.45, …) — lower than the previous 0.5 floor')
+assert(/Math\.min\(\s*0\.66\s*,\s*0\.66/.test(DB),
+  'boardBarScale start/ceiling: Math.min(0.66, 0.66 - …) — board now starts at ~2/3 size')
+assert(/Math\.max\(\s*0\s*,\s*assignmentCount\s*-\s*2\s*\)\s*\*\s*0\.025/.test(DB),
+  'boardBarScale uses assignmentCount - 2 multiplied by 0.025 (slower decrement than the previous 0.035)')
 
-// Negative guard — the old assignmentCount - 5 shape must not survive.
-assert(!/Math\.max\(\s*0\s*,\s*assignmentCount\s*-\s*5\s*\)\s*\*\s*0\.035/.test(DB),
-  'old assignmentCount - 5 formula is not present (replaced by - 2)')
+// Negative guards — earlier formula shapes must not survive.
+assert(!/boardBarScale\s*=\s*Math\.max\(\s*0\.72\s*,/.test(DB),
+  'old 0.72 floor for boardBarScale is not present')
+assert(!/boardBarScale\s*=\s*Math\.max\(\s*0\.5\s*,/.test(DB),
+  'previous 0.5 floor for boardBarScale is not present (replaced by 0.45)')
+assert(!/boardBarScale[\s\S]{0,80}Math\.min\(\s*1\s*,/.test(DB),
+  'previous 1.0 ceiling for boardBarScale is not present (replaced by 0.66 start)')
+assert(!/boardBarScale[\s\S]{0,120}Math\.max\(\s*0\s*,\s*assignmentCount\s*-\s*5\s*\)\s*\*\s*0\.035/.test(DB),
+  'old assignmentCount - 5 formula is not present')
+assert(!/boardBarScale[\s\S]{0,200}assignmentCount\s*-\s*2\s*\)\s*\*\s*0\.035/.test(DB),
+  'previous 0.035 decrement is not present (replaced by 0.025)')
 
 // ── boardBars wrapper carries inline CSS variables ─────────────────────
 section('boardBars inline style — CSS variables')
