@@ -367,6 +367,46 @@ async function handleApi(request, env, url, ctx) {
     return json({ error: 'D1 not configured yet — run the bootstrap commands in wrangler.jsonc' }, 503)
   }
 
+  // ── /api/admin/translate/run — manual auto-translation sweep (Phase 9C.5c3b)
+  //
+  // Authenticated-admin-only trigger for the same translation sweep the
+  // 30-min cron runs. Useful for:
+  //   • troubleshooting a row that the cron didn't translate
+  //   • forcing an immediate refresh after a new English-only briefing
+  //     so kiosks show Spanish before the next cron tick
+  //   • dry-run preview without actually translating (?dryRun=1)
+  //
+  // Authorization:
+  //   • Path is reached only after the mutation gate above, which has
+  //     already enforced "valid session OR ADMIN_KEY" (401 otherwise).
+  //   • In addition, we require `canSystemSettings` so only owner_admin
+  //     (or the ADMIN_KEY synthetic actor) can fire it. Translation
+  //     calls cost real money and can hammer Workers AI rate limits, so
+  //     this stays gated above the operational tier (superintendents
+  //     don't get it). 403 otherwise.
+  //   • The endpoint is therefore NEVER reachable from anonymous /
+  //     public/no-login callers, including the public kiosk route.
+  if (pathname === '/api/admin/translate/run' && method === 'POST') {
+    const actor = await resolveActor(request, env)
+    if (!actor) return json({ error: 'Unauthorized' }, 401)
+    if (!actorHasPermission(actor, 'canSystemSettings')) {
+      return json({ error: 'Forbidden — canSystemSettings required' }, 403)
+    }
+    const dryRun = url.searchParams.get('dryRun') === '1'
+    if (dryRun) {
+      // Same gating logic as the real sweep, but never calls the
+      // provider — returns the would-translate row counts so an admin
+      // can preview without spending neurons. Implemented by flipping
+      // TRANSLATE_PROVIDER to 'none' on a one-shot env clone; the
+      // sweep's existing kill-switch short-circuit makes this safe.
+      const fakeEnv = { ...env, TRANSLATE_PROVIDER: 'none' }
+      const summary = await runAutoTranslateSweep(fakeEnv)
+      return json({ ok: true, dryRun: true, summary })
+    }
+    const summary = await runAutoTranslateSweep(env)
+    return json({ ok: true, summary })
+  }
+
   // ── /api/weather/current ──────────────────────────────────────────────
   // Latest STORED observation for the course (most recent capture).
   if (pathname === '/api/weather/current') {
