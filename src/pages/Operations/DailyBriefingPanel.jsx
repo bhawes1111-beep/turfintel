@@ -44,6 +44,11 @@ function emptyDraft() {
     noteDate: TODAY(),
     title:    '',
     body:     '',
+    // Phase 9C.5b2 — manual Spanish translation. Optional. Empty saves
+    // as null on the server so the kiosk (9C.5b3) can fall back to
+    // English-only rendering cleanly.
+    titleEs:  '',
+    bodyEs:   '',
     priority: 'routine',
     pinned:   false,
   }
@@ -92,6 +97,10 @@ export default function DailyBriefingPanel() {
       noteDate: note.noteDate,
       title:    note.title ?? '',
       body:     note.body,
+      // Phase 9C.5b2 — hydrate Spanish fields from the saved row so
+      // the author sees and can edit the existing translation.
+      titleEs:  note.titleEs ?? '',
+      bodyEs:   note.bodyEs ?? '',
       priority: note.priority,
       pinned:   note.pinned,
     })
@@ -116,6 +125,10 @@ export default function DailyBriefingPanel() {
           noteDate: draft.noteDate,
           title:    draft.title || null,
           body:     draft.body,
+          // Phase 9C.5b2 — Spanish translation. || null so empty strings
+          // become null on the server (cleaner data, kiosk fall-through).
+          titleEs:  draft.titleEs || null,
+          bodyEs:   draft.bodyEs  || null,
           priority: draft.priority,
           pinned:   draft.pinned,
         })
@@ -125,6 +138,11 @@ export default function DailyBriefingPanel() {
           noteDate:  draft.noteDate,
           title:     draft.title || null,
           body:      draft.body,
+          // Phase 9C.5b2 — Spanish translation. || null matches the
+          // English title convention; the kiosk treats null as "no
+          // translation available, render English only" in 9C.5b3.
+          titleEs:   draft.titleEs || null,
+          bodyEs:    draft.bodyEs  || null,
           priority:  draft.priority,
           pinned:    draft.pinned,
           createdBy: null,            // future: replace with logged-in user
@@ -254,6 +272,33 @@ export default function DailyBriefingPanel() {
           onChange={e => setField('body', e.target.value)}
           rows={3}
           placeholder="Briefing copy — what the crew needs to know at 5:30 AM."
+        />
+
+        {/* Phase 9C.5b2 — Spanish translation block. Optional; empty
+            saves as null and the kiosk (9C.5b3) falls back to English. */}
+        <div className={styles.spanishNotice}>
+          <strong>Spanish (optional):</strong> Crew-visible translation. Verify before saving.
+        </div>
+        <div className={styles.editorRow}>
+          <div className={styles.fieldWide}>
+            <label className={styles.label}>Spanish title</label>
+            <input
+              type="text"
+              lang="es"
+              className={styles.input}
+              value={draft.titleEs ?? ''}
+              onChange={e => setField('titleEs', e.target.value)}
+              placeholder="Título en español (opcional)"
+            />
+          </div>
+        </div>
+        <textarea
+          lang="es"
+          className={styles.body}
+          value={draft.bodyEs ?? ''}
+          onChange={e => setField('bodyEs', e.target.value)}
+          rows={3}
+          placeholder="Cuerpo en español (opcional)"
         />
 
         <div className={styles.editorFooter}>

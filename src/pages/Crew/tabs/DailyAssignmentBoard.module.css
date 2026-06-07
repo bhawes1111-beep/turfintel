@@ -872,6 +872,32 @@
 .notesInput:focus    { outline: none; border-color: rgba(74, 222, 128, 0.55); }
 .notesInput:disabled { opacity: 0.5; cursor: not-allowed; }
 
+/* Phase 9C.5b2 — Spanish translation input stacks under the English
+   one in the same notes cell. The italic styling + slightly dimmer
+   border make the bilingual nature glanceable so a crew lead doesn't
+   confuse the two. Empty is the default; blank Spanish saves as null. */
+.notesStack {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.notesInputEs {
+  width: 100%;
+  min-width: 120px;
+  padding: 6px 10px;
+  background: rgba(4, 12, 6, 0.85);
+  border: 1px solid rgba(74, 158, 74, 0.18);   /* dimmer border than English */
+  border-radius: 5px;
+  color: rgba(212, 237, 212, 0.78);            /* slightly muted */
+  font-size: 12px;
+  font-style: italic;
+  font-family: inherit;
+}
+.notesInputEs::placeholder { color: rgba(212, 237, 212, 0.32); font-style: italic; }
+.notesInputEs:focus    { outline: none; border-color: rgba(74, 222, 128, 0.4); }
+.notesInputEs:disabled { opacity: 0.5; cursor: not-allowed; }
+
 .statusSelect {
   min-width: 110px;
   padding: 6px 10px;
@@ -897,8 +923,8 @@
    table itself stays a table (no flex/grid restructure) so the
    Crosswinds gate's added columns just inherit narrower paddings. */
 @media (max-width: 600px) {
-  .notesInput, .statusSelect { font-size: 11px; padding: 5px 8px; }
-  .notesInput { min-width: 100px; }
+  .notesInput, .notesInputEs, .statusSelect { font-size: 11px; padding: 5px 8px; }
+  .notesInput, .notesInputEs { min-width: 100px; }
   .statusSelect { min-width: 96px; }
 }
 

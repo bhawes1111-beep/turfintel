@@ -165,6 +165,11 @@ export default function DailyAssignmentBoard({
   // on every keystroke. Keyed by assignment id; clears on save.
   const [notesDraft, setNotesDraft] = useState({})
 
+  // Phase 9C.5b2 — Spanish translation draft buffer mirrors the
+  // English notesDraft shape and lifecycle. Same save-on-blur,
+  // trim-then-no-op-if-equal, clear-on-success semantics.
+  const [notesEsDraft, setNotesEsDraft] = useState({})
+
   // ── Day-scoped derivations ────────────────────────────────────────────
   // Dropdown only surfaces tasks the operator could still perform —
   // cancelled / completed events are filtered out so the dropdown stays
@@ -456,6 +461,35 @@ export default function DailyAssignmentBoard({
       })
     } catch (err) {
       toast.error(`Notes save failed: ${err.message}`)
+    }
+  }
+  // Phase 9C.5b2 — Spanish notes handlers mirror the English ones.
+  // patchCrewAssignment(id, { notesEs }) routes through the existing
+  // 9C.5b1 CORE_COLUMNS map; no worker change required.
+  function handleNotesEsChange(assignmentId, value) {
+    setNotesEsDraft(prev => ({ ...prev, [assignmentId]: value }))
+  }
+  async function handleNotesEsBlur(assignment) {
+    if (!assignment) return
+    const draft = notesEsDraft[assignment.id]
+    if (draft === undefined) return
+    const next = draft.trim()
+    const current = (assignment.notesEs ?? '').trim()
+    if (next === current) {
+      setNotesEsDraft(prev => {
+        const { [assignment.id]: _, ...rest } = prev
+        return rest
+      })
+      return
+    }
+    try {
+      await patchCrewAssignment(assignment.id, { notesEs: next })
+      setNotesEsDraft(prev => {
+        const { [assignment.id]: _, ...rest } = prev
+        return rest
+      })
+    } catch (err) {
+      toast.error(`Spanish notes save failed: ${err.message}`)
     }
   }
   async function handleStatusChange(assignment, nextStatus) {
@@ -900,16 +934,29 @@ export default function DailyAssignmentBoard({
                   {isCrosswinds && (
                     <td className={styles.notesCell}>
                       {assignment ? (
-                        <input
-                          type="text"
-                          className={styles.notesInput}
-                          placeholder="Notes…"
-                          value={notesDraft[assignment.id] ?? assignment.notes ?? ''}
-                          onChange={e => handleNotesChange(assignment.id, e.target.value)}
-                          onBlur={() => handleNotesBlur(assignment)}
-                          disabled={busyEmpId === emp.id}
-                          aria-label={`Notes for ${emp.name}`}
-                        />
+                        <div className={styles.notesStack}>
+                          <input
+                            type="text"
+                            className={styles.notesInput}
+                            placeholder="Notes…"
+                            value={notesDraft[assignment.id] ?? assignment.notes ?? ''}
+                            onChange={e => handleNotesChange(assignment.id, e.target.value)}
+                            onBlur={() => handleNotesBlur(assignment)}
+                            disabled={busyEmpId === emp.id}
+                            aria-label={`Notes for ${emp.name}`}
+                          />
+                          <input
+                            type="text"
+                            lang="es"
+                            className={styles.notesInputEs}
+                            placeholder="Spanish notes…"
+                            value={notesEsDraft[assignment.id] ?? assignment.notesEs ?? ''}
+                            onChange={e => handleNotesEsChange(assignment.id, e.target.value)}
+                            onBlur={() => handleNotesEsBlur(assignment)}
+                            disabled={busyEmpId === emp.id}
+                            aria-label={`Spanish notes for ${emp.name}`}
+                          />
+                        </div>
                       ) : (
                         <span className={styles.chipsEmpty}>—</span>
                       )}

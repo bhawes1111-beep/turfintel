@@ -69,6 +69,22 @@
 
 .crewVisibleNotice strong { color: #fbbf24; }
 
+/* Phase 9C.5b2 — Spanish translation block notice. Same shape as
+   .crewVisibleNotice but visually muted (smaller font, dimmer green
+   tint, lower contrast) so it reads as a secondary section divider,
+   not a warning. */
+.spanishNotice {
+  font-size: 10.5px;
+  color: rgba(74, 222, 128, 0.7);
+  background: rgba(74, 222, 128, 0.04);
+  border: 1px solid rgba(74, 222, 128, 0.18);
+  border-radius: 6px;
+  padding: 7px 11px;
+  line-height: 1.5;
+  margin-top: 8px;
+}
+.spanishNotice strong { color: #4ade80; }
+
 /* ── Editor ─────────────────────────────────────────────────────────── */
 
 .editor {
