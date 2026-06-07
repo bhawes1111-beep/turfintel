@@ -53,20 +53,38 @@ async function anyEmployeeNeedsTranslation(env) {
 
 /**
  * Translation sweep for crew_assignments.notes → notes_es.
- * Scope: today's assignments only (joined via dayEvents would require
- * cross-table date logic; instead scope by the assignment's own
- * assigned_at date to keep the SQL portable). Limits to `budget` rows.
+ *
+ * Scope matches the kiosk's dayCrew derivation in DisplayBoard.jsx:
+ * an assignment is "for today" when its linked calendar_event has
+ * start_date = today AND its own status is not cancelled. We JOIN
+ * through calendar_events.start_date instead of using the row's own
+ * assigned_at, because assigned_at is a creation timestamp (set to
+ * now() at insert time), not a board-date scope — a row created
+ * yesterday afternoon for today's event has assigned_at = yesterday.
+ *
+ * Phase 9C.5c3 originally filtered by DATE(assigned_at) = today, which
+ * caused assignments that appeared on today's kiosk to silently miss
+ * the sweep when they were authored on any prior day. 9C.5c3a fixes
+ * this by mirroring the kiosk's join logic exactly: if it's on the
+ * board, the sweep can see and translate it.
+ *
+ * Both indexed columns participate in the join — idx_cal_start_date on
+ * calendar_events, and the unique (calendar_event_id, employee_name)
+ * index on crew_assignments — so the JOIN stays cheap.
  */
 async function sweepAssignments(env, budget) {
   if (budget <= 0) return { scanned: 0, translated: 0 }
   const today = todayIso()
   const { results } = await env.DB.prepare(
-    `SELECT id, notes FROM crew_assignments
-      WHERE notes IS NOT NULL
-        AND TRIM(notes) != ''
-        AND (notes_es IS NULL OR TRIM(notes_es) = '')
-        AND DATE(assigned_at) = ?
-      ORDER BY datetime(assigned_at) DESC
+    `SELECT a.id, a.notes
+       FROM crew_assignments AS a
+       JOIN calendar_events  AS e ON e.id = a.calendar_event_id
+      WHERE a.notes IS NOT NULL
+        AND TRIM(a.notes) != ''
+        AND (a.notes_es IS NULL OR TRIM(a.notes_es) = '')
+        AND e.start_date = ?
+        AND a.status != 'cancelled'
+      ORDER BY datetime(a.assigned_at) DESC
       LIMIT ?`,
   ).bind(today, budget).all()
 

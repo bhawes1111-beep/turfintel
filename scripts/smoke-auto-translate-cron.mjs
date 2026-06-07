@@ -132,8 +132,25 @@ assert(/UPDATE alerts[\s\S]{0,200}message_es\s*=\s*\?[\s\S]{0,200}WHERE id = \?[
   'alerts message UPDATE has race-safe WHERE guard')
 
 // SELECT scope — assignments only translate today's rows.
-assert(/SELECT[\s\S]{0,400}crew_assignments[\s\S]{0,400}DATE\(assigned_at\)\s*=\s*\?/.test(AT),
-  'assignments sweep scopes by DATE(assigned_at) = today')
+//
+// Phase 9C.5c3a — the assignment sweep now mirrors the kiosk's dayCrew
+// derivation by JOINing through calendar_events.start_date instead of
+// filtering on crew_assignments.assigned_at (which is a creation
+// timestamp, not a board-date scope). An assignment authored yesterday
+// for today's event has assigned_at=yesterday but renders on today's
+// kiosk; this fix lets the sweep see it.
+assert(/SELECT[\s\S]{0,400}crew_assignments\s+AS\s+a[\s\S]{0,400}JOIN\s+calendar_events\s+AS\s+e\s+ON\s+e\.id\s*=\s*a\.calendar_event_id/.test(AT),
+  'assignments sweep JOINs crew_assignments → calendar_events on e.id = a.calendar_event_id')
+assert(/AND\s+e\.start_date\s*=\s*\?/.test(AT),
+  "assignments sweep filters by e.start_date = today (matches kiosk dayCrew scope)")
+assert(/AND\s+a\.status\s*!=\s*'cancelled'/.test(AT),
+  "assignments sweep excludes a.status = 'cancelled' (matches kiosk dayCrew filter)")
+
+// Negative guards — the broken 9C.5c3 scope must NOT come back.
+assert(!/DATE\(assigned_at\)\s*=\s*\?/.test(AT),
+  'old DATE(assigned_at) = ? filter is NOT present (replaced by calendar_events join)')
+assert(!/SELECT id, notes FROM crew_assignments\s+WHERE/.test(AT),
+  'old unaliased SELECT from crew_assignments is NOT present (replaced by aliased a.* JOIN form)')
 
 // SELECT scope — daily notes only translate today.
 assert(/SELECT[\s\S]{0,400}operations_daily_notes[\s\S]{0,400}note_date\s*=\s*\?/.test(AT),
@@ -176,14 +193,25 @@ for (const privateField of ['pay_rate', 'emergency_contact', 'pesticide_license'
 }
 
 // Translation only reads from public-safe tables. Parse SQL contexts
-// explicitly: `FROM <table>` / `UPDATE <table>` / `INSERT INTO <table>`.
-// (Generic SELECT/UPDATE/FROM matching trips on JSDoc prose.)
-const PUBLIC_TABLES = ['crew_assignments', 'operations_daily_notes', 'alerts', 'crew_employees']
+// explicitly: `FROM <table>` / `JOIN <table>` / `UPDATE <table>` /
+// `INSERT INTO <table>`. Phase 9C.5c3a added a JOIN on calendar_events
+// to the assignment sweep (scope mirrors the kiosk's dayCrew logic);
+// calendar_events is read-only here, joined only to filter by start_date.
+const PUBLIC_TABLES = [
+  'crew_assignments',
+  'operations_daily_notes',
+  'alerts',
+  'crew_employees',
+  'calendar_events',         // Phase 9C.5c3a — JOIN target for date scope
+]
 const sqlTableMatches = [
-  ...AT_CODE.matchAll(/`[\s\S]*?(?:FROM|UPDATE|INTO)\s+(\w+)/gi),
+  ...AT_CODE.matchAll(/\b(?:FROM|JOIN|UPDATE|INTO)\s+(\w+)/gi),
 ]
 for (const m of sqlTableMatches) {
   const table = m[1]
+  // Skip the `AS` alias keyword which would match the JOIN pattern's
+  // first capture group on `crew_assignments AS a` JOIN syntax.
+  if (table === 'AS' || /^[a-z]$/.test(table)) continue
   assert(PUBLIC_TABLES.includes(table),
     `autoTranslate SQL targets only public-safe table '${table}'`)
 }
