@@ -21,6 +21,9 @@ function rowToAlert(row) {
     status:         row.status,
     title:          row.title,
     message:        row.message,
+    // Phase 9C.5b1 — manual Spanish translations for kiosk marquee.
+    titleEs:        row.title_es,
+    messageEs:      row.message_es,
     course:         row.course,
     actionLabel:    row.action_label,
     actionTarget:   row.action_target,
@@ -55,6 +58,8 @@ const CORE_COLUMNS = {
   status:         'status',
   title:          'title',
   message:        'message',
+  titleEs:        'title_es',                               // Phase 9C.5b1
+  messageEs:      'message_es',                             // Phase 9C.5b1
   course:         'course',
   actionLabel:    'action_label',
   actionTarget:   'action_target',
@@ -94,8 +99,9 @@ export async function createAlert(env, request) {
   await env.DB.prepare(`
     INSERT INTO alerts (
       id, source_type, source_id, module, priority, status,
-      title, message, course, action_label, action_target, course_id
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      title, message, title_es, message_es,
+      course, action_label, action_target, course_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id,
     sourceType,
@@ -105,6 +111,8 @@ export async function createAlert(env, request) {
     body.status        ?? 'new',
     body.title,
     body.message       ?? null,
+    body.titleEs       ?? null,                             // Phase 9C.5b1
+    body.messageEs     ?? null,                             // Phase 9C.5b1
     body.course        ?? null,
     body.actionLabel   ?? null,
     body.actionTarget  ?? null,

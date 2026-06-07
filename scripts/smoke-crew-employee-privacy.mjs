@@ -165,15 +165,22 @@ assert(/actorHasPermission\(actor,\s*'canViewEmployeePrivate'\)/.test(idRouteSli
 assert(/return getCrewEmployee\(env,\s*id,\s*canViewPrivate\)/.test(idRouteSlice),
   ':id GET branch passes canViewPrivate to getCrewEmployee(env, id, canViewPrivate)')
 
-// ── No new D1 migration was added ──────────────────────────────────────
-section('No D1 schema change — migrations directory untouched')
+// ── No crew_employees D1 schema change introduced by 9C.5a.5 ───────────
+section('Phase 9C.5a.5 — no crew_employees migration was added')
 
 const migrationFiles = readdirSync('worker/migrations').filter(f => f.endsWith('.sql')).sort()
-const highestMigration = migrationFiles[migrationFiles.length - 1]
-// Phase 9C.5a.5 must not introduce any 0049+ migration. The most recent
-// pre-9C.5a.5 migration was 0048_fix_crosswinds_greens_program_course_scope.sql.
-assert(highestMigration === '0048_fix_crosswinds_greens_program_course_scope.sql',
-  `no new migration added past 0048 (found highest: ${highestMigration})`)
+// 9C.5a.5 is a server-side serializer/auth hardening — no schema change.
+// Later sub-phases (e.g. 9C.5b1 bilingual kiosk fields) may add their own
+// migrations that touch crew_assignments / operations_daily_notes /
+// alerts, but NONE may touch crew_employees without re-asserting the
+// privacy contract. Verify that no migration mentions crew_employees
+// from 0049 onward (the pre-9C.5a.5 migrations are out of scope).
+const postPrivacyMigrations = migrationFiles.filter(f => /^00(4[9]|[5-9]\d|\d{3,})/.test(f))
+for (const file of postPrivacyMigrations) {
+  const sql = readFileSync(`worker/migrations/${file}`, 'utf8')
+  assert(!/\bcrew_employees\b/i.test(sql),
+    `${file} does NOT touch crew_employees (the 9C.5a.5 privacy gate must stay intact)`)
+}
 
 // ── Cross-file guards — Phase 9C.5a.5 touches only worker + permissions ─
 section('Cross-file guards — kiosk + Employee Management UI untouched')

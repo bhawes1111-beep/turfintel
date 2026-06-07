@@ -29,6 +29,8 @@ function rowToCrewAssignment(row) {
     role:            row.role,
     status:          row.status,
     notes:           row.notes,
+    // Phase 9C.5b1 — manual Spanish translation for kiosk display.
+    notesEs:         row.notes_es,
     assignedAt:      row.assigned_at,
     courseId:        row.course_id,
     createdAt:       row.created_at,
@@ -62,6 +64,7 @@ const CREW_CORE_COLUMNS = {
   role:            'role',
   status:          'status',
   notes:           'notes',
+  notesEs:         'notes_es',                              // Phase 9C.5b1
   assignedAt:      'assigned_at',
 }
 
@@ -114,8 +117,8 @@ export async function createCrewAssignment(env, request) {
 
   await env.DB.prepare(`
     INSERT INTO crew_assignments (
-      id, calendar_event_id, employee_id, employee_name, role, status, notes, course_id
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      id, calendar_event_id, employee_id, employee_name, role, status, notes, notes_es, course_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id,
     calendarEventId,
@@ -123,7 +126,8 @@ export async function createCrewAssignment(env, request) {
     body.employeeName,
     body.role   ?? null,
     body.status ?? 'assigned',
-    body.notes  ?? null,
+    body.notes    ?? null,
+    body.notesEs  ?? null,                                  // Phase 9C.5b1
     resolveCourseId(body),
   ).run()
 

@@ -18,6 +18,9 @@ function rowToNote(row) {
     noteDate:   row.note_date,
     title:      row.title,
     body:       row.body,
+    // Phase 9C.5b1 — manual Spanish translations for kiosk display.
+    titleEs:    row.title_es,
+    bodyEs:     row.body_es,
     priority:   row.priority,
     pinned:     row.pinned === 1,
     createdBy:  row.created_by,
@@ -31,6 +34,8 @@ const CORE_COLUMNS = {
   noteDate:   'note_date',
   title:      'title',
   body:       'body',
+  titleEs:    'title_es',                                   // Phase 9C.5b1
+  bodyEs:     'body_es',                                    // Phase 9C.5b1
   priority:   'priority',
   createdBy:  'created_by',
   status:     'status',
@@ -95,14 +100,17 @@ export async function createOperationsNote(env, request) {
 
   await env.DB.prepare(`
     INSERT INTO operations_daily_notes (
-      id, course_id, note_date, title, body, priority, pinned, created_by, status
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      id, course_id, note_date, title, body, title_es, body_es,
+      priority, pinned, created_by, status
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id,
     courseId,
     noteDate,
     body.title       ?? null,
     body.body.trim(),
+    body.titleEs     ?? null,                               // Phase 9C.5b1
+    body.bodyEs      ?? null,                               // Phase 9C.5b1
     priority,
     pinned,
     body.createdBy   ?? null,
