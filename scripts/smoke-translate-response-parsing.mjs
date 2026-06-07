@@ -111,13 +111,30 @@ assert(extractAiText({ response: '```spanish\nCortar greens\n```' }) === 'Cortar
   'strips triple-backtick code fence with language tag')
 
 // ── cf-ai provider integration ─────────────────────────────────────────
-section('cf-ai provider — uses messages payload + extractAiText')
+section('cf-ai provider — messages payload + prompt fallback + extractAiText')
 
+// Phase 9C.5c3d — Two attempts in order: messages, then prompt.
 assert(/messages:\s*\[\s*\n?\s*\{\s*role:\s*['"]system['"],\s*content:/.test(TR),
-  'cf-ai provider sends messages: [{ role: "system", ... }, { role: "user", ... }] (llama-instruct format)')
+  'cf-ai provider attempts messages: [{ role: "system", ... }, { role: "user", ... }] payload')
 
+// Phase 9C.5c3d — Prompt fallback when messages returns null.
+assert(/prompt:\s*composed/.test(TR) || /prompt:\s*[`"'][\s\S]{0,200}TURF_SYSTEM_PROMPT/.test(TR),
+  'cf-ai provider falls back to a composed prompt payload when messages returns no usable text')
+
+// Both attempts route through the shared runAiCall helper that uses
+// extractAiText AND records the attempt into the diagnostics buffer.
+assert(/async function runAiCall\(env,\s*model,\s*mode,\s*payload/.test(TR),
+  'runAiCall(env, model, mode, payload, sourcePrefix, attempts) helper defined')
 assert(/extractAiText\(response\)/.test(TR),
-  'cf-ai provider parses the env.AI.run response via extractAiText(response)')
+  'runAiCall parses the env.AI.run response via extractAiText(response)')
+
+// Both attempts use the same model env.TRANSLATE_MODEL.
+assert(/env\.TRANSLATE_MODEL\s*\|\|\s*['"]@cf\/meta\/llama-3-8b-instruct['"]/.test(TR),
+  'model resolved from env.TRANSLATE_MODEL with @cf/meta/llama-3-8b-instruct fallback')
+
+// Source text never leaks into the attempts buffer.
+assert(!/attempts\.push\(\{[\s\S]{0,200}(sourcePrefix|trimmed|text)\s*[,}]/.test(TR),
+  'attempts buffer entries do NOT carry source text fields')
 
 // translateText returns null on blank/failed result — via the 'none'
 // provider, which the helper's contract guarantees returns null.

@@ -215,6 +215,12 @@ import { resolveActor, actorHasPermission } from './lib/actor.js'
 import { isMutationAllowed, ruleNeedsBody } from './lib/mutationPermissions.js'
 // Phase 9C.5c3 — Auto-translate kiosk content via Cloudflare Workers AI.
 import { runAutoTranslateSweep } from './lib/autoTranslate.js'
+// Phase 9C.5c3d — Translation diagnostics surfaced via ?debug=1 on the
+// manual trigger route. Returns the most-recent translate() attempts
+// (provider payload mode + privacy-safe response shape + caught error)
+// so admins can see why a translation came back null without leaking
+// source / translated text into HTTP responses.
+import { getLastTranslateAttempts } from './lib/translate.js'
 import {
   isCourseScopedReadPath,
   courseReadDecision,
@@ -393,6 +399,7 @@ async function handleApi(request, env, url, ctx) {
       return json({ error: 'Forbidden — canSystemSettings required' }, 403)
     }
     const dryRun = url.searchParams.get('dryRun') === '1'
+    const debug  = url.searchParams.get('debug')  === '1'
     if (dryRun) {
       // Same gating logic as the real sweep, but never calls the
       // provider — returns the would-translate row counts so an admin
@@ -402,6 +409,27 @@ async function handleApi(request, env, url, ctx) {
       const fakeEnv = { ...env, TRANSLATE_PROVIDER: 'none' }
       const summary = await runAutoTranslateSweep(fakeEnv)
       return json({ ok: true, dryRun: true, summary })
+    }
+    // Phase 9C.5c3d — Debug mode runs ONE row through the sweep
+    // (TRANSLATE_MAX_PER_RUN=1 on an env clone) and returns the
+    // privacy-safe attempts buffer from the last translate() call.
+    // Each attempt entry holds only { mode, ok, shape, error } so the
+    // admin can see what the Workers AI runtime actually returned
+    // without any source or translated text leaking into the HTTP
+    // response.
+    if (debug) {
+      const debugEnv = { ...env, TRANSLATE_MAX_PER_RUN: '1' }
+      const summary  = await runAutoTranslateSweep(debugEnv)
+      const attempts = getLastTranslateAttempts(debugEnv)
+      return json({
+        ok: true,
+        summary,
+        diagnostics: {
+          provider: env.TRANSLATE_PROVIDER ?? 'none',
+          model:    env.TRANSLATE_MODEL    ?? null,
+          attempts,
+        },
+      })
     }
     const summary = await runAutoTranslateSweep(env)
     return json({ ok: true, summary })

@@ -105,6 +105,43 @@ assert(/TRANSLATE_PROVIDER:\s*['"]none['"]/.test(handlerSrc),
 assert(/dryRun:\s*true,\s*summary/.test(handlerSrc),
   'dryRun response shape includes { dryRun: true, summary }')
 
+// ── Phase 9C.5c3d — Optional ?debug=1 diagnostics endpoint ────────────
+section('Optional ?debug=1 query parameter (Phase 9C.5c3d)')
+
+assert(/url\.searchParams\.get\(['"]debug['"]\)\s*===\s*['"]1['"]/.test(handlerSrc),
+  'handler reads url.searchParams.get("debug") === "1"')
+
+// Debug mode clamps the sweep to one row so the attempts buffer is
+// clean (one translate() call per request).
+assert(/TRANSLATE_MAX_PER_RUN:\s*['"]1['"]/.test(handlerSrc),
+  'debug mode runs the sweep with TRANSLATE_MAX_PER_RUN=1 (single-row diagnostic)')
+
+// Debug response includes a diagnostics block with provider/model/attempts.
+assert(/diagnostics:\s*\{[\s\S]{0,400}provider:[\s\S]{0,200}model:[\s\S]{0,200}attempts/.test(handlerSrc),
+  'debug response includes diagnostics: { provider, model, attempts }')
+
+// The attempts buffer is fetched from the translate module — never
+// from the env or a request property — so it stays privacy-safe.
+assert(/getLastTranslateAttempts\(debugEnv\)/.test(handlerSrc) ||
+       /getLastTranslateAttempts\(env\)/.test(handlerSrc),
+  'debug mode calls getLastTranslateAttempts(env) to fetch the attempts buffer')
+
+// Debug mode is gated behind the same auth as the normal route — the
+// permission check above runs before either dryRun or debug branches.
+const permCheckIdx = handlerSrc.indexOf("actorHasPermission(actor, 'canSystemSettings')")
+const debugBranchIdx = handlerSrc.indexOf("searchParams.get('debug')")
+assert(permCheckIdx >= 0 && debugBranchIdx > permCheckIdx,
+  'debug branch runs AFTER the canSystemSettings auth check (debug stays admin-only)')
+
+// Diagnostics MUST NOT include source / translated text. We assert
+// the debug branch does NOT read body / notes / source / text / title /
+// message fields. Only provider, model, and attempts (which is built
+// in worker/lib/translate.js without source content).
+for (const leakyField of ['body.notes', 'row.notes', 'a.notes', 'sourceText', 'fullText']) {
+  assert(!new RegExp(`diagnostics[\\s\\S]{0,200}\\b${leakyField.replace('.', '\\.')}\\b`).test(handlerSrc),
+    `debug diagnostics does NOT include '${leakyField}'`)
+}
+
 // ── Cron handler still calls the same sweep (unchanged) ────────────────
 section('Cron handler unchanged — still invokes runAutoTranslateSweep')
 

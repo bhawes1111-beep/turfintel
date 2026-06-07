@@ -97,6 +97,61 @@ function stripStrayMarkdown(s) {
   return out.trim()
 }
 
+// Phase 9C.5c3d — Run a single env.AI.run attempt with a specific
+// payload, parse the response via extractAiText, record the outcome
+// into the per-call `attempts` buffer for ?debug=1 visibility, and
+// return the translated string OR null. Never throws — any provider
+// error is caught and logged, and the attempt is recorded as ok:false
+// with the safe error message string.
+async function runAiCall(env, model, mode, payload, sourcePrefix, attempts) {
+  const entry = { mode, ok: false, shape: null, error: null }
+  try {
+    const response = await env.AI.run(model, payload)
+    entry.shape = describeAiShape(response)
+    const out = extractAiText(response)
+    if (out) {
+      entry.ok = true
+      attempts.push(entry)
+      return out
+    }
+    // Parsed to no usable text — keep attempt as ok:false with the
+    // shape recorded so the diagnostic endpoint and the failure log
+    // can both surface what came back.
+    console.warn(`[translate] cf-ai ${mode} returned no usable text — shape=${entry.shape}, model=${model}`)
+    attempts.push(entry)
+    return null
+  } catch (err) {
+    // Cap the error message at 200 chars so a verbose stack doesn't
+    // bloat the log. The source-text prefix (40 chars) is included
+    // ONLY in the warning, not in the attempt entry, to keep ?debug=1
+    // responses content-free.
+    const errMsg = String(err?.message ?? err).slice(0, 200)
+    entry.error = errMsg
+    attempts.push(entry)
+    console.warn(`[translate] cf-ai ${mode} threw on "${(sourcePrefix ?? '').slice(0, 40)}…": ${errMsg}`)
+    return null
+  }
+}
+
+/**
+ * getLastTranslateAttempts — privacy-safe diagnostic accessor for the
+ * most recent translate() call within the same request context.
+ * Returns an array of { mode, ok, shape, error } entries — one per
+ * payload variant attempted (e.g. messages then prompt). Each entry
+ * holds ONLY the response shape (top-level keys + value types) and
+ * any caught error message; NEVER the source text, the translated
+ * text, or any database field.
+ *
+ * Used by POST /api/admin/translate/run?debug=1 to surface why a
+ * translation came back null when the cron summary says
+ * `assignments.scanned >= 1, assignments.translated == 0`.
+ */
+export function getLastTranslateAttempts(env) {
+  return Array.isArray(env?.__lastTranslateAttempts)
+    ? env.__lastTranslateAttempts
+    : []
+}
+
 // Privacy-safe diagnostic — describe a Workers AI response's TOP-LEVEL
 // keys and value types so a cron log can show why parsing failed,
 // without leaking translated content (which is crew-visible but capped
@@ -162,39 +217,53 @@ export function getTranslateProvider(env) {
         // Only EN→ES is wired today. Other pairs return null until a
         // future phase adds prompt variants.
         if (from !== 'en' || to !== 'es') return null
-        try {
-          const response = await env.AI.run(model, {
-            messages: [
-              { role: 'system', content: TURF_SYSTEM_PROMPT },
-              { role: 'user',   content: trimmed },
-            ],
-            // Translation is deterministic-ish; low temperature avoids
-            // creative rewording.
-            temperature: 0.2,
-            max_tokens:  400,
-          })
-          // Phase 9C.5c3c — Walk every known Workers AI response shape
-          // via extractAiText. The llama-instruct runtime has shipped
-          // variants with the text under `response`, `result`, `text`,
-          // `output`, `output_text`, `choices[0].message.content`, and
-          // bare strings; trying them in priority order keeps us robust
-          // across runtime changes.
-          const out = extractAiText(response)
-          if (out) return out
-          // Translation came back unparseable. Log the response shape
-          // (top-level keys only, no source / no translated content)
-          // so future runtime changes are diagnosable from the cron log
-          // without leaking note text into Worker logs.
-          const shape = describeAiShape(response)
-          console.warn(`[translate] cf-ai returned no usable text — shape=${shape}, model=${model}`)
-          return null
-        } catch (err) {
-          // Include only a tiny prefix of the source (40 chars). Source
-          // is crew-visible English, not private — same exposure level
-          // the kiosk itself already has — but cap it anyway.
-          console.warn(`[translate] cf-ai threw on "${trimmed.slice(0, 40)}…": ${err?.message ?? err}`)
-          return null
-        }
+
+        // Phase 9C.5c3d — Two-payload retry. Some Workers AI llama
+        // runtimes accept the OpenAI-style `messages` array; others
+        // (especially the older `@cf/meta/llama-3-8b-instruct` build)
+        // expect a single composed `prompt` string and return errors
+        // for the messages variant. Try messages first, then prompt
+        // on failure. Each attempt's shape / error is recorded so the
+        // ?debug=1 admin endpoint can surface what the runtime
+        // actually returned without leaking source or translated text.
+        //
+        // The attempts buffer is hung off env.__lastTranslateAttempts
+        // (per-request scope; cleared at the start of every call) so
+        // the admin route handler can pick it up without changing the
+        // existing translateText / translateBatch return contract.
+        const attempts = []
+        if (env) env.__lastTranslateAttempts = attempts
+
+        // Attempt 1 — messages payload (newer OpenAI-style runtime).
+        const messagesResult = await runAiCall(env, model, 'messages', {
+          messages: [
+            { role: 'system', content: TURF_SYSTEM_PROMPT },
+            { role: 'user',   content: trimmed },
+          ],
+          temperature: 0.2,
+          max_tokens:  400,
+        }, trimmed, attempts)
+        if (messagesResult) return messagesResult
+
+        // Attempt 2 — prompt payload (older llama-instruct runtime).
+        // Compose system + user into one string with a clear separator.
+        const composed = `${TURF_SYSTEM_PROMPT}\n\nEnglish text:\n${trimmed}\n\nSpanish translation:`
+        const promptResult = await runAiCall(env, model, 'prompt', {
+          prompt:      composed,
+          temperature: 0.2,
+          max_tokens:  400,
+        }, trimmed, attempts)
+        if (promptResult) return promptResult
+
+        // Both attempts produced no usable text. The diagnostic log
+        // covers both attempts so future runtime changes are visible
+        // from a single cron log line.
+        console.warn(
+          `[translate] cf-ai exhausted both payloads — ` +
+          `attempts=${JSON.stringify(attempts.map(a => ({ mode: a.mode, ok: a.ok, shape: a.shape, error: a.error })))}, ` +
+          `model=${model}`,
+        )
+        return null
       },
     }
   }
