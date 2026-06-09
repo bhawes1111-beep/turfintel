@@ -208,11 +208,16 @@ assert(!/const\s+CROSSWINDS_TASK_LIST\s*=/.test(DAB),
 assert(!/CROSSWINDS_TASK_LIST/.test(DAB),
   'no remaining CROSSWINDS_TASK_LIST references in DAB')
 
-// Dropdown JSX reads template options.
-assert(/activeTaskTemplates\.map\(tmpl =>/.test(DAB),
-  'task dropdown maps over activeTaskTemplates for <option> elements')
+// Dropdown JSX reads template options. Phase 9C.13 nested the flat
+// activeTaskTemplates.map inside a groupedActiveTaskTemplates.map so
+// each category renders as an <optgroup>; the inner per-template
+// <option> shape is unchanged.
+assert(/groupedActiveTaskTemplates\.map\(group =>/.test(DAB),
+  'task dropdown maps over groupedActiveTaskTemplates (Phase 9C.13 optgroup buckets)')
+assert(/group\.templates\.map\(tmpl =>/.test(DAB),
+  'inside each optgroup, options come from group.templates.map(tmpl => ...)')
 assert(/<option key=\{tmpl\.id\} value=\{tmpl\.id\}>\{tmpl\.name\}<\/option>/.test(DAB),
-  '<option key={tmpl.id} value={tmpl.id}>{tmpl.name}</option> shape')
+  '<option key={tmpl.id} value={tmpl.id}>{tmpl.name}</option> shape preserved inside optgroups')
 assert(/<option value="">— Unassigned —<\/option>/.test(DAB),
   'dropdown includes blank — Unassigned — option')
 

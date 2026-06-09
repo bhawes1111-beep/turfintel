@@ -671,9 +671,11 @@ assert(/pickOrCreateEventForTask\(template,\s*selectedDate\)/.test(DAB),
 assert(/await createCrewAssignment\(\{[\s\S]{0,400}calendarEventId:\s*event\.id/.test(DAB),
   'handleQuickTaskChange calls createCrewAssignment with the resolved event.id directly')
 
-// Unified template dropdown — no more isCrosswinds branch.
-assert(/activeTaskTemplates\.map\(tmpl =>/.test(DAB),
-  'task dropdown maps over activeTaskTemplates (unified for all courses)')
+// Unified template dropdown — no more isCrosswinds branch. Phase 9C.13
+// wrapped the per-template <option> map in an <optgroup>-per-category
+// outer map; the unified-across-courses property is preserved.
+assert(/groupedActiveTaskTemplates\.map\(group =>/.test(DAB),
+  'task dropdown maps over groupedActiveTaskTemplates (Phase 9C.13 — unified across courses, grouped by category)')
 assert(/onChange=\{e => handleQuickTaskChange\(emp, e\.target\.value\)\}/.test(DAB),
   'dropdown onChange unifies via handleQuickTaskChange')
 assert(!/CROSSWINDS_TASK_LIST\.map/.test(DAB),

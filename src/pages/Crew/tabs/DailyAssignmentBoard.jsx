@@ -84,6 +84,23 @@ function prettyDate(iso) {
 
 const TODAY_ISO = () => new Date().toISOString().slice(0, 10)
 
+// Phase 9C.13 — Task dropdown grouping. Templates are bucketed under
+// these labels with `crew` first (the bulk of a morning shift), then
+// irrigation / spray / agronomy / maintenance, and `Other` last as the
+// catch-all for blank / null / unknown categories. Adding a category
+// here is purely UI: TasksManagerModal continues to write whatever
+// the supervisor chose into task_templates.category and the dropdown
+// gracefully bins unknowns into "Other".
+const TASK_CATEGORY_LABELS = {
+  crew:        'Crew',
+  irrigation:  'Irrigation',
+  spray:       'Spray',
+  agronomy:    'Agronomy',
+  maintenance: 'Maintenance',
+  other:       'Other',
+}
+const TASK_CATEGORY_ORDER = ['crew', 'irrigation', 'spray', 'agronomy', 'maintenance', 'other']
+
 export default function DailyAssignmentBoard({
   employees,
   events,
@@ -163,6 +180,31 @@ export default function DailyAssignmentBoard({
         return (a.name ?? '').localeCompare(b.name ?? '')
       })
   }, [taskTemplates])
+
+  // Phase 9C.13 — Group active templates by category for an <optgroup>
+  // dropdown. Categories appear in TASK_CATEGORY_ORDER; blank / unknown
+  // categories bucket to "other" so a template with no category never
+  // disappears from the picker. Within a bucket the templates inherit
+  // the activeTaskTemplates sort (sortOrder ASC then name ASC), so the
+  // supervisor's curated ordering in the Task Library carries through.
+  // Empty buckets are filtered out so the dropdown only renders groups
+  // that actually have visible templates.
+  const groupedActiveTaskTemplates = useMemo(() => {
+    const buckets = new Map()
+    for (const tmpl of activeTaskTemplates) {
+      const raw = (tmpl.category ?? '').trim().toLowerCase()
+      const key = TASK_CATEGORY_LABELS[raw] ? raw : 'other'
+      if (!buckets.has(key)) buckets.set(key, [])
+      buckets.get(key).push(tmpl)
+    }
+    return TASK_CATEGORY_ORDER
+      .filter(key => buckets.has(key))
+      .map(key => ({
+        key,
+        label:     TASK_CATEGORY_LABELS[key],
+        templates: buckets.get(key),
+      }))
+  }, [activeTaskTemplates])
 
   // Scheduled employees (Phase 13):
   //   - If the employee_schedules table has any rows for this course,
@@ -965,8 +1007,12 @@ export default function DailyAssignmentBoard({
                       onChange={e => handleQuickTaskChange(emp, e.target.value)}
                     >
                       <option value="">— Unassigned —</option>
-                      {activeTaskTemplates.map(tmpl => (
-                        <option key={tmpl.id} value={tmpl.id}>{tmpl.name}</option>
+                      {groupedActiveTaskTemplates.map(group => (
+                        <optgroup key={group.key} label={group.label}>
+                          {group.templates.map(tmpl => (
+                            <option key={tmpl.id} value={tmpl.id}>{tmpl.name}</option>
+                          ))}
+                        </optgroup>
                       ))}
                     </select>
                     {assignment && (isCrosswinds ? (

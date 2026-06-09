@@ -166,10 +166,11 @@ section('Existing dropdown behavior preserved')
 assert(/\.filter\(t => t\.status === 'active'\)/.test(DAB),
   'activeTaskTemplates filters to status === "active" (archived excluded)')
 
-// Dropdown still maps over activeTaskTemplates (9C.11 unified flow
-// retained — not regressed back to per-day events).
-assert(/activeTaskTemplates\.map\(tmpl =>/.test(DAB),
-  'task dropdown still maps over activeTaskTemplates')
+// Phase 9C.13 wrapped the per-template <option> map in a per-category
+// <optgroup>. The unified template-driven flow (no regression back to
+// per-day events) is preserved.
+assert(/groupedActiveTaskTemplates\.map\(group =>/.test(DAB),
+  'task dropdown still maps over template buckets (Phase 9C.13 grouped form)')
 
 // Blank — Unassigned — option still present so clearing remains possible.
 assert(/<option value="">— Unassigned —<\/option>/.test(DAB),
