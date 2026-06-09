@@ -13,6 +13,10 @@
 // off task-template:<templateId>:<date> for server-side dedupe), so the
 // downstream crew_assignment / equipment_reservation flows are
 // unchanged.
+//
+// Phase 9C.14 — Search + category filter + richer row metadata so the
+// supervisor can manage a growing list without flipping every row open
+// to edit it.
 
 import { useEffect, useMemo, useState } from 'react'
 import {
@@ -41,6 +45,29 @@ const CATEGORY_OPTS = [
   { value: 'irrigation',  label: 'Irrigation' },
 ]
 
+// Phase 9C.14 — Filter dropdown. Mirrors the DAB's TASK_CATEGORY_LABELS
+// vocabulary (Phase 9C.13) so this modal and the assignment dropdown
+// speak the same category language. "all" is the default; "other" is
+// the catch-all for blank / null / unknown categories; "archived" only
+// appears when showArchived is on (it's a status filter, not a true
+// category, but it's the same picker UI).
+const CATEGORY_FILTER_OPTS = [
+  { value: 'all',         label: 'All categories' },
+  { value: 'crew',        label: 'Crew' },
+  { value: 'irrigation',  label: 'Irrigation' },
+  { value: 'spray',       label: 'Spray' },
+  { value: 'agronomy',    label: 'Agronomy' },
+  { value: 'maintenance', label: 'Maintenance' },
+  { value: 'other',       label: 'Other' },
+]
+const CATEGORY_LABELS = {
+  crew:        'Crew',
+  irrigation:  'Irrigation',
+  spray:       'Spray',
+  agronomy:    'Agronomy',
+  maintenance: 'Maintenance',
+}
+
 function blankDraft() {
   return {
     id:                null,
@@ -51,6 +78,32 @@ function blankDraft() {
     defaultNotes:      '',
     sortOrder:         0,
   }
+}
+
+function normalizeCategory(category) {
+  const raw = (category ?? '').trim().toLowerCase()
+  return CATEGORY_LABELS[raw] ? raw : 'other'
+}
+
+function categoryLabel(category) {
+  const key = normalizeCategory(category)
+  return CATEGORY_LABELS[key] ?? 'Other'
+}
+
+function templateMatchesSearch(t, query) {
+  if (!query) return true
+  const q = query.trim().toLowerCase()
+  if (!q) return true
+  const haystack = [
+    t.name,
+    categoryLabel(t.category),
+    t.defaultLocation,
+    t.defaultNotes,
+  ]
+    .filter(Boolean)
+    .join('  ')
+    .toLowerCase()
+  return haystack.includes(q)
 }
 
 export default function TasksManagerModal({ onClose }) {
@@ -64,6 +117,12 @@ export default function TasksManagerModal({ onClose }) {
   const [editing, setEditing] = useState(false)
   const [busy, setBusy]       = useState(false)
   const [showArchived, setShowArchived] = useState(includeArchived)
+
+  // Phase 9C.14 — Search + category filter local state. Reset on close
+  // is intentional: each modal session is a focused management
+  // activity, not a persistent view.
+  const [searchText, setSearchText]       = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('all')
 
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') onClose() }
@@ -170,18 +229,36 @@ export default function TasksManagerModal({ onClose }) {
     }
   }
 
-  const sortedTemplates = useMemo(() => {
+  // Phase 9C.14 — Combined filter pipeline. Order matters:
+  //   1. showArchived gates whether archived rows are eligible at all
+  //   2. categoryFilter narrows by normalized category (or status)
+  //   3. searchText is the final free-text pass
+  //   4. sort: active before archived (when both visible), then
+  //      sortOrder ASC, then name ASC
+  const filteredTemplates = useMemo(() => {
     return [...templates]
       .filter(t => showArchived ? true : t.status === 'active')
+      .filter(t => {
+        if (categoryFilter === 'all') return true
+        if (categoryFilter === 'archived') return t.status === 'archived'
+        return normalizeCategory(t.category) === categoryFilter
+      })
+      .filter(t => templateMatchesSearch(t, searchText))
       .sort((a, b) => {
+        if (showArchived && a.status !== b.status) {
+          return a.status === 'active' ? -1 : 1
+        }
         const sa = a.sortOrder ?? 0
         const sb = b.sortOrder ?? 0
         if (sa !== sb) return sa - sb
         return (a.name ?? '').localeCompare(b.name ?? '')
       })
-  }, [templates, showArchived])
+  }, [templates, showArchived, categoryFilter, searchText])
 
-  const activeCount = templates.filter(t => t.status === 'active').length
+  const totalCount   = templates.length
+  const activeCount  = templates.filter(t => t.status === 'active').length
+  const visibleCount = filteredTemplates.length
+  const isFiltering  = searchText.trim() !== '' || categoryFilter !== 'all'
 
   return (
     <div className={styles.modalOverlay} onClick={onClose} role="dialog">
@@ -193,6 +270,12 @@ export default function TasksManagerModal({ onClose }) {
             <p className={styles.modalSub}>
               {activeCount} active task{activeCount !== 1 ? 's' : ''}
               {' · '}reusable across all dates
+              {isFiltering && (
+                <>
+                  {' · '}
+                  <span>showing {visibleCount} of {totalCount}</span>
+                </>
+              )}
             </p>
           </div>
           <button
@@ -212,11 +295,42 @@ export default function TasksManagerModal({ onClose }) {
             >
               + New Task
             </button>
-            <label className={styles.taskFormLabel} style={{ marginLeft: 12, gap: 4 }}>
+            <input
+              type="search"
+              className={styles.taskSearchInput}
+              value={searchText}
+              onChange={e => setSearchText(e.target.value)}
+              placeholder="Search tasks..."
+              aria-label="Search tasks"
+            />
+            <select
+              className={styles.taskFilterSelect}
+              value={categoryFilter}
+              onChange={e => setCategoryFilter(e.target.value)}
+              aria-label="Filter by category"
+            >
+              {CATEGORY_FILTER_OPTS.map(o => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+              {showArchived && (
+                <option value="archived">Archived only</option>
+              )}
+            </select>
+            <label className={styles.taskFormLabel} style={{ marginLeft: 'auto', gap: 4 }}>
               <input
                 type="checkbox"
                 checked={showArchived}
-                onChange={e => setShowArchived(e.target.checked)}
+                onChange={e => {
+                  const next = e.target.checked
+                  setShowArchived(next)
+                  // Reset the archived-only category filter when the
+                  // visibility toggle is turned off; otherwise the list
+                  // would silently empty and the supervisor would have
+                  // no obvious recovery path.
+                  if (!next && categoryFilter === 'archived') {
+                    setCategoryFilter('all')
+                  }
+                }}
               />
               <span>Show archived</span>
             </label>
@@ -317,65 +431,84 @@ export default function TasksManagerModal({ onClose }) {
         )}
 
         <ul className={styles.equipmentList}>
-          {sortedTemplates.length === 0 ? (
+          {totalCount === 0 ? (
             <li className={styles.equipmentEmpty}>
               No task templates yet. Click <strong>+ New Task</strong> to add one.
             </li>
-          ) : sortedTemplates.map(t => (
-            <li key={t.id} className={styles.equipmentRow} data-status={t.status}>
-              <div className={styles.equipmentMain}>
-                <span className={styles.equipmentName}>{t.name}</span>
-                <span className={styles.equipmentCategory}>
-                  {[
-                    t.category,
-                    t.defaultStartTime,
-                    t.defaultLocation,
-                  ].filter(Boolean).join(' · ') || '—'}
-                </span>
-              </div>
+          ) : filteredTemplates.length === 0 ? (
+            <li className={styles.equipmentEmpty}>
+              No tasks match that search/filter.
+            </li>
+          ) : filteredTemplates.map(t => {
+            const isArchived  = t.status === 'archived'
+            const notesPrev   = (t.defaultNotes ?? '').trim()
+            const metaPieces  = [
+              categoryLabel(t.category),
+              `sort ${t.sortOrder ?? 0}`,
+              t.defaultStartTime || null,
+              t.defaultLocation  || null,
+            ].filter(Boolean)
+            return (
+              <li
+                key={t.id}
+                className={`${styles.equipmentRow}${isArchived ? ' ' + styles.taskArchivedRow : ''}`}
+                data-status={t.status}
+              >
+                <div className={styles.equipmentMain}>
+                  <span className={styles.equipmentName}>{t.name}</span>
+                  <span className={styles.taskMetaLine}>
+                    {metaPieces.join(' · ')}
+                  </span>
+                  {notesPrev && (
+                    <span className={styles.taskNotesPreview} title={notesPrev}>
+                      Notes: {notesPrev}
+                    </span>
+                  )}
+                </div>
 
-              <div className={styles.equipmentStatusCol}>
-                <span
-                  className={styles.statusPill}
-                  data-status={t.status === 'archived' ? 'maintenance' : 'available'}
-                >
-                  {t.status}
-                </span>
-              </div>
-
-              <div className={styles.equipmentAction}>
-                <button
-                  type="button"
-                  className={styles.btnSecondary}
-                  onClick={() => startEdit(t)}
-                  disabled={busy}
-                >
-                  Edit
-                </button>
-                {t.status === 'active' ? (
-                  <button
-                    type="button"
-                    className={styles.btnDanger}
-                    onClick={() => handleArchive(t)}
-                    disabled={busy}
-                    title="Hide from the task dropdown. Existing assignments keep their label."
+                <div className={styles.equipmentStatusCol}>
+                  <span
+                    className={styles.statusPill}
+                    data-status={isArchived ? 'maintenance' : 'available'}
                   >
-                    Archive
-                  </button>
-                ) : (
+                    {t.status}
+                  </span>
+                </div>
+
+                <div className={styles.equipmentAction}>
                   <button
                     type="button"
                     className={styles.btnSecondary}
-                    onClick={() => handleUnarchive(t)}
+                    onClick={() => startEdit(t)}
                     disabled={busy}
-                    title="Reactivate this template so it appears in the dropdown again."
                   >
-                    Reactivate
+                    Edit
                   </button>
-                )}
-              </div>
-            </li>
-          ))}
+                  {!isArchived ? (
+                    <button
+                      type="button"
+                      className={styles.btnDanger}
+                      onClick={() => handleArchive(t)}
+                      disabled={busy}
+                      title="Hide from the task dropdown. Existing assignments keep their label."
+                    >
+                      Archive
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className={styles.btnSecondary}
+                      onClick={() => handleUnarchive(t)}
+                      disabled={busy}
+                      title="Reactivate this template so it appears in the dropdown again."
+                    >
+                      Reactivate
+                    </button>
+                  )}
+                </div>
+              </li>
+            )
+          })}
         </ul>
 
         <footer className={styles.modalFooter}>

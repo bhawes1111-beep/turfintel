@@ -808,11 +808,71 @@
 
 .tasksToolbar {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
   padding: 10px 22px;
   background: rgba(0, 0, 0, 0.18);
   border-bottom: 1px solid rgba(74, 158, 74, 0.12);
+  /* Phase 9C.14 — allow the toolbar to wrap on narrow modals so the
+     search input keeps usable width on mobile/portrait sizes. */
+  flex-wrap: wrap;
 }
+
+/* Phase 9C.14 — Search + filter controls. Reuse the muted dark
+   palette of the modal so the toolbar reads as one band of chrome. */
+.taskSearchInput {
+  flex: 1 1 200px;
+  min-width: 0;
+  background: rgba(0, 0, 0, 0.32);
+  border: 1px solid rgba(74, 158, 74, 0.22);
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: #d4edd4;
+  font: inherit;
+  font-size: 13px;
+}
+.taskSearchInput::placeholder { color: rgba(212, 237, 212, 0.45); }
+.taskSearchInput:focus { outline: none; border-color: rgba(74, 222, 128, 0.55); }
+
+.taskFilterSelect {
+  flex: 0 0 auto;
+  background: rgba(0, 0, 0, 0.32);
+  border: 1px solid rgba(74, 158, 74, 0.22);
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: #d4edd4;
+  font: inherit;
+  font-size: 13px;
+}
+.taskFilterSelect:focus { outline: none; border-color: rgba(74, 222, 128, 0.55); }
+
+/* Phase 9C.14 — Row metadata + notes preview. Sit under the task name
+   inside .equipmentMain (flex column gap 3px); inherit that gap so
+   spacing stays consistent. */
+.taskMetaLine {
+  font-size: 11px;
+  color: rgba(212, 237, 212, 0.55);
+  letter-spacing: 0.02em;
+}
+.taskNotesPreview {
+  font-size: 11.5px;
+  color: rgba(212, 237, 212, 0.7);
+  font-style: italic;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* Archived row gets a softer background + lowered opacity so it
+   visually subordinates to active rows when "Show archived" is on. */
+.taskArchivedRow {
+  opacity: 0.62;
+  background: rgba(0, 0, 0, 0.16);
+}
+.taskArchivedRow:hover { background: rgba(0, 0, 0, 0.22); }
 
 .taskForm {
   background: rgba(34, 197, 94, 0.04);
