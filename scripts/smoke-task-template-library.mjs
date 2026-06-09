@@ -237,15 +237,19 @@ assert(/async function handleQuickTaskChange\(emp, templateId\)/.test(DAB),
   'handleQuickTaskChange signature accepts (emp, templateId)')
 assert(/activeTaskTemplates\.find\(t => t\.id === templateId\)/.test(DAB),
   'handleQuickTaskChange looks up the template by id')
-assert(/pickOrCreateEventForTask\(template\.name, selectedDate, template\.id\)/.test(DAB),
-  'handleQuickTaskChange calls pickOrCreateEventForTask with (name, date, templateId)')
-assert(/await handleTaskChange\(emp, event\.id\)/.test(DAB),
-  'handleQuickTaskChange hands the resolved event.id to existing handleTaskChange flow')
+// Phase 9C.12 — pickOrCreateEventForTask now takes the template object
+// directly (so it can read defaultStartTime/defaultLocation/defaultNotes).
+assert(/pickOrCreateEventForTask\(template, selectedDate\)/.test(DAB),
+  'handleQuickTaskChange calls pickOrCreateEventForTask(template, selectedDate)')
+// handleTaskChange is gone; handleQuickTaskChange does the
+// createCrewAssignment write directly so it can carry notes across the
+// delete+recreate boundary.
+assert(/await createCrewAssignment\(\{[\s\S]{0,400}calendarEventId:\s*event\.id/.test(DAB),
+  'handleQuickTaskChange calls createCrewAssignment with calendarEventId: event.id')
 
-// Stable sourceId keyed by template id prevents duplicate calendar_events
-// when multiple employees pick the same template on the same date.
-assert(/`task-template:\$\{templateId\}:\$\{dateIso\}`/.test(DAB),
-  "pickOrCreateEventForTask uses stable sourceId task-template:<id>:<date>")
+// Stable sourceId keyed by template id prevents duplicate calendar_events.
+assert(/`task-template:\$\{template\.id\}:\$\{dateIso\}`/.test(DAB),
+  'pickOrCreateEventForTask uses stable sourceId task-template:<template.id>:<date>')
 assert(/const existing = events\.find\(e =>[\s\S]{0,400}\(e\.eventType === 'crew'\)/.test(DAB),
   'pickOrCreateEventForTask reuses an existing crew event for (date, title) before creating')
 

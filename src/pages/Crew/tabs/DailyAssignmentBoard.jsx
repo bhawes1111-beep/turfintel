@@ -285,54 +285,26 @@ export default function DailyAssignmentBoard({
     )
   }
 
-  async function handleTaskChange(emp, newEventId) {
+  // Phase 9C.12 — Clears an employee's current assignment for
+  // selectedDate, unlinking any equipment reservations first so the
+  // equipment remains available at the task header for the next
+  // operator to claim. Task selection (the dropdown's non-blank path)
+  // goes through handleQuickTaskChange instead, which carries notes +
+  // applies template defaults.
+  async function handleClear(emp) {
     setBusyEmpId(emp.id)
     try {
       const existing = assignmentByEmpId.get(emp.id) ?? assignmentByEmpId.get(emp.name)
-      // Phase 9C.2 — compute how many equipment reservations were linked
-      // to the prior assignment BEFORE unlinking, so the toast can tell
-      // the supervisor that equipment was actually unlinked (vs cases
-      // where there was nothing to unlink).
-      const linkedCountPrev = existing
-        ? (reservationsByAssignment.get(existing.id) ?? []).length
-        : 0
-      const oldEventTitle = existing
-        ? (events.find(e => e.id === existing.calendarEventId)?.title ?? '')
-        : ''
-      if (newEventId === '') {
-        if (existing) {
-          await unlinkReservationsFor(existing.id)
-          await deleteCrewAssignment(existing.id)
-          if (isCrosswinds) {
-            toast.success(linkedCountPrev > 0
-              ? `Cleared ${emp.name}'s assignment. Equipment unlinked.`
-              : `Cleared ${emp.name}'s assignment.`)
-          } else {
-            toast.success(`Cleared task for ${emp.name}`)
-          }
-        }
-        return
-      }
-      if (existing && existing.calendarEventId === newEventId) return // no-op
-      if (existing) {
-        // Switch task: unlink reservations first (they belong to the
-        // old task), then delete + create. Equipment stays on the old
-        // task at the header level for the next operator to claim.
-        await unlinkReservationsFor(existing.id)
-        await deleteCrewAssignment(existing.id)
-      }
-      await createCrewAssignment({
-        calendarEventId: newEventId,
-        employeeId:      emp.id,
-        employeeName:    emp.name,
-        role:            emp.role ?? null,
-        status:          'assigned',
-      })
-      const newTitle = dayEvents.find(e => e.id === newEventId)?.title ?? 'task'
-      if (isCrosswinds && existing && linkedCountPrev > 0) {
-        toast.success(`${emp.name} → ${newTitle} · equipment from ${oldEventTitle} unlinked`)
+      if (!existing) return
+      const linkedCountPrev = (reservationsByAssignment.get(existing.id) ?? []).length
+      await unlinkReservationsFor(existing.id)
+      await deleteCrewAssignment(existing.id)
+      if (isCrosswinds) {
+        toast.success(linkedCountPrev > 0
+          ? `Cleared ${emp.name}'s assignment. Equipment unlinked.`
+          : `Cleared ${emp.name}'s assignment.`)
       } else {
-        toast.success(`${emp.name} → ${newTitle}`)
+        toast.success(`Cleared task for ${emp.name}`)
       }
     } catch (err) {
       toast.error(`Task update failed: ${err.message}`)
@@ -341,43 +313,59 @@ export default function DailyAssignmentBoard({
     }
   }
 
-  function handleClear(emp) {
-    return handleTaskChange(emp, '')
-  }
-
-  // Phase 9C.11 — Picks an existing crew-type calendar_event for
+  // Phase 9C.12 — Picks an existing crew-type calendar_event for
   // (template, date) or silently creates one. The stable sourceId is
-  // now keyed off the template id (`task-template:<templateId>:<date>`)
-  // so two operators picking the same template on the same day resolve
-  // to one event server-side. Falls back to a slug-based sourceId for
-  // ad-hoc task names without a template id (mirrors the pre-9C.11
-  // shape so legacy callers stay compatible).
-  async function pickOrCreateEventForTask(taskName, dateIso, templateId = null) {
-    const wanted = (taskName ?? '').trim().toLowerCase()
-    if (!wanted || !dateIso) return null
+  // keyed off the template id (`task-template:<templateId>:<date>`) so
+  // two operators picking the same template on the same day resolve to
+  // one event server-side. When creating, the template's default start
+  // time / location / notes propagate to the event so a freshly added
+  // calendar row carries the supervisor's standing instructions for
+  // that task instead of being blank.
+  //
+  // Accepts a template object now (was: taskName, dateIso, templateId).
+  // The ad-hoc fallback shape from 9C.11 is intentionally retired — the
+  // only callsite is handleQuickTaskChange and it always has a template.
+  async function pickOrCreateEventForTask(template, dateIso) {
+    const wanted = (template?.name ?? '').trim().toLowerCase()
+    if (!wanted || !dateIso || !template?.id) return null
     const existing = events.find(e =>
       ((e.startDate ?? e.date) === dateIso) &&
       ((e.title ?? '').trim().toLowerCase() === wanted) &&
       (e.eventType === 'crew')
     )
     if (existing) return existing
-    const sourceId = templateId
-      ? `task-template:${templateId}:${dateIso}`
-      : `${dateIso}:${slug(taskName)}`
     return await createCalendarEvent({
-      title:        taskName,
+      title:        template.name,
       startDate:    dateIso,
+      startTime:    template.defaultStartTime || null,
+      location:     template.defaultLocation  || null,
+      description:  template.defaultNotes     || null,
       eventType:    'crew',
       sourceModule: 'assignment-board',
-      sourceId,
+      sourceId:     `task-template:${template.id}:${dateIso}`,
     })
   }
 
-  // Phase 9C.11 — Quick-task handler. Receives a template-id-or-empty
-  // selection from the dropdown. Empty selection clears via the existing
-  // handleClear path. Any non-empty selection looks up the template,
-  // picks-or-creates the calendar_event keyed by template id, then hands
-  // the event id to the existing handleTaskChange flow.
+  // Phase 9C.12 — Quick-task handler with template-default application.
+  //
+  //   • Empty selection clears via the existing handleClear path.
+  //   • New assignment (no existing row): create with notes pre-filled
+  //     from template.defaultNotes if non-empty. notesEs is NOT set —
+  //     the worker stores notes_es as NULL on POST and the existing
+  //     cron sweep / scheduleTranslationSweep flow refills it for
+  //     opted-in employees.
+  //   • Switching tasks (existing row): PRESERVE the existing row's
+  //     notes verbatim. Template defaults are a "first impression"
+  //     convenience — the supervisor's customized notes always win.
+  //     The legacy delete-then-recreate flow loses notes by definition,
+  //     so we now read them off the existing row before deletion and
+  //     carry them onto the new row's create payload.
+  //
+  // Translation sweep fires once at the tail when English notes were
+  // actually written (either from a template default or carried over).
+  // This is the same scheduleTranslationSweep helper handleNotesBlur
+  // already uses, so the debounce window naturally collapses any
+  // duplicate triggers if the supervisor changes a few rows quickly.
   async function handleQuickTaskChange(emp, templateId) {
     if (!templateId) return handleClear(emp)
     const template = activeTaskTemplates.find(t => t.id === templateId)
@@ -387,12 +375,51 @@ export default function DailyAssignmentBoard({
     }
     setBusyEmpId(emp.id)
     try {
-      const event = await pickOrCreateEventForTask(template.name, selectedDate, template.id)
+      const event = await pickOrCreateEventForTask(template, selectedDate)
       if (!event?.id) {
         toast.error('Task assignment failed: no event id returned')
         return
       }
-      await handleTaskChange(emp, event.id)
+
+      const existing       = assignmentByEmpId.get(emp.id) ?? assignmentByEmpId.get(emp.name)
+      const linkedCountPrev = existing
+        ? (reservationsByAssignment.get(existing.id) ?? []).length
+        : 0
+      const oldEventTitle = existing
+        ? (events.find(e => e.id === existing.calendarEventId)?.title ?? '')
+        : ''
+
+      if (existing && existing.calendarEventId === event.id) return // no-op
+
+      // Preserve the existing row's notes verbatim across the
+      // delete+recreate boundary; only fall back to the template's
+      // default when the row currently has nothing.
+      const carriedNotes  = (existing?.notes ?? '').trim()
+      const defaultNotes  = (template.defaultNotes ?? '').trim()
+      const notesToWrite  = carriedNotes || defaultNotes || null
+
+      if (existing) {
+        await unlinkReservationsFor(existing.id)
+        await deleteCrewAssignment(existing.id)
+      }
+      await createCrewAssignment({
+        calendarEventId: event.id,
+        employeeId:      emp.id,
+        employeeName:    emp.name,
+        role:            emp.role ?? null,
+        status:          'assigned',
+        notes:           notesToWrite,
+      })
+
+      if (notesToWrite && canTranslate) {
+        scheduleTranslationSweep()
+      }
+
+      if (isCrosswinds && existing && linkedCountPrev > 0) {
+        toast.success(`${emp.name} → ${template.name} · equipment from ${oldEventTitle} unlinked`)
+      } else {
+        toast.success(`${emp.name} → ${template.name}`)
+      }
     } catch (err) {
       toast.error(`Task assignment failed: ${err.message}`)
     } finally {

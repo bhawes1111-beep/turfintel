@@ -635,11 +635,12 @@ assert(/function\s+slug\s*\(\s*s\s*\)/.test(DAB),
 assert(/toLowerCase\(\)\.replace\(\/\[\^a-z0-9\]\+\/g,\s*'-'\)/.test(DAB),
   'slug lowercases and dash-joins non-alphanumeric runs')
 
-// pickOrCreateEventForTask now takes a third (optional) templateId arg
-// so the calendar_event's sourceId can collapse same-template / same-
-// date duplicates server-side.
-assert(/async\s+function\s+pickOrCreateEventForTask\s*\(\s*taskName,\s*dateIso,\s*templateId/.test(DAB),
-  'pickOrCreateEventForTask(taskName, dateIso, templateId) is defined')
+// Phase 9C.12 — pickOrCreateEventForTask now takes the template object
+// (so it can read defaultStartTime/defaultLocation/defaultNotes when
+// creating). The legacy (name, date, templateId) shape from 9C.11 is
+// retired since the only callsite always has a template handy.
+assert(/async\s+function\s+pickOrCreateEventForTask\s*\(\s*template,\s*dateIso\s*\)/.test(DAB),
+  'pickOrCreateEventForTask(template, dateIso) is defined (Phase 9C.12)')
 assert(/\(e\.startDate\s*\?\?\s*e\.date\)\s*===\s*dateIso/.test(DAB),
   'event lookup matches date via startDate ?? date')
 assert(/\(e\.title\s*\?\?\s*''\)\.trim\(\)\.toLowerCase\(\)\s*===\s*wanted/.test(DAB),
@@ -647,27 +648,28 @@ assert(/\(e\.title\s*\?\?\s*''\)\.trim\(\)\.toLowerCase\(\)\s*===\s*wanted/.test
 assert(/e\.eventType\s*===\s*'crew'/.test(DAB),
   "event lookup requires eventType === 'crew'")
 
-// Silent create payload still uses the existing dedupe-friendly shape.
-assert(/createCalendarEvent\(\s*\{[\s\S]{0,400}\btitle:\s*taskName/.test(DAB),
-  'createCalendarEvent payload includes title')
+// Silent create payload now uses template fields.
+assert(/createCalendarEvent\(\s*\{[\s\S]{0,400}\btitle:\s*template\.name/.test(DAB),
+  'createCalendarEvent payload includes title: template.name')
 assert(/\bstartDate:\s*dateIso\b/.test(DAB),
   'createCalendarEvent payload includes startDate: dateIso')
 assert(/eventType:\s*'crew'/.test(DAB),
   "createCalendarEvent payload sets eventType: 'crew'")
 assert(/sourceModule:\s*'assignment-board'/.test(DAB),
   "createCalendarEvent payload sets sourceModule: 'assignment-board'")
-assert(/`task-template:\$\{templateId\}:\$\{dateIso\}`/.test(DAB),
-  'createCalendarEvent payload uses stable sourceId task-template:<id>:<date> (Phase 9C.11)')
+assert(/`task-template:\$\{template\.id\}:\$\{dateIso\}`/.test(DAB),
+  'createCalendarEvent payload uses stable sourceId task-template:<template.id>:<date>')
 
-// handleQuickTaskChange now takes the templateId (was the task name).
+// handleQuickTaskChange takes the templateId; it now does the
+// createCrewAssignment write directly (handleTaskChange retired).
 assert(/async\s+function\s+handleQuickTaskChange\s*\(\s*emp,\s*templateId\s*\)/.test(DAB),
   'handleQuickTaskChange(emp, templateId) is defined')
 assert(/if \(!templateId\) return handleClear\(emp\)/.test(DAB),
   'empty selection clears via the existing handleClear path')
-assert(/pickOrCreateEventForTask\(template\.name,\s*selectedDate,\s*template\.id\)/.test(DAB),
-  'handleQuickTaskChange calls pickOrCreateEventForTask(template.name, selectedDate, template.id)')
-assert(/await handleTaskChange\(emp,\s*event\.id\)/.test(DAB),
-  'handleQuickTaskChange hands the resolved event id to handleTaskChange')
+assert(/pickOrCreateEventForTask\(template,\s*selectedDate\)/.test(DAB),
+  'handleQuickTaskChange calls pickOrCreateEventForTask(template, selectedDate)')
+assert(/await createCrewAssignment\(\{[\s\S]{0,400}calendarEventId:\s*event\.id/.test(DAB),
+  'handleQuickTaskChange calls createCrewAssignment with the resolved event.id directly')
 
 // Unified template dropdown — no more isCrosswinds branch.
 assert(/activeTaskTemplates\.map\(tmpl =>/.test(DAB),
@@ -758,11 +760,14 @@ const DABCSS = readFileSync('src/pages/Crew/tabs/DailyAssignmentBoard.module.css
 assert(/\.clearBtnLabeled\b/.test(DABCSS),
   'CSS defines .clearBtnLabeled modifier')
 
-// Data path unchanged — handleClear still delegates to handleTaskChange
-// with the empty-string sentinel, and the unlink-then-delete order is
-// preserved inside handleTaskChange.
-assert(/function\s+handleClear\(emp\)\s*\{\s*return handleTaskChange\(emp,\s*''\)/.test(DAB),
-  "handleClear(emp) still calls handleTaskChange(emp, '')")
+// Phase 9C.12 — handleClear was simplified; the legacy handleTaskChange
+// indirection was retired with the move to template-aware assignment
+// creation. handleClear still performs unlinkReservationsFor →
+// deleteCrewAssignment in that order.
+assert(/async\s+function\s+handleClear\(emp\)\s*\{/.test(DAB),
+  'handleClear(emp) is defined (Phase 9C.12 simplified inline form)')
+assert(!/return handleTaskChange\(emp,\s*''\)/.test(DAB),
+  'handleClear no longer delegates to the retired handleTaskChange')
 assert(/await unlinkReservationsFor\(existing\.id\)[\s\S]{0,200}await deleteCrewAssignment\(existing\.id\)/.test(DAB),
   'unlinkReservationsFor still runs before deleteCrewAssignment')
 
