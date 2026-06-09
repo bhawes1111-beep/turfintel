@@ -142,6 +142,25 @@ export default function DailyAssignmentBoard({
   const canTranslate = can('canSystemSettings')
   const [translating, setTranslating] = useState(false)
 
+  // Phase 9C.15 — Copy From… modal state. Source date defaults to the
+  // previous day; destination is locked to selectedDate so the
+  // supervisor can't accidentally rewrite a day they haven't focused.
+  // copyOptions follows the spec defaults: tasks + notes on, equipment
+  // + overwrite off, skip-existing on (which is also the failure-safe
+  // posture if overwrite is somehow toggled without confirmation).
+  const [copyModalOpen, setCopyModalOpen] = useState(false)
+  // Default source = previous day of selectedDate. Recomputed on each
+  // open below in openCopyModal so the supervisor never has to clear
+  // a stale date that referenced last week's selectedDate.
+  const [copySourceDate, setCopySourceDate] = useState(() => shiftDate(TODAY_ISO(), -1))
+  const [copyOptions, setCopyOptions] = useState({
+    copyTasks:        true,
+    copyNotes:        true,
+    copyEquipment:    false,
+    skipExisting:     true,
+    overwriteExisting: false,
+  })
+
   // Phase 9C.7 — Per-assignment Spanish regeneration. regeneratingId
   // holds the assignment.id whose Spanish translation is currently
   // being refreshed; only one row regenerates at a time so the user
@@ -633,6 +652,207 @@ export default function DailyAssignmentBoard({
     }
   }
 
+  // ── Copy From… (Phase 9C.15) ────────────────────────────────────────
+  // Generalizes the Copy Yesterday workflow to any source date and
+  // adds per-row options. Reuses every safety path the in-house
+  // Crosswinds workflow has accumulated:
+  //   • Skip cancelled source assignments (matches Copy Yesterday).
+  //   • Match employees by employeeId first, name as a fallback only.
+  //   • Reuse destination calendar_event when one already exists for
+  //     (title, eventType, destinationDate); otherwise mint a fresh
+  //     one with a derived sourceId so server-side dedupe collapses
+  //     duplicate creates from concurrent supervisors.
+  //   • Re-key task-template events from
+  //     task-template:<id>:<sourceDate> → task-template:<id>:<destDate>
+  //     so a copied row reuses the same template event the 9C.12 flow
+  //     would have created for a fresh assignment on that day.
+  //   • Equipment copy is opt-in and uses the same dedupe-aware POST +
+  //     PATCH dance Copy Yesterday already validated.
+  //   • Overwrite uses the existing unlinkReservationsFor +
+  //     deleteCrewAssignment safety pair, so destination equipment
+  //     surfaces back to the task header instead of being orphaned.
+  //   • notesEs is NEVER copied across — even if "Copy notes" is on,
+  //     only the English notes carry. The worker's race-safe
+  //     notes_es=NULL guard (9C.5c3) plus the destination row's blank
+  //     Spanish lets the cron sweep refill the right translation.
+  function openCopyModal() {
+    setCopySourceDate(shiftDate(selectedDate, -1))
+    setCopyOptions(prev => ({ ...prev, overwriteExisting: false }))
+    setCopyModalOpen(true)
+  }
+
+  // Derive a stable destination sourceId. Reusing task-template:<id>
+  // keys means a freshly assigned task on destDate (via the dropdown)
+  // and a copied row from sourceDate collapse onto the same event.
+  function deriveDestinationSourceId(sourceEvent, destDate) {
+    const raw = (sourceEvent.sourceId ?? sourceEvent.metadata?.sourceId ?? '').trim()
+    const tmplMatch = raw.match(/^task-template:([^:]+):\d{4}-\d{2}-\d{2}$/)
+    if (tmplMatch) return `task-template:${tmplMatch[1]}:${destDate}`
+    return `copied-task:${sourceEvent.id}:${destDate}`
+  }
+
+  // Find (and reuse) or create a destination calendar_event for the
+  // (sourceEvent.title, destDate) pair. Mirrors the find-or-create
+  // shape from pickOrCreateEventForTask so a copied row + a freshly
+  // dropdown-assigned row never spawn duplicate destination events.
+  async function pickOrCreateDestinationEvent(sourceEvent, destDate) {
+    const wantedTitle = (sourceEvent.title ?? '').trim().toLowerCase()
+    if (!wantedTitle) return null
+    const reused = events.find(e =>
+      ((e.startDate ?? e.date) === destDate) &&
+      ((e.title ?? '').trim().toLowerCase() === wantedTitle) &&
+      (e.eventType === (sourceEvent.eventType || 'crew')),
+    )
+    if (reused) return reused
+    return await createCalendarEvent({
+      title:        sourceEvent.title,
+      startDate:    destDate,
+      startTime:    sourceEvent.startTime || null,
+      location:     sourceEvent.location  || null,
+      description:  sourceEvent.description || null,
+      eventType:    sourceEvent.eventType || 'crew',
+      sourceModule: 'assignment-board',
+      sourceId:     deriveDestinationSourceId(sourceEvent, destDate),
+    })
+  }
+
+  async function copyAssignmentsFromDate(sourceDate, destinationDate, options) {
+    if (!sourceDate || !destinationDate) {
+      toast.error('Copy failed: source and destination dates are required.')
+      return
+    }
+    if (sourceDate === destinationDate) {
+      toast.info('Source and destination are the same day — nothing to copy.')
+      return
+    }
+
+    const srcEvents = events.filter(e => (e.startDate ?? e.date) === sourceDate)
+    const srcEventIds = new Set(srcEvents.map(e => e.id))
+    const srcAssignments = crewAssignments.filter(a =>
+      a.status !== 'cancelled' && srcEventIds.has(a.calendarEventId),
+    )
+    if (srcAssignments.length === 0) {
+      toast.info(`No assignments on ${sourceDate} to copy.`)
+      return
+    }
+
+    // Destination assignment lookup — keyed by employeeId (fallback to
+    // employeeName for legacy rows without an id) so we can detect
+    // existing destination rows without an extra fetch.
+    const destEvents = events.filter(e => (e.startDate ?? e.date) === destinationDate)
+    const destEventIds = new Set(destEvents.map(e => e.id))
+    const destAssignByEmp = new Map()
+    for (const a of crewAssignments) {
+      if (a.status === 'cancelled') continue
+      if (!destEventIds.has(a.calendarEventId)) continue
+      const key = a.employeeId || a.employeeName
+      if (key) destAssignByEmp.set(key, a)
+    }
+
+    // Confirm before any overwrite. Skipping is the safe default, but
+    // a deliberate overwrite without a confirm dialog would be too
+    // easy to misfire.
+    if (options.overwriteExisting && destAssignByEmp.size > 0) {
+      if (!confirm(
+        `This will replace ${destAssignByEmp.size} existing assignment${destAssignByEmp.size !== 1 ? 's' : ''} on ${destinationDate}. ` +
+        `Equipment will be unlinked and reservations released back to the task. ` +
+        `Continue?`,
+      )) return
+    }
+
+    setBulkBusy('copy')
+    let copied = 0, skipped = 0, overwritten = 0, failed = 0
+
+    for (const oldA of srcAssignments) {
+      const oldEvent = srcEvents.find(e => e.id === oldA.calendarEventId)
+      if (!oldEvent) { skipped++; continue }
+
+      // Employee match — by id when possible, name as the safety net.
+      const empStillThere = oldA.employeeId
+        ? employees.find(e => e.id === oldA.employeeId && e.status !== 'inactive')
+        : employees.find(e => e.name === oldA.employeeName && e.status !== 'inactive')
+      if (!empStillThere) { skipped++; continue }
+
+      const empKey      = oldA.employeeId || oldA.employeeName
+      const destExisting = destAssignByEmp.get(empKey)
+      if (destExisting && !options.overwriteExisting) {
+        skipped++
+        continue
+      }
+
+      try {
+        const destEvent = await pickOrCreateDestinationEvent(oldEvent, destinationDate)
+        if (!destEvent?.id) { failed++; continue }
+
+        if (destExisting && options.overwriteExisting) {
+          await unlinkReservationsFor(destExisting.id)
+          await deleteCrewAssignment(destExisting.id)
+          overwritten++
+        }
+
+        const newA = await createCrewAssignment({
+          calendarEventId: destEvent.id,
+          employeeId:      oldA.employeeId ?? empStillThere.id,
+          employeeName:    oldA.employeeName,
+          role:            oldA.role ?? null,
+          // Copied rows always start as 'assigned' — don't carry
+          // 'complete' / 'in-progress' / 'blocked' state across days.
+          status:          'assigned',
+          // Copy English notes only when the option is on. The Spanish
+          // translation field is intentionally omitted — the cron sweep
+          // refills it from the new English so the manual-Spanish-wins
+          // contract is preserved.
+          notes:           options.copyNotes ? (oldA.notes ?? null) : null,
+        })
+
+        if (options.copyEquipment) {
+          const oldRes = equipmentReservations.filter(r =>
+            r.crewAssignmentId === oldA.id
+            && r.status !== 'cancelled'
+            && r.status !== 'released',
+          )
+          for (const oldR of oldRes) {
+            try {
+              const newR = await createEquipmentReservation({
+                calendarEventId:  destEvent.id,
+                crewAssignmentId: newA.id,
+                equipmentId:      oldR.equipmentId ?? null,
+                equipmentName:    oldR.equipmentName,
+                status:           'reserved',
+              })
+              if (newR?.id && newR.crewAssignmentId !== newA.id) {
+                await patchEquipmentReservation(newR.id, { crewAssignmentId: newA.id })
+              }
+            } catch {
+              // single-row equipment failure shouldn't kill the batch
+            }
+          }
+        }
+
+        copied++
+      } catch {
+        failed++
+      }
+    }
+
+    // Single translation sweep after the batch when any English notes
+    // were actually copied. The debounce window in
+    // scheduleTranslationSweep collapses duplicate triggers if the
+    // supervisor copies several days in quick succession.
+    if (copied > 0 && options.copyNotes && canTranslate) {
+      scheduleTranslationSweep()
+    }
+
+    setBulkBusy(null)
+    setCopyModalOpen(false)
+
+    const parts = [`Copied ${copied} assignment${copied !== 1 ? 's' : ''} from ${sourceDate} to ${destinationDate}`]
+    if (overwritten > 0) parts.push(`${overwritten} overwritten`)
+    if (skipped > 0)     parts.push(`${skipped} skipped`)
+    if (failed > 0)      parts.push(`${failed} failed`)
+    toast.success(parts.join(' · '))
+  }
+
   // ── Translate Now (Phase 9C.5d) ──────────────────────────────────────
   // Fires the same sweep the */30 cron runs, on demand. Refreshes the
   // three crew-visible content stores after success so the new
@@ -863,6 +1083,16 @@ export default function DailyAssignmentBoard({
             title="Carry yesterday's operator → task pairings into today"
           >
             {bulkBusy === 'copy' ? 'Copying…' : 'Copy Yesterday'}
+          </button>
+          <button
+            type="button"
+            className={styles.tasksBtn}
+            data-variant="copy-from"
+            onClick={openCopyModal}
+            disabled={bulkBusy !== null}
+            title="Copy assignments from a specific source date into the selected day"
+          >
+            Copy From…
           </button>
           <button
             type="button"
@@ -1170,6 +1400,224 @@ export default function DailyAssignmentBoard({
         />
       )}
 
+      {copyModalOpen && (
+        <CopyAssignmentsModal
+          sourceDate={copySourceDate}
+          destinationDate={selectedDate}
+          options={copyOptions}
+          busy={bulkBusy === 'copy'}
+          onSourceDateChange={setCopySourceDate}
+          onOptionsChange={setCopyOptions}
+          onClose={() => setCopyModalOpen(false)}
+          onCopy={() => copyAssignmentsFromDate(copySourceDate, selectedDate, copyOptions)}
+          // Counts so the modal can show the supervisor what they're
+          // about to copy / replace before they confirm.
+          sourceCount={crewAssignments.filter(a =>
+            a.status !== 'cancelled'
+            && events.some(e => e.id === a.calendarEventId && (e.startDate ?? e.date) === copySourceDate)
+          ).length}
+          destCount={crewAssignments.filter(a =>
+            a.status !== 'cancelled'
+            && events.some(e => e.id === a.calendarEventId && (e.startDate ?? e.date) === selectedDate)
+          ).length}
+        />
+      )}
+
     </section>
+  )
+}
+
+/* ── CopyAssignmentsModal (Phase 9C.15) ─────────────────────────────────
+ * Compact modal for the supervisor to pick a source date and the per-
+ * row copy options. Layout mirrors TasksManagerModal so the modal
+ * chrome (overlay / header / footer / btn styles) all reuse the
+ * existing CSS module — no new modal stylesheet needed.
+ *
+ * View-only by design until Copy is clicked. The actual write batch
+ * lives in copyAssignmentsFromDate() on the parent, so the modal is
+ * purely a parameter picker.
+ */
+function CopyAssignmentsModal({
+  sourceDate,
+  destinationDate,
+  options,
+  busy,
+  sourceCount,
+  destCount,
+  onSourceDateChange,
+  onOptionsChange,
+  onClose,
+  onCopy,
+}) {
+  function setOption(k, v) {
+    onOptionsChange(prev => ({ ...prev, [k]: v }))
+  }
+
+  // The "overwrite existing" + "skip existing" pair is intentionally
+  // mutually exclusive at the UX level — flipping one off-rails turns
+  // the other on so the supervisor's intent is unambiguous before
+  // they hit Copy.
+  function setSkipExisting(next) {
+    onOptionsChange(prev => ({
+      ...prev,
+      skipExisting:      next,
+      overwriteExisting: next ? false : prev.overwriteExisting,
+    }))
+  }
+  function setOverwriteExisting(next) {
+    onOptionsChange(prev => ({
+      ...prev,
+      overwriteExisting: next,
+      skipExisting:      next ? false : prev.skipExisting,
+    }))
+  }
+
+  const sameDay = sourceDate === destinationDate
+
+  return (
+    <div className={styles.modalOverlay} onClick={onClose} role="dialog" aria-label="Copy assignments">
+      <div className={styles.modal} onClick={e => e.stopPropagation()} style={{ maxWidth: 520 }}>
+
+        <header className={styles.modalHeader}>
+          <div>
+            <h2 className={styles.modalTitle}>Copy Assignments</h2>
+            <p className={styles.modalSub}>
+              Carry operator → task pairings from a chosen date into the selected board day.
+            </p>
+          </div>
+          <button
+            type="button"
+            className={styles.modalClose}
+            onClick={onClose}
+            aria-label="Close"
+          >×</button>
+        </header>
+
+        <div className={styles.copyModalBody}>
+          <div className={styles.copyDateRow}>
+            <label className={styles.taskFormLabel}>
+              <span>Source date</span>
+              <input
+                type="date"
+                className={styles.modalSearchInput}
+                value={sourceDate}
+                onChange={e => onSourceDateChange(e.target.value)}
+                max={destinationDate}
+                disabled={busy}
+                aria-label="Source date"
+              />
+            </label>
+            <span className={styles.copyArrow} aria-hidden="true">→</span>
+            <label className={styles.taskFormLabel}>
+              <span>Destination (selected day)</span>
+              <input
+                type="date"
+                className={styles.modalSearchInput}
+                value={destinationDate}
+                readOnly
+                aria-label="Destination date (selected board day, read-only)"
+              />
+            </label>
+          </div>
+
+          <p className={styles.copyCountsLine}>
+            {sameDay
+              ? <span data-tone="warn">Source and destination are the same day — pick an earlier date.</span>
+              : <>
+                  <strong>{sourceCount}</strong> assignment{sourceCount !== 1 ? 's' : ''} on source.
+                  {destCount > 0 && (
+                    <> <strong>{destCount}</strong> already on destination.</>
+                  )}
+                </>
+            }
+          </p>
+
+          <fieldset className={styles.copyOptions}>
+            <legend>Options</legend>
+
+            <label>
+              <input
+                type="checkbox"
+                checked={options.copyTasks}
+                onChange={e => setOption('copyTasks', e.target.checked)}
+                disabled={busy}
+              />
+              <span>Copy task assignments</span>
+              <small>The operator → task pairing on each row.</small>
+            </label>
+
+            <label>
+              <input
+                type="checkbox"
+                checked={options.copyNotes}
+                onChange={e => setOption('copyNotes', e.target.checked)}
+                disabled={busy}
+              />
+              <span>Copy English notes</span>
+              <small>Spanish translations are not copied — auto-translate refills them.</small>
+            </label>
+
+            <label>
+              <input
+                type="checkbox"
+                checked={options.copyEquipment}
+                onChange={e => setOption('copyEquipment', e.target.checked)}
+                disabled={busy}
+              />
+              <span>Copy equipment reservations</span>
+              <small>Re-attach the same machines to each operator on the destination day.</small>
+            </label>
+
+            <hr />
+
+            <label>
+              <input
+                type="radio"
+                name="copy-conflict"
+                checked={!!options.skipExisting}
+                onChange={e => setSkipExisting(e.target.checked)}
+                disabled={busy}
+              />
+              <span>Skip employees who already have an assignment (recommended)</span>
+            </label>
+
+            <label>
+              <input
+                type="radio"
+                name="copy-conflict"
+                checked={!!options.overwriteExisting}
+                onChange={e => setOverwriteExisting(e.target.checked)}
+                disabled={busy}
+              />
+              <span data-tone="warn">Overwrite existing destination assignments</span>
+              <small>Equipment will be unlinked and released back to the task. A confirm dialog will appear.</small>
+            </label>
+          </fieldset>
+        </div>
+
+        <footer className={styles.modalFooter}>
+          <button
+            type="button"
+            className={styles.btnSecondary}
+            onClick={onClose}
+            disabled={busy}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className={styles.btnPrimary}
+            onClick={onCopy}
+            disabled={busy || sameDay || sourceCount === 0}
+            title={
+              sameDay     ? 'Source and destination are the same day.'
+            : sourceCount === 0 ? 'No assignments to copy from the source date.'
+            : 'Copy the selected source-day assignments into the destination day.'}
+          >
+            {busy ? 'Copying…' : 'Copy'}
+          </button>
+        </footer>
+      </div>
+    </div>
   )
 }
