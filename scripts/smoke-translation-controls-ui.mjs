@@ -178,13 +178,18 @@ assert(/\{translating \? ['"]Translating…['"] : ['"]Translate Now['"]\}/.test(
 assert(/onClick=\{handleTranslateNow\}/.test(DAB),
   'button onClick={handleTranslateNow}')
 
-// Button disabled while translating.
-assert(/disabled=\{translating\}/.test(DAB),
-  'button disabled={translating} while in-flight (prevents concurrent clicks)')
+// Button disabled while translating. Phase 9C.17 added a bulkBusy
+// term so a translate sweep can't race with an in-flight copy/clear;
+// accept either shape.
+assert(/disabled=\{translating(?:\s*\|\|\s*bulkBusy !== null)?\}/.test(DAB),
+  'button disabled while translating (Phase 9C.17 also gates on bulkBusy)')
 
-// Tooltip / aria title.
-assert(/title="Translate today's notes to Spanish for opted-in crew members"/.test(DAB),
-  'button has tooltip title="Translate today\'s notes to Spanish for opted-in crew members"')
+// Tooltip / aria title. Phase 9C.17 reworded "today's" → "this day's"
+// so the tooltip stays accurate when the supervisor is on a different
+// selectedDate. Pin the new wording; the old literal is intentionally
+// retired.
+assert(/title="Translate this day's English notes to Spanish for opted-in crew/.test(DAB),
+  'button tooltip uses "this day\'s English notes" (Phase 9C.17 — accurate across all selectedDates)')
 
 // ── CSS — translate variant style ─────────────────────────────────────
 section('CSS — .tasksBtn[data-variant="translate"] defined')

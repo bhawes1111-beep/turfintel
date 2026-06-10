@@ -177,8 +177,9 @@ assert(/const\s+canTranslate\s*=\s*can\(['"]canSystemSettings['"]\)/.test(DAB),
   "canTranslate = can('canSystemSettings') (9C.5d permission gate reused)")
 
 // Both the global Translate Now AND the per-row Regenerate are wrapped
-// in the same canTranslate gate.
-const translateNowGate = (DAB.match(/\{canTranslate && \(\s*\n?\s*<button[\s\S]{0,400}Translate Now/g) ?? []).length
+// in the same canTranslate gate. Phase 9C.17 lengthened the button's
+// title attribute, so the window is widened from 400 to 800 chars.
+const translateNowGate = (DAB.match(/\{canTranslate && \(\s*\n?\s*<button[\s\S]{0,800}Translate Now/g) ?? []).length
 assert(translateNowGate >= 1,
   'global Translate Now button still wrapped in {canTranslate && (...)}')
 

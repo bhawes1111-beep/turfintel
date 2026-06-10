@@ -1007,13 +1007,14 @@ export default function DailyAssignmentBoard({
               type="button"
               className={styles.todayBtn}
               onClick={() => setSelectedDate(TODAY_ISO())}
+              title="Jump back to today's board"
             >Today</button>
           )}
           <button
             type="button"
             className={styles.tasksBtn}
             onClick={() => setTasksModalOpen(true)}
-            title="Open the reusable task library — add / rename / archive templates that show up in this dropdown"
+            title="Open the Task Library — add, rename, or archive the reusable tasks that appear in each operator's dropdown"
           >
             Tasks ({activeTaskTemplates.length})
           </button>
@@ -1023,8 +1024,8 @@ export default function DailyAssignmentBoard({
               className={styles.tasksBtn}
               data-variant="translate"
               onClick={handleTranslateNow}
-              disabled={translating}
-              title="Translate today's notes to Spanish for opted-in crew members"
+              disabled={translating || bulkBusy !== null}
+              title="Translate this day's English notes to Spanish for opted-in crew. Safe to run as often as you like — only blank Spanish fields are refilled."
             >
               {translating ? 'Translating…' : 'Translate Now'}
             </button>
@@ -1035,7 +1036,7 @@ export default function DailyAssignmentBoard({
             data-variant="copy"
             onClick={handleCopyYesterday}
             disabled={bulkBusy !== null}
-            title="Carry yesterday's operator → task pairings into today"
+            title="One-click copy of yesterday's operator → task pairings (with notes + equipment) into the selected day. Existing assignments on the selected day are kept."
           >
             {bulkBusy === 'copy' ? 'Copying…' : 'Copy Yesterday'}
           </button>
@@ -1045,9 +1046,9 @@ export default function DailyAssignmentBoard({
             data-variant="copy-from"
             onClick={openCopyModal}
             disabled={bulkBusy !== null}
-            title="Copy assignments from a specific source date into the selected day"
+            title="Pick any past date and copy its assignments into the selected day. You can choose whether notes and equipment carry, and how to handle existing rows."
           >
-            Copy From…
+            Copy From Date…
           </button>
           <button
             type="button"
@@ -1055,7 +1056,7 @@ export default function DailyAssignmentBoard({
             data-variant="clear"
             onClick={handleClearDay}
             disabled={bulkBusy !== null}
-            title="Clear every operator assignment for the selected day"
+            title="Remove every operator assignment for the selected day. Tasks and equipment stay; only the operator-to-task pairings clear."
           >
             {bulkBusy === 'clear' ? 'Clearing…' : 'Clear Day'}
           </button>
@@ -1111,6 +1112,23 @@ export default function DailyAssignmentBoard({
       {activeTaskTemplates.length === 0 && (
         <p className={styles.empty}>
           No active task templates yet. Click <strong>Tasks</strong> above to add tasks to your library.
+        </p>
+      )}
+
+      {/* Phase 9C.17 — Fresh-day hint. When the supervisor has employees
+          and templates but nobody is yet assigned for selectedDate,
+          surface the available recovery paths so a clean board doesn't
+          feel like a dead-end. Sits above the table so it's the first
+          thing they read on landing. Hidden once any row is assigned. */}
+      {activeTaskTemplates.length > 0
+        && dayEmployees.length > 0
+        && summary.assigned === 0
+        && bulkBusy === null && (
+        <p className={styles.emptyHint}>
+          No assignments for {prettyDate(selectedDate)} yet. Use{' '}
+          <strong>Copy Yesterday</strong> to bring forward yesterday's pairings,{' '}
+          <strong>Copy From Date…</strong> to pull from any past day, or pick a task
+          for each operator from the dropdowns below.
         </p>
       )}
 
@@ -1534,9 +1552,13 @@ function CopyAssignmentsModal({
                 disabled={busy}
               />
               <span>Skip employees who already have an assignment (recommended)</span>
+              <small>Any operator who already has a task on the selected day is left alone. Only unassigned operators receive a copied row.</small>
             </label>
 
-            <label>
+            <label
+              className={options.overwriteExisting ? styles.copyOptionDanger : undefined}
+              data-overwrite-active={options.overwriteExisting ? 'true' : undefined}
+            >
               <input
                 type="radio"
                 name="copy-conflict"
@@ -1544,8 +1566,11 @@ function CopyAssignmentsModal({
                 onChange={e => setOverwriteExisting(e.target.checked)}
                 disabled={busy}
               />
-              <span data-tone="warn">Overwrite existing destination assignments</span>
-              <small>Equipment will be unlinked and released back to the task. A confirm dialog will appear.</small>
+              <span data-tone="warn">⚠ Overwrite existing destination assignments</span>
+              <small>
+                Every existing operator on the selected day will be replaced with the source row.
+                Equipment is unlinked and released back to the task first. A final confirm dialog appears before anything is replaced.
+              </small>
             </label>
           </fieldset>
         </div>
