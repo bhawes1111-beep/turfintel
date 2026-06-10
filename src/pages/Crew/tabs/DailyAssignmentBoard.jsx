@@ -573,83 +573,38 @@ export default function DailyAssignmentBoard({
   // duplicated rows. Worker dedupes by (event, equipment_name) — if a
   // reservation already exists on today's event for the same equipment
   // we PATCH it to link to the new operator instead of erroring.
+  // Phase 9C.16 — Copy Yesterday now delegates to the generalized
+  // copyAssignmentsFromDate helper added in 9C.15, fixing two real
+  // morning-workflow bugs the legacy implementation carried:
+  //
+  //   1. The legacy version only carried operators whose task already
+  //      existed on the destination day (dayEvents.find by title), so
+  //      a freshly-arrived supervisor with an EMPTY destination board
+  //      saw "Copied 0 assignments · N skipped" — the most common
+  //      morning case silently failed. The shared helper find-or-
+  //      creates the destination event via pickOrCreateDestinationEvent
+  //      so an empty board works as expected.
+  //
+  //   2. The legacy version dropped source notes entirely (no `notes:`
+  //      on the create payload). The shared helper carries English
+  //      notes when the option is on, which matches what supervisors
+  //      expect from a "copy" action — and the manual-Spanish-wins
+  //      contract is preserved because notesEs is still never copied.
+  //
+  // The defaults below mirror the shortcut's historical intent: tasks
+  // + notes + equipment all carry, existing destination rows are
+  // skipped (so today's hand-assignments aren't clobbered). overwrite
+  // is left to the Copy From… flow where the supervisor opts in via
+  // the modal's radio pair + confirm dialog.
   async function handleCopyYesterday() {
     const yesterdayIso = shiftDate(selectedDate, -1)
-    setBulkBusy('copy')
-    try {
-      const ydEvents = events.filter(e => (e.startDate ?? e.date) === yesterdayIso)
-      const ydEventIds = new Set(ydEvents.map(e => e.id))
-      const ydAssignments = crewAssignments.filter(a =>
-        a.status !== 'cancelled' && ydEventIds.has(a.calendarEventId),
-      )
-
-      let copied = 0
-      let skipped = 0
-      for (const oldA of ydAssignments) {
-        const oldEvent = ydEvents.find(e => e.id === oldA.calendarEventId)
-        if (!oldEvent) { skipped++; continue }
-        const oldTitle = (oldEvent.title ?? '').trim().toLowerCase()
-        const todayEvent = dayEvents.find(e =>
-          (e.title ?? '').trim().toLowerCase() === oldTitle,
-        )
-        if (!todayEvent) { skipped++; continue }
-        // Verify employee still exists in current roster (and isn't inactive).
-        const empStillThere = oldA.employeeId
-          ? employees.find(e => e.id === oldA.employeeId && e.status !== 'inactive')
-          : employees.find(e => e.name === oldA.employeeName && e.status !== 'inactive')
-        if (!empStillThere) { skipped++; continue }
-
-        try {
-          const newA = await createCrewAssignment({
-            calendarEventId: todayEvent.id,
-            employeeId:      oldA.employeeId ?? empStillThere.id,
-            employeeName:    oldA.employeeName,
-            role:            oldA.role ?? null,
-            status:          'assigned',
-          })
-
-          // Carry equipment links across — fresh reservations on today's
-          // event, linked to today's new assignment id.
-          const oldRes = equipmentReservations.filter(r =>
-            r.crewAssignmentId === oldA.id
-            && r.status !== 'cancelled'
-            && r.status !== 'released',
-          )
-          for (const oldR of oldRes) {
-            try {
-              const newR = await createEquipmentReservation({
-                calendarEventId:  todayEvent.id,
-                crewAssignmentId: newA.id,
-                equipmentId:      oldR.equipmentId ?? null,
-                equipmentName:    oldR.equipmentName,
-                status:           'reserved',
-              })
-              // Worker dedupes by (event, equipment_name) and returns
-              // the existing row. If that row doesn't already link to
-              // our new operator, PATCH it across.
-              if (newR?.id && newR.crewAssignmentId !== newA.id) {
-                await patchEquipmentReservation(newR.id, {
-                  crewAssignmentId: newA.id,
-                })
-              }
-            } catch {
-              // single equipment row failure shouldn't kill the whole
-              // copy — log + continue
-            }
-          }
-          copied += 1
-        } catch {
-          skipped += 1
-        }
-      }
-      toast.success(
-        `Copied ${copied} assignment${copied !== 1 ? 's' : ''} from yesterday${
-          skipped > 0 ? ` · ${skipped} skipped` : ''
-        }`,
-      )
-    } finally {
-      setBulkBusy(null)
-    }
+    await copyAssignmentsFromDate(yesterdayIso, selectedDate, {
+      copyTasks:         true,
+      copyNotes:         true,
+      copyEquipment:     true,
+      skipExisting:      true,
+      overwriteExisting: false,
+    })
   }
 
   // ── Copy From… (Phase 9C.15) ────────────────────────────────────────
@@ -996,7 +951,7 @@ export default function DailyAssignmentBoard({
         }
       }
       toast.success(
-        `Cleared ${cleared} assignment${cleared !== 1 ? 's' : ''} for today`,
+        `Cleared ${cleared} assignment${cleared !== 1 ? 's' : ''} for ${prettyDate(selectedDate)}`,
       )
     } finally {
       setBulkBusy(null)
