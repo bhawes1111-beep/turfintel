@@ -28,6 +28,19 @@ const MUTATION_RULES = [
   ['/api/condition-logs',         'canEditConditionLogs'],
   ['/api/moisture',               'canEditMoisture'],
   ['/api/sprays',                 'canEditSprays'],
+  // Phase S.2 — Spray planning routes were unmapped, which meant any
+  // authenticated actor could create / edit / archive a spray program
+  // or item. matchRule uses prefix matching with a trailing-slash
+  // guard, so '/api/spray-programs' covers the bare collection POST,
+  // the /:id PATCH/DELETE, AND the nested /:id/items POST. Similarly
+  // '/api/spray-program-items' covers item PATCH/DELETE and the
+  // /:itemId/completed-link PATCH. '/api/sprays' (records of record)
+  // and '/api/spray-programs' / '/api/spray-program-items' are
+  // distinct prefixes — neither startsWith the other thanks to the
+  // '/api/sprays/' vs '/api/spray-programs/' separator boundary, so
+  // ordering relative to '/api/sprays' is safe either way.
+  ['/api/spray-programs',         'canEditSprays'],
+  ['/api/spray-program-items',    'canEditSprays'],
 
   ['/api/equipment-reservations', 'canEditEquipment'],
   ['/api/equipment',              'canEditEquipment'],
