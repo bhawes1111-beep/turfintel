@@ -39,6 +39,11 @@ import TasksManagerModal from './TasksManagerModal'
 // for selectedDate via pickOrCreateEventForTask so the downstream
 // crew_assignment + kiosk join paths are unchanged.
 import { useTaskTemplatesData } from '../../../utils/tasks/taskTemplateStore'
+// Phase 9C.18 — Capture morning-workflow friction without making the
+// supervisor leave the board. Reuses the Phase 31 pilot_feedback table
+// + /api/pilot-feedback endpoint via the existing createFeedback
+// helper; no new schema or worker route is added.
+import { createFeedback } from '../../../utils/feedback/feedbackStore'
 import styles from './DailyAssignmentBoard.module.css'
 
 // Phase 8A.3a — Crosswinds-only Notes + Status per assignment row.
@@ -138,7 +143,7 @@ export default function DailyAssignmentBoard({
   // permission gate is recomputed each render via useAuth().can(...).
   // Server-side endpoint already enforces canSystemSettings (9C.5c3b),
   // so this client gate is convenience UX, not the authority.
-  const { can } = useAuth()
+  const { can, user } = useAuth()
   const canTranslate = can('canSystemSettings')
   const [translating, setTranslating] = useState(false)
 
@@ -160,6 +165,17 @@ export default function DailyAssignmentBoard({
     skipExisting:     true,
     overwriteExisting: false,
   })
+
+  // Phase 9C.18 — Feedback modal state. Type + Area drive the user
+  // selection; the actual server `category` column is derived from
+  // type (with translation issues bucketed to "workflow" since the
+  // server allowlist doesn't have a "translation" category — context
+  // carries the full label). feedbackBusy gates the submit button.
+  const [feedbackOpen, setFeedbackOpen]       = useState(false)
+  const [feedbackType, setFeedbackType]       = useState('bug')
+  const [feedbackArea, setFeedbackArea]       = useState('daily-assignment-board')
+  const [feedbackMessage, setFeedbackMessage] = useState('')
+  const [feedbackBusy, setFeedbackBusy]       = useState(false)
 
   // Phase 9C.7 — Per-assignment Spanish regeneration. regeneratingId
   // holds the assignment.id whose Spanish translation is currently
@@ -932,6 +948,75 @@ export default function DailyAssignmentBoard({
     }
   }
 
+  // ── Feedback capture (Phase 9C.18) ────────────────────────────────────
+  // User-facing Type → server `category` column. The server allowlist
+  // doesn't include "translation" or "missing-feature" categories, so
+  // those bucket to "workflow" and the full original label rides along
+  // in the JSON context blob (which the Settings review surface
+  // already renders as-is).
+  const FEEDBACK_TYPE_TO_CATEGORY = {
+    'bug':              'bug',
+    'confusing':        'confusing',
+    'missing-feature':  'workflow',
+    'translation':      'workflow',
+    'display-board':    'display-board',
+    'other':            'workflow',
+  }
+
+  function openFeedbackModal() {
+    setFeedbackType('bug')
+    setFeedbackArea('daily-assignment-board')
+    setFeedbackMessage('')
+    setFeedbackOpen(true)
+  }
+
+  async function handleFeedbackSubmit() {
+    const trimmed = feedbackMessage.trim()
+    if (!trimmed) {
+      toast.info('Add a short note before sending feedback.')
+      return
+    }
+    setFeedbackBusy(true)
+    try {
+      // Wrap auto-collected context as JSON so a downstream review
+      // surface can pretty-print it. The server's `context` column is
+      // free-text — it doesn't parse this.
+      const context = JSON.stringify({
+        source:        'daily-assignment-board',
+        type:          feedbackType,
+        area:          feedbackArea,
+        selectedDate,
+        route:         typeof window !== 'undefined' ? window.location.pathname : null,
+        userAgent:     typeof navigator !== 'undefined' ? navigator.userAgent : null,
+        timestamp:     new Date().toISOString(),
+        actor: {
+          name: user?.name  ?? null,
+          role: user?.role  ?? null,
+          email: user?.email ?? null,
+        },
+        boardSummary: {
+          selectedDate,
+          assignedEmployees:    summary.assigned,
+          unassignedEmployees:  summary.unassigned,
+          activeTemplates:      activeTaskTemplates.length,
+          dayEvents:            dayEvents.length,
+        },
+      })
+      await createFeedback({
+        category: FEEDBACK_TYPE_TO_CATEGORY[feedbackType] ?? 'workflow',
+        note:     trimmed,
+        context,
+      })
+      toast.success('Feedback saved. Thanks.')
+      setFeedbackOpen(false)
+      setFeedbackMessage('')
+    } catch (err) {
+      toast.error(`Feedback save failed: ${err.message}`)
+    } finally {
+      setFeedbackBusy(false)
+    }
+  }
+
   // ── Clear Day ─────────────────────────────────────────────────────────
   async function handleClearDay() {
     if (!confirm(`Clear all assignments for ${prettyDate(selectedDate)}?`)) return
@@ -1059,6 +1144,16 @@ export default function DailyAssignmentBoard({
             title="Remove every operator assignment for the selected day. Tasks and equipment stay; only the operator-to-task pairings clear."
           >
             {bulkBusy === 'clear' ? 'Clearing…' : 'Clear Day'}
+          </button>
+          <button
+            type="button"
+            className={styles.tasksBtn}
+            data-variant="feedback"
+            onClick={openFeedbackModal}
+            title="Report a bug, confusing UX, missing feature, or other workflow friction. Saved to the pilot feedback log for triage."
+            aria-label="Report workflow issue or feedback"
+          >
+            Feedback
           </button>
         </div>
       </header>
@@ -1396,6 +1491,20 @@ export default function DailyAssignmentBoard({
         />
       )}
 
+      {feedbackOpen && (
+        <FeedbackModal
+          type={feedbackType}
+          area={feedbackArea}
+          message={feedbackMessage}
+          busy={feedbackBusy}
+          onTypeChange={setFeedbackType}
+          onAreaChange={setFeedbackArea}
+          onMessageChange={setFeedbackMessage}
+          onClose={() => setFeedbackOpen(false)}
+          onSubmit={handleFeedbackSubmit}
+        />
+      )}
+
     </section>
   )
 }
@@ -1595,6 +1704,146 @@ function CopyAssignmentsModal({
             : 'Copy the selected source-day assignments into the destination day.'}
           >
             {busy ? 'Copying…' : 'Copy'}
+          </button>
+        </footer>
+      </div>
+    </div>
+  )
+}
+
+/* ── FeedbackModal (Phase 9C.18) ────────────────────────────────────────
+ * Lightweight friction-capture surface for the morning workflow. Reuses
+ * the Phase 31 pilot_feedback table via the existing createFeedback
+ * helper; the parent component handles the actual POST + payload shape
+ * + context auto-collection. This component is a parameter picker only.
+ *
+ * Type dropdown drives the server `category` column (via the parent's
+ * FEEDBACK_TYPE_TO_CATEGORY map). Area is captured in the JSON context
+ * blob so a future settings-side review pane can group by surface.
+ * Both lists are intentionally short — too many options dilute signal
+ * and slow the supervisor down.
+ *
+ * View-only by default. Submit gates on a non-empty trimmed message
+ * AND !busy so a double-click can't fire two POSTs. */
+const FEEDBACK_TYPE_OPTS = [
+  { value: 'bug',             label: 'Bug' },
+  { value: 'confusing',       label: 'Confusing UX' },
+  { value: 'missing-feature', label: 'Missing feature' },
+  { value: 'translation',     label: 'Translation issue' },
+  { value: 'display-board',   label: 'Kiosk / display issue' },
+  { value: 'other',           label: 'Other' },
+]
+const FEEDBACK_AREA_OPTS = [
+  { value: 'daily-assignment-board', label: 'Daily Assignment Board' },
+  { value: 'task-library',           label: 'Task Library' },
+  { value: 'copy-from-date',         label: 'Copy From Date' },
+  { value: 'translation',            label: 'Translation' },
+  { value: 'kiosk-display-board',    label: 'Kiosk Display Board' },
+  { value: 'employee-schedule',      label: 'Employee schedule / roster' },
+  { value: 'equipment',              label: 'Equipment' },
+  { value: 'other',                  label: 'Other' },
+]
+
+function FeedbackModal({
+  type,
+  area,
+  message,
+  busy,
+  onTypeChange,
+  onAreaChange,
+  onMessageChange,
+  onClose,
+  onSubmit,
+}) {
+  const canSubmit = !busy && message.trim().length > 0
+
+  return (
+    <div className={styles.modalOverlay} onClick={onClose} role="dialog" aria-label="Report workflow issue">
+      <div className={styles.modal} onClick={e => e.stopPropagation()} style={{ maxWidth: 480 }}>
+
+        <header className={styles.modalHeader}>
+          <div>
+            <h2 className={styles.modalTitle}>Report Workflow Issue</h2>
+            <p className={styles.modalSub}>
+              Quick capture for friction we should fix. Goes to the pilot feedback log.
+            </p>
+          </div>
+          <button
+            type="button"
+            className={styles.modalClose}
+            onClick={onClose}
+            aria-label="Close"
+          >×</button>
+        </header>
+
+        <div className={styles.feedbackModalBody}>
+          <label className={styles.taskFormLabel}>
+            <span>Type</span>
+            <select
+              className={styles.modalSearchInput}
+              value={type}
+              onChange={e => onTypeChange(e.target.value)}
+              disabled={busy}
+              aria-label="Feedback type"
+            >
+              {FEEDBACK_TYPE_OPTS.map(o => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className={styles.taskFormLabel}>
+            <span>Area</span>
+            <select
+              className={styles.modalSearchInput}
+              value={area}
+              onChange={e => onAreaChange(e.target.value)}
+              disabled={busy}
+              aria-label="Feedback area"
+            >
+              {FEEDBACK_AREA_OPTS.map(o => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className={styles.taskFormLabelWide}>
+            <span>What happened?</span>
+            <textarea
+              className={styles.modalSearchInput}
+              rows={5}
+              value={message}
+              onChange={e => onMessageChange(e.target.value)}
+              placeholder="What happened? What did you expect?"
+              disabled={busy}
+              style={{ resize: 'vertical', minHeight: 90, fontFamily: 'inherit' }}
+              autoFocus
+              aria-label="Feedback message"
+            />
+          </label>
+
+          <p className={styles.feedbackContextLine}>
+            We'll also save the selected date, current route, and a quick board snapshot to help us reproduce.
+          </p>
+        </div>
+
+        <footer className={styles.modalFooter}>
+          <button
+            type="button"
+            className={styles.btnSecondary}
+            onClick={onClose}
+            disabled={busy}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className={styles.btnPrimary}
+            onClick={onSubmit}
+            disabled={!canSubmit}
+            title={canSubmit ? 'Send to the pilot feedback log' : 'Add a short note before sending'}
+          >
+            {busy ? 'Sending…' : 'Send feedback'}
           </button>
         </footer>
       </div>

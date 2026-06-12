@@ -81,8 +81,11 @@ assert(/import\s*\{\s*refreshAlertsData\s*\}\s*from\s*['"]\.\.\/\.\.\/\.\.\/util
 // ── DAB state + permission gate ───────────────────────────────────────
 section('DailyAssignmentBoard — auth gate + translating state')
 
-assert(/const\s*\{\s*can\s*\}\s*=\s*useAuth\(\)/.test(DAB),
-  'DAB destructures const { can } = useAuth()')
+// Phase 9C.18 widened the destructure to { can, user } so the
+// Feedback modal can attach actor context. Accept either shape; the
+// `can` name itself must still be present.
+assert(/const\s*\{\s*can(?:\s*,\s*\w+)?\s*\}\s*=\s*useAuth\(\)/.test(DAB),
+  'DAB destructures { can } (or { can, user } since Phase 9C.18) from useAuth()')
 
 assert(/const\s+canTranslate\s*=\s*can\(['"]canSystemSettings['"]\)/.test(DAB),
   "DAB computes const canTranslate = can('canSystemSettings')")

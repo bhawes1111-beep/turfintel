@@ -141,6 +141,20 @@
   border-color: rgba(134, 239, 172, 0.7);
 }
 
+/* Phase 9C.18 — Feedback button. Intentionally muted (neutral slate
+   palette) so it reads as a secondary affordance next to the bulk-
+   action buttons. Sits to the right of Clear Day and shouldn't
+   compete for attention during the morning workflow. */
+.tasksBtn[data-variant="feedback"] {
+  background: rgba(148, 163, 184, 0.1);
+  border-color: rgba(148, 163, 184, 0.32);
+  color: rgba(212, 237, 212, 0.78);
+}
+.tasksBtn[data-variant="feedback"]:hover:not(:disabled) {
+  background: rgba(148, 163, 184, 0.2);
+  border-color: rgba(148, 163, 184, 0.5);
+}
+
 /* ── Summary chip row (Phase 12) ────────────────────────────────────── */
 
 .summaryRow {
@@ -833,6 +847,28 @@
   flex-direction: column;
   gap: 14px;
   padding: 16px 22px;
+}
+
+/* Phase 9C.18 — Feedback modal shares the copyModalBody flex-column
+   shape; this rule mostly exists so a class hook is available for
+   downstream tweaks (e.g. tightening padding on a future mobile pass)
+   without re-engineering the copy modal. */
+.feedbackModalBody {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 22px;
+}
+
+.feedbackContextLine {
+  font-size: 11.5px;
+  color: rgba(212, 237, 212, 0.55);
+  margin: 0;
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.22);
+  border-radius: 6px;
+  font-style: italic;
+  line-height: 1.45;
 }
 
 .copyDateRow {
