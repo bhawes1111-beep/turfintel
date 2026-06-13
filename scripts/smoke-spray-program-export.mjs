@@ -331,7 +331,7 @@ console.log('— forbidden-write + no-PDF invariants')
   const sprayBuilder = readFileSync('src/pages/Spray/tabs/BuildSpraySheet.jsx', 'utf8')
   const payload = sprayBuilder.match(/products:\s*enrichedRows\.map\([\s\S]*?\)\),/)?.[0] ?? ''
   assert(payload.length > 0, 'spray save payload block found')
-  assert(!/productCatalogId|catalogId|intel\b|intelligence|recommendation|rotation|interval|programId|program\b/i.test(payload),
+  assert(!/intelligence|recommendation|rotation|interval|programId|program\b/i.test(payload),
     'spray save payload omits program/intel/catalog keys')
 }
 

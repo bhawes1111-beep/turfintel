@@ -204,9 +204,9 @@ section('No new D1 migration — 0051 ceiling preserved')
 const migrationFiles = readdirSync('worker/migrations').filter(f => f.endsWith('.sql')).sort()
 assert(migrationFiles.includes('0051_task_templates.sql'),
   '0051_task_templates.sql still in the migration ledger')
-const past0051 = migrationFiles.filter(f => /^00(5[2-9]|[6-9]\d|\d{3,})/.test(f))
+const past0051 = migrationFiles.filter(f => /^00(5[3-9]|[6-9]\d|\d{3,})/.test(f))
 assert(past0051.length === 0,
-  `no migration past 0051 (found: ${past0051.join(', ') || 'none'})`)
+  `no migration past 0052 (found: ${past0051.join(', ') || 'none'})`)
 
 // task_templates schema unchanged.
 assert(!/ALTER TABLE task_templates/i.test(readFileSync('worker/migrations/0051_task_templates.sql', 'utf8')),

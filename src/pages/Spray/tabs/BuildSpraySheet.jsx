@@ -230,6 +230,10 @@ function makeEmptyDraft() {
     date:           TODAY,
     startTime:      '',
     operator:       '',
+    // Phase S.3 — Optional applicator pesticide license #. Prefilled
+    // from the selected crew employee's profile when available; the
+    // supervisor can override or leave blank.
+    applicatorLicense: '',
     area:           '',
     acres:          0,
     target:         '',
@@ -238,11 +242,23 @@ function makeEmptyDraft() {
     carrierUnit:    'gallons_per_acre',
     tankCapacity:   '',          // override gallons; falls back to sprayRig preset
     sprayRig:       'Spray Rig #1',
-    conditions: { temp: '', wind: '', humidity: '' },
+    // Phase S.3 — windSpeedMph + windDirection are optional structured
+    // fields living alongside the free-text `wind`. Either surface is
+    // valid; the read mapper exposes both so reports can pick whichever
+    // is populated. Existing records continue to show whatever was
+    // typed into the legacy `wind` field.
+    conditions: { temp: '', wind: '', windSpeedMph: '', windDirection: '', humidity: '' },
     observations:   '',
     rows:           [],
   }
 }
+
+// Phase S.3 — Wind direction options for the structured picker. "Variable"
+// covers shifting wind during the application; "Calm" covers near-zero
+// wind days. Compliance/regulatory record formats typically expect one
+// of these or a free-text equivalent — the legacy `wind` field still
+// accepts arbitrary text for back-compat.
+const WIND_DIRECTION_OPTS = ['', 'N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW', 'Variable', 'Calm']
 
 // ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -380,9 +396,33 @@ export default function BuildSpraySheet() {
   const operatorOptions = useMemo(() => {
     return (crewEmployees ?? [])
       .filter(e => e.status !== 'inactive')
-      .map(e => ({ id: e.id ?? e.employeeId, name: e.fullName ?? e.name }))
+      .map(e => ({
+        id:                e.id ?? e.employeeId,
+        name:              e.fullName ?? e.name,
+        // Phase S.3 — Carried through to the form so a license auto-
+        // fills when the supervisor picks an operator. The crew API
+        // already gates pesticideLicense behind canViewEmployeePrivate
+        // (Phase 9C.5a.5), so a non-privileged client just sees
+        // undefined here and the form stays blank.
+        pesticideLicense:  e.pesticideLicense ?? null,
+      }))
       .sort((a, b) => a.name.localeCompare(b.name))
   }, [crewEmployees])
+
+  // Phase S.3 — Auto-fill applicator license when operator changes
+  // AND the current license is blank. We never overwrite a hand-typed
+  // license: that respects "manual edits win" symmetry with the rest
+  // of the spray module.
+  function handleOperatorChange(name) {
+    setDraft(prev => {
+      const match = operatorOptions.find(opt => opt.name === name)
+      const next = { ...prev, operator: name }
+      if (!prev.applicatorLicense?.trim() && match?.pesticideLicense) {
+        next.applicatorLicense = match.pesticideLicense
+      }
+      return next
+    })
+  }
 
   const sprayRigSpec = SPRAY_RIGS.find(r => r.name === draft.sprayRig) ?? SPRAY_RIGS[0]
 
@@ -669,18 +709,36 @@ export default function BuildSpraySheet() {
     setCommitting(true)
     try {
       // 1. Persist the spray record (incl. nested products + areas).
+      // Phase S.3 — Send compliance + cost snapshots alongside the
+      // existing fields. The worker stores whatever it receives and
+      // best-effort enriches missing EPA / active ingredients from
+      // product_catalog when productCatalogId is supplied.
+      const recordTotalCost = enrichedRows.reduce(
+        (sum, r) => sum + (typeof r.cost === 'number' ? r.cost : 0),
+        0,
+      )
       const payload = {
         applicationName: `${draft.area} — ${TODAY}`,
         targetPest:      draft.target,
         applicator:      draft.operator,
+        // Phase S.3 — Optional pesticide license, trimmed. Empty → null
+        // so the worker doesn't store the empty-string sentinel.
+        applicatorLicense: draft.applicatorLicense?.trim() || null,
         course:          selectedCourse?.shortName ?? selectedCourse?.name ?? null,
         date:            draft.date,
         startTime:       draft.startTime,
         status:          'completed',
         conditions: {
-          temp:     draft.conditions.temp     ? parseFloat(draft.conditions.temp)     : null,
-          wind:     draft.conditions.wind     || null,
-          humidity: draft.conditions.humidity ? parseFloat(draft.conditions.humidity) : null,
+          temp:          draft.conditions.temp     ? parseFloat(draft.conditions.temp)     : null,
+          wind:          draft.conditions.wind     || null,
+          // Phase S.3 — Optional structured wind. Either or both
+          // surfaces may be populated; the worker stores whatever
+          // the supervisor supplied.
+          windSpeedMph:  draft.conditions.windSpeedMph
+                          ? parseFloat(draft.conditions.windSpeedMph)
+                          : null,
+          windDirection: draft.conditions.windDirection || null,
+          humidity:      draft.conditions.humidity ? parseFloat(draft.conditions.humidity) : null,
         },
         rei:           summary.maxRei,
         // Structured carrier summary so SprayRecords can show the rate
@@ -688,6 +746,10 @@ export default function BuildSpraySheet() {
         // · 7 full + 1 partial".
         carrierVolume: formatCarrierSummary(draft, summary),
         totalVolume:   summary.totalCarrierGal,
+        // Phase S.3 — Sum of per-product totals at save time. Null when
+        // no inventory cost was available (e.g. no product has a
+        // costPerUnit), so reports don't show "$0" misleadingly.
+        totalCostSnapshot: recordTotalCost > 0 ? +recordTotalCost.toFixed(2) : null,
         notes:         draft.observations,
         area:          draft.area,
         acreage:       draft.acres,
@@ -700,6 +762,19 @@ export default function BuildSpraySheet() {
           quantityUsed:    r.qtyNeeded,
           quantityUnit:    r.qtyUnit,
           inventoryItemId: r.inventoryItemId,
+          // Phase S.3 — Pass the catalog id when known so the worker
+          // can enrich EPA # + active ingredients. The activeIngredient
+          // summary string is also snapshotted directly when the
+          // resolver already produced it (label / legacy tiers don't
+          // have a catalog id to enrich from).
+          productCatalogId:          r.intel?.catalogId ?? null,
+          activeIngredientsSnapshot: r.intel?.activeIngredientSummary ?? null,
+          // Per-product cost snapshot. Captures the inventory unit
+          // basis so a future re-report can describe "$X per gal at
+          // the time of application" without re-resolving inventory.
+          productCostSnapshot:       r.inv?.costPerUnit ?? null,
+          productCostUnitSnapshot:   r.inv?.unit        ?? null,
+          totalCostSnapshot:         typeof r.cost === 'number' ? r.cost : null,
         })),
       }
       const saved = await createSpray(payload)
@@ -833,7 +908,7 @@ export default function BuildSpraySheet() {
                   <select
                     className={styles.naInput}
                     value={draft.operator}
-                    onChange={e => patchDraft({ operator: e.target.value })}
+                    onChange={e => handleOperatorChange(e.target.value)}
                   >
                     <option value="">— Select —</option>
                     {operatorOptions.map(emp => (
@@ -845,10 +920,24 @@ export default function BuildSpraySheet() {
                     type="text"
                     className={styles.naInput}
                     value={draft.operator}
-                    onChange={e => patchDraft({ operator: e.target.value })}
+                    onChange={e => handleOperatorChange(e.target.value)}
                     placeholder="Operator name"
                   />
                 )}
+              </Field>
+
+              {/* Phase S.3 — Optional pesticide license # for the
+                  applicator. Auto-fills from the crew employee record
+                  when the operator is picked (and the field is still
+                  blank); supervisor can override or leave empty. */}
+              <Field label="Applicator license #">
+                <input
+                  type="text"
+                  className={styles.naInput}
+                  value={draft.applicatorLicense}
+                  onChange={e => patchDraft({ applicatorLicense: e.target.value })}
+                  placeholder="Optional"
+                />
               </Field>
 
               <Field label="Spray rig">
@@ -1139,6 +1228,32 @@ export default function BuildSpraySheet() {
                   onChange={e => patchConditions({ wind: e.target.value })}
                   placeholder="4–6 mph NE"
                 />
+              </Field>
+              {/* Phase S.3 — Optional structured wind speed + direction
+                  for compliance reporting. Sit alongside the legacy
+                  free-text Wind field above; either surface is valid.
+                  Most supervisors will use one OR the other — the form
+                  doesn't enforce both. */}
+              <Field label="Wind speed (mph)">
+                <input
+                  type="number"
+                  step="0.1"
+                  className={styles.naInput}
+                  value={draft.conditions.windSpeedMph}
+                  onChange={e => patchConditions({ windSpeedMph: e.target.value })}
+                  placeholder="5"
+                />
+              </Field>
+              <Field label="Wind direction">
+                <select
+                  className={styles.naInput}
+                  value={draft.conditions.windDirection}
+                  onChange={e => patchConditions({ windDirection: e.target.value })}
+                >
+                  {WIND_DIRECTION_OPTS.map(d => (
+                    <option key={d || 'none'} value={d}>{d || '— Direction —'}</option>
+                  ))}
+                </select>
               </Field>
               <Field label="Humidity (%)">
                 <input

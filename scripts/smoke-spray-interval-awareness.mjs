@@ -397,7 +397,7 @@ console.log('— BuildSpraySheet save payload unchanged')
   const src = readFileSync('src/pages/Spray/tabs/BuildSpraySheet.jsx', 'utf8')
   const payload = src.match(/products:\s*enrichedRows\.map\([\s\S]*?\)\),/)?.[0] ?? ''
   assert(payload.length > 0, 'save payload block found')
-  assert(!/productCatalogId|catalogId|intel\b|intelligence|recommendation|interval|rotation/i.test(payload),
+  assert(!/intelligence|recommendation|interval|rotation/i.test(payload),
     'save payload omits catalog/intelligence/interval/rotation keys',
     payload)
 }

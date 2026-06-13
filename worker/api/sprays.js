@@ -30,11 +30,17 @@ function rowToRecord(row, products = [], areas = []) {
     endTime:         row.end_time,
     status:          row.status,
     // Conditions reassembled as a nested object (matches existing UI shape).
+    // Phase S.3 — windSpeedMph / windDirection sit alongside the legacy
+    // free-text `wind` column. Both surfaces are populated on read so
+    // existing UI (which reads `conditions.wind`) keeps rendering, while
+    // new UI can read the structured fields when present.
     conditions: {
-      temp:     row.temperature,
-      wind:     row.wind,
-      humidity: row.humidity,
-      soilTemp: row.soil_temp,
+      temp:          row.temperature,
+      wind:          row.wind,
+      windSpeedMph:  row.wind_speed_mph    ?? null,
+      windDirection: row.wind_direction    ?? null,
+      humidity:      row.humidity,
+      soilTemp:      row.soil_temp,
     },
     rei:           row.rei,
     phi:           row.phi,
@@ -50,16 +56,27 @@ function rowToRecord(row, products = [], areas = []) {
                      acreage:  a.acreage,
                    })),
     products:      products.map(p => ({
-                     id:               p.id,
-                     name:             p.product_name,
-                     type:             p.product_type,
-                     rate:             p.rate,
-                     unit:             p.unit,
-                     quantityUsed:     p.quantity_used,
-                     inventoryItemId:  p.inventory_item_id,
+                     id:                       p.id,
+                     name:                     p.product_name,
+                     type:                     p.product_type,
+                     rate:                     p.rate,
+                     unit:                     p.unit,
+                     quantityUsed:             p.quantity_used,
+                     inventoryItemId:          p.inventory_item_id,
+                     // Phase S.3 — per-product compliance + cost snapshots.
+                     // Frozen at write time so a later product_catalog
+                     // correction can't rewrite historical records.
+                     epaNumberSnapshot:        p.epa_number_snapshot         ?? null,
+                     activeIngredientsSnapshot: p.active_ingredients_snapshot ?? null,
+                     productCostSnapshot:      p.product_cost_snapshot       ?? null,
+                     productCostUnitSnapshot:  p.product_cost_unit_snapshot  ?? null,
+                     totalCostSnapshot:        p.total_cost_snapshot         ?? null,
                    })),
     notes:        row.notes,
     courseId:     row.course_id,
+    // Phase S.3 — record-level compliance + cost snapshots.
+    applicatorLicense:   row.applicator_license   ?? null,
+    totalCostSnapshot:   row.total_cost_snapshot  ?? null,
     // Phase 5.9 — soft-delete audit fields.
     deletedAt:         row.deleted_at,
     deletedBy:         row.deleted_by,
@@ -83,6 +100,13 @@ const MUTABLE_RECORD_COLS = {
   carrierVolume:   'carrier_volume',
   totalVolume:     'total_volume',
   notes:           'notes',
+  // Phase S.3 — record-level compliance + cost snapshots are PATCHable
+  // so a supervisor can backfill old records by hand without resaving
+  // the whole tank-mix. PATCH-with-null is honored (caller's intent).
+  applicatorLicense: 'applicator_license',
+  windSpeedMph:      'wind_speed_mph',
+  windDirection:     'wind_direction',
+  totalCostSnapshot: 'total_cost_snapshot',
 }
 
 // ── List + Get ────────────────────────────────────────────────────────────
@@ -146,6 +170,30 @@ export async function getSpray(env, id) {
 
 // ── Create + Update + Delete ──────────────────────────────────────────────
 
+// Phase S.3 — Best-effort enrichment from product_catalog. Used during
+// createSpray to backfill EPA # / active ingredients on a per-product
+// row when the client didn't supply them but did include a productCatalogId.
+// Wrapped in a defensive try/catch so a catalog miss never blocks a save.
+async function tryCatalogEnrich(env, productCatalogId) {
+  if (!productCatalogId) return null
+  try {
+    const row = await env.DB.prepare(
+      `SELECT epa_number, active_ingredients_json
+         FROM product_catalog WHERE id = ?`,
+    ).bind(productCatalogId).first()
+    if (!row) return null
+    return {
+      epaNumber:               row.epa_number ?? null,
+      activeIngredientsJson:   row.active_ingredients_json ?? null,
+    }
+  } catch {
+    // Catalog lookup failure must NEVER block the spray save. The
+    // record will simply have NULL snapshot fields; a supervisor can
+    // patch them in later via the PATCH endpoint or a future backfill.
+    return null
+  }
+}
+
 export async function createSpray(env, request) {
   const body = await readJson(request)
   if (!body.applicator && !body.operator) return badRequest('applicator (operator) is required')
@@ -158,8 +206,9 @@ export async function createSpray(env, request) {
       spray_date, start_time, end_time, status,
       temperature, wind, humidity, soil_temp,
       rei, phi, carrier_volume, total_volume,
-      holes, notes, course_id
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      holes, notes, course_id,
+      applicator_license, wind_speed_mph, wind_direction, total_cost_snapshot
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id,
     body.applicationName ?? null,
@@ -181,16 +230,44 @@ export async function createSpray(env, request) {
     body.holes != null ? JSON.stringify(body.holes) : null,
     body.notes           ?? null,
     resolveCourseId(body),
+    // Phase S.3 — compliance + cost record-level snapshots. Missing
+    // fields → NULL, which the read mapper renders as "—" in the UI.
+    body.applicatorLicense                            ?? null,
+    body.conditions?.windSpeedMph  ?? body.windSpeedMph  ?? null,
+    body.conditions?.windDirection ?? body.windDirection ?? null,
+    body.totalCostSnapshot                            ?? null,
   ).run()
 
   // Products
   if (Array.isArray(body.products)) {
     for (const p of body.products) {
+      // Phase S.3 — Snapshot resolution order:
+      //   1. Caller-supplied fields win (BuildSpraySheet already
+      //      computes cost + has the EPA + active ingredients via the
+      //      productCatalog store on the client side).
+      //   2. Best-effort catalog lookup fills EPA + active ingredients
+      //      ONLY when the caller supplied a productCatalogId but
+      //      didn't include those fields directly. Cost is NEVER
+      //      enriched server-side — it depends on the course's current
+      //      inventory price which the client already knows.
+      //   3. Anything still missing stays NULL. The read mapper +
+      //      UI render NULL as "—" without crashing.
+      let epaSnap   = p.epaNumberSnapshot         ?? null
+      let aiSnap    = p.activeIngredientsSnapshot ?? null
+      if ((epaSnap === null || aiSnap === null) && p.productCatalogId) {
+        const enriched = await tryCatalogEnrich(env, p.productCatalogId)
+        if (enriched) {
+          if (epaSnap === null) epaSnap = enriched.epaNumber
+          if (aiSnap  === null) aiSnap  = enriched.activeIngredientsJson
+        }
+      }
       await env.DB.prepare(`
         INSERT INTO spray_products (
           id, spray_record_id, inventory_item_id,
-          product_name, product_type, rate, unit, quantity_used
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          product_name, product_type, rate, unit, quantity_used,
+          epa_number_snapshot, active_ingredients_snapshot,
+          product_cost_snapshot, product_cost_unit_snapshot, total_cost_snapshot
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(
         p.id ?? generateId('sprod'),
         id,
@@ -200,6 +277,11 @@ export async function createSpray(env, request) {
         p.rate ?? null,
         p.unit ?? null,
         p.quantityUsed ?? null,
+        epaSnap,
+        aiSnap,
+        p.productCostSnapshot      ?? null,
+        p.productCostUnitSnapshot  ?? null,
+        p.totalCostSnapshot        ?? null,
       ).run()
     }
   }
@@ -238,12 +320,16 @@ export async function updateSpray(env, id, request) {
       binds.push(body[apiKey])
     }
   }
-  // Conditions (nested) flatten to four columns
+  // Conditions (nested) flatten to columns. Phase S.3 added structured
+  // windSpeedMph + windDirection alongside the legacy free-text `wind`;
+  // each is honored independently so a caller can update just one.
   if (body.conditions) {
-    if (body.conditions.temp     !== undefined) { sets.push('temperature = ?'); binds.push(body.conditions.temp) }
-    if (body.conditions.wind     !== undefined) { sets.push('wind = ?');        binds.push(body.conditions.wind) }
-    if (body.conditions.humidity !== undefined) { sets.push('humidity = ?');    binds.push(body.conditions.humidity) }
-    if (body.conditions.soilTemp !== undefined) { sets.push('soil_temp = ?');   binds.push(body.conditions.soilTemp) }
+    if (body.conditions.temp          !== undefined) { sets.push('temperature = ?');     binds.push(body.conditions.temp) }
+    if (body.conditions.wind          !== undefined) { sets.push('wind = ?');            binds.push(body.conditions.wind) }
+    if (body.conditions.windSpeedMph  !== undefined) { sets.push('wind_speed_mph = ?');  binds.push(body.conditions.windSpeedMph) }
+    if (body.conditions.windDirection !== undefined) { sets.push('wind_direction = ?');  binds.push(body.conditions.windDirection) }
+    if (body.conditions.humidity      !== undefined) { sets.push('humidity = ?');        binds.push(body.conditions.humidity) }
+    if (body.conditions.soilTemp      !== undefined) { sets.push('soil_temp = ?');       binds.push(body.conditions.soilTemp) }
   }
   if (body.holes !== undefined) {
     sets.push('holes = ?')

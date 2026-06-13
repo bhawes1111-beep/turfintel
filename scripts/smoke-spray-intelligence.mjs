@@ -300,17 +300,28 @@ console.log('— BuildSpraySheet renders Spray Intelligence panel')
   assert(!/\bauto[- ]apply\b/i.test(codeOnly),    'no auto-apply CTA')
 }
 
-// ── 4. Save payload still does not echo catalog ids / intelligence ─────────
-console.log('— BuildSpraySheet save payload unchanged')
+// ── 4. Save payload — narrow allowlist, intelligence layer stays read-only ──
+console.log('— BuildSpraySheet save payload narrow allowlist')
 {
   const src = readFileSync('src/pages/Spray/tabs/BuildSpraySheet.jsx', 'utf8')
-  // Same anchor as Phase 7C.1/6 smoke. Re-asserted here so the
-  // Spray Intelligence layer can't sneak any field into the persisted
-  // payload.
+  // Same anchor as Phase 7C.1/6 smoke. Phase S.3 widened the payload
+  // to carry productCatalogId + the catalog-snapshot fields (EPA,
+  // active ingredients summary, per-product cost) so the spray
+  // worker can persist compliance snapshots at write time. The
+  // Spray Intelligence layer (FRAC/rotation/interval advisories)
+  // STILL stays out of the persisted shape — none of "intelligence",
+  // "recommendation", or the raw intel chip data should leak.
   const payload = src.match(/products:\s*enrichedRows\.map\([\s\S]*?\)\),/)?.[0] ?? ''
   assert(payload.length > 0, 'spray-save products payload block found')
-  assert(!/productCatalogId|catalogId|intel\b|intelligence|recommendation/i.test(payload),
-    'save payload omits catalog ids / intel / intelligence / recommendation keys',
+  // productCatalogId is now intentional (Phase S.3 read-enrichment).
+  assert(/productCatalogId/.test(payload),
+    'Phase S.3 — payload carries productCatalogId for compliance snapshot read-enrichment')
+  // The Spray Intelligence advisory layer stays out of the persisted
+  // shape — `r.intel?` chain access for catalogId/activeIngredient is
+  // allowed (those are facts to snapshot), but no `intelligence` /
+  // `recommendation` / `rotateTo` / `doNotApply` keys leak in.
+  assert(!/\bintelligence\b|recommendation|rotateTo|doNotApply/i.test(payload),
+    'save payload omits intelligence / recommendation / advisory keys (advisories stay UI-only)',
     payload)
 }
 

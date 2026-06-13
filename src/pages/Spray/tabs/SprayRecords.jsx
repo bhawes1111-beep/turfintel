@@ -324,10 +324,26 @@ export default function SprayRecords() {
                     <span className={styles.modalFieldLabel}>Applicator</span>
                     <span className={styles.modalFieldValue}>{selected.applicator || '—'}</span>
                   </div>
+                  {/* Phase S.3 — Applicator license only renders when
+                      populated. Old records without a snapshot stay
+                      visually clean. */}
+                  {selected.applicatorLicense && (
+                    <div className={styles.modalField}>
+                      <span className={styles.modalFieldLabel}>Applicator License #</span>
+                      <span className={styles.modalFieldValue}>{selected.applicatorLicense}</span>
+                    </div>
+                  )}
                   <div className={styles.modalField}>
                     <span className={styles.modalFieldLabel}>Carrier Volume</span>
                     <span className={styles.modalFieldValue}>{selected.carrierVolume}</span>
                   </div>
+                  {/* Phase S.3 — Total cost snapshot, only when present. */}
+                  {selected.totalCostSnapshot != null && (
+                    <div className={styles.modalField}>
+                      <span className={styles.modalFieldLabel}>Estimated Cost</span>
+                      <span className={styles.modalFieldValue}>${selected.totalCostSnapshot.toFixed(2)}</span>
+                    </div>
+                  )}
                   <div className={styles.modalField}>
                     <span className={styles.modalFieldLabel}>Total Tank Volume</span>
                     <span className={styles.modalFieldValue}>{selected.totalVolume ? `${selected.totalVolume} gal` : '—'}</span>
@@ -355,6 +371,14 @@ export default function SprayRecords() {
                 <div className={styles.modalProductList}>
                   {selected.products.map((p, i) => {
                     const c = TYPE_COLORS[p.type] || {}
+                    // Phase S.3 — Build a thin compliance meta line.
+                    // EPA #, active ingredients (snapshot from catalog
+                    // at save time), and per-product cost render only
+                    // when populated; old records stay visually clean.
+                    const complianceParts = []
+                    if (p.epaNumberSnapshot)         complianceParts.push(`EPA ${p.epaNumberSnapshot}`)
+                    if (p.activeIngredientsSnapshot) complianceParts.push(p.activeIngredientsSnapshot)
+                    if (p.totalCostSnapshot != null) complianceParts.push(`$${p.totalCostSnapshot.toFixed(2)}`)
                     return (
                       <div key={i} className={styles.modalProductRow}>
                         <span
@@ -365,6 +389,11 @@ export default function SprayRecords() {
                         </span>
                         <span className={styles.modalProductName}>{p.name}</span>
                         <span className={styles.modalProductRate}>{p.rate}</span>
+                        {complianceParts.length > 0 && (
+                          <span className={styles.modalProductRate} style={{ opacity: 0.7, fontStyle: 'italic' }}>
+                            {complianceParts.join(' · ')}
+                          </span>
+                        )}
                       </div>
                     )
                   })}
@@ -384,6 +413,20 @@ export default function SprayRecords() {
                       <span className={styles.modalFieldLabel}>Wind</span>
                       <span className={styles.modalFieldValue}>{selected.conditions.wind || '—'}</span>
                     </div>
+                    {/* Phase S.3 — Structured wind only renders when
+                        populated. Old records with only free-text wind
+                        keep their original two-cell shape. */}
+                    {(selected.conditions.windSpeedMph != null || selected.conditions.windDirection) && (
+                      <div className={styles.modalField}>
+                        <span className={styles.modalFieldLabel}>Wind (Structured)</span>
+                        <span className={styles.modalFieldValue}>
+                          {[
+                            selected.conditions.windSpeedMph != null ? `${selected.conditions.windSpeedMph} mph` : null,
+                            selected.conditions.windDirection || null,
+                          ].filter(Boolean).join(' · ') || '—'}
+                        </span>
+                      </div>
+                    )}
                     <div className={styles.modalField}>
                       <span className={styles.modalFieldLabel}>Humidity</span>
                       <span className={styles.modalFieldValue}>{selected.conditions.humidity ? `${selected.conditions.humidity}%` : '—'}</span>

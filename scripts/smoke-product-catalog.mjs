@@ -956,13 +956,18 @@ console.log('— BuildSpraySheet wires catalog-first lookup')
   assert(/<RowIntelChips\b/.test(src),                  'renders <RowIntelChips intel=…> in row column')
 
   // Forbidden: no catalog mutation surface in BuildSpraySheet.
+  // The catalog API is GET-only; we never POST/PATCH/DELETE against it.
   assert(!/['"]\/api\/product-catalog['"][^\n]*method:\s*['"](POST|PATCH|DELETE)/.test(src),
     'no catalog mutation requests in BuildSpraySheet')
-  // Save payload must NOT carry a productCatalogId / catalogId column.
+  // Phase S.3 — Save payload now legitimately passes productCatalogId
+  // so the spray worker can READ-enrich EPA + active ingredients from
+  // product_catalog at write time (best-effort, never blocks save).
+  // The catalog itself stays read-only: createSpray only SELECTs from
+  // it, never UPDATEs/INSERTs. Pin both invariants explicitly.
   const payload = src.match(/products:\s*enrichedRows\.map\([\s\S]*?\)\),/)?.[0] ?? ''
   assert(payload.length > 0,                            'spray-save products payload block found')
-  assert(!/productCatalogId|catalogId/.test(payload),
-    'save payload does not echo productCatalogId/catalogId (catalog stays read-only)')
+  assert(/productCatalogId/.test(payload),
+    'save payload passes productCatalogId for read-enrichment (Phase S.3 — catalog still read-only at API)')
 }
 
 // ── 12. Phase 7C.2 (1/?) — manual catalog-link foundation ──────────────────

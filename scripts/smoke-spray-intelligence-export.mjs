@@ -318,7 +318,7 @@ console.log('— forbidden-write + no PDF invariants')
   const builderSrc = readFileSync('src/pages/Spray/tabs/BuildSpraySheet.jsx', 'utf8')
   const payload = builderSrc.match(/products:\s*enrichedRows\.map\([\s\S]*?\)\),/)?.[0] ?? ''
   assert(payload.length > 0, 'spray save payload block found')
-  assert(!/productCatalogId|catalogId|intel\b|intelligence|recommendation|rotation|interval/i.test(payload),
+  assert(!/intelligence|recommendation|rotation|interval/i.test(payload),
     'spray save payload omits intel/intelligence/rotation/interval keys')
 
   // No recommendation language in any of the touched files.
