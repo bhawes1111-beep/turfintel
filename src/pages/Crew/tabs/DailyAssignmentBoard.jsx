@@ -22,6 +22,12 @@ import { createCalendarEvent } from '../../../utils/calendar/calendarStore'
 import { useSelectedCourseId } from '../../../utils/courses/courseStore'
 import { useToast } from '../../../utils/feedback/toastContext'
 import { useEmployeeSchedulesData } from '../../../utils/schedules/schedulesStore'
+// Phase E.2 — per-date schedule overrides (off / sick / vacation for
+// today only, without rewriting the recurring weekly grid). The DAB
+// merges overrides over the recurring grid so an operator marked off
+// today never appears as an assignable row, even if their Wednesday
+// recurring rule says "scheduled".
+import { useScheduleOverridesData } from '../../../utils/schedules/scheduleOverridesStore'
 // Phase 9C.5d — Translation controls. The refresh hooks for the two
 // other stores pull fresh title_es / body_es / message_es values into
 // client state after a successful sweep, so the DAB notes inputs and
@@ -115,6 +121,7 @@ export default function DailyAssignmentBoard({
 }) {
   const toast = useToast()
   const { schedules: weeklySchedules } = useEmployeeSchedulesData()
+  const { overrides: scheduleOverrides } = useScheduleOverridesData()
   // Phase 9C.11 — reusable task library. Backs the DAB dropdown.
   const { templates: taskTemplates } = useTaskTemplatesData()
   const [selectedDate, setSelectedDate] = useState(TODAY_ISO)
@@ -253,11 +260,29 @@ export default function DailyAssignmentBoard({
     return new Date(`${selectedDate}T00:00:00`).getDay()
   }, [selectedDate])
 
-  const usingScheduleFallback = weeklySchedules.length === 0
+  // Phase E.2 — Per-date overrides scoped to selectedDate. An override
+  // ALWAYS wins over the recurring row; the absence of any rule (no
+  // recurring + no override) falls through to the legacy "fallback"
+  // path below.
+  const overridesByEmpForDate = useMemo(() => {
+    const m = new Map()
+    for (const o of scheduleOverrides) {
+      if (o.effectiveDate !== selectedDate) continue
+      m.set(o.employeeId, o)
+    }
+    return m
+  }, [scheduleOverrides, selectedDate])
+
+  // The fallback used to gate purely on `weeklySchedules.length === 0`,
+  // but an override-only world (no recurring rules but a per-date row
+  // exists) should ALSO honor the override. So fallback now requires
+  // BOTH stores empty.
+  const usingScheduleFallback = weeklySchedules.length === 0 && scheduleOverrides.length === 0
 
   // Index: scheduleRoleByEmpId for selectedDow. Lets the row render
   // surface a per-day operational role (e.g. "Spray Tech") that
-  // overrides the employee's static profile role.
+  // overrides the employee's static profile role. Phase E.2 — override
+  // role wins when present (matches the merge rule).
   const scheduleRoleByEmpId = useMemo(() => {
     const m = new Map()
     for (const s of weeklySchedules) {
@@ -265,8 +290,17 @@ export default function DailyAssignmentBoard({
       if (s.status !== 'scheduled') continue
       if (s.role) m.set(s.employeeId, s.role)
     }
+    for (const o of scheduleOverrides) {
+      if (o.effectiveDate !== selectedDate) continue
+      if (o.status !== 'scheduled') continue
+      if (o.role) m.set(o.employeeId, o.role)
+      else if (m.has(o.employeeId) && o.role === null) {
+        // Override with explicit null role clears the recurring role.
+        m.delete(o.employeeId)
+      }
+    }
     return m
-  }, [weeklySchedules, selectedDow])
+  }, [weeklySchedules, scheduleOverrides, selectedDow, selectedDate])
 
   const dayEmployees = useMemo(() => {
     if (usingScheduleFallback) {
@@ -274,16 +308,29 @@ export default function DailyAssignmentBoard({
         .filter(e => e.status === 'active' || e.status === 'on-leave')
         .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
     }
-    const scheduledIds = new Set(
+    // Phase E.2 — Merge rule: an override row for selectedDate ALWAYS
+    // wins. An employee is "scheduled today" when:
+    //   • override.status === 'scheduled', OR
+    //   • no override AND recurring.status === 'scheduled'.
+    // Off / sick / vacation (from either source) suppress the row from
+    // the assignable roster. Existing crew_assignments are NOT deleted
+    // here — they keep displaying via the assignment table render path
+    // until a supervisor explicitly clears them. This phase only gates
+    // who appears as a NEW assignable row.
+    const recurringScheduledIds = new Set(
       weeklySchedules
         .filter(s => s.dayOfWeek === selectedDow && s.status === 'scheduled')
         .map(s => s.employeeId),
     )
     return employees
-      .filter(e => scheduledIds.has(e.id))
       .filter(e => e.status !== 'inactive')
+      .filter(e => {
+        const ov = overridesByEmpForDate.get(e.id)
+        if (ov) return ov.status === 'scheduled'
+        return recurringScheduledIds.has(e.id)
+      })
       .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
-  }, [employees, weeklySchedules, selectedDow, usingScheduleFallback])
+  }, [employees, weeklySchedules, overridesByEmpForDate, selectedDow, usingScheduleFallback])
 
   // Index: which crew_assignment row this employee currently holds on
   // selectedDate. We only consider assignments tied to one of today's

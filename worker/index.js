@@ -129,6 +129,13 @@ import {
   createEmployeeSchedule,
   updateEmployeeSchedule,
   deleteEmployeeSchedule,
+  // Phase E.2 — per-date overrides + merged daily endpoint
+  listEmployeeScheduleOverrides,
+  getEmployeeScheduleOverride,
+  createEmployeeScheduleOverride,
+  updateEmployeeScheduleOverride,
+  deleteEmployeeScheduleOverride,
+  listEmployeesDailySchedule,
 } from './api/schedules.js'
 import {
   listScheduleTemplates,
@@ -1021,6 +1028,16 @@ async function handleApi(request, env, url, ctx) {
     if (method === 'DELETE') return deleteScheduleTemplate(env, id)
   }
 
+  // ── /api/employee-schedules/daily (Phase E.2) ─────────────────────────
+  // MUST precede /api/employee-schedules/:id so 'daily' isn't consumed
+  // as an id. Returns the merged daily roster for ?date=YYYY-MM-DD.
+  if (pathname === '/api/employee-schedules/daily') {
+    if (method === 'GET') {
+      const date = url.searchParams.get('date')
+      return listEmployeesDailySchedule(env, courseId, date)
+    }
+  }
+
   // ── /api/employee-schedules ───────────────────────────────────────────
   if (pathname === '/api/employee-schedules') {
     if (method === 'GET')  return listEmployeeSchedules(env, courseId)
@@ -1034,6 +1051,24 @@ async function handleApi(request, env, url, ctx) {
     if (method === 'GET')    return getEmployeeSchedule(env, id)
     if (method === 'PATCH')  return updateEmployeeSchedule(env, id, request)
     if (method === 'DELETE') return deleteEmployeeSchedule(env, id)
+  }
+
+  // ── /api/employee-schedule-overrides (Phase E.2) ──────────────────────
+  if (pathname === '/api/employee-schedule-overrides') {
+    if (method === 'GET') {
+      const date = url.searchParams.get('date') || null
+      return listEmployeeScheduleOverrides(env, courseId, { date })
+    }
+    if (method === 'POST') return createEmployeeScheduleOverride(env, request)
+  }
+
+  // ── /api/employee-schedule-overrides/:id ──────────────────────────────
+  const schedOvMatch = pathname.match(/^\/api\/employee-schedule-overrides\/([^/]+)$/)
+  if (schedOvMatch) {
+    const id = decodeURIComponent(schedOvMatch[1])
+    if (method === 'GET')    return getEmployeeScheduleOverride(env, id)
+    if (method === 'PATCH')  return updateEmployeeScheduleOverride(env, id, request)
+    if (method === 'DELETE') return deleteEmployeeScheduleOverride(env, id)
   }
 
   // ── /api/operations-notes ─────────────────────────────────────────────

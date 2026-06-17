@@ -609,3 +609,177 @@
   display: flex;
   gap: 6px;
 }
+
+/* ── Phase E.2 — Daily schedule editor ──────────────────────────────── */
+
+.dailySection {
+  background: linear-gradient(160deg, var(--color-card) 0%, var(--color-bg) 100%);
+  border: 1px solid rgba(74, 158, 74, 0.22);
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 18px;
+}
+
+.dailyHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.dailyTitle {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(74, 222, 128, 0.85);
+  margin: 0 0 4px 0;
+}
+
+.dailyHint {
+  font-size: 11.5px;
+  color: rgba(212, 237, 212, 0.55);
+  margin: 0;
+  max-width: 540px;
+  line-height: 1.45;
+}
+
+.dailyDatePicker {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: rgba(212, 237, 212, 0.65);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.dailyDatePicker input {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(74, 158, 74, 0.32);
+  border-radius: 5px;
+  color: #d4edd4;
+  padding: 5px 8px;
+  font: inherit;
+  font-size: 13px;
+}
+.dailyDatePicker input:focus {
+  outline: none;
+  border-color: rgba(74, 222, 128, 0.6);
+}
+
+.dailyTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  table-layout: auto;
+}
+.dailyTable th {
+  text-align: left;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(212, 237, 212, 0.55);
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(74, 158, 74, 0.18);
+}
+.dailyTable td {
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(74, 158, 74, 0.08);
+  vertical-align: middle;
+  color: #d4edd4;
+}
+.dailyTable tbody tr[data-status="off"]      td,
+.dailyTable tbody tr[data-status="vacation"] td,
+.dailyTable tbody tr[data-status="sick"]     td {
+  color: rgba(212, 237, 212, 0.55);
+}
+.dailyTable tbody tr[data-status="sick"]     { background: rgba(239, 68, 68, 0.04); }
+.dailyTable tbody tr[data-status="vacation"] { background: rgba(56, 189, 248, 0.04); }
+.dailyTable tbody tr[data-status="off"]      { background: rgba(0, 0, 0, 0.12); }
+
+.dailyName { font-weight: 600; color: #ecfdf5; }
+
+.dailyEmpty {
+  text-align: center;
+  font-style: italic;
+  font-size: 12px;
+  color: rgba(212, 237, 212, 0.45);
+  padding: 18px;
+}
+
+.dailyStatusSelect,
+.dailyTimeInput,
+.dailyNotesInput {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(74, 158, 74, 0.22);
+  border-radius: 5px;
+  color: #d4edd4;
+  padding: 4px 7px;
+  font: inherit;
+  font-size: 12px;
+}
+.dailyTimeInput { width: 90px; }
+.dailyNotesInput { width: 100%; min-width: 160px; }
+.dailyStatusSelect:focus,
+.dailyTimeInput:focus,
+.dailyNotesInput:focus {
+  outline: none;
+  border-color: rgba(74, 222, 128, 0.55);
+}
+.dailyStatusSelect:disabled,
+.dailyTimeInput:disabled,
+.dailyNotesInput:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dailySourcePill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(212, 237, 212, 0.65);
+}
+.dailySourcePill[data-source="override"] {
+  background: rgba(251, 191, 36, 0.12);
+  border-color: rgba(251, 191, 36, 0.38);
+  color: #fbbf24;
+}
+.dailySourcePill[data-source="recurring"] {
+  background: rgba(74, 222, 128, 0.1);
+  border-color: rgba(74, 222, 128, 0.32);
+  color: #4ade80;
+}
+
+.dailyResetBtn {
+  background: rgba(74, 158, 74, 0.12);
+  border: 1px solid rgba(74, 158, 74, 0.32);
+  border-radius: 5px;
+  color: #4ade80;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 3px 9px;
+  cursor: pointer;
+}
+.dailyResetBtn:hover:not(:disabled) {
+  background: rgba(74, 158, 74, 0.22);
+}
+.dailyResetBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 700px) {
+  .dailyTable { font-size: 11.5px; }
+  .dailyTimeInput { width: 78px; }
+  .dailyNotesInput { min-width: 120px; }
+}

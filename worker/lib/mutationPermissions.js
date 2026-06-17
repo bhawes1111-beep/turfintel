@@ -55,6 +55,7 @@ const MUTATION_RULES = [
   ['/api/task-templates',         'canEditAssignments'],   // Phase 9C.11
   ['/api/schedule-templates',     'canEditAssignments'],
   ['/api/employee-schedules',     'canEditAssignments'],
+  ['/api/employee-schedule-overrides', 'canEditAssignments'],   // Phase E.2
   ['/api/crew-employees',         'canEditAssignments'],
   ['/api/alerts',                 'canEditAssignments'],
 
