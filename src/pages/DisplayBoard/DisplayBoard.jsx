@@ -26,6 +26,15 @@ import { useSpraysData,      refreshSpraysData }      from '../../utils/sprays/s
 import { useAssignmentsData, refreshAssignmentsData, patchCrewAssignment } from '../../utils/assignments/assignmentsStore'
 import { useAlertsData,      refreshAlertsData }      from '../../utils/alerts/alertsStore'
 import { useCrewData,        refreshCrewData }        from '../../utils/crew/crewStore'
+// Phase E.4 — Kiosk schedule awareness. Two stores + a shared merge
+// helper let the kiosk hide assignment bars for operators marked off /
+// sick / vacation for selectedDate. Both stores hit anonymous-readable
+// endpoints (no payRate, no emergency contact, no other private
+// employee fields surface here); the kiosk never gains any new
+// authoritative surface, just narrows what it shows.
+import { useEmployeeSchedulesData, refreshEmployeeSchedulesData } from '../../utils/schedules/schedulesStore'
+import { useScheduleOverridesData, refreshScheduleOverridesData } from '../../utils/schedules/scheduleOverridesStore'
+import { isEmployeeAssignableForDate, hasAnyScheduleData } from '../../utils/schedules/dailyScheduleMerge'
 import { useWeather }         from '../../utils/weather/useWeather'
 import { useSelectedCourse, useSelectedCourseId } from '../../utils/courses/courseStore'
 import { useOperationsNotesData, refreshOperationsNotesData } from '../../utils/operations/notesStore'
@@ -191,6 +200,11 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
   const { crewAssignments, equipmentReservations }  = useAssignmentsData()
   const { alerts }                                  = useAlertsData()
   const { employees }                               = useCrewData()
+  // Phase E.4 — Public-safe schedule + override stores. Both endpoints
+  // return only schedule grid fields (no payRate, no contact info, no
+  // private notes), so the kiosk's no-login contract is preserved.
+  const { schedules: weeklySchedules }              = useEmployeeSchedulesData()
+  const { overrides: scheduleOverrides }            = useScheduleOverridesData()
   const { current, forecast, sourceLabel: weatherSource } = useWeather()
   const selectedCourse                              = useSelectedCourse()
   // Phase 8B.1a — Crosswinds shop-style Display Board layout shell.
@@ -269,6 +283,13 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
         refreshCrewData(),
         refreshOperationsNotesData(),
         refreshMoisture(),
+        // Phase E.4 — Keep the schedule + override stores fresh so a
+        // mid-shift "called out sick" override propagates to the
+        // kiosk on the next tick. Both stores are public-safe — they
+        // expose only the schedule grid, never private employee
+        // profile fields. Auto-refresh interval itself unchanged.
+        refreshEmployeeSchedulesData(),
+        refreshScheduleOverridesData(),
       ]).then(() => setLastSync(new Date()))
       // Phase 9C.4a — midnight rollover for the public kiosk view.
       // If the kiosk has been up since yesterday, snap selectedDate
@@ -483,10 +504,37 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
         return (PRIORITY_ORDER[x.priority] ?? 9) - (PRIORITY_ORDER[y.priority] ?? 9)
       })
     }
-    return [...byOperator.values()].sort((x, y) =>
+    let cards = [...byOperator.values()].sort((x, y) =>
       (x.employeeName ?? '').localeCompare(y.employeeName ?? '')
     )
-  }, [dayCrew, dayEvents, equipByEvent, employeeNameLookup, employeeById])
+    // Phase E.4 — Suppress operator cards whose merged daily schedule
+    // is off / sick / vacation / unscheduled for selectedDate. This
+    // matches the DAB's assignable-roster rule for the kiosk so an
+    // operator who was assigned earlier and then marked off doesn't
+    // hang on the public TV all morning.
+    //
+    // Fallback rule preserved: when BOTH stores are empty (no
+    // scheduling configured anywhere) the kiosk keeps showing every
+    // assigned operator. Adding even one recurring rule or override
+    // flips the kiosk to schedule-aware mode.
+    if (hasAnyScheduleData(weeklySchedules, scheduleOverrides)) {
+      cards = cards.filter(op => {
+        if (!op.employeeId) return true   // legacy assignments without employeeId stay visible
+        const verdict = isEmployeeAssignableForDate(
+          op.employeeId,
+          selectedDate,
+          weeklySchedules,
+          scheduleOverrides,
+        )
+        return verdict.allowed
+      })
+    }
+    return cards
+  }, [
+    dayCrew, dayEvents, equipByEvent, employeeNameLookup, employeeById,
+    // Phase E.4 — re-bucket when schedules / overrides / selectedDate change
+    weeklySchedules, scheduleOverrides, selectedDate,
+  ])
 
   // ── Crew-facing weather impacts (rule-based, from existing weather) ─────
   const impacts = useMemo(

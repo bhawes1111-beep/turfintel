@@ -75,9 +75,11 @@ assert(/showSpanishNotes:\s*employeeNeedsSpanish\(employee\)/.test(DB),
 assert(/const\s+employee\s*=\s*a\.employeeId\s*\?\s*employeeById\.get\(a\.employeeId\)\s*:\s*null/.test(DB),
   'operatorCards resolves employee = a.employeeId ? employeeById.get(a.employeeId) : null (null → showSpanishNotes false)')
 
-// operatorCards useMemo includes employeeById in its dep list.
-assert(/\}, \[dayCrew, dayEvents, equipByEvent, employeeNameLookup, employeeById\]\)/.test(DB),
-  'operatorCards useMemo dep list includes employeeById')
+// operatorCards useMemo includes employeeById in its dep list. Phase
+// E.4 widened the dep list with weeklySchedules + scheduleOverrides +
+// selectedDate; accept either shape.
+assert(/dayCrew,\s*dayEvents,\s*equipByEvent,\s*employeeNameLookup,\s*employeeById/.test(DB),
+  'operatorCards useMemo dep list includes employeeById (+ Phase E.4 schedule stores allowed)')
 
 // ── BoardModeCrewBars — Spanish render gated on op.showSpanishNotes ───
 section('BoardModeCrewBars — per-bar Spanish gate')

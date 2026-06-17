@@ -442,6 +442,51 @@
   margin-right: 2px;
 }
 
+/* Phase E.4 — Conflict pill: an employee has an assignment row for
+   selectedDate but is marked off/sick/vacation/unscheduled. Subtle —
+   we don't shout (existing assignments are intentional state for the
+   supervisor to resolve), but we surface the mismatch so it doesn't
+   silently rot. Mirrors the DailyScheduleEditor's row-tint vocabulary
+   (red for sick, amber for off, blue for vacation, gray for
+   unscheduled). */
+.conflictPill {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 7px;
+  border-radius: 9px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  vertical-align: middle;
+  background: rgba(148, 163, 184, 0.12);
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  color: rgba(212, 237, 212, 0.78);
+  cursor: help;
+}
+.conflictPill[data-conflict="sick"] {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.38);
+  color: #fca5a5;
+}
+.conflictPill[data-conflict="vacation"] {
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.38);
+  color: #7dd3fc;
+}
+.conflictPill[data-conflict="off"] {
+  background: rgba(251, 191, 36, 0.12);
+  border-color: rgba(251, 191, 36, 0.38);
+  color: #fbbf24;
+}
+
+/* Subtle row-level tint so a glance at the table surfaces the conflict
+   without needing to read the pill copy. Stays beneath any existing
+   .data-busy / data-state visual so it doesn't compete. */
+.assignTable tbody tr[data-conflict="sick"]     td { background: rgba(239, 68, 68, 0.03); }
+.assignTable tbody tr[data-conflict="vacation"] td { background: rgba(56, 189, 248, 0.03); }
+.assignTable tbody tr[data-conflict="off"]      td { background: rgba(0, 0, 0, 0.06); }
+
 /* Task select + clear */
 
 .taskCell {

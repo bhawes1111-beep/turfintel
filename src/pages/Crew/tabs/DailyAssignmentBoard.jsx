@@ -28,6 +28,14 @@ import { useEmployeeSchedulesData } from '../../../utils/schedules/schedulesStor
 // today never appears as an assignable row, even if their Wednesday
 // recurring rule says "scheduled".
 import { useScheduleOverridesData } from '../../../utils/schedules/scheduleOverridesStore'
+// Phase E.4 — shared daily schedule merge helpers used by both the
+// DAB and the kiosk. Single source of truth for "override wins over
+// recurring, fall back to all-active when nothing is configured".
+import {
+  buildScheduleByEmployeeForDate,
+  isEmployeeAssignableForDate,
+  hasAnyScheduleData,
+} from '../../../utils/schedules/dailyScheduleMerge'
 // Phase 9C.5d — Translation controls. The refresh hooks for the two
 // other stores pull fresh title_es / body_es / message_es values into
 // client state after a successful sweep, so the DAB notes inputs and
@@ -317,20 +325,66 @@ export default function DailyAssignmentBoard({
     // here — they keep displaying via the assignment table render path
     // until a supervisor explicitly clears them. This phase only gates
     // who appears as a NEW assignable row.
+    //
+    // Phase E.4 — Widen this list to ALSO include off/sick/vacation
+    // employees who STILL have a crew_assignment row for selectedDate.
+    // The row renders with a conflict pill so the supervisor sees the
+    // mismatch and can clear it. Without this widening, an assigned-
+    // then-marked-off employee would silently disappear from the board
+    // while their assignment row remained in D1 — confusing.
     const recurringScheduledIds = new Set(
       weeklySchedules
         .filter(s => s.dayOfWeek === selectedDow && s.status === 'scheduled')
         .map(s => s.employeeId),
     )
+    const assignedEmpIds = new Set()
+    for (const a of crewAssignments) {
+      if (a.status === 'cancelled') continue
+      if (!dayEventIds.has(a.calendarEventId)) continue
+      if (a.employeeId) assignedEmpIds.add(a.employeeId)
+    }
     return employees
       .filter(e => e.status !== 'inactive')
       .filter(e => {
+        // Assignable path — Phase E.2.
         const ov = overridesByEmpForDate.get(e.id)
-        if (ov) return ov.status === 'scheduled'
-        return recurringScheduledIds.has(e.id)
+        if (ov) {
+          if (ov.status === 'scheduled') return true
+          // Conflict path — Phase E.4. Keep the row visible so the
+          // supervisor can see and clear it.
+          return assignedEmpIds.has(e.id)
+        }
+        if (recurringScheduledIds.has(e.id)) return true
+        // No override + not on the recurring scheduled list. If they
+        // have an active assignment anyway (e.g. unscheduled employee
+        // pulled in by an earlier Copy Yesterday), show the row so it
+        // can be cleared. Otherwise hide.
+        return assignedEmpIds.has(e.id)
       })
       .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
-  }, [employees, weeklySchedules, overridesByEmpForDate, selectedDow, usingScheduleFallback])
+  }, [employees, weeklySchedules, overridesByEmpForDate, selectedDow, usingScheduleFallback, crewAssignments, dayEventIds])
+
+  // Phase E.4 — Per-employee conflict reason for selectedDate. NULL
+  // when the employee is genuinely scheduled (assignable path); set
+  // when an off/sick/vacation/unscheduled employee is still being
+  // shown because they have an active assignment. The row JSX renders
+  // a subtle conflict pill when set so the mismatch is visible.
+  const conflictByEmpId = useMemo(() => {
+    const m = new Map()
+    if (usingScheduleFallback) return m
+    const scheduleByEmp = buildScheduleByEmployeeForDate(selectedDate, weeklySchedules, scheduleOverrides)
+    for (const e of employees) {
+      if (e.status === 'inactive') continue
+      const merged = scheduleByEmp.get(e.id)
+      if (!merged) {
+        m.set(e.id, 'unscheduled')
+        continue
+      }
+      if (merged.status === 'scheduled') continue
+      m.set(e.id, merged.status)   // 'off' | 'sick' | 'vacation'
+    }
+    return m
+  }, [employees, weeklySchedules, scheduleOverrides, selectedDate, usingScheduleFallback])
 
   // Index: which crew_assignment row this employee currently holds on
   // selectedDate. We only consider assignments tied to one of today's
@@ -780,6 +834,10 @@ export default function DailyAssignmentBoard({
 
     setBulkBusy('copy')
     let copied = 0, skipped = 0, overwritten = 0, failed = 0
+    // Phase E.4 — Capture skipped employee details so the toast can
+    // surface the reason ("Jose sick, John off"). Keyed by name so the
+    // human-readable message is one short sentence.
+    const skippedDetails = []
 
     for (const oldA of srcAssignments) {
       const oldEvent = srcEvents.find(e => e.id === oldA.calendarEventId)
@@ -790,6 +848,22 @@ export default function DailyAssignmentBoard({
         ? employees.find(e => e.id === oldA.employeeId && e.status !== 'inactive')
         : employees.find(e => e.name === oldA.employeeName && e.status !== 'inactive')
       if (!empStillThere) { skipped++; continue }
+
+      // Phase E.4 — Destination-day schedule check. Skip employees who
+      // are off / sick / vacation / unscheduled on the destination
+      // date. Honors the "no rules at all" fallback so an empty-system
+      // course continues to copy everyone.
+      const assignable = isEmployeeAssignableForDate(
+        empStillThere.id,
+        destinationDate,
+        weeklySchedules,
+        scheduleOverrides,
+      )
+      if (!assignable.allowed) {
+        skipped++
+        skippedDetails.push({ name: empStillThere.name, reason: assignable.reason })
+        continue
+      }
 
       const empKey      = oldA.employeeId || oldA.employeeName
       const destExisting = destAssignByEmp.get(empKey)
@@ -866,7 +940,19 @@ export default function DailyAssignmentBoard({
 
     const parts = [`Copied ${copied} assignment${copied !== 1 ? 's' : ''} from ${sourceDate} to ${destinationDate}`]
     if (overwritten > 0) parts.push(`${overwritten} overwritten`)
-    if (skipped > 0)     parts.push(`${skipped} skipped`)
+    if (skipped > 0) {
+      // Phase E.4 — When skips include schedule reasons (off/sick/
+      // vacation/unscheduled), surface the names + reasons so the
+      // supervisor sees WHY the copy left someone behind. Anonymous
+      // skips (no destination event, existing assignment, etc.) just
+      // count toward the total without a name list.
+      if (skippedDetails.length > 0) {
+        const detailParts = skippedDetails.map(d => `${d.name} ${d.reason}`)
+        parts.push(`${skipped} skipped (${detailParts.join(', ')})`)
+      } else {
+        parts.push(`${skipped} skipped`)
+      }
+    }
     if (failed > 0)      parts.push(`${failed} failed`)
     toast.success(parts.join(' · '))
   }
@@ -1302,13 +1388,39 @@ export default function DailyAssignmentBoard({
               const equipLabel = assignment
                 ? (linkedRes.length > 0 ? `Equipment (${linkedRes.length})` : 'Equipment')
                 : 'Pick task first'
+              // Phase E.4 — Conflict pill copy maps the merged schedule
+              // status to a short human-readable label. Renders only
+              // when (a) we're not in fallback mode AND (b) the
+              // employee has a conflict status AND (c) they have an
+              // existing assignment row (otherwise hiding them would
+              // be enough). The pill makes the mismatch visible so the
+              // supervisor can clear the assignment manually.
+              const conflictReason = conflictByEmpId.get(emp.id)
+              const conflictLabel  = conflictReason && assignment ? ({
+                off:         'Scheduled off today',
+                sick:        'Sick today',
+                vacation:    'Vacation today',
+                unscheduled: 'Not scheduled today',
+              })[conflictReason] : null
               return (
                 <tr
                   key={emp.id}
                   data-busy={busyEmpId === emp.id ? 'true' : undefined}
                   data-state={rowState}
+                  data-conflict={conflictLabel ? conflictReason : undefined}
                 >
-                  <td className={styles.cellName}>{emp.name}</td>
+                  <td className={styles.cellName}>
+                    {emp.name}
+                    {conflictLabel && (
+                      <span
+                        className={styles.conflictPill}
+                        data-conflict={conflictReason}
+                        title={`${emp.name} has an assignment but is marked ${conflictReason} for ${selectedDate}. Clear the assignment to resolve.`}
+                      >
+                        {conflictLabel}
+                      </span>
+                    )}
+                  </td>
                   <td className={styles.cellRole}>
                     {(() => {
                       const dayRole = scheduleRoleByEmpId.get(emp.id)

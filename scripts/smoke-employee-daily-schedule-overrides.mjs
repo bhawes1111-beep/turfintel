@@ -315,11 +315,15 @@ assert(/const overridesByEmpForDate = useMemo/.test(DAB),
 assert(/o\.effectiveDate !== selectedDate/.test(DAB),
   'override map filters by effectiveDate === selectedDate')
 
-// dayEmployees merge — override wins for assignable check.
-assert(/const ov = overridesByEmpForDate\.get\(e\.id\)\s*\n\s*if \(ov\) return ov\.status === ['"]scheduled['"]/.test(DAB),
-  'dayEmployees: override.status === "scheduled" decides when override exists (recurring ignored)')
-assert(/return recurringScheduledIds\.has\(e\.id\)/.test(DAB),
-  'dayEmployees: recurring rule decides when no override exists')
+// dayEmployees merge — override wins for assignable check. Phase E.4
+// widened the body to ALSO keep off/sick/vacation employees who STILL
+// hold an assignment so the conflict pill can render. The original
+// invariants below remain true at the assignable-path level: override
+// scheduled → true; no override + recurring scheduled → true.
+assert(/const ov = overridesByEmpForDate\.get\(e\.id\)[\s\S]{0,400}if \(ov\.status === ['"]scheduled['"]\) return true/.test(DAB),
+  'dayEmployees: override.status === "scheduled" → true (assignable path, Phase E.2 invariant)')
+assert(/recurringScheduledIds\.has\(e\.id\)/.test(DAB),
+  'dayEmployees: recurring rule decides when no override exists (Phase E.2 invariant)')
 
 // Assignment rows are NOT deleted automatically — only the assignable
 // filter narrows. Pin by negative — DAB has no override-driven delete.
