@@ -947,7 +947,13 @@ export default function DailyAssignmentBoard({
       // skips (no destination event, existing assignment, etc.) just
       // count toward the total without a name list.
       if (skippedDetails.length > 0) {
-        const detailParts = skippedDetails.map(d => `${d.name} ${d.reason}`)
+        // Phase E.4 — Truncate to first 3 names + "+N more" so a
+        // morning with the whole crew out (e.g. snow day) doesn't
+        // produce a wall-of-text toast.
+        const SHOW = 3
+        const detailParts = skippedDetails.slice(0, SHOW).map(d => `${d.name} ${d.reason}`)
+        const remaining = skippedDetails.length - SHOW
+        if (remaining > 0) detailParts.push(`+${remaining} more`)
         parts.push(`${skipped} skipped (${detailParts.join(', ')})`)
       } else {
         parts.push(`${skipped} skipped`)

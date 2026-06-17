@@ -46,6 +46,11 @@ const DABCSS = readFileSync('src/pages/Crew/tabs/DailyAssignmentBoard.module.css
 const KIOSK  = readFileSync('src/pages/DisplayBoard/DisplayBoard.jsx',              'utf8')
 const HELPER = readFileSync('src/utils/schedules/dailyScheduleMerge.js',            'utf8')
 
+// Extracted once near the top so all sections can pin into the same
+// copyAssignmentsFromDate body.
+const copyMatch = DAB.match(/async function copyAssignmentsFromDate\(sourceDate, destinationDate, options\)\s*\{[\s\S]*?\n  \}/)
+const copySrc   = copyMatch ? copyMatch[0] : ''
+
 // ── No new D1 migration ───────────────────────────────────────────────
 section('No new D1 migration — 0053 ceiling preserved')
 
@@ -147,15 +152,43 @@ assert(/skippedDetails\.push\(\{ name:\s*empStillThere\.name,\s*reason:\s*assign
   'copy loop captures skipped employee {name, reason} into skippedDetails')
 
 // Toast surfaces names + reasons.
-assert(/if \(skippedDetails\.length > 0\)\s*\{[\s\S]{0,400}detailParts\.join\(', '\)/.test(DAB),
+assert(/if \(skippedDetails\.length > 0\)\s*\{[\s\S]{0,600}detailParts\.join\(', '\)/.test(DAB),
   'toast assembles skippedDetails into a comma-joined "name reason" string')
-assert(/skippedDetails\.map\(d => `\$\{d\.name\} \$\{d\.reason\}`\)/.test(DAB),
-  'toast format: "<name> <reason>" per skipped employee')
+assert(/skippedDetails\.slice\(0, SHOW\)\.map\(d => `\$\{d\.name\} \$\{d\.reason\}`\)/.test(DAB),
+  'toast format: "<name> <reason>" per skipped employee (slice(0, SHOW) for truncation)')
+
+// Truncation — first 3 names + "+N more" so a snow-day toast doesn't
+// produce a wall of text.
+assert(/const SHOW = 3/.test(DAB),
+  'truncation cap SHOW = 3 (first three skipped employees shown by name)')
+assert(/const remaining = skippedDetails\.length - SHOW\s*\n\s*if \(remaining > 0\) detailParts\.push\(`\+\$\{remaining\} more`\)/.test(DAB),
+  'truncation appends "+N more" when more than SHOW employees were skipped')
 
 // Non-schedule skips (no destination event, existing assignment, etc.)
 // still count toward skipped but don't get a names list.
 assert(/} else \{\s*\n\s*parts\.push\(`\$\{skipped\} skipped`\)/.test(DAB),
   'anonymous skips (no schedule reason) fall through to plain "N skipped" toast')
+
+// ── 9C.16 notes / notesEs / equipment / sourceId regression couples ──
+section('Copy contract regression couples — notes / notesEs / equipment / sourceId preserved')
+
+// 9C.16 — notes copy is gated by options.copyNotes; helper does NOT set notesEs.
+assert(/notes:\s*options\.copyNotes \? \(oldA\.notes \?\? null\) : null/.test(DAB),
+  '9C.16 notes carry: notes: options.copyNotes ? (oldA.notes ?? null) : null')
+assert(!/\bnotesEs\b/.test(copySrc),
+  '9C.16 notesEs is NEVER copied (worker NULLs notes_es; cron sweep refills)')
+
+// 9C.15 equipment opt-in copy preserved.
+assert(/if \(options\.copyEquipment\)/.test(copySrc),
+  '9C.15 equipment block gated by options.copyEquipment')
+assert(/createEquipmentReservation\(\{/.test(copySrc),
+  '9C.15 equipment copy uses createEquipmentReservation')
+
+// 9C.15 task-template sourceId rewrite preserved.
+assert(/`task-template:\$\{tmplMatch\[1\]\}:\$\{destDate\}`/.test(DAB),
+  '9C.15 task-template sourceId rewritten task-template:<id>:<destDate>')
+assert(/`copied-task:\$\{sourceEvent\.id\}:\$\{destDate\}`/.test(DAB),
+  '9C.15 ad-hoc events fall back to copied-task:<srcEventId>:<destDate>')
 
 // ── DAB row render — conflict pill + widened dayEmployees ────────────
 section('DAB — conflict pill + widened dayEmployees + zero auto-delete')
@@ -205,8 +238,6 @@ assert(/Clear the assignment to resolve\./.test(DAB),
   'pill tooltip explains the resolution path (Clear the assignment to resolve.)')
 
 // No auto-delete of existing assignments — pin via negative.
-const copyMatch = DAB.match(/async function copyAssignmentsFromDate\(sourceDate, destinationDate, options\)\s*\{[\s\S]*?\n  \}/)
-const copySrc   = copyMatch ? copyMatch[0] : ''
 assert(copySrc.length > 0, 'copyAssignmentsFromDate body extracted')
 assert(!/deleteCrewAssignment[\s\S]{0,400}assignable\.reason/.test(copySrc),
   'copy helper does NOT delete existing destination assignments based on schedule status (regression-safe)')
