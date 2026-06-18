@@ -136,7 +136,18 @@ import {
   updateEmployeeScheduleOverride,
   deleteEmployeeScheduleOverride,
   listEmployeesDailySchedule,
+  // Phase E.5 — month calendar summary + copy-day
+  listEmployeesMonthCalendar,
+  copyEmployeeSchedulesDay,
 } from './api/schedules.js'
+import {
+  listShiftTemplates,
+  getShiftTemplate,
+  createShiftTemplate,
+  updateShiftTemplate,
+  deleteShiftTemplate,
+  applyShiftTemplate,
+} from './api/shiftTemplates.js'
 import {
   listScheduleTemplates,
   getScheduleTemplate,
@@ -1038,6 +1049,24 @@ async function handleApi(request, env, url, ctx) {
     }
   }
 
+  // ── /api/employee-schedules/calendar (Phase E.5) ──────────────────────
+  // Month summary for the calendar tile render — same regex-ordering
+  // concern as 'daily'.
+  if (pathname === '/api/employee-schedules/calendar') {
+    if (method === 'GET') {
+      const month = url.searchParams.get('month')
+      return listEmployeesMonthCalendar(env, courseId, month)
+    }
+  }
+
+  // ── /api/employee-schedules/copy-day (Phase E.5) ──────────────────────
+  // Drag-to-copy on the calendar: copies merged daily roster from
+  // sourceDate into employee_schedule_overrides for destinationDate.
+  // Never touches the recurring grid.
+  if (pathname === '/api/employee-schedules/copy-day') {
+    if (method === 'POST') return copyEmployeeSchedulesDay(env, request)
+  }
+
   // ── /api/employee-schedules ───────────────────────────────────────────
   if (pathname === '/api/employee-schedules') {
     if (method === 'GET')  return listEmployeeSchedules(env, courseId)
@@ -1051,6 +1080,27 @@ async function handleApi(request, env, url, ctx) {
     if (method === 'GET')    return getEmployeeSchedule(env, id)
     if (method === 'PATCH')  return updateEmployeeSchedule(env, id, request)
     if (method === 'DELETE') return deleteEmployeeSchedule(env, id)
+  }
+
+  // ── /api/shift-templates/:id/apply (Phase E.5) ────────────────────────
+  // MUST precede /:id so 'apply' isn't consumed.
+  const shiftApplyMatch = pathname.match(/^\/api\/shift-templates\/([^/]+)\/apply$/)
+  if (shiftApplyMatch) {
+    const id = decodeURIComponent(shiftApplyMatch[1])
+    if (method === 'POST') return applyShiftTemplate(env, id, request)
+  }
+
+  // ── /api/shift-templates (Phase E.5) ──────────────────────────────────
+  if (pathname === '/api/shift-templates') {
+    if (method === 'GET')  return listShiftTemplates(env, courseId)
+    if (method === 'POST') return createShiftTemplate(env, request)
+  }
+  const shiftTplMatch = pathname.match(/^\/api\/shift-templates\/([^/]+)$/)
+  if (shiftTplMatch) {
+    const id = decodeURIComponent(shiftTplMatch[1])
+    if (method === 'GET')    return getShiftTemplate(env, id)
+    if (method === 'PATCH')  return updateShiftTemplate(env, id, request)
+    if (method === 'DELETE') return deleteShiftTemplate(env, id)
   }
 
   // ── /api/employee-schedule-overrides (Phase E.2) ──────────────────────

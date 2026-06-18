@@ -1,22 +1,19 @@
 // Phase 13 — Schedule tab.
 //
-// The legacy CrewSchedule view (Phase 4) is replaced by the editable
-// WeeklyScheduleEditor. The new editor writes to the persistent
-// employee_schedules table; the Daily Assignment Board pulls its
-// roster from this data with active-employee fallback when no
-// schedules exist yet.
-//
-// Phase E.2 — A new DailyScheduleEditor surface mounts ABOVE the
-// weekly grid so a supervisor can mark someone off / sick / vacation
-// for one specific date without touching the recurring schedule. The
-// weekly editor below remains the source of truth for recurring rules.
+// Phase E.2 — DailyScheduleEditor mounts above the weekly grid for
+// per-date "off / sick / vacation" overrides.
+// Phase E.5 — AnnualScheduleCalendar mounts at the top: month view,
+// drag-to-copy days, shift-template apply/save. The Daily editor +
+// Weekly grid stay in place underneath as alternative surfaces.
 
-import DailyScheduleEditor  from './DailyScheduleEditor'
-import WeeklyScheduleEditor from './WeeklyScheduleEditor'
+import AnnualScheduleCalendar from './AnnualScheduleCalendar'
+import DailyScheduleEditor    from './DailyScheduleEditor'
+import WeeklyScheduleEditor   from './WeeklyScheduleEditor'
 
 export default function EmployeeScheduleTab() {
   return (
     <>
+      <AnnualScheduleCalendar />
       <DailyScheduleEditor />
       <WeeklyScheduleEditor />
     </>

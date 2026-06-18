@@ -272,9 +272,9 @@ section('No D1 schema change — migrations ledger preserved')
 const migrationFiles = readdirSync('worker/migrations').filter(f => f.endsWith('.sql')).sort()
 assert(migrationFiles.includes('0050_crew_employee_translation_prefs.sql'),
   '0050_crew_employee_translation_prefs.sql still in the migration ledger')
-const newMigrations = migrationFiles.filter(f => /^00(5[4-9]|[6-9]\d|\d{3,})/.test(f))
+const newMigrations = migrationFiles.filter(f => /^00(5[5-9]|[6-9]\d|\d{3,})/.test(f))
 assert(newMigrations.length === 0,
-  `no migration past 0053 (0053_employee_schedule_overrides accepted) (found: ${newMigrations.join(', ') || 'none'})`)
+  `no migration past 0054 (0054_shift_templates accepted) (found: ${newMigrations.join(', ') || 'none'})`)
 
 // ── Cross-file guards — UI-only sub-phase ──────────────────────────────
 section('Cross-file guards — Employee Mgmt / authoring / API untouched')

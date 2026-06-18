@@ -317,8 +317,8 @@ section('No new D1 migration past 0050 (translation cache uses existing *_es col
 
 const migrationFiles = readdirSync('worker/migrations').filter(f => f.endsWith('.sql')).sort()
 const highestMigration = migrationFiles[migrationFiles.length - 1]
-assert((highestMigration === '0050_crew_employee_translation_prefs.sql' || highestMigration === '0051_task_templates.sql' || highestMigration === '0052_spray_compliance_snapshots.sql' || highestMigration === '0053_employee_schedule_overrides.sql'),
-  `highest migration is 0050, 0051, 0052, or 0053 (employee_schedule_overrides accepted) (found: ${highestMigration})`)
+assert((highestMigration === '0050_crew_employee_translation_prefs.sql' || highestMigration === '0051_task_templates.sql' || highestMigration === '0052_spray_compliance_snapshots.sql' || highestMigration === '0053_employee_schedule_overrides.sql' || highestMigration === '0054_shift_templates.sql'),
+  `highest migration is 0050-0054 (shift_templates accepted) (found: ${highestMigration})`)
 
 // ── Cross-file guards — 9C.5c3 is server-only ──────────────────────────
 section('Cross-file guards — kiosk render / authoring UI / Employee Mgmt untouched')

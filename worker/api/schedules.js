@@ -409,3 +409,222 @@ export async function listEmployeesDailySchedule(env, courseId = null, date = nu
     rows:      merged,
   })
 }
+
+// ── Phase E.5 — Month calendar summary ────────────────────────────────────
+//
+// GET /api/employee-schedules/calendar?courseId=...&month=YYYY-MM
+//
+// Returns per-day summary stats for the calendar tile render:
+//   • scheduledCount  — employees expected to work (override scheduled
+//                       OR recurring scheduled without an off-override).
+//   • offCount        — employees off / vacation / sick by override.
+//   • totalHours      — sum of (end - start) across scheduled rows
+//                       (override times preferred; recurring as
+//                       fallback). 0 when times aren't set.
+//   • appliedShiftLabel — currently null; reserved for when the
+//                         calendar UI records which shift template
+//                         was applied last (Phase E.5b on-the-fly).
+//
+// The merge mirrors the daily endpoint so the calendar and the day
+// editor never disagree.
+
+function diffHours(startTime, endTime) {
+  if (!startTime || !endTime) return 0
+  const [sh, sm] = startTime.split(':').map(Number)
+  const [eh, em] = endTime.split(':').map(Number)
+  if (![sh, sm, eh, em].every(Number.isFinite)) return 0
+  const start = sh * 60 + sm
+  const end   = eh * 60 + em
+  if (end <= start) return 0
+  return (end - start) / 60
+}
+
+export async function listEmployeesMonthCalendar(env, courseId = null, month = null) {
+  if (typeof month !== 'string' || !/^\d{4}-\d{2}$/.test(month)) {
+    return badRequest('month query param must be a YYYY-MM string')
+  }
+  const [yearStr, monthStr] = month.split('-')
+  const year = parseInt(yearStr, 10)
+  const mon  = parseInt(monthStr, 10)
+  if (mon < 1 || mon > 12) return badRequest('month must be 01-12')
+
+  // Compute first/last day of month for index pre-filtering.
+  const firstDay = `${yearStr}-${monthStr}-01`
+  // SQLite-friendly: walk through possible days 28-31 and pick the
+  // last valid one. Avoids importing a date library on the worker.
+  const daysInMonth = new Date(year, mon, 0).getDate()
+  const lastDay = `${yearStr}-${monthStr}-${String(daysInMonth).padStart(2, '0')}`
+
+  // Active employees for this course.
+  const courseFilter = buildCourseFilter(courseId)
+  const { results: employees } = await env.DB.prepare(
+    `SELECT id FROM crew_employees
+       ${courseFilter.where}${courseFilter.where ? ' AND' : 'WHERE'} status != 'inactive'`,
+  ).bind(...courseFilter.binds).all()
+
+  // Recurring rules (all DOWs).
+  const recurringFilter = buildCourseFilter(courseId)
+  const { results: recurringRows } = await env.DB.prepare(
+    `SELECT * FROM employee_schedules ${recurringFilter.where}`,
+  ).bind(...recurringFilter.binds).all()
+  const recurringByDowEmp = new Map()
+  for (const r of recurringRows) {
+    const key = `${r.day_of_week}:${r.employee_id}`
+    recurringByDowEmp.set(key, r)
+  }
+
+  // Overrides for this month.
+  const overrideFilter = buildCourseFilter(courseId)
+  const { results: overrideRows } = await env.DB.prepare(
+    `SELECT * FROM employee_schedule_overrides
+       ${overrideFilter.where}${overrideFilter.where ? ' AND' : 'WHERE'}
+       effective_date BETWEEN ? AND ?`,
+  ).bind(...overrideFilter.binds, firstDay, lastDay).all()
+  const overrideByDateEmp = new Map()
+  for (const r of overrideRows) {
+    const key = `${r.effective_date}:${r.employee_id}`
+    overrideByDateEmp.set(key, r)
+  }
+
+  // Build per-day summary.
+  const days = []
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateIso = `${yearStr}-${monthStr}-${String(d).padStart(2, '0')}`
+    const dow = new Date(`${dateIso}T00:00:00`).getDay()
+    let scheduled = 0
+    let off       = 0
+    let hours     = 0
+    for (const emp of employees) {
+      const ov  = overrideByDateEmp.get(`${dateIso}:${emp.id}`)
+      const rec = recurringByDowEmp.get(`${dow}:${emp.id}`)
+      const effective = ov ?? rec
+      if (!effective) continue
+      if (effective.status === 'scheduled') {
+        scheduled += 1
+        // Override times override recurring; fall back to recurring.
+        const start = ov?.start_time ?? rec?.start_time ?? null
+        const end   = ov?.end_time   ?? rec?.end_time   ?? null
+        hours += diffHours(start, end)
+      } else {
+        off += 1
+      }
+    }
+    days.push({
+      date:              dateIso,
+      dayOfWeek:         dow,
+      scheduledCount:    scheduled,
+      offCount:          off,
+      totalHours:        Math.round(hours * 10) / 10,
+      appliedShiftLabel: null,
+    })
+  }
+
+  return json({ month, days })
+}
+
+// ── Phase E.5 — Copy day ──────────────────────────────────────────────────
+//
+// POST /api/employee-schedules/copy-day  body { sourceDate, destinationDate, replace }
+//
+// Copies the MERGED daily schedule from sourceDate into
+// employee_schedule_overrides for destinationDate. Source rows can be
+// either recurring (so a Wednesday recurring row copies into a Friday
+// override row) or already-override (so the supervisor can clone "last
+// Friday's tournament setup" into next Friday).
+//
+// When `replace: true`, existing overrides for destinationDate are
+// wiped before the copy. Otherwise, conflicts skip (UNIQUE).
+//
+// CRITICAL: this NEVER writes to employee_schedules. The recurring
+// grid stays pristine — only employee_schedule_overrides accumulates
+// rows. Drag-to-copy on the calendar UI calls this endpoint.
+
+export async function copyEmployeeSchedulesDay(env, request) {
+  const body = await readJson(request)
+  const sourceDate      = coerceDate(body.sourceDate)
+  const destinationDate = coerceDate(body.destinationDate)
+  if (!sourceDate || !destinationDate) {
+    return badRequest('sourceDate and destinationDate must be YYYY-MM-DD strings')
+  }
+  if (sourceDate === destinationDate) {
+    return badRequest('sourceDate and destinationDate must differ')
+  }
+  const replace = body.replace === true
+
+  const courseId = resolveCourseId(body)
+  const courseFilter = buildCourseFilter(courseId)
+
+  // Compute source DOW for the recurring lookup.
+  const srcDow = new Date(`${sourceDate}T00:00:00`).getDay()
+
+  // Active employees only.
+  const { results: employees } = await env.DB.prepare(
+    `SELECT id FROM crew_employees
+       ${courseFilter.where}${courseFilter.where ? ' AND' : 'WHERE'} status != 'inactive'`,
+  ).bind(...courseFilter.binds).all()
+
+  // Recurring + override for source date.
+  const { results: srcRecurring } = await env.DB.prepare(
+    `SELECT * FROM employee_schedules
+       ${courseFilter.where}${courseFilter.where ? ' AND' : 'WHERE'} day_of_week = ?`,
+  ).bind(...courseFilter.binds, srcDow).all()
+  const srcRecByEmp = new Map()
+  for (const r of srcRecurring) srcRecByEmp.set(r.employee_id, r)
+
+  const { results: srcOverrides } = await env.DB.prepare(
+    `SELECT * FROM employee_schedule_overrides
+       ${courseFilter.where}${courseFilter.where ? ' AND' : 'WHERE'} effective_date = ?`,
+  ).bind(...courseFilter.binds, sourceDate).all()
+  const srcOvByEmp = new Map()
+  for (const r of srcOverrides) srcOvByEmp.set(r.employee_id, r)
+
+  let replaced = 0
+  if (replace) {
+    const wipe = await env.DB.prepare(
+      `DELETE FROM employee_schedule_overrides
+        WHERE course_id = ? AND effective_date = ?`,
+    ).bind(courseId, destinationDate).run()
+    replaced = wipe.meta?.changes ?? 0
+  }
+
+  let copied = 0, skipped = 0
+  for (const emp of employees) {
+    const ov  = srcOvByEmp.get(emp.id)
+    const rec = srcRecByEmp.get(emp.id)
+    const effective = ov ?? rec
+    if (!effective) { skipped += 1; continue }
+
+    try {
+      await env.DB.prepare(`
+        INSERT INTO employee_schedule_overrides (
+          id, course_id, employee_id, effective_date,
+          start_time, end_time, role, status, notes
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(
+        generateId('schov'),
+        courseId,
+        emp.id,
+        destinationDate,
+        effective.start_time,
+        effective.end_time,
+        effective.role,
+        effective.status,
+        ov?.notes ?? null,           // recurring rules have no notes
+      ).run()
+      copied += 1
+    } catch {
+      // UNIQUE collision on (course, employee, destDate) — merge.
+      skipped += 1
+    }
+  }
+
+  return json({
+    ok:              true,
+    sourceDate,
+    destinationDate,
+    replace,
+    replaced,
+    copied,
+    skipped,
+  })
+}

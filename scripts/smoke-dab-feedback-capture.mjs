@@ -307,9 +307,9 @@ assert(migrationFiles.includes('0029_pilot_feedback.sql'),
   '0029_pilot_feedback.sql still present (the table we reuse)')
 assert(migrationFiles.includes('0051_task_templates.sql'),
   '0051_task_templates.sql still in the migration ledger')
-const past0051 = migrationFiles.filter(f => /^00(5[4-9]|[6-9]\d|\d{3,})/.test(f))
+const past0051 = migrationFiles.filter(f => /^00(5[5-9]|[6-9]\d|\d{3,})/.test(f))
 assert(past0051.length === 0,
-  `no migration past 0053 (found: ${past0051.join(', ') || 'none'})`)
+  `no migration past 0054 (found: ${past0051.join(', ') || 'none'})`)
 
 // ── Regression couples — prior phase surfaces preserved ──────────────
 section('Regression couples — task / copy / translation / kiosk unchanged')

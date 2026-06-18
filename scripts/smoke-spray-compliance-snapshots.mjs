@@ -391,9 +391,9 @@ section('Migrations ledger — 0052 ceiling')
 const migrationFiles = readdirSync('worker/migrations').filter(f => f.endsWith('.sql')).sort()
 assert(migrationFiles.includes('0052_spray_compliance_snapshots.sql'),
   '0052_spray_compliance_snapshots.sql present in worker/migrations')
-const past0052 = migrationFiles.filter(f => /^00(5[4-9]|[6-9]\d|\d{3,})/.test(f))
+const past0052 = migrationFiles.filter(f => /^00(5[5-9]|[6-9]\d|\d{3,})/.test(f))
 assert(past0052.length === 0,
-  `no migration past 0053 (found: ${past0052.join(', ') || 'none'})`)
+  `no migration past 0054 (found: ${past0052.join(', ') || 'none'})`)
 
 // ── Spray-schema regression couples — original tables intact ─────────
 section('Spray schema regression couples — old migrations unchanged')

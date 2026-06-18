@@ -56,6 +56,11 @@ const MUTATION_RULES = [
   ['/api/schedule-templates',     'canEditAssignments'],
   ['/api/employee-schedules',     'canEditAssignments'],
   ['/api/employee-schedule-overrides', 'canEditAssignments'],   // Phase E.2
+  // Phase E.5 — /api/employee-schedules/copy-day is gated by the
+  // existing /api/employee-schedules canEditAssignments rule via
+  // prefix match. Shift templates need their own entry since they
+  // live under a separate /api/shift-templates prefix.
+  ['/api/shift-templates',             'canEditAssignments'],   // Phase E.5
   ['/api/crew-employees',         'canEditAssignments'],
   ['/api/alerts',                 'canEditAssignments'],
 
