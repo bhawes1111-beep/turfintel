@@ -114,6 +114,27 @@ export async function applyShiftTemplate(id, { effectiveDate, replace }) {
   })
 }
 
+// Phase E.6 — Duplicate an existing template into a new template by
+// name. Fetches the full template (header + rows) via GET, then POSTs
+// a fresh copy. Returns the saved row so the caller can refresh.
+export async function duplicateShiftTemplate(id, newName) {
+  const full = await fetchShiftTemplateById(id)
+  return createShiftTemplate({
+    name: newName,
+    label: full.label,
+    description: full.description,
+    rows: (full.rows ?? []).map(r => ({
+      employeeId: r.employeeId,
+      status:     r.status,
+      startTime:  r.startTime,
+      endTime:    r.endTime,
+      role:       r.role,
+      notes:      r.notes,
+      sortOrder:  r.sortOrder ?? 0,
+    })),
+  })
+}
+
 // Copy a day's merged schedule onto another date. Used by the
 // calendar's drag-to-copy interaction.
 export async function copyScheduleDay({ sourceDate, destinationDate, replace }) {

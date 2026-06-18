@@ -426,10 +426,208 @@
   color: rgba(212, 237, 212, 0.45);
 }
 
-.templateActions { display: flex; gap: 6px; }
+.templateActions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ── Phase E.6 — Jump-to-date input ── */
+.jumpToDate {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+  padding: 2px 8px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(74, 158, 74, 0.28);
+  border-radius: 5px;
+}
+.jumpToDateLabel {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(212, 237, 212, 0.55);
+}
+.jumpToDate input[type="date"] {
+  background: transparent;
+  border: none;
+  color: #d4edd4;
+  font: inherit;
+  font-size: 12px;
+  padding: 2px 4px;
+  color-scheme: dark;
+}
+.jumpToDate input[type="date"]:focus {
+  outline: none;
+  color: #ecfdf5;
+}
+
+/* ── Phase E.6 — Drag source visual feedback ── */
+.dayTile[data-drag-source="true"] {
+  background: rgba(56, 189, 248, 0.18);
+  border-color: rgba(56, 189, 248, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.4);
+  cursor: grabbing;
+}
+
+/* ── Phase E.6 — Wider modal for picker + preview pane layout ── */
+.modalWide { width: 760px; }
+
+.pickerLayout {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 16px;
+  min-height: 280px;
+}
+
+.templateRow { cursor: pointer; }
+.templateRow[data-active="true"] {
+  background: rgba(34, 197, 94, 0.18);
+  border-color: rgba(74, 222, 128, 0.5);
+}
+.templateRow:hover:not([data-active="true"]) {
+  background: rgba(74, 158, 74, 0.1);
+}
+
+.previewPane {
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(74, 158, 74, 0.18);
+  border-radius: 6px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.previewEmpty {
+  font-size: 11.5px;
+  color: rgba(212, 237, 212, 0.45);
+  font-style: italic;
+  margin: 0;
+}
+.previewTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ecfdf5;
+  margin: 0;
+}
+.previewLabel {
+  font-size: 11px;
+  color: rgba(212, 237, 212, 0.6);
+  font-style: italic;
+  margin: 0;
+}
+
+.previewStats {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 0;
+}
+.previewStats > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 3px 0;
+}
+.previewStats dt {
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(212, 237, 212, 0.55);
+}
+.previewStats dd {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 13px;
+  color: #bbf7d0;
+  margin: 0;
+}
+
+.replaceCheckbox {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 8px 10px;
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  border-radius: 5px;
+  font-size: 11.5px;
+  color: #fde68a;
+  line-height: 1.4;
+  cursor: pointer;
+}
+.replaceCheckbox input[type="checkbox"] {
+  margin-top: 2px;
+  flex-shrink: 0;
+  accent-color: #fbbf24;
+}
+
+.previewActions {
+  margin-top: auto;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ── Phase E.6 — Quick-create banner (no templates yet) ── */
+.quickCreateBanner {
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px dashed rgba(74, 158, 74, 0.42);
+  border-radius: 8px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.quickCreateBanner p {
+  margin: 0;
+  font-size: 12.5px;
+  color: rgba(212, 237, 212, 0.8);
+  line-height: 1.45;
+}
+.quickCreateList {
+  list-style: none;
+  padding: 0;
+  margin: 4px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.quickCreateList li {
+  font-size: 12px;
+  color: #d4edd4;
+}
+.quickCreateList li strong { color: #ecfdf5; }
+.quickCreateList li span   { color: rgba(212, 237, 212, 0.5); font-style: italic; }
+.quickCreateNote {
+  font-size: 10.5px !important;
+  color: rgba(212, 237, 212, 0.5) !important;
+  font-style: italic;
+}
+
+/* ── Phase E.6 — Smaller action button for inline template controls ── */
+.actionBtnSmall {
+  background: rgba(74, 158, 74, 0.1);
+  border: 1px solid rgba(74, 158, 74, 0.28);
+  border-radius: 4px;
+  color: #4ade80;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 2px 7px;
+  cursor: pointer;
+}
+.actionBtnSmall:hover:not(:disabled) { background: rgba(74, 158, 74, 0.22); }
+.actionBtnSmall:disabled { opacity: 0.5; cursor: not-allowed; }
+
+@media (max-width: 760px) {
+  .modalWide { width: 100%; }
+  .pickerLayout { grid-template-columns: 1fr; }
+  .previewPane  { order: -1; }
+}
 
 @media (max-width: 600px) {
   .dayTile { min-height: 56px; padding: 4px 6px; }
   .daySummary { font-size: 9px; }
   .editorTimeInput { width: 76px; }
+  .calendarNav { flex-wrap: wrap; row-gap: 4px; }
+  .jumpToDate { margin-left: 0; margin-top: 4px; }
 }

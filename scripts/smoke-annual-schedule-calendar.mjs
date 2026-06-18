@@ -304,13 +304,14 @@ assert(/onDrop=\{\(\) => handleDrop\(cell\.date\)\}/.test(CAL),
 assert(/onDragOver=\{handleDragOver\}/.test(CAL),
   'day tile onDragOver wired')
 
-// Drop opens a confirmation dialog.
+// Drop opens a confirmation dialog. Phase E.6 inlined the source/dest
+// variables and reworded the prompt slightly; accept the new shape.
 const dropMatch = CAL.match(/async function handleDrop\(destinationDate\)[\s\S]*?\n  \}/)
 const dropSrc   = dropMatch ? dropMatch[0] : ''
 assert(dropSrc.length > 0, 'handleDrop body extracted')
-assert(/Copy schedule from \$\{prettySrc\} to \$\{prettyDst\}\?/.test(dropSrc),
+assert(/Copy schedule from \$\{dragSource\} to \$\{destinationDate\}\?/.test(dropSrc),
   'handleDrop confirms "Copy schedule from <src> to <dst>?" when destination is clean')
-assert(/\$\{prettyDst\} already has a schedule\. Replace it with \$\{prettySrc\}'s schedule\?/.test(dropSrc),
+assert(/\$\{destinationDate\} already has a schedule\. Replace it with \$\{dragSource\}'s schedule\?/.test(dropSrc),
   'handleDrop warns when destination already has a schedule before replacing')
 
 // Drop never touches recurring schedules.
@@ -319,15 +320,18 @@ assert(!/employee_schedules|patchEmployeeSchedule|createEmployeeSchedule/.test(d
 assert(/await copyScheduleDay\(\{ sourceDate: dragSource, destinationDate, replace \}\)/.test(dropSrc),
   'handleDrop delegates to copyScheduleDay store helper')
 
-// Apply template flow asks for confirm + replace gate.
-const applyMatch = CAL.match(/async function handleApplyTemplate\(templateId\)[\s\S]*?\n  \}/)
+// Apply template flow. Phase E.6 moved the confirm into the template
+// picker modal (preview pane + in-UI Replace toggle) — handleApplyTemplate
+// now trusts a `replaceConfirmed` arg from the picker instead of firing
+// its own browser confirm. Pin the new shape.
+const applyMatch = CAL.match(/async function handleApplyTemplate\(templateId, replaceConfirmed\)[\s\S]*?\n  \}/)
 const applySrc   = applyMatch ? applyMatch[0] : ''
-assert(/Apply template to \$\{selectedDate\}\?/.test(applySrc),
-  'handleApplyTemplate asks for plain confirm when destination has no overrides')
-assert(/\$\{selectedDate\} already has a schedule\. Replace it with this template\?/.test(applySrc),
-  'handleApplyTemplate warns + asks for replace when destination already has overrides')
-assert(/await applyShiftTemplate\(templateId, \{ effectiveDate: selectedDate, replace \}\)/.test(applySrc),
-  'handleApplyTemplate calls store applyShiftTemplate with { effectiveDate, replace }')
+assert(applySrc.length > 0, 'handleApplyTemplate body extracted (E.6 signature: templateId, replaceConfirmed)')
+assert(/await applyShiftTemplate\(templateId, \{ effectiveDate: selectedDate, replace: replaceConfirmed \}\)/.test(applySrc),
+  'handleApplyTemplate calls applyShiftTemplate with { effectiveDate, replace: replaceConfirmed } (E.6)')
+// The replace-warning copy lives in the picker modal now.
+assert(/already has overrides/.test(CAL),
+  "template picker surfaces in-UI replace warning ('already has overrides')")
 
 // Clear-day-overrides button never wipes the recurring grid.
 assert(/async function clearDayOverrides/.test(CAL),

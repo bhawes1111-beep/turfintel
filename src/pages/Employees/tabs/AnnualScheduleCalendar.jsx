@@ -9,6 +9,18 @@
 //
 // The recurring weekly grid (employee_schedules) is NEVER mutated from
 // this surface — every write lands in employee_schedule_overrides.
+//
+// Phase E.6 — Usability polish:
+//   • Jump-to-date input in the header (faster than prev/next clicks).
+//   • Quick-create A/B/C empty templates so a fresh course gets a
+//     usable shift library in one click.
+//   • Rename + duplicate templates in the picker.
+//   • Apply-template preview: counts + hours render BEFORE the
+//     destructive action so the supervisor sees exactly what they're
+//     about to write.
+//   • Drag source / drop target styling distinguishable.
+//   • Day-editor quick actions: Mark all Scheduled / Mark all Off /
+//     Clear day overrides (the last one already existed).
 
 import { useEffect, useMemo, useState } from 'react'
 import { useCrewData } from '../../../utils/crew/crewStore'
@@ -25,8 +37,10 @@ import {
   refreshShiftTemplatesData,
   fetchShiftTemplateById,
   createShiftTemplate,
+  patchShiftTemplate,
   deleteShiftTemplate,
   applyShiftTemplate,
+  duplicateShiftTemplate,
   copyScheduleDay,
 } from '../../../utils/schedules/shiftTemplatesStore'
 import { useToast } from '../../../utils/feedback/toastContext'
@@ -41,6 +55,17 @@ const STATUS_OPTS = [
 ]
 
 const DOW_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+// Phase E.6 — Defaults for quick-create. Each entry creates an empty
+// template (zero rows) with the given name; the supervisor saves a
+// real day onto it later via "Save as Template…" overwriting the
+// blank shell, or applies it as-is (no-op). A label hint shows on
+// each tile in the picker.
+const QUICK_CREATE_DEFAULTS = [
+  { name: 'A Shift',  label: 'Early shift' },
+  { name: 'B Shift',  label: 'Late shift'  },
+  { name: 'C Shift',  label: 'Weekend / small crew' },
+]
 
 function todayIso() { return new Date().toISOString().slice(0, 10) }
 
@@ -74,6 +99,22 @@ function buildMonthGrid(yyyymm) {
   }
   while (cells.length % 7 !== 0) cells.push({ date: null })
   return cells
+}
+
+// Phase E.6 — Compute a preview summary {scheduled, off, totalHours}
+// for a set of rows. Used by the template picker so the supervisor
+// sees what they're applying BEFORE clicking the destructive button.
+function summarizeRows(rows) {
+  let scheduled = 0, off = 0, hours = 0
+  for (const r of rows ?? []) {
+    if (r.status === 'scheduled') {
+      scheduled++
+      hours += diffHours(r.startTime, r.endTime)
+    } else {
+      off++
+    }
+  }
+  return { scheduled, off, totalHours: Math.round(hours * 10) / 10 }
 }
 
 export default function AnnualScheduleCalendar() {
@@ -185,10 +226,34 @@ export default function AnnualScheduleCalendar() {
     }
   }
 
+  // Phase E.6 — Bulk-status helpers. "Mark all scheduled" and "Mark
+  // all off" iterate the merged roster and apply a status to every
+  // employee whose current merged status differs. Reuses applyEdit so
+  // the recurring grid is still untouched (writes go to overrides).
+  async function markAllStatus(targetStatus) {
+    if (!confirm(`Mark all employees ${targetStatus} for ${selectedDate}? This writes overrides for every operator and never modifies the weekly recurring grid.`)) return
+    setBusy(true)
+    try {
+      let saved = 0
+      for (const row of selectedDayRows) {
+        if (row.status === targetStatus) continue
+        await applyEdit(row, { status: targetStatus })
+        saved += 1
+      }
+      toast.success(`Marked ${saved} ${targetStatus} for ${selectedDate}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   // ── Calendar tile interactions ──────────────────────────────────────
   function handleSelectDate(date) {
     if (!date) return
     setSelectedDate(date)
+    // Phase E.6 — Snap to the month of the clicked date so picking a
+    // day on a leading/trailing blank actually navigates the calendar.
+    const month = date.slice(0, 7)
+    if (month !== currentMonth) setCurrentMonth(month)
   }
 
   function handleDragStart(date) {
@@ -199,21 +264,21 @@ export default function AnnualScheduleCalendar() {
   }
   async function handleDrop(destinationDate) {
     if (!dragSource || !destinationDate || dragSource === destinationDate) {
+      // Phase E.6 — Same-day copy fails silently (no toast, no
+      // confirm) — quick-and-quiet feels right for a no-op gesture.
       setDragSource(null)
       return
     }
     const destHasOverrides = scheduleOverrides.some(o => o.effectiveDate === destinationDate)
-    const prettySrc = dragSource
-    const prettyDst = destinationDate
     let replace = false
     if (destHasOverrides) {
-      if (!confirm(`${prettyDst} already has a schedule. Replace it with ${prettySrc}'s schedule?`)) {
+      if (!confirm(`${destinationDate} already has a schedule. Replace it with ${dragSource}'s schedule?`)) {
         setDragSource(null)
         return
       }
       replace = true
     } else {
-      if (!confirm(`Copy schedule from ${prettySrc} to ${prettyDst}?`)) {
+      if (!confirm(`Copy schedule from ${dragSource} to ${destinationDate}?`)) {
         setDragSource(null)
         return
       }
@@ -222,8 +287,10 @@ export default function AnnualScheduleCalendar() {
     try {
       const result = await copyScheduleDay({ sourceDate: dragSource, destinationDate, replace })
       await refreshScheduleOverridesData()
+      // Phase E.6 — Toast format leads with "Copied from <date>" so
+      // the supervisor knows at a glance which source was used.
       toast.success(
-        `Copied ${dragSource} → ${destinationDate}: ${result.copied} copied${
+        `Copied from ${dragSource} to ${destinationDate}: ${result.copied} copied${
           result.replaced ? ` · ${result.replaced} replaced` : ''
         }${result.skipped ? ` · ${result.skipped} skipped` : ''}`,
       )
@@ -237,18 +304,14 @@ export default function AnnualScheduleCalendar() {
   }
 
   // ── Shift template apply ────────────────────────────────────────────
-  async function handleApplyTemplate(templateId) {
-    const destHasOverrides = scheduleOverrides.some(o => o.effectiveDate === selectedDate)
-    let replace = false
-    if (destHasOverrides) {
-      if (!confirm(`${selectedDate} already has a schedule. Replace it with this template?`)) return
-      replace = true
-    } else {
-      if (!confirm(`Apply template to ${selectedDate}?`)) return
-    }
+  async function handleApplyTemplate(templateId, replaceConfirmed) {
+    // Phase E.6 — The template picker now confirms in-UI (preview
+    // panel + "Replace existing schedule" toggle), so we trust the
+    // replaceConfirmed flag from the caller instead of firing a
+    // browser confirm() per click. Keeps the modal flow snappy.
     setBusy(true)
     try {
-      const result = await applyShiftTemplate(templateId, { effectiveDate: selectedDate, replace })
+      const result = await applyShiftTemplate(templateId, { effectiveDate: selectedDate, replace: replaceConfirmed })
       await refreshScheduleOverridesData()
       toast.success(
         `Applied "${result.templateName}" to ${selectedDate}: ${result.applied} applied${
@@ -292,13 +355,81 @@ export default function AnnualScheduleCalendar() {
   }
 
   async function handleDeleteTemplate(t) {
-    if (!confirm(`Delete template "${t.name}"? Past applications are not affected.`)) return
+    // Phase E.6 — More descriptive confirm copy including the row
+    // count so the supervisor knows what they're losing.
+    if (!confirm(
+      `Delete shift template "${t.name}" (${t.rowCount ?? 0} rows)?\n\n` +
+      `Past applications of this template stay in place — only the saved template is removed. ` +
+      `This cannot be undone.`,
+    )) return
     setBusy(true)
     try {
       await deleteShiftTemplate(t.id)
       toast.success(`Deleted template "${t.name}"`)
     } catch (err) {
       toast.error(`Delete failed: ${err.message}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // Phase E.6 — Quick-create empty A/B/C templates so a fresh course
+  // gets a usable shift library in one click. Each is a no-rows
+  // shell; the supervisor populates it via "Save as Template…"
+  // overwriting the blank later.
+  async function handleQuickCreateDefaults() {
+    setBusy(true)
+    try {
+      let created = 0
+      for (const def of QUICK_CREATE_DEFAULTS) {
+        const existing = shiftTemplates.find(t => t.name === def.name)
+        if (existing) continue
+        await createShiftTemplate({ name: def.name, label: def.label, rows: [] })
+        created++
+      }
+      await refreshShiftTemplatesData()
+      if (created === 0) {
+        toast.info('A/B/C templates already exist.')
+      } else {
+        toast.success(`Created ${created} starter template${created !== 1 ? 's' : ''}`)
+      }
+    } catch (err) {
+      toast.error(`Quick-create failed: ${err.message}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // Phase E.6 — Rename template inline.
+  async function handleRenameTemplate(t) {
+    const next = prompt(`Rename "${t.name}" to:`, t.name)
+    if (next === null) return
+    const trimmed = next.trim()
+    if (!trimmed || trimmed === t.name) return
+    setBusy(true)
+    try {
+      await patchShiftTemplate(t.id, { name: trimmed })
+      toast.success(`Renamed to "${trimmed}"`)
+    } catch (err) {
+      toast.error(`Rename failed: ${err.message}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // Phase E.6 — Duplicate template via store helper.
+  async function handleDuplicateTemplate(t) {
+    const next = prompt(`Duplicate "${t.name}" as:`, `${t.name} (copy)`)
+    if (next === null) return
+    const trimmed = next.trim()
+    if (!trimmed) return
+    setBusy(true)
+    try {
+      await duplicateShiftTemplate(t.id, trimmed)
+      await refreshShiftTemplatesData()
+      toast.success(`Duplicated as "${trimmed}"`)
+    } catch (err) {
+      toast.error(`Duplicate failed: ${err.message}`)
     } finally {
       setBusy(false)
     }
@@ -319,6 +450,23 @@ export default function AnnualScheduleCalendar() {
           <span className={styles.currentMonth}>{currentMonth}</span>
           <button type="button" onClick={() => setCurrentMonth(m => shiftMonth(m, 1))} className={styles.navBtn} aria-label="Next month">›</button>
           <button type="button" onClick={() => { setCurrentMonth(todayIso().slice(0, 7)); setSelectedDate(todayIso()) }} className={styles.todayBtn}>Today</button>
+          {/* Phase E.6 — Jump-to-date input. Beats prev/next clicks
+              when navigating months apart. Snaps both currentMonth
+              AND selectedDate to whatever the user picks. */}
+          <label className={styles.jumpToDate}>
+            <span className={styles.jumpToDateLabel}>Jump to</span>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={e => {
+                const next = e.target.value
+                if (!next) return
+                setSelectedDate(next)
+                setCurrentMonth(next.slice(0, 7))
+              }}
+              aria-label="Jump to date"
+            />
+          </label>
         </div>
       </header>
 
@@ -332,6 +480,7 @@ export default function AnnualScheduleCalendar() {
           const summary = summaryByDate.get(cell.date)
           const isSelected = cell.date === selectedDate
           const isToday    = cell.date === todayIso()
+          const isDragSource = dragSource === cell.date
           const dayNum     = parseInt(cell.date.slice(8), 10)
           return (
             <button
@@ -340,9 +489,11 @@ export default function AnnualScheduleCalendar() {
               className={styles.dayTile}
               data-selected={isSelected ? 'true' : undefined}
               data-today={isToday ? 'true' : undefined}
+              data-drag-source={isDragSource ? 'true' : undefined}
               data-drag-over={dragSource && dragSource !== cell.date ? 'true' : undefined}
               draggable={!busy}
               onDragStart={() => handleDragStart(cell.date)}
+              onDragEnd={() => setDragSource(null)}
               onDragOver={handleDragOver}
               onDrop={() => handleDrop(cell.date)}
               onClick={() => handleSelectDate(cell.date)}
@@ -350,9 +501,9 @@ export default function AnnualScheduleCalendar() {
               <div className={styles.dayNumber}>{dayNum}</div>
               {summary && (
                 <div className={styles.daySummary}>
-                  <span className={styles.dayCountScheduled}>{summary.scheduledCount}</span>
-                  {summary.offCount > 0 && <span className={styles.dayCountOff}>{summary.offCount} off</span>}
+                  {summary.scheduledCount > 0 && <span className={styles.dayCountScheduled}>{summary.scheduledCount}</span>}
                   {summary.totalHours > 0 && <span className={styles.dayHours}>{summary.totalHours}h</span>}
+                  {summary.offCount > 0 && <span className={styles.dayCountOff}>{summary.offCount} off</span>}
                 </div>
               )}
             </button>
@@ -365,6 +516,14 @@ export default function AnnualScheduleCalendar() {
         <header className={styles.dayEditorHeader}>
           <h4 className={styles.dayEditorTitle}>{selectedDate}</h4>
           <div className={styles.dayEditorActions}>
+            {/* Phase E.6 — Quick status helpers. Each writes overrides
+                only — recurring grid is never touched. */}
+            <button type="button" className={styles.actionBtn} onClick={() => markAllStatus('scheduled')} disabled={busy}>
+              Mark all Scheduled
+            </button>
+            <button type="button" className={styles.actionBtn} onClick={() => markAllStatus('off')} disabled={busy}>
+              Mark all Off
+            </button>
             <button type="button" className={styles.actionBtn} onClick={() => setTemplatePickerOpen(true)} disabled={busy}>
               Apply Template…
             </button>
@@ -458,41 +617,18 @@ export default function AnnualScheduleCalendar() {
 
       {/* ── Template picker modal ── */}
       {templatePickerOpen && (
-        <div className={styles.modalOverlay} onClick={() => setTemplatePickerOpen(false)}>
-          <div className={styles.modal} onClick={e => e.stopPropagation()}>
-            <header className={styles.modalHeader}>
-              <h3 className={styles.modalTitle}>Apply Shift Template to {selectedDate}</h3>
-              <button type="button" className={styles.modalClose} onClick={() => setTemplatePickerOpen(false)}>×</button>
-            </header>
-            <div className={styles.modalBody}>
-              {shiftTemplates.length === 0 ? (
-                <p className={styles.modalEmpty}>
-                  No shift templates yet. Use <strong>Save as Template…</strong> on a day to create one (e.g. "A Shift", "Tournament Morning").
-                </p>
-              ) : (
-                <ul className={styles.templateList}>
-                  {shiftTemplates.map(t => (
-                    <li key={t.id} className={styles.templateRow}>
-                      <div className={styles.templateMeta}>
-                        <strong>{t.name}</strong>
-                        {t.label && <span className={styles.templateLabel}>{t.label}</span>}
-                        <span className={styles.templateRowCount}>{t.rowCount ?? 0} rows</span>
-                      </div>
-                      <div className={styles.templateActions}>
-                        <button type="button" className={styles.actionBtn} disabled={busy} onClick={() => handleApplyTemplate(t.id)}>
-                          Apply
-                        </button>
-                        <button type="button" className={`${styles.actionBtn} ${styles.actionBtnDanger}`} disabled={busy} onClick={() => handleDeleteTemplate(t)}>
-                          Delete
-                        </button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
-        </div>
+        <TemplatePickerModal
+          templates={shiftTemplates}
+          selectedDate={selectedDate}
+          destHasOverrides={scheduleOverrides.some(o => o.effectiveDate === selectedDate)}
+          busy={busy}
+          onClose={() => setTemplatePickerOpen(false)}
+          onApply={handleApplyTemplate}
+          onDelete={handleDeleteTemplate}
+          onRename={handleRenameTemplate}
+          onDuplicate={handleDuplicateTemplate}
+          onQuickCreate={handleQuickCreateDefaults}
+        />
       )}
 
       {/* ── Save-as modal ── */}
@@ -506,6 +642,159 @@ export default function AnnualScheduleCalendar() {
         />
       )}
     </section>
+  )
+}
+
+// Phase E.6 — Template picker with preview, quick-create defaults,
+// rename, duplicate, and replace warning surfaced in-UI (no extra
+// browser confirm before each apply). The supervisor selects a
+// template → preview pane shows count + hours → toggle Replace if
+// needed → click Apply.
+function TemplatePickerModal({
+  templates,
+  selectedDate,
+  destHasOverrides,
+  busy,
+  onClose,
+  onApply,
+  onDelete,
+  onRename,
+  onDuplicate,
+  onQuickCreate,
+}) {
+  const [activeId, setActiveId] = useState(null)
+  const [activeRows, setActiveRows] = useState(null)
+  const [loadingPreview, setLoadingPreview] = useState(false)
+  const [replace, setReplace] = useState(destHasOverrides)
+
+  useEffect(() => { setReplace(destHasOverrides) }, [destHasOverrides])
+
+  // Lazy-fetch full template rows when a tile is selected so the
+  // preview pane can summarize them. The list view only carries
+  // rowCount; full rows[] live behind GET /:id.
+  useEffect(() => {
+    if (!activeId) { setActiveRows(null); return }
+    let cancelled = false
+    setLoadingPreview(true)
+    fetchShiftTemplateById(activeId)
+      .then(t => { if (!cancelled) setActiveRows(t.rows ?? []) })
+      .catch(() => { if (!cancelled) setActiveRows([]) })
+      .finally(() => { if (!cancelled) setLoadingPreview(false) })
+    return () => { cancelled = true }
+  }, [activeId])
+
+  const preview = useMemo(() => summarizeRows(activeRows ?? []), [activeRows])
+  const activeTemplate = templates.find(t => t.id === activeId)
+  const hasTemplates   = templates.length > 0
+  const canApply       = !!activeId && !busy
+
+  return (
+    <div className={styles.modalOverlay} onClick={onClose}>
+      <div className={`${styles.modal} ${styles.modalWide}`} onClick={e => e.stopPropagation()}>
+        <header className={styles.modalHeader}>
+          <h3 className={styles.modalTitle}>Apply Shift Template to {selectedDate}</h3>
+          <button type="button" className={styles.modalClose} onClick={onClose}>×</button>
+        </header>
+
+        <div className={styles.modalBody}>
+          {!hasTemplates && (
+            <div className={styles.quickCreateBanner}>
+              <p>No shift templates yet. Get started with quick defaults:</p>
+              <ul className={styles.quickCreateList}>
+                {QUICK_CREATE_DEFAULTS.map(d => (
+                  <li key={d.name}><strong>{d.name}</strong> <span>· {d.label}</span></li>
+                ))}
+              </ul>
+              <button type="button" className={styles.actionBtnPrimary} onClick={onQuickCreate} disabled={busy}>
+                Create A / B / C starter templates
+              </button>
+              <p className={styles.quickCreateNote}>
+                Each starter is an empty shell — populate it by editing a day and clicking <em>Save as Template…</em>.
+              </p>
+            </div>
+          )}
+
+          {hasTemplates && (
+            <div className={styles.pickerLayout}>
+              <ul className={styles.templateList}>
+                {templates.map(t => (
+                  <li
+                    key={t.id}
+                    className={styles.templateRow}
+                    data-active={t.id === activeId ? 'true' : undefined}
+                    onClick={() => setActiveId(t.id)}
+                  >
+                    <div className={styles.templateMeta}>
+                      <strong>{t.name}</strong>
+                      {t.label && <span className={styles.templateLabel}>{t.label}</span>}
+                      <span className={styles.templateRowCount}>{t.rowCount ?? 0} rows</span>
+                    </div>
+                    <div className={styles.templateActions}>
+                      <button type="button" className={styles.actionBtnSmall} disabled={busy} onClick={e => { e.stopPropagation(); onRename(t) }} title="Rename">Rename</button>
+                      <button type="button" className={styles.actionBtnSmall} disabled={busy} onClick={e => { e.stopPropagation(); onDuplicate(t) }} title="Duplicate">Duplicate</button>
+                      <button type="button" className={`${styles.actionBtnSmall} ${styles.actionBtnDanger}`} disabled={busy} onClick={e => { e.stopPropagation(); onDelete(t) }} title="Delete">Delete</button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+
+              <aside className={styles.previewPane} aria-live="polite">
+                {!activeTemplate ? (
+                  <p className={styles.previewEmpty}>Select a template on the left to preview.</p>
+                ) : loadingPreview ? (
+                  <p className={styles.previewEmpty}>Loading…</p>
+                ) : (
+                  <>
+                    <h4 className={styles.previewTitle}>{activeTemplate.name}</h4>
+                    {activeTemplate.label && <p className={styles.previewLabel}>{activeTemplate.label}</p>}
+                    <dl className={styles.previewStats}>
+                      <div>
+                        <dt>Scheduled</dt>
+                        <dd>{preview.scheduled}</dd>
+                      </div>
+                      <div>
+                        <dt>Off / Sick / Vacation</dt>
+                        <dd>{preview.off}</dd>
+                      </div>
+                      <div>
+                        <dt>Total hours</dt>
+                        <dd>{preview.totalHours}h</dd>
+                      </div>
+                    </dl>
+
+                    {destHasOverrides && (
+                      <label className={styles.replaceCheckbox}>
+                        <input
+                          type="checkbox"
+                          checked={replace}
+                          onChange={e => setReplace(e.target.checked)}
+                          disabled={busy}
+                        />
+                        <span>
+                          <strong>{selectedDate} already has overrides.</strong>{' '}
+                          Replace them with this template (existing overrides for that date will be deleted first).
+                        </span>
+                      </label>
+                    )}
+
+                    <div className={styles.previewActions}>
+                      <button
+                        type="button"
+                        className={styles.actionBtnPrimary}
+                        disabled={!canApply}
+                        onClick={() => onApply(activeId, replace)}
+                      >
+                        {busy ? 'Applying…' : 'Apply to ' + selectedDate}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </aside>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }
 
