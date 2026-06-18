@@ -1,0 +1,60 @@
+/* Phase E.7 — Schedule tab layer hint + collapsed secondary sections. */
+
+.layerHint {
+  margin: 14px 0 4px 0;
+  padding: 10px 14px;
+  background: rgba(0, 0, 0, 0.18);
+  border-left: 3px solid rgba(74, 222, 128, 0.45);
+  border-radius: 4px;
+  font-size: 12px;
+  color: rgba(212, 237, 212, 0.7);
+  line-height: 1.5;
+}
+.layerHint strong { color: #ecfdf5; }
+
+.secondarySection {
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(74, 158, 74, 0.18);
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.secondarySummary {
+  list-style: none;
+  cursor: pointer;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(74, 222, 128, 0.85);
+  user-select: none;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.secondarySummary::-webkit-details-marker { display: none; }
+.secondarySummary::before {
+  content: '▸';
+  display: inline-block;
+  width: 12px;
+  font-size: 12px;
+  transition: transform 0.12s ease;
+  color: rgba(212, 237, 212, 0.6);
+}
+.secondarySection[open] .secondarySummary::before { transform: rotate(90deg); }
+
+.secondarySummary:hover { background: rgba(74, 158, 74, 0.08); }
+
+.secondaryHint {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: rgba(212, 237, 212, 0.5);
+}
+
+.secondaryBody {
+  border-top: 1px solid rgba(74, 158, 74, 0.18);
+  padding: 12px 4px 4px;
+}

@@ -75,6 +75,27 @@ function shiftMonth(yyyymm, months) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
+// Phase E.7 — Readable date labels. Internal storage stays ISO; these
+// only format for display. Constructed via local-noon Date so the
+// formatter never drifts a day for users in negative-UTC timezones.
+const MONTH_FORMATTER = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' })
+const DAY_FORMATTER   = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+
+function formatMonthLabel(yyyymm) {
+  const [y, m] = yyyymm.split('-').map(Number)
+  return MONTH_FORMATTER.format(new Date(y, m - 1, 1, 12))
+}
+function formatDayLabel(yyyymmdd) {
+  const [y, m, d] = yyyymmdd.split('-').map(Number)
+  return DAY_FORMATTER.format(new Date(y, m - 1, d, 12))
+}
+// Day-of-week from an ISO string (avoids constructing a UTC Date that
+// could shift the day across timezones).
+function dayOfWeek(yyyymmdd) {
+  const [y, m, d] = yyyymmdd.split('-').map(Number)
+  return new Date(y, m - 1, d, 12).getDay()
+}
+
 function diffHours(s, e) {
   if (!s || !e) return 0
   const [sh, sm] = s.split(':').map(Number)
@@ -130,6 +151,9 @@ export default function AnnualScheduleCalendar() {
   const [dragSource, setDragSource]     = useState(null)
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false)
   const [showSaveAsOpen, setShowSaveAsOpen]         = useState(false)
+  // Phase E.7 — Copy Day modal + More menu state.
+  const [copyDayOpen, setCopyDayOpen] = useState(false)
+  const [moreOpen, setMoreOpen]       = useState(false)
 
   const monthGrid = useMemo(() => buildMonthGrid(currentMonth), [currentMonth])
 
@@ -303,6 +327,30 @@ export default function AnnualScheduleCalendar() {
     }
   }
 
+  // Phase E.7 — Copy Day via a button (non-drag entrypoint). Same
+  // server semantics as drag/drop — both fan in to copyScheduleDay.
+  async function handleCopyDay({ sourceDate, replace }) {
+    if (!sourceDate || sourceDate === selectedDate) {
+      toast.error('Pick a different source date than the selected day.')
+      return
+    }
+    setBusy(true)
+    try {
+      const result = await copyScheduleDay({ sourceDate, destinationDate: selectedDate, replace })
+      await refreshScheduleOverridesData()
+      toast.success(
+        `Copied from ${sourceDate} to ${selectedDate}: ${result.copied} copied${
+          result.replaced ? ` · ${result.replaced} replaced` : ''
+        }${result.skipped ? ` · ${result.skipped} skipped` : ''}`,
+      )
+      setCopyDayOpen(false)
+    } catch (err) {
+      toast.error(`Copy failed: ${err.message}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   // ── Shift template apply ────────────────────────────────────────────
   async function handleApplyTemplate(templateId, replaceConfirmed) {
     // Phase E.6 — The template picker now confirms in-UI (preview
@@ -447,7 +495,7 @@ export default function AnnualScheduleCalendar() {
         </div>
         <div className={styles.calendarNav}>
           <button type="button" onClick={() => setCurrentMonth(m => shiftMonth(m, -1))} className={styles.navBtn} aria-label="Previous month">‹</button>
-          <span className={styles.currentMonth}>{currentMonth}</span>
+          <span className={styles.currentMonth} title={currentMonth}>{formatMonthLabel(currentMonth)}</span>
           <button type="button" onClick={() => setCurrentMonth(m => shiftMonth(m, 1))} className={styles.navBtn} aria-label="Next month">›</button>
           <button type="button" onClick={() => { setCurrentMonth(todayIso().slice(0, 7)); setSelectedDate(todayIso()) }} className={styles.todayBtn}>Today</button>
           {/* Phase E.6 — Jump-to-date input. Beats prev/next clicks
@@ -481,6 +529,8 @@ export default function AnnualScheduleCalendar() {
           const isSelected = cell.date === selectedDate
           const isToday    = cell.date === todayIso()
           const isDragSource = dragSource === cell.date
+          const dow        = dayOfWeek(cell.date)
+          const isWeekend  = dow === 0 || dow === 6
           const dayNum     = parseInt(cell.date.slice(8), 10)
           return (
             <button
@@ -489,6 +539,7 @@ export default function AnnualScheduleCalendar() {
               className={styles.dayTile}
               data-selected={isSelected ? 'true' : undefined}
               data-today={isToday ? 'true' : undefined}
+              data-weekend={isWeekend ? 'true' : undefined}
               data-drag-source={isDragSource ? 'true' : undefined}
               data-drag-over={dragSource && dragSource !== cell.date ? 'true' : undefined}
               draggable={!busy}
@@ -501,9 +552,17 @@ export default function AnnualScheduleCalendar() {
               <div className={styles.dayNumber}>{dayNum}</div>
               {summary && (
                 <div className={styles.daySummary}>
-                  {summary.scheduledCount > 0 && <span className={styles.dayCountScheduled}>{summary.scheduledCount}</span>}
-                  {summary.totalHours > 0 && <span className={styles.dayHours}>{summary.totalHours}h</span>}
-                  {summary.offCount > 0 && <span className={styles.dayCountOff}>{summary.offCount} off</span>}
+                  {/* Phase E.7 — Two primary lines: working / hours.
+                      Off count surfaces only when > 0 ("2 out"). */}
+                  {summary.scheduledCount > 0 && (
+                    <span className={styles.dayCountScheduled}>{summary.scheduledCount} working</span>
+                  )}
+                  {summary.totalHours > 0 && (
+                    <span className={styles.dayHours}>{summary.totalHours} hrs</span>
+                  )}
+                  {summary.offCount > 0 && (
+                    <span className={styles.dayCountOff}>{summary.offCount} out</span>
+                  )}
                 </div>
               )}
             </button>
@@ -514,25 +573,54 @@ export default function AnnualScheduleCalendar() {
       {/* ── Selected day editor ── */}
       <div className={styles.dayEditor}>
         <header className={styles.dayEditorHeader}>
-          <h4 className={styles.dayEditorTitle}>{selectedDate}</h4>
+          <div className={styles.dayEditorTitleRow}>
+            <h4 className={styles.dayEditorTitle} title={selectedDate}>{formatDayLabel(selectedDate)}</h4>
+            {/* Phase E.7 — Past-date hint. Doesn't block editing — just
+                surfaces that the supervisor is editing history. */}
+            {selectedDate < todayIso() && (
+              <span className={styles.pastDateBadge} title="This date is in the past — overrides still apply but won't change anything moving forward">Past date</span>
+            )}
+          </div>
+          {/* Phase E.7 — Toolbar simplified to three primary actions +
+              a More menu. Apply Shift / Save Shift rename the previous
+              Apply Template / Save as Template buttons. */}
           <div className={styles.dayEditorActions}>
-            {/* Phase E.6 — Quick status helpers. Each writes overrides
-                only — recurring grid is never touched. */}
-            <button type="button" className={styles.actionBtn} onClick={() => markAllStatus('scheduled')} disabled={busy}>
-              Mark all Scheduled
-            </button>
-            <button type="button" className={styles.actionBtn} onClick={() => markAllStatus('off')} disabled={busy}>
-              Mark all Off
-            </button>
-            <button type="button" className={styles.actionBtn} onClick={() => setTemplatePickerOpen(true)} disabled={busy}>
-              Apply Template…
+            <button type="button" className={styles.actionBtnPrimary} onClick={() => setTemplatePickerOpen(true)} disabled={busy}>
+              Apply Shift
             </button>
             <button type="button" className={styles.actionBtn} onClick={() => setShowSaveAsOpen(true)} disabled={busy}>
-              Save as Template…
+              Save Shift
             </button>
-            <button type="button" className={`${styles.actionBtn} ${styles.actionBtnDanger}`} onClick={clearDayOverrides} disabled={busy}>
-              Clear Day Overrides
+            <button type="button" className={styles.actionBtn} onClick={() => setCopyDayOpen(true)} disabled={busy}>
+              Copy Day
             </button>
+            {/* More menu — Mark all + Clear day overrides are
+                lower-frequency so they hide behind a single click. */}
+            <div className={styles.moreMenuWrap}>
+              <button
+                type="button"
+                className={styles.actionBtn}
+                onClick={() => setMoreOpen(o => !o)}
+                aria-haspopup="menu"
+                aria-expanded={moreOpen}
+                disabled={busy}
+              >
+                More ▾
+              </button>
+              {moreOpen && (
+                <div className={styles.moreMenu} role="menu" onClick={() => setMoreOpen(false)}>
+                  <button type="button" role="menuitem" className={styles.moreItem} onClick={() => markAllStatus('scheduled')}>
+                    Mark all Scheduled
+                  </button>
+                  <button type="button" role="menuitem" className={styles.moreItem} onClick={() => markAllStatus('off')}>
+                    Mark all Off
+                  </button>
+                  <button type="button" role="menuitem" className={`${styles.moreItem} ${styles.moreItemDanger}`} onClick={clearDayOverrides}>
+                    Clear Day Overrides
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
@@ -639,6 +727,17 @@ export default function AnnualScheduleCalendar() {
           onClose={() => setShowSaveAsOpen(false)}
           onSave={handleSaveAsTemplate}
           busy={busy}
+        />
+      )}
+
+      {/* ── Copy Day modal (Phase E.7 — non-drag entrypoint) ── */}
+      {copyDayOpen && (
+        <CopyDayModal
+          destinationDate={selectedDate}
+          destHasOverrides={scheduleOverrides.some(o => o.effectiveDate === selectedDate)}
+          busy={busy}
+          onClose={() => setCopyDayOpen(false)}
+          onCopy={handleCopyDay}
         />
       )}
     </section>
@@ -830,6 +929,81 @@ function SaveAsModal({ date, rowCount, onClose, onSave, busy }) {
           <button type="button" className={styles.actionBtn} onClick={onClose} disabled={busy}>Cancel</button>
           <button type="button" className={styles.actionBtnPrimary} onClick={() => onSave(name)} disabled={busy || !name.trim()}>
             {busy ? 'Saving…' : 'Save Template'}
+          </button>
+        </footer>
+      </div>
+    </div>
+  )
+}
+
+// Phase E.7 — Copy Day modal. Non-drag entrypoint for the copy-day
+// flow. Default source = yesterday (relative to destinationDate). The
+// supervisor picks a different source via <input type="date">.
+function CopyDayModal({ destinationDate, destHasOverrides, busy, onClose, onCopy }) {
+  // Default to yesterday relative to the destination, computed via
+  // local-noon so timezone shifts can't flip the day.
+  const defaultSource = useMemo(() => {
+    const [y, m, d] = destinationDate.split('-').map(Number)
+    const dt = new Date(y, m - 1, d, 12)
+    dt.setDate(dt.getDate() - 1)
+    return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`
+  }, [destinationDate])
+  const [sourceDate, setSourceDate] = useState(defaultSource)
+  const [replace, setReplace]       = useState(destHasOverrides)
+
+  useEffect(() => {
+    function onKey(e) { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  const sameDay = sourceDate === destinationDate
+  return (
+    <div className={styles.modalOverlay} onClick={onClose}>
+      <div className={styles.modal} onClick={e => e.stopPropagation()}>
+        <header className={styles.modalHeader}>
+          <h3 className={styles.modalTitle}>Copy Day → {destinationDate}</h3>
+          <button type="button" className={styles.modalClose} onClick={onClose}>×</button>
+        </header>
+        <div className={styles.modalBody}>
+          <p className={styles.modalHint}>Copy the merged schedule from a source date onto this date. Recurring rules and assignments are not affected.</p>
+          <label className={styles.modalField}>
+            <span>Source date</span>
+            <input
+              type="date"
+              autoFocus
+              value={sourceDate}
+              onChange={e => setSourceDate(e.target.value)}
+              className={styles.modalInput}
+            />
+          </label>
+          {sameDay && (
+            <p className={styles.modalWarn}>Source date is the same as the destination — pick a different day.</p>
+          )}
+          {destHasOverrides && (
+            <label className={styles.replaceCheckbox}>
+              <input
+                type="checkbox"
+                checked={replace}
+                onChange={e => setReplace(e.target.checked)}
+                disabled={busy}
+              />
+              <span>
+                <strong>{destinationDate} already has overrides.</strong>{' '}
+                Replace them with {sourceDate}'s schedule (existing overrides for that date will be deleted first).
+              </span>
+            </label>
+          )}
+        </div>
+        <footer className={styles.modalFooter}>
+          <button type="button" className={styles.actionBtn} onClick={onClose} disabled={busy}>Cancel</button>
+          <button
+            type="button"
+            className={styles.actionBtnPrimary}
+            disabled={busy || sameDay}
+            onClick={() => onCopy({ sourceDate, replace })}
+          >
+            {busy ? 'Copying…' : 'Copy Day'}
           </button>
         </footer>
       </div>

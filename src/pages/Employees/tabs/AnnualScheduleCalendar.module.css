@@ -618,6 +618,85 @@
 .actionBtnSmall:hover:not(:disabled) { background: rgba(74, 158, 74, 0.22); }
 .actionBtnSmall:disabled { opacity: 0.5; cursor: not-allowed; }
 
+/* ─────────────────────────────────────────────────────────────────────
+   Phase E.7 — Schedule page simplification.
+   ───────────────────────────────────────────────────────────────────── */
+
+/* Weekend tint — subtle Sat/Sun background so weekly coverage scans
+   visually. Layered behind the selected/today/drag accents so those
+   still win. */
+.dayTile[data-weekend="true"] {
+  background: rgba(56, 189, 248, 0.05);
+}
+.dayTile[data-weekend="true"]:hover {
+  background: rgba(74, 158, 74, 0.14);
+}
+
+/* Day editor title row: title + past-date pill stacked nicely. */
+.dayEditorTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pastDateBadge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 9px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: rgba(148, 163, 184, 0.18);
+  border: 1px solid rgba(148, 163, 184, 0.42);
+  color: rgba(212, 237, 212, 0.7);
+}
+
+/* More menu wraps a relative-positioned dropdown — closes on outside
+   click via the underlying overlay pattern in the menu container. */
+.moreMenuWrap {
+  position: relative;
+}
+
+.moreMenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 10;
+  background: var(--color-card);
+  border: 1px solid rgba(74, 158, 74, 0.32);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  min-width: 180px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.moreItem {
+  background: transparent;
+  border: none;
+  text-align: left;
+  padding: 7px 10px;
+  border-radius: 4px;
+  color: #d4edd4;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.moreItem:hover { background: rgba(74, 158, 74, 0.18); }
+.moreItem:disabled { opacity: 0.5; cursor: not-allowed; }
+.moreItemDanger { color: #fca5a5; }
+.moreItemDanger:hover { background: rgba(239, 68, 68, 0.16); }
+
+/* Modal warn line (e.g. "source date is the same as destination"). */
+.modalWarn {
+  margin: 6px 0 0 0;
+  font-size: 11.5px;
+  color: #fca5a5;
+}
+
 @media (max-width: 760px) {
   .modalWide { width: 100%; }
   .pickerLayout { grid-template-columns: 1fr; }

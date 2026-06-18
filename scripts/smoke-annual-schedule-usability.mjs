@@ -73,16 +73,18 @@ assert(/<AnnualScheduleCalendar/.test(TAB),
 // ── Calendar density (tile scan) ─────────────────────────────────────
 section('Calendar tile scan — scheduledCount + totalHours primary, offCount secondary')
 
-assert(/summary\.scheduledCount > 0 && <span className=\{styles\.dayCountScheduled\}>\{summary\.scheduledCount\}<\/span>/.test(CAL),
-  'scheduled count pill renders when > 0 (primary)')
-assert(/summary\.totalHours > 0 && <span className=\{styles\.dayHours\}>\{summary\.totalHours\}h<\/span>/.test(CAL),
-  'total hours pill renders when > 0 (primary)')
-assert(/summary\.offCount > 0 && <span className=\{styles\.dayCountOff\}>\{summary\.offCount\} off<\/span>/.test(CAL),
-  'off count pill renders when > 0 (kept secondary)')
+// Phase E.7 — Tile pill labels changed from bare numbers to readable
+// strings ("7 working" / "52 hrs" / "2 out"). Pin the new shape.
+assert(/summary\.scheduledCount > 0[\s\S]{0,200}\{summary\.scheduledCount\} working/.test(CAL),
+  'scheduled count pill renders when > 0 ("<N> working", primary)')
+assert(/summary\.totalHours > 0[\s\S]{0,200}\{summary\.totalHours\} hrs/.test(CAL),
+  'total hours pill renders when > 0 ("<N> hrs", primary)')
+assert(/summary\.offCount > 0[\s\S]{0,200}\{summary\.offCount\} out/.test(CAL),
+  'off count pill renders when > 0 ("<N> out", kept secondary)')
 
 // Render order: scheduled first, then hours, then off — proves "off
 // kept secondary" structurally.
-const summaryMatch = CAL.match(/<div className=\{styles\.daySummary\}>[\s\S]{0,400}<\/div>/)
+const summaryMatch = CAL.match(/<div className=\{styles\.daySummary\}>[\s\S]{0,800}<\/div>/)
 const summarySrc = summaryMatch ? summaryMatch[0] : ''
 assert(summarySrc.length > 0, 'day summary block extracted')
 const schedIdx = summarySrc.indexOf('dayCountScheduled')
