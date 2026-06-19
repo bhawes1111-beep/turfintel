@@ -357,10 +357,13 @@ assert(/isEmployeeAssignableForDate[\s\S]{0,200}from '\.\.\/\.\.\/\.\.\/utils\/s
   'DAB still imports isEmployeeAssignableForDate (E.4 invariant)')
 assert(/const assignable = isEmployeeAssignableForDate\(/.test(DAB),
   'DAB still consults destination schedule before each copy (E.4 invariant)')
-assert(/import \{ isEmployeeAssignableForDate, hasAnyScheduleData \} from '\.\.\/\.\.\/utils\/schedules\/dailyScheduleMerge'/.test(KIOSK),
+// Phase E.9 — accept the expanded import line + the new tag-don't-filter
+// gate variable name. See smoke-display-board-out-status.mjs for the
+// full set of E.9 invariants.
+assert(/isEmployeeAssignableForDate[\s\S]{0,200}hasAnyScheduleData[\s\S]{0,200}from '\.\.\/\.\.\/utils\/schedules\/dailyScheduleMerge'/.test(KIOSK),
   'kiosk still imports schedule helpers (E.4 invariant)')
-assert(/if \(hasAnyScheduleData\(weeklySchedules, scheduleOverrides\)\)\s*\{[\s\S]{0,400}cards = cards\.filter/.test(KIOSK),
-  'kiosk still filters operatorCards via hasAnyScheduleData gate (E.4 invariant)')
+assert(/const scheduleAware = hasAnyScheduleData\(weeklySchedules, scheduleOverrides\)/.test(KIOSK),
+  'kiosk still consults hasAnyScheduleData (E.9 replaces E.4 filter with tag-don\'t-hide)')
 assert(!DAB.includes('Phase E.7'),
   'DAB carries no Phase E.7 edits (spec: "no DAB behavior changes")')
 assert(!KIOSK.includes('Phase E.7'),

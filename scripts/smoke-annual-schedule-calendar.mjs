@@ -399,11 +399,13 @@ assert(/isEmployeeAssignableForDate[\s\S]{0,200}from '\.\.\/\.\.\/\.\.\/utils\/s
 assert(/const assignable = isEmployeeAssignableForDate\(\s*\n\s*empStillThere\.id,\s*\n\s*destinationDate,/.test(DAB),
   'DAB copy helper still consults destination schedule before each copy (E.4 invariant)')
 
-// Kiosk still filters operator cards.
-assert(/import \{ isEmployeeAssignableForDate, hasAnyScheduleData \} from '\.\.\/\.\.\/utils\/schedules\/dailyScheduleMerge'/.test(KIOSK),
+// Kiosk still uses the schedule helpers. Phase E.9 expanded the import
+// (added getScheduleStatusForEmployee) and converted the E.4 hide
+// filter into out-card tagging. Accept either shape via substring pin.
+assert(/isEmployeeAssignableForDate[\s\S]{0,200}hasAnyScheduleData[\s\S]{0,200}from '\.\.\/\.\.\/utils\/schedules\/dailyScheduleMerge'/.test(KIOSK),
   'kiosk still imports schedule helpers (E.4 invariant)')
-assert(/if \(hasAnyScheduleData\(weeklySchedules, scheduleOverrides\)\)\s*\{[\s\S]{0,400}cards = cards\.filter/.test(KIOSK),
-  'kiosk still filters operatorCards via hasAnyScheduleData gate (E.4 invariant)')
+assert(/const scheduleAware = hasAnyScheduleData\(weeklySchedules, scheduleOverrides\)/.test(KIOSK),
+  'kiosk still consults hasAnyScheduleData (E.9 replaces E.4 filter with tag-don\'t-hide)')
 
 // ── Scope guards — no spray / no Weekly editor / no DailyScheduleEditor edits ─
 section('Scope guards — spray + Weekly + Daily editors untouched')

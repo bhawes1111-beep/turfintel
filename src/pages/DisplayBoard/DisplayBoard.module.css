@@ -2006,6 +2006,42 @@
   font-style: italic;
 }
 
+/* ── Phase E.9 — Out-status cards (off / vacation / sick) ──
+   Employees who are out for the day stay visible on the kiosk so the
+   superintendent can scan the whole crew at once, but they render in
+   a muted, color-coded card with no task / notes / equipment.
+   Color choices match how the rest of the app surfaces these states
+   (slate for off, blue for vacation, rose for sick). */
+
+.boardPersonBar[data-out-status="off"] {
+  background: rgba(71, 85, 105, 0.18);
+  border-color: rgba(148, 163, 184, 0.35);
+}
+.boardPersonBar[data-out-status="vacation"] {
+  background: rgba(37, 99, 235, 0.14);
+  border-color: rgba(96, 165, 250, 0.42);
+}
+.boardPersonBar[data-out-status="sick"] {
+  background: rgba(244, 63, 94, 0.12);
+  border-color: rgba(251, 113, 133, 0.45);
+}
+
+.boardPersonBar[data-out-status] .boardPersonName {
+  opacity: 0.85;
+}
+
+.boardOutStatusText {
+  margin: 0;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: clamp(18px, 2.4vw, 36px);
+  line-height: 1.1;
+}
+.boardOutStatusText[data-out-status="off"]      { color: #cbd5e1; }
+.boardOutStatusText[data-out-status="vacation"] { color: #93c5fd; }
+.boardOutStatusText[data-out-status="sick"]     { color: #fda4af; }
+
 .boardEmpty {
   margin: auto;
   text-align: center;

@@ -265,7 +265,9 @@ assert(/import \{ useEmployeeSchedulesData, refreshEmployeeSchedulesData \} from
   'kiosk imports useEmployeeSchedulesData + refreshEmployeeSchedulesData')
 assert(/import \{ useScheduleOverridesData, refreshScheduleOverridesData \} from '\.\.\/\.\.\/utils\/schedules\/scheduleOverridesStore'/.test(KIOSK),
   'kiosk imports useScheduleOverridesData + refreshScheduleOverridesData')
-assert(/import \{ isEmployeeAssignableForDate, hasAnyScheduleData \} from '\.\.\/\.\.\/utils\/schedules\/dailyScheduleMerge'/.test(KIOSK),
+// Phase E.9 — kiosk also imports getScheduleStatusForEmployee so it
+// can tag out-status cards instead of hiding them.
+assert(/import \{ isEmployeeAssignableForDate, hasAnyScheduleData, getScheduleStatusForEmployee \} from '\.\.\/\.\.\/utils\/schedules\/dailyScheduleMerge'/.test(KIOSK),
   'kiosk imports the shared schedule helpers (single source of truth with DAB)')
 
 // Hooks wired into the component.
@@ -278,17 +280,23 @@ assert(/const \{ overrides: scheduleOverrides \}\s*=\s*useScheduleOverridesData\
 assert(/refreshEmployeeSchedulesData\(\),\s*\n\s*refreshScheduleOverridesData\(\),/.test(KIOSK),
   'kiosk auto-refresh interval refreshes BOTH schedule stores')
 
-// operatorCards filter — fallback gate first, then per-card check.
-assert(/if \(hasAnyScheduleData\(weeklySchedules, scheduleOverrides\)\)\s*\{[\s\S]{0,400}cards = cards\.filter/.test(KIOSK),
-  'kiosk operatorCards filter gated on hasAnyScheduleData (fallback preserved when empty)')
-assert(/const verdict = isEmployeeAssignableForDate\(\s*\n\s*op\.employeeId,\s*\n\s*selectedDate,\s*\n\s*weeklySchedules,\s*\n\s*scheduleOverrides,\s*\n\s*\)/.test(KIOSK),
-  'kiosk operatorCards calls isEmployeeAssignableForDate(op.employeeId, selectedDate, weekly, overrides)')
-assert(/return verdict\.allowed/.test(KIOSK),
-  'kiosk operatorCards keeps op when verdict.allowed === true')
+// Phase E.9 — kiosk operatorCards no longer FILTERS off/sick/vacation
+// employees. Instead it tags them with `outStatus` (so the card renders
+// as a labeled "Off" / "Vacation" / "Sick" instead of vanishing) and
+// strips their assignments to keep prior task text from bleeding through.
+assert(/const scheduleAware = hasAnyScheduleData\(weeklySchedules, scheduleOverrides\)/.test(KIOSK),
+  'kiosk gates the schedule-awareness pass on hasAnyScheduleData (fallback preserved when empty)')
+assert(/op\.outStatus = merged\.status/.test(KIOSK),
+  'kiosk tags operator cards with outStatus when merged status is off/sick/vacation (E.9)')
+assert(/op\.assignments = \[\]/.test(KIOSK),
+  'kiosk wipes assignments on out-status cards so prior task text does not bleed through (E.9)')
+assert(/getScheduleStatusForEmployee\(\s*\n\s*op\.employeeId,\s*selectedDate,\s*weeklySchedules,\s*scheduleOverrides,\s*\n\s*\)/.test(KIOSK),
+  'kiosk reads merged status via getScheduleStatusForEmployee (E.9)')
 
-// Legacy assignments without employeeId stay visible (name-only rows).
-assert(/if \(!op\.employeeId\) return true[\s\S]{0,200}legacy assignments without employeeId/.test(KIOSK),
-  'kiosk preserves legacy assignments without employeeId (no schedule check possible)')
+// Legacy assignments without employeeId stay alone (the awareness loop
+// continues / skips them — no schedule check possible).
+assert(/if \(!op\.employeeId\) continue/.test(KIOSK),
+  'kiosk skips legacy assignments without employeeId in the awareness pass (no schedule check possible)')
 
 // Memo deps include the new inputs so re-renders happen on store change.
 assert(/\}, \[\s*\n[\s\S]{0,400}weeklySchedules, scheduleOverrides, selectedDate,\s*\n\s*\]\)/.test(KIOSK),

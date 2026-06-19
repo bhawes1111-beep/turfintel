@@ -34,7 +34,7 @@ import { useCrewData,        refreshCrewData }        from '../../utils/crew/cre
 // authoritative surface, just narrows what it shows.
 import { useEmployeeSchedulesData, refreshEmployeeSchedulesData } from '../../utils/schedules/schedulesStore'
 import { useScheduleOverridesData, refreshScheduleOverridesData } from '../../utils/schedules/scheduleOverridesStore'
-import { isEmployeeAssignableForDate, hasAnyScheduleData } from '../../utils/schedules/dailyScheduleMerge'
+import { isEmployeeAssignableForDate, hasAnyScheduleData, getScheduleStatusForEmployee } from '../../utils/schedules/dailyScheduleMerge'
 import { useWeather }         from '../../utils/weather/useWeather'
 import { useSelectedCourse, useSelectedCourseId } from '../../utils/courses/courseStore'
 import { useOperationsNotesData, refreshOperationsNotesData } from '../../utils/operations/notesStore'
@@ -504,35 +504,68 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
         return (PRIORITY_ORDER[x.priority] ?? 9) - (PRIORITY_ORDER[y.priority] ?? 9)
       })
     }
-    let cards = [...byOperator.values()].sort((x, y) =>
-      (x.employeeName ?? '').localeCompare(y.employeeName ?? '')
-    )
-    // Phase E.4 — Suppress operator cards whose merged daily schedule
-    // is off / sick / vacation / unscheduled for selectedDate. This
-    // matches the DAB's assignable-roster rule for the kiosk so an
-    // operator who was assigned earlier and then marked off doesn't
-    // hang on the public TV all morning.
+    // Phase E.9 — Off / sick / vacation employees are no longer hidden
+    // from the kiosk. Two changes:
     //
-    // Fallback rule preserved: when BOTH stores are empty (no
-    // scheduling configured anywhere) the kiosk keeps showing every
-    // assigned operator. Adding even one recurring rule or override
-    // flips the kiosk to schedule-aware mode.
-    if (hasAnyScheduleData(weeklySchedules, scheduleOverrides)) {
-      cards = cards.filter(op => {
-        if (!op.employeeId) return true   // legacy assignments without employeeId stay visible
-        const verdict = isEmployeeAssignableForDate(
-          op.employeeId,
-          selectedDate,
-          weeklySchedules,
-          scheduleOverrides,
+    //   1. Operator cards with an out-status get their assignments
+    //      stripped (so the assigned task / equipment / notes don't
+    //      bleed into the out card) and a new outStatus tag set.
+    //   2. Active employees who are out today but have no assignment
+    //      row at all are SEEDED into the card list so the kiosk
+    //      surfaces "Joe — Off" even when Joe was never scheduled to a
+    //      task today. We use employeeNameLookup (anonymous-safe name
+    //      only) so no private field can leak into this code path.
+    //
+    // Fallback rule preserved: when BOTH schedule stores are empty,
+    // there's no "out" data at all so we leave assignment-derived
+    // cards intact and add nothing new.
+    const scheduleAware = hasAnyScheduleData(weeklySchedules, scheduleOverrides)
+    if (scheduleAware) {
+      for (const op of byOperator.values()) {
+        if (!op.employeeId) continue        // legacy assignment without employeeId — leave alone
+        const merged = getScheduleStatusForEmployee(
+          op.employeeId, selectedDate, weeklySchedules, scheduleOverrides,
         )
-        return verdict.allowed
-      })
+        if (!merged || merged.status === 'scheduled') continue
+        op.outStatus = merged.status        // 'off' | 'sick' | 'vacation'
+        op.assignments = []                  // do not show prior assignments / notes / chips
+      }
+      // Seed cards for out-status active employees who don't already
+      // have any assignment row today.
+      for (const emp of employees ?? []) {
+        if (!emp.id || emp.status === 'inactive') continue
+        if (byOperator.has(emp.id)) continue
+        const merged = getScheduleStatusForEmployee(
+          emp.id, selectedDate, weeklySchedules, scheduleOverrides,
+        )
+        if (!merged || merged.status === 'scheduled') continue
+        byOperator.set(emp.id, {
+          key:              emp.id,
+          employeeId:       emp.id,
+          employeeName:     employeeNameLookup.get(emp.id) ?? emp.name,
+          role:             null,
+          // Phase 9C.5c4 — Spanish gate unused on out cards (no
+          // assignment notes to translate) but pin to false so the
+          // shape stays uniform with assigned cards.
+          showSpanishNotes: false,
+          outStatus:        merged.status,
+          assignments:      [],
+        })
+      }
     }
+
+    // Sort: scheduled (with assignments) first, then out cards. Within
+    // each bucket, alphabetical by name.
+    const cards = [...byOperator.values()].sort((x, y) => {
+      const xOut = x.outStatus ? 1 : 0
+      const yOut = y.outStatus ? 1 : 0
+      if (xOut !== yOut) return xOut - yOut
+      return (x.employeeName ?? '').localeCompare(y.employeeName ?? '')
+    })
     return cards
   }, [
-    dayCrew, dayEvents, equipByEvent, employeeNameLookup, employeeById,
-    // Phase E.4 — re-bucket when schedules / overrides / selectedDate change
+    dayCrew, dayEvents, equipByEvent, employeeNameLookup, employeeById, employees,
+    // Phase E.4 / E.9 — re-bucket when schedules / overrides / selectedDate change
     weeklySchedules, scheduleOverrides, selectedDate,
   ])
 
@@ -1259,45 +1292,68 @@ function BoardModeCrewBars({ operatorCards }) {
         '--board-bar-scale':        boardBarScale,
       }}
     >
-      {operatorCards.map(op => (
-        <article key={op.key} className={styles.boardPersonBar}>
-          <h2 className={styles.boardPersonName}>{op.employeeName ?? 'Unassigned'}</h2>
-          {op.assignments.map((a, idx) => {
-            const trimmedNotes   = (a.notes   ?? '').trim()
-            // Phase 9C.5b3 — Spanish translation renders underneath the
-            // English note when authored. Both lines apply the base
-            // .boardNotesText class so the 9C.4c/9C.4d/9C.4e density +
-            // scale rules continue to drive line-clamp, font-size, and
-            // per-assignment shrink automatically. The .boardNotesTextEs
-            // override only adds visual differentiation (italic, mint
-            // tint) so the bilingual nature is glanceable on a TV.
-            //
-            // Phase 9C.5c4 — additionally gated on op.showSpanishNotes
-            // (computed in operatorCards from the operator's
-            // autoTranslateBoardNotes + boardLanguage prefs). Operators
-            // who don't want Spanish never see the bilingual line,
-            // even if notesEs exists in the database from a previous
-            // configuration or a different operator's translation run.
-            const trimmedNotesEs = (a.notesEs ?? '').trim()
-            return (
-              <div key={a.id ?? idx} className={styles.boardTaskBlock}>
-                <p className={styles.boardTaskText}>{a.title}</p>
-                {trimmedNotes.length > 0 && (
-                  <p className={styles.boardNotesText}>{trimmedNotes}</p>
-                )}
-                {trimmedNotesEs.length > 0 && op.showSpanishNotes && (
-                  <p
-                    className={`${styles.boardNotesText} ${styles.boardNotesTextEs}`}
-                    lang="es"
-                  >
-                    {trimmedNotesEs}
-                  </p>
-                )}
+      {operatorCards.map(op => {
+        // Phase E.9 — Out-status cards: render the status word as the
+        // "task" line and skip notes / Spanish / chips entirely. The
+        // out card is a name + a labeled status pill, nothing more.
+        if (op.outStatus) {
+          const label =
+            op.outStatus === 'vacation' ? 'Vacation'
+            : op.outStatus === 'sick'    ? 'Sick'
+            : 'Off'
+          return (
+            <article
+              key={op.key}
+              className={styles.boardPersonBar}
+              data-out-status={op.outStatus}
+            >
+              <h2 className={styles.boardPersonName}>{op.employeeName ?? 'Unassigned'}</h2>
+              <div className={styles.boardTaskBlock}>
+                <p className={styles.boardOutStatusText} data-out-status={op.outStatus}>{label}</p>
               </div>
-            )
-          })}
-        </article>
-      ))}
+            </article>
+          )
+        }
+        return (
+          <article key={op.key} className={styles.boardPersonBar}>
+            <h2 className={styles.boardPersonName}>{op.employeeName ?? 'Unassigned'}</h2>
+            {op.assignments.map((a, idx) => {
+              const trimmedNotes   = (a.notes   ?? '').trim()
+              // Phase 9C.5b3 — Spanish translation renders underneath the
+              // English note when authored. Both lines apply the base
+              // .boardNotesText class so the 9C.4c/9C.4d/9C.4e density +
+              // scale rules continue to drive line-clamp, font-size, and
+              // per-assignment shrink automatically. The .boardNotesTextEs
+              // override only adds visual differentiation (italic, mint
+              // tint) so the bilingual nature is glanceable on a TV.
+              //
+              // Phase 9C.5c4 — additionally gated on op.showSpanishNotes
+              // (computed in operatorCards from the operator's
+              // autoTranslateBoardNotes + boardLanguage prefs). Operators
+              // who don't want Spanish never see the bilingual line,
+              // even if notesEs exists in the database from a previous
+              // configuration or a different operator's translation run.
+              const trimmedNotesEs = (a.notesEs ?? '').trim()
+              return (
+                <div key={a.id ?? idx} className={styles.boardTaskBlock}>
+                  <p className={styles.boardTaskText}>{a.title}</p>
+                  {trimmedNotes.length > 0 && (
+                    <p className={styles.boardNotesText}>{trimmedNotes}</p>
+                  )}
+                  {trimmedNotesEs.length > 0 && op.showSpanishNotes && (
+                    <p
+                      className={`${styles.boardNotesText} ${styles.boardNotesTextEs}`}
+                      lang="es"
+                    >
+                      {trimmedNotesEs}
+                    </p>
+                  )}
+                </div>
+              )
+            })}
+          </article>
+        )
+      })}
     </div>
   )
 }

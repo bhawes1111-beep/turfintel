@@ -408,10 +408,16 @@ assert(/isEmployeeAssignableForDate[\s\S]{0,200}from '\.\.\/\.\.\/\.\.\/utils\/s
 assert(/const assignable = isEmployeeAssignableForDate\(/.test(DAB),
   'DAB still consults destination schedule before each copy (E.4 invariant)')
 
-assert(/import \{ isEmployeeAssignableForDate, hasAnyScheduleData \} from '\.\.\/\.\.\/utils\/schedules\/dailyScheduleMerge'/.test(KIOSK),
+// Phase E.9 — kiosk import line gained getScheduleStatusForEmployee
+// for out-card tagging; the previous pair (isEmployeeAssignableForDate,
+// hasAnyScheduleData) is still imported. Pin the substring rather
+// than the exact import shape so future re-orderings don't trip this.
+assert(/isEmployeeAssignableForDate[\s\S]{0,200}hasAnyScheduleData[\s\S]{0,200}from '\.\.\/\.\.\/utils\/schedules\/dailyScheduleMerge'/.test(KIOSK),
   'kiosk still imports schedule helpers (E.4 invariant)')
-assert(/if \(hasAnyScheduleData\(weeklySchedules, scheduleOverrides\)\)\s*\{[\s\S]{0,400}cards = cards\.filter/.test(KIOSK),
-  'kiosk still filters operatorCards via hasAnyScheduleData gate (E.4 invariant)')
+// Phase E.9 — kiosk no longer FILTERS via cards.filter; it tags out
+// cards instead. Pin the schedule-aware gate via the new variable name.
+assert(/const scheduleAware = hasAnyScheduleData\(weeklySchedules, scheduleOverrides\)/.test(KIOSK),
+  'kiosk still consults hasAnyScheduleData before tagging out cards (E.9 replaces E.4 filter)')
 
 assert(!DAB.includes('Phase E.6'),
   'DAB carries no Phase E.6 edits (spec: "no DAB behavior changes")')
