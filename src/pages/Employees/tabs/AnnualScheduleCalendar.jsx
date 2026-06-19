@@ -1,5 +1,20 @@
 // Phase E.5 — Annual Schedule Calendar.
 //
+// Phase E.8 — Editable shifts:
+//   • New EditShiftModal — full row editor (employee × status × times
+//     × role × notes). PATCH /api/shift-templates/:id with body.rows
+//     already supports this; we just needed a UI.
+//   • Picker gains an "Edit" button per shift (between Apply + Rename).
+//   • Quick-create A/B/C now auto-opens Edit on the first new shell
+//     so the supervisor lands directly in the populate step.
+//   • Apply disabled when a shift has zero rows + clear copy in the
+//     preview pane ("No employees yet — edit this shift first").
+//   • Save Shift: when the name already exists, ask whether to update
+//     the existing shift or create a copy (vs. silently returning the
+//     existing row via UNIQUE collision).
+//   • UI language: "Shift" everywhere; "Template" stays as code only.
+//
+//
 // Month view of the per-date schedule. Each tile shows scheduled /
 // off counts + total hours. Click a tile to open the day editor (the
 // existing E.2 Today's Schedule panel scoped to that date). Drag one
@@ -154,6 +169,8 @@ export default function AnnualScheduleCalendar() {
   // Phase E.7 — Copy Day modal + More menu state.
   const [copyDayOpen, setCopyDayOpen] = useState(false)
   const [moreOpen, setMoreOpen]       = useState(false)
+  // Phase E.8 — Edit Shift modal target (template ID or null).
+  const [editShiftId, setEditShiftId] = useState(null)
 
   const monthGrid = useMemo(() => buildMonthGrid(currentMonth), [currentMonth])
 
@@ -375,9 +392,28 @@ export default function AnnualScheduleCalendar() {
   }
 
   // Save the current day's merged schedule as a new shift template.
+  //
+  // Phase E.8 — Name collisions: previously, the worker quietly
+  // returned the existing row (UNIQUE collision branch in
+  // createShiftTemplate) and the supervisor would think the save
+  // worked but the rows weren't actually overwritten. Now we check
+  // existing shifts first and ask explicitly: update or copy?
   async function handleSaveAsTemplate(name) {
     const trimmed = (name ?? '').trim()
     if (!trimmed) return
+    const existing = shiftTemplates.find(t => t.name.toLowerCase() === trimmed.toLowerCase())
+    let mode = 'create'
+    let targetId = null
+    if (existing) {
+      const answer = confirm(
+        `A shift named "${existing.name}" already exists (${existing.rowCount ?? 0} rows).\n\n` +
+        `OK = update existing shift with the rows from ${selectedDate}\n` +
+        `Cancel = keep it and don't save`,
+      )
+      if (!answer) return
+      mode = 'update'
+      targetId = existing.id
+    }
     setBusy(true)
     try {
       const rows = selectedDayRows
@@ -391,12 +427,20 @@ export default function AnnualScheduleCalendar() {
           notes:      r.notes || null,
           sortOrder:  i * 10,
         }))
-      await createShiftTemplate({ name: trimmed, rows })
+      if (mode === 'update' && targetId) {
+        await patchShiftTemplate(targetId, { rows })
+      } else {
+        await createShiftTemplate({ name: trimmed, rows })
+      }
       await refreshShiftTemplatesData()
-      toast.success(`Saved "${trimmed}" template (${rows.length} rows)`)
+      toast.success(
+        mode === 'update'
+          ? `Updated "${trimmed}" with ${rows.length} row(s) from ${selectedDate}`
+          : `Saved "${trimmed}" shift (${rows.length} rows)`,
+      )
       setShowSaveAsOpen(false)
     } catch (err) {
-      toast.error(`Save template failed: ${err.message}`)
+      toast.error(`Save shift failed: ${err.message}`)
     } finally {
       setBusy(false)
     }
@@ -425,27 +469,44 @@ export default function AnnualScheduleCalendar() {
   // gets a usable shift library in one click. Each is a no-rows
   // shell; the supervisor populates it via "Save as Template…"
   // overwriting the blank later.
+  //
+  // Phase E.8 — Auto-open the Edit modal on the FIRST template we
+  // create so the supervisor lands directly in the populate step
+  // instead of staring at three empty shells with no obvious next
+  // action.
   async function handleQuickCreateDefaults() {
     setBusy(true)
     try {
       let created = 0
+      let firstCreatedId = null
       for (const def of QUICK_CREATE_DEFAULTS) {
         const existing = shiftTemplates.find(t => t.name === def.name)
         if (existing) continue
-        await createShiftTemplate({ name: def.name, label: def.label, rows: [] })
+        const saved = await createShiftTemplate({ name: def.name, label: def.label, rows: [] })
+        if (!firstCreatedId && saved?.id) firstCreatedId = saved.id
         created++
       }
       await refreshShiftTemplatesData()
       if (created === 0) {
-        toast.info('A/B/C templates already exist.')
+        toast.info('A / B / C shifts already exist.')
       } else {
-        toast.success(`Created ${created} starter template${created !== 1 ? 's' : ''}`)
+        toast.success(`Created ${created} starter shift${created !== 1 ? 's' : ''}`)
+      }
+      if (firstCreatedId) {
+        setTemplatePickerOpen(false)
+        setEditShiftId(firstCreatedId)
       }
     } catch (err) {
       toast.error(`Quick-create failed: ${err.message}`)
     } finally {
       setBusy(false)
     }
+  }
+
+  // Phase E.8 — Edit Shift entrypoint from the picker.
+  function handleEditShift(t) {
+    setTemplatePickerOpen(false)
+    setEditShiftId(t.id)
   }
 
   // Phase E.6 — Rename template inline.
@@ -715,7 +776,21 @@ export default function AnnualScheduleCalendar() {
           onDelete={handleDeleteTemplate}
           onRename={handleRenameTemplate}
           onDuplicate={handleDuplicateTemplate}
+          onEdit={handleEditShift}
           onQuickCreate={handleQuickCreateDefaults}
+        />
+      )}
+
+      {/* ── Edit Shift modal (Phase E.8) ── */}
+      {editShiftId && (
+        <EditShiftModal
+          shiftId={editShiftId}
+          activeEmployees={activeEmployees}
+          onClose={() => setEditShiftId(null)}
+          onSaved={() => {
+            refreshShiftTemplatesData()
+            setEditShiftId(null)
+          }}
         />
       )}
 
@@ -759,6 +834,7 @@ function TemplatePickerModal({
   onDelete,
   onRename,
   onDuplicate,
+  onEdit,
   onQuickCreate,
 }) {
   const [activeId, setActiveId] = useState(null)
@@ -785,30 +861,34 @@ function TemplatePickerModal({
   const preview = useMemo(() => summarizeRows(activeRows ?? []), [activeRows])
   const activeTemplate = templates.find(t => t.id === activeId)
   const hasTemplates   = templates.length > 0
-  const canApply       = !!activeId && !busy
+  // Phase E.8 — Block Apply on 0-row shifts so the supervisor never
+  // accidentally "applies" an empty starter and thinks it worked.
+  const activeRowCount = (activeTemplate?.rowCount ?? activeRows?.length ?? 0)
+  const isEmpty        = !!activeTemplate && !loadingPreview && activeRowCount === 0
+  const canApply       = !!activeId && !busy && !isEmpty && !loadingPreview
 
   return (
     <div className={styles.modalOverlay} onClick={onClose}>
       <div className={`${styles.modal} ${styles.modalWide}`} onClick={e => e.stopPropagation()}>
         <header className={styles.modalHeader}>
-          <h3 className={styles.modalTitle}>Apply Shift Template to {selectedDate}</h3>
+          <h3 className={styles.modalTitle}>Apply Shift to {selectedDate}</h3>
           <button type="button" className={styles.modalClose} onClick={onClose}>×</button>
         </header>
 
         <div className={styles.modalBody}>
           {!hasTemplates && (
             <div className={styles.quickCreateBanner}>
-              <p>No shift templates yet. Get started with quick defaults:</p>
+              <p>No shifts yet. Get started with quick defaults:</p>
               <ul className={styles.quickCreateList}>
                 {QUICK_CREATE_DEFAULTS.map(d => (
                   <li key={d.name}><strong>{d.name}</strong> <span>· {d.label}</span></li>
                 ))}
               </ul>
               <button type="button" className={styles.actionBtnPrimary} onClick={onQuickCreate} disabled={busy}>
-                Create A / B / C starter templates
+                Create A / B / C starter shifts
               </button>
               <p className={styles.quickCreateNote}>
-                Each starter is an empty shell — populate it by editing a day and clicking <em>Save as Template…</em>.
+                Each starter opens in the editor so you can fill in who works, when, and what role.
               </p>
             </div>
           )}
@@ -821,14 +901,18 @@ function TemplatePickerModal({
                     key={t.id}
                     className={styles.templateRow}
                     data-active={t.id === activeId ? 'true' : undefined}
+                    data-empty={(t.rowCount ?? 0) === 0 ? 'true' : undefined}
                     onClick={() => setActiveId(t.id)}
                   >
                     <div className={styles.templateMeta}>
                       <strong>{t.name}</strong>
                       {t.label && <span className={styles.templateLabel}>{t.label}</span>}
-                      <span className={styles.templateRowCount}>{t.rowCount ?? 0} rows</span>
+                      <span className={styles.templateRowCount}>
+                        {t.rowCount ?? 0} rows{(t.rowCount ?? 0) === 0 ? ' · needs editing' : ''}
+                      </span>
                     </div>
                     <div className={styles.templateActions}>
+                      <button type="button" className={styles.actionBtnSmall} disabled={busy} onClick={e => { e.stopPropagation(); onEdit(t) }} title="Edit shift rows">Edit</button>
                       <button type="button" className={styles.actionBtnSmall} disabled={busy} onClick={e => { e.stopPropagation(); onRename(t) }} title="Rename">Rename</button>
                       <button type="button" className={styles.actionBtnSmall} disabled={busy} onClick={e => { e.stopPropagation(); onDuplicate(t) }} title="Duplicate">Duplicate</button>
                       <button type="button" className={`${styles.actionBtnSmall} ${styles.actionBtnDanger}`} disabled={busy} onClick={e => { e.stopPropagation(); onDelete(t) }} title="Delete">Delete</button>
@@ -861,7 +945,24 @@ function TemplatePickerModal({
                       </div>
                     </dl>
 
-                    {destHasOverrides && (
+                    {/* Phase E.8 — 0-row guard: a shift with no rows
+                        would apply silently and do nothing. Surface
+                        it clearly and route the supervisor to Edit. */}
+                    {isEmpty && (
+                      <div className={styles.emptyShiftBanner}>
+                        <p><strong>No employees yet — edit this shift before applying.</strong></p>
+                        <button
+                          type="button"
+                          className={styles.actionBtnPrimary}
+                          onClick={() => onEdit(activeTemplate)}
+                          disabled={busy}
+                        >
+                          Edit Shift
+                        </button>
+                      </div>
+                    )}
+
+                    {destHasOverrides && !isEmpty && (
                       <label className={styles.replaceCheckbox}>
                         <input
                           type="checkbox"
@@ -871,7 +972,7 @@ function TemplatePickerModal({
                         />
                         <span>
                           <strong>{selectedDate} already has overrides.</strong>{' '}
-                          Replace them with this template (existing overrides for that date will be deleted first).
+                          Replace them with this shift (existing overrides for that date will be deleted first).
                         </span>
                       </label>
                     )}
@@ -908,7 +1009,7 @@ function SaveAsModal({ date, rowCount, onClose, onSave, busy }) {
     <div className={styles.modalOverlay} onClick={onClose}>
       <div className={styles.modal} onClick={e => e.stopPropagation()}>
         <header className={styles.modalHeader}>
-          <h3 className={styles.modalTitle}>Save {date} as Shift Template</h3>
+          <h3 className={styles.modalTitle}>Save {date} as Shift</h3>
           <button type="button" className={styles.modalClose} onClick={onClose}>×</button>
         </header>
         <div className={styles.modalBody}>
@@ -928,7 +1029,208 @@ function SaveAsModal({ date, rowCount, onClose, onSave, busy }) {
         <footer className={styles.modalFooter}>
           <button type="button" className={styles.actionBtn} onClick={onClose} disabled={busy}>Cancel</button>
           <button type="button" className={styles.actionBtnPrimary} onClick={() => onSave(name)} disabled={busy || !name.trim()}>
-            {busy ? 'Saving…' : 'Save Template'}
+            {busy ? 'Saving…' : 'Save Shift'}
+          </button>
+        </footer>
+      </div>
+    </div>
+  )
+}
+
+// Phase E.8 — Edit Shift modal. Renders one row per active employee
+// and lets the supervisor set status / start / end / role / notes.
+// Saving PATCHes the template via patchShiftTemplate({ rows }) which
+// the worker translates to a rows-replace (DELETE + INSERT).
+//
+// CRITICAL: edits stay within shift_template_rows. They DO NOT touch
+// employee_schedule_overrides or employee_schedules — those only get
+// written when the supervisor explicitly applies the shift to a date.
+function EditShiftModal({ shiftId, activeEmployees, onClose, onSaved }) {
+  const toast = useToast()
+  const [shift, setShift]   = useState(null)
+  const [rows, setRows]     = useState(null)
+  const [busy, setBusy]     = useState(false)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    function onKey(e) { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  // Pull the full template once. Merge its rows into the active
+  // employee list so every active employee gets an editable row even
+  // if the shift currently has no entry for them (the common case for
+  // a fresh starter).
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    fetchShiftTemplateById(shiftId)
+      .then(t => {
+        if (cancelled) return
+        setShift(t)
+        const byEmployee = new Map((t.rows ?? []).map(r => [r.employeeId, r]))
+        const seeded = activeEmployees.map((emp, i) => {
+          const existing = byEmployee.get(emp.id)
+          return {
+            employeeId: emp.id,
+            employeeName: emp.name,
+            status:     existing?.status    ?? 'scheduled',
+            startTime:  existing?.startTime ?? '',
+            endTime:    existing?.endTime   ?? '',
+            role:       existing?.role      ?? emp.role ?? '',
+            notes:      existing?.notes     ?? '',
+            sortOrder:  existing?.sortOrder ?? i * 10,
+          }
+        })
+        setRows(seeded)
+      })
+      .catch(err => {
+        if (cancelled) return
+        toast.error(`Could not load shift: ${err.message}`)
+        onClose()
+      })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [shiftId, activeEmployees, toast, onClose])
+
+  function patchRow(employeeId, patch) {
+    setRows(prev => prev.map(r => r.employeeId === employeeId ? { ...r, ...patch } : r))
+  }
+
+  async function handleSave() {
+    if (!rows) return
+    // Only persist rows that have meaningful content — a row with
+    // status='scheduled' and no times / role / notes carries no info
+    // worth replaying.
+    const payload = rows
+      .filter(r => r.status !== 'scheduled' || r.startTime || r.endTime || r.role || r.notes)
+      .map((r, i) => ({
+        employeeId: r.employeeId,
+        status:     r.status,
+        startTime:  r.startTime || null,
+        endTime:    r.endTime   || null,
+        role:       r.role      || null,
+        notes:      r.notes     || null,
+        sortOrder:  i * 10,
+      }))
+    setBusy(true)
+    try {
+      await patchShiftTemplate(shiftId, { rows: payload })
+      toast.success(`Saved "${shift?.name ?? 'shift'}" with ${payload.length} row(s)`)
+      onSaved?.()
+    } catch (err) {
+      toast.error(`Save failed: ${err.message}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (loading || !rows) {
+    return (
+      <div className={styles.modalOverlay} onClick={onClose}>
+        <div className={`${styles.modal} ${styles.modalWide}`} onClick={e => e.stopPropagation()}>
+          <header className={styles.modalHeader}>
+            <h3 className={styles.modalTitle}>Edit Shift</h3>
+            <button type="button" className={styles.modalClose} onClick={onClose}>×</button>
+          </header>
+          <div className={styles.modalBody}>
+            <p className={styles.previewEmpty}>Loading shift…</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className={styles.modalOverlay} onClick={onClose}>
+      <div className={`${styles.modal} ${styles.modalWide}`} onClick={e => e.stopPropagation()}>
+        <header className={styles.modalHeader}>
+          <h3 className={styles.modalTitle}>Edit Shift — {shift?.name}</h3>
+          <button type="button" className={styles.modalClose} onClick={onClose}>×</button>
+        </header>
+        <div className={styles.modalBody}>
+          <p className={styles.modalHint}>
+            Set who works (or who is off), their hours, role, and notes for this shift. The shift can then be applied to any date.
+          </p>
+          <table className={styles.editorTable}>
+            <thead>
+              <tr>
+                <th>Operator</th>
+                <th>Status</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Role</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className={styles.editorEmpty}>
+                    No active employees. Add crew in Employee Management before editing a shift.
+                  </td>
+                </tr>
+              ) : rows.map(row => (
+                <tr key={row.employeeId} data-status={row.status}>
+                  <td className={styles.editorName}>{row.employeeName}</td>
+                  <td>
+                    <select
+                      className={styles.editorStatusSelect}
+                      value={row.status}
+                      disabled={busy}
+                      onChange={e => patchRow(row.employeeId, { status: e.target.value })}
+                    >
+                      {STATUS_OPTS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                  </td>
+                  <td>
+                    <input
+                      type="time"
+                      className={styles.editorTimeInput}
+                      value={row.startTime}
+                      disabled={busy || row.status !== 'scheduled'}
+                      onChange={e => patchRow(row.employeeId, { startTime: e.target.value })}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      type="time"
+                      className={styles.editorTimeInput}
+                      value={row.endTime}
+                      disabled={busy || row.status !== 'scheduled'}
+                      onChange={e => patchRow(row.employeeId, { endTime: e.target.value })}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      type="text"
+                      className={styles.editorNotesInput}
+                      value={row.role}
+                      disabled={busy}
+                      placeholder="optional"
+                      onChange={e => patchRow(row.employeeId, { role: e.target.value })}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      type="text"
+                      className={styles.editorNotesInput}
+                      value={row.notes}
+                      disabled={busy}
+                      placeholder="optional"
+                      onChange={e => patchRow(row.employeeId, { notes: e.target.value })}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <footer className={styles.modalFooter}>
+          <button type="button" className={styles.actionBtn} onClick={onClose} disabled={busy}>Cancel</button>
+          <button type="button" className={styles.actionBtnPrimary} onClick={handleSave} disabled={busy || rows.length === 0}>
+            {busy ? 'Saving…' : 'Save Shift'}
           </button>
         </footer>
       </div>

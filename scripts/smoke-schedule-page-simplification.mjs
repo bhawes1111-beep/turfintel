@@ -314,10 +314,10 @@ assert(/onClick=\{\(\) => setShowSaveAsOpen\(true\)\}[\s\S]{0,200}Save Shift/.te
 assert(/onClick=\{\(\) => setCopyDayOpen\(true\)\}[\s\S]{0,200}Copy Day/.test(CAL),
   'Copy Day opens CopyDayModal (setCopyDayOpen)')
 
-// Template picker modal title still mentions "Apply Shift Template" so
-// the picker context is preserved.
-assert(/Apply Shift Template to \{selectedDate\}/.test(CAL),
-  'template picker modal title preserved (regression couple)')
+// Template picker modal title — Phase E.8 dropped the "Template" word
+// from the user-facing title ("Apply Shift to <date>").
+assert(/Apply Shift to \{selectedDate\}/.test(CAL),
+  'template picker modal title reads "Apply Shift to <date>" (E.8 rename)')
 
 // ── Annual Calendar — overrides only (positive + negative pins) ──────
 section('Annual Calendar still writes overrides only (recurring grid untouched)')

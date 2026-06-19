@@ -130,8 +130,10 @@ assert(/await createShiftTemplate\(\{ name: def\.name, label: def\.label, rows: 
   'handleQuickCreateDefaults creates each default via createShiftTemplate (rows: [])')
 
 // Quick-create button + banner copy live in the template picker.
-assert(/Create A \/ B \/ C starter templates/.test(CAL),
-  'template picker shows "Create A / B / C starter templates" button')
+// Phase E.8 — Renamed to "starter shifts" as part of the "Shift" UI
+// language pass.
+assert(/Create A \/ B \/ C starter shifts/.test(CAL),
+  'template picker shows "Create A / B / C starter shifts" button (E.8 rename)')
 assert(/\.quickCreateBanner\s*\{/.test(CSS),
   'CSS .quickCreateBanner defined')
 

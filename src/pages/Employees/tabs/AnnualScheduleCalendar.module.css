@@ -697,6 +697,30 @@
   color: #fca5a5;
 }
 
+/* ── Phase E.8 — Empty shift guard + needs-editing tile state ── */
+.emptyShiftBanner {
+  margin-top: 6px;
+  padding: 10px 12px;
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.emptyShiftBanner p {
+  margin: 0;
+  font-size: 12px;
+  color: #fde68a;
+  line-height: 1.4;
+}
+.emptyShiftBanner strong { color: #fef3c7; }
+
+.templateRow[data-empty="true"] .templateRowCount {
+  color: #fbbf24;
+  font-weight: 700;
+}
+
 @media (max-width: 760px) {
   .modalWide { width: 100%; }
   .pickerLayout { grid-template-columns: 1fr; }
