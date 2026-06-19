@@ -2042,6 +2042,69 @@
 .boardOutStatusText[data-out-status="vacation"] { color: #93c5fd; }
 .boardOutStatusText[data-out-status="sick"]     { color: #fda4af; }
 
+/* ── Phase E.9 (compact) — Out-status cards as small roster tags ──
+   Out cards should NOT reserve the same height/width as a working
+   assignment card. Compact rules override the base .boardPersonBar
+   padding/gap (which are scaled to fit assignment + notes + chips)
+   and the name typography (the loud 48-px cap is unnecessary when
+   the card carries one short label). The status color stays.
+
+   Layout note: out cards become inline-flex so they sit side-by-side
+   in a row, wrapping naturally. The parent .boardBars is a flex
+   column, so consecutive out cards stack into a wrap-row only when
+   directly adjacent to another out card. We achieve that with a
+   simple sibling selector below. */
+
+.crewCardOut {
+  /* Use auto/fit-content widths where the column allows — keep min
+     instead of 100% so an out card never stretches to a full
+     assignment-card width on a wide TV layout. */
+  width: fit-content;
+  max-width: 100%;
+  align-self: flex-start;
+  padding: 6px 14px;
+  gap: 2px;
+  border-radius: 8px;
+  /* Honor the 4-px left rail accent that .boardPersonBar establishes,
+     but shrink so it doesn't overpower a compact tag. */
+  border-left-width: 3px;
+}
+
+/* Side-by-side packing: two consecutive out cards collapse the gap
+   slightly so the eye reads them as a roster strip rather than two
+   isolated cards. */
+.crewCardOut + .crewCardOut {
+  margin-top: calc(-1 * (var(--board-bar-scale, 1)) * 10px);
+}
+
+/* Tighter name + label typography on compact cards. The fluid clamp()
+   still keeps the smallest TV sizes readable; only the upper cap
+   shrinks (35–45 % of the assignment-card cap). */
+.crewCardOut .boardPersonName {
+  margin: 0;
+  font-size: clamp(20px, 1.8vw, 26px);
+  letter-spacing: 0.04em;
+}
+.crewCardOut .boardOutStatusText {
+  font-size: clamp(13px, 1.2vw, 18px);
+  letter-spacing: 0.06em;
+}
+
+/* Suppression — make absolutely sure no assignment-card detail can
+   sneak in even if a stray .boardTaskBlock / .boardNotesText element
+   gets injected (e.g. via a future refactor). Defense in depth. */
+.crewCardOut .boardTaskBlock,
+.crewCardOut .boardNotesText,
+.crewCardOut .boardTaskText { display: none; }
+
+/* Status variants — backgrounds + border accents. These layer on top
+   of the data-attribute rules above (same color logic; the variants
+   exist so the spec's class-name contract is honored and any future
+   non-data-attribute consumer still gets the color). */
+.crewCardOutOff      { border-left-color: rgba(148, 163, 184, 0.7); }
+.crewCardOutVacation { border-left-color: rgba(96, 165, 250, 0.7); }
+.crewCardOutSick     { border-left-color: rgba(251, 113, 133, 0.7); }
+
 .boardEmpty {
   margin: auto;
   text-align: center;

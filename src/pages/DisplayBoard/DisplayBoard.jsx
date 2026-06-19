@@ -1301,16 +1301,25 @@ function BoardModeCrewBars({ operatorCards }) {
             op.outStatus === 'vacation' ? 'Vacation'
             : op.outStatus === 'sick'    ? 'Sick'
             : 'Off'
+          // Phase E.9 (compact) — Out cards add a marker class
+          // (.crewCardOut + .crewCardOutOff/Vacation/Sick) on top of
+          // the base .boardPersonBar so the parent flex layout still
+          // works while the compact rules override sizing/padding.
+          // No .boardTaskBlock wrapper — that element exists to
+          // separate stacked assignment blocks and just adds vertical
+          // padding/border-top noise here.
+          const outClass =
+            op.outStatus === 'vacation' ? styles.crewCardOutVacation
+            : op.outStatus === 'sick'    ? styles.crewCardOutSick
+            : styles.crewCardOutOff
           return (
             <article
               key={op.key}
-              className={styles.boardPersonBar}
+              className={`${styles.boardPersonBar} ${styles.crewCardOut} ${outClass}`}
               data-out-status={op.outStatus}
             >
               <h2 className={styles.boardPersonName}>{op.employeeName ?? 'Unassigned'}</h2>
-              <div className={styles.boardTaskBlock}>
-                <p className={styles.boardOutStatusText} data-out-status={op.outStatus}>{label}</p>
-              </div>
+              <p className={styles.boardOutStatusText} data-out-status={op.outStatus}>{label}</p>
             </article>
           )
         }

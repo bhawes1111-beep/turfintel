@@ -123,8 +123,11 @@ assert(/:\s*'Off'/.test(KIOSK),
   'render defaults out status label to "Off"')
 
 // Out card uses a distinct CSS class on the task line + an article-level data attr.
-assert(/<article\s*\n\s*key=\{op\.key\}\s*\n\s*className=\{styles\.boardPersonBar\}\s*\n\s*data-out-status=\{op\.outStatus\}/.test(KIOSK),
-  '<article> for out cards carries data-out-status={op.outStatus}')
+// Compact pass (E.9 follow-up) — the article className is now a
+// composed template literal that includes the base .boardPersonBar
+// PLUS the new compact marker class. Match the substring.
+assert(/<article\s*\n\s*key=\{op\.key\}\s*\n\s*className=\{`\$\{styles\.boardPersonBar\}[\s\S]{0,200}\}`\}\s*\n\s*data-out-status=\{op\.outStatus\}/.test(KIOSK),
+  '<article> for out cards carries data-out-status={op.outStatus} and a composed className')
 assert(/<p className=\{styles\.boardOutStatusText\} data-out-status=\{op\.outStatus\}>\{label\}<\/p>/.test(KIOSK),
   'out status label uses styles.boardOutStatusText + data-out-status')
 
@@ -140,6 +143,89 @@ assert(!/op\.assignments\.map/.test(outBranchSrc),
   'out-status card does NOT iterate op.assignments (no equipment chips, no per-task block)')
 assert(!/showSpanishNotes/.test(outBranchSrc),
   'out-status card does NOT consult showSpanishNotes (no translation lookup)')
+
+// ── Compact out-status cards (E.9 follow-up) ────────────────────────
+section('Out cards are compact roster tags, not full assignment cards')
+
+// Render — the article className composes .boardPersonBar (kept so the
+// parent flex layout still works) WITH a marker .crewCardOut class
+// AND a per-status variant class.
+assert(/className=\{`\$\{styles\.boardPersonBar\}\s+\$\{styles\.crewCardOut\}\s+\$\{outClass\}`\}/.test(KIOSK),
+  'out card article className composes base + .crewCardOut + per-status variant class')
+
+// outClass helper picks the right variant per status.
+const outClassMatch = KIOSK.match(/const outClass\s*=[\s\S]*?:\s*styles\.crewCardOutOff/)
+const outClassSrc   = outClassMatch ? outClassMatch[0] : ''
+assert(outClassSrc.length > 0, 'outClass selector block extracted')
+assert(/op\.outStatus === 'vacation' \? styles\.crewCardOutVacation/.test(outClassSrc),
+  'outClass picks .crewCardOutVacation for vacation status')
+assert(/op\.outStatus === 'sick'\s+\?\s+styles\.crewCardOutSick/.test(outClassSrc),
+  'outClass picks .crewCardOutSick for sick status')
+assert(/:\s*styles\.crewCardOutOff/.test(outClassSrc),
+  'outClass falls back to .crewCardOutOff for off status')
+
+// The marker classes per spec exist in CSS.
+for (const cls of ['crewCardOut', 'crewCardOutOff', 'crewCardOutVacation', 'crewCardOutSick']) {
+  assert(new RegExp(`\\.${cls}\\s*\\{`).test(KIOSK_CSS),
+    `CSS .${cls} defined`)
+}
+
+// Compact card MUST NOT be styled by the base assignment-card rules
+// ALONE — the new .crewCardOut class is required to opt in to the
+// compact sizing. Pin via: the out card render uses a composed
+// className (asserted above) and not just `styles.boardPersonBar`.
+assert(!/className=\{styles\.boardPersonBar\}\s*\n\s*data-out-status=/.test(KIOSK),
+  'out card article does NOT use the bare .boardPersonBar class (must compose with .crewCardOut)')
+
+// Compact rules actually shrink the box: smaller width, reduced
+// padding, reduced gap, narrower border-left rail. Pin those.
+const compactRule = KIOSK_CSS.match(/\.crewCardOut\s*\{[\s\S]*?\n\}/)
+const compactSrc  = compactRule ? compactRule[0] : ''
+assert(compactSrc.length > 0, '.crewCardOut CSS rule extracted')
+assert(/width:\s*fit-content/.test(compactSrc),
+  '.crewCardOut uses width: fit-content (does not stretch to full assignment-card width)')
+assert(/align-self:\s*flex-start/.test(compactSrc),
+  '.crewCardOut sits at the start of the column (does not span full width)')
+assert(/padding:\s*\d+px\s+\d+px/.test(compactSrc),
+  '.crewCardOut overrides the base scaled padding (compact spacing)')
+assert(/gap:\s*\dpx/.test(compactSrc),
+  '.crewCardOut overrides the base scaled gap')
+assert(/border-left-width:\s*3px/.test(compactSrc),
+  '.crewCardOut shrinks the left rail width (compact accent)')
+
+// Suppression — even if a stray .boardTaskBlock / .boardNotesText
+// element appeared inside a compact card, the CSS would hide it.
+assert(/\.crewCardOut\s+\.boardTaskBlock,\s*\n\s*\.crewCardOut\s+\.boardNotesText,\s*\n\s*\.crewCardOut\s+\.boardTaskText\s*\{\s*display:\s*none;\s*\}/.test(KIOSK_CSS),
+  'CSS hides .boardTaskBlock / .boardNotesText / .boardTaskText inside any compact out card (defense-in-depth suppression)')
+
+// Compact typography — name + label use smaller font caps than the
+// base .boardPersonBar / .boardOutStatusText rules.
+assert(/\.crewCardOut\s+\.boardPersonName\s*\{[\s\S]{0,200}font-size:\s*clamp\(/.test(KIOSK_CSS),
+  '.crewCardOut .boardPersonName overrides font-size with a smaller clamp()')
+assert(/\.crewCardOut\s+\.boardOutStatusText\s*\{[\s\S]{0,200}font-size:\s*clamp\(/.test(KIOSK_CSS),
+  '.crewCardOut .boardOutStatusText overrides font-size with a smaller clamp()')
+
+// Compact render no longer wraps the label in .boardTaskBlock. (The
+// E.9 launch did wrap it; compact pass removes that for tighter
+// vertical rhythm.) Strip comments first so JSX/JS comments that
+// mention .boardTaskBlock as documentation don't trip the pin.
+const outBranchMatch2 = KIOSK.match(/if \(op\.outStatus\) \{[\s\S]*?return \(\s*<article[\s\S]*?<\/article>\s*\)/)
+const outBranchSrc2   = outBranchMatch2 ? outBranchMatch2[0] : ''
+assert(outBranchSrc2.length > 0, 'compact out-status render branch extracted')
+const outBranchCode = stripComments(outBranchSrc2)
+assert(!/boardTaskBlock/.test(outBranchCode),
+  'compact out render branch no longer wraps the label in .boardTaskBlock (tighter rhythm)')
+
+// ── Normal working cards keep the existing layout class ─────────────
+section('Normal working cards retain existing .boardPersonBar-only sizing')
+
+// Working render branch uses just .boardPersonBar — no compact class.
+assert(/return \(\s*\n\s*<article key=\{op\.key\} className=\{styles\.boardPersonBar\}>/.test(KIOSK),
+  'working card article uses bare styles.boardPersonBar (no compact class)')
+// And the base .boardPersonBar rule still exists with the original
+// scaled padding/gap (we did NOT change the base rule).
+assert(/\.boardPersonBar\s*\{[\s\S]{0,400}padding:\s*calc\(20px \* var\(--board-bar-scale, 1\)\)\s+calc\(26px \* var\(--board-bar-scale, 1\)\)/.test(KIOSK_CSS),
+  '.boardPersonBar (base) still scales padding via --board-bar-scale (working cards unchanged)')
 
 // ── CSS — out-status classes defined ────────────────────────────────
 section('CSS — out-status colors + label class defined')
