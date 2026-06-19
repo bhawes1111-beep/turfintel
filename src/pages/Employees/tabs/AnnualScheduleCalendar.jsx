@@ -71,15 +71,18 @@ const STATUS_OPTS = [
 
 const DOW_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
-// Phase E.6 — Defaults for quick-create. Each entry creates an empty
-// template (zero rows) with the given name; the supervisor saves a
-// real day onto it later via "Save as Template…" overwriting the
-// blank shell, or applies it as-is (no-op). A label hint shows on
-// each tile in the picker.
+// Phase E.6 — Defaults for quick-create.
+//
+// Phase E.8 (revision) — Starters are no longer empty shells. Each
+// default now seeds one row per active employee with status
+// 'scheduled' + sensible default times. This means applying any
+// starter on day one produces real, visible schedule rows (a 0-row
+// template silently no-ops). The supervisor edits per-employee
+// details in the Shift Manager.
 const QUICK_CREATE_DEFAULTS = [
-  { name: 'A Shift',  label: 'Early shift' },
-  { name: 'B Shift',  label: 'Late shift'  },
-  { name: 'C Shift',  label: 'Weekend / small crew' },
+  { name: 'A Shift', label: 'Early shift',            startTime: '06:00', endTime: '14:00' },
+  { name: 'B Shift', label: 'Late shift',             startTime: '08:00', endTime: '16:00' },
+  { name: 'C Shift', label: 'Weekend / small crew',   startTime: '06:00', endTime: '10:00' },
 ]
 
 function todayIso() { return new Date().toISOString().slice(0, 10) }
@@ -171,6 +174,10 @@ export default function AnnualScheduleCalendar() {
   const [moreOpen, setMoreOpen]       = useState(false)
   // Phase E.8 — Edit Shift modal target (template ID or null).
   const [editShiftId, setEditShiftId] = useState(null)
+  // Phase E.8 (revision) — Shift Manager modal open state. Distinct
+  // from the picker (which is the "apply" surface); the manager is
+  // the "browse + edit + maintain" surface.
+  const [managerOpen, setManagerOpen] = useState(false)
 
   const monthGrid = useMemo(() => buildMonthGrid(currentMonth), [currentMonth])
 
@@ -465,36 +472,41 @@ export default function AnnualScheduleCalendar() {
     }
   }
 
-  // Phase E.6 — Quick-create empty A/B/C templates so a fresh course
-  // gets a usable shift library in one click. Each is a no-rows
-  // shell; the supervisor populates it via "Save as Template…"
-  // overwriting the blank later.
+  // Phase E.6 → E.8 — Quick-create A/B/C starter shifts.
   //
-  // Phase E.8 — Auto-open the Edit modal on the FIRST template we
-  // create so the supervisor lands directly in the populate step
-  // instead of staring at three empty shells with no obvious next
-  // action.
+  // Starters now seed one row per active employee with status
+  // 'scheduled' + the default times from QUICK_CREATE_DEFAULTS. This
+  // means the first apply produces real schedule rows immediately —
+  // no more silent 0-row no-op. The supervisor fine-tunes per-employee
+  // status / times / role / notes in the Shift Manager.
   async function handleQuickCreateDefaults() {
     setBusy(true)
     try {
       let created = 0
-      let firstCreatedId = null
       for (const def of QUICK_CREATE_DEFAULTS) {
         const existing = shiftTemplates.find(t => t.name === def.name)
         if (existing) continue
-        const saved = await createShiftTemplate({ name: def.name, label: def.label, rows: [] })
-        if (!firstCreatedId && saved?.id) firstCreatedId = saved.id
+        const rows = activeEmployees.map((emp, i) => ({
+          employeeId: emp.id,
+          status:     'scheduled',
+          startTime:  def.startTime,
+          endTime:    def.endTime,
+          role:       emp.role ?? null,
+          notes:      null,
+          sortOrder:  i * 10,
+        }))
+        await createShiftTemplate({
+          name:  def.name,
+          label: def.label,
+          rows,
+        })
         created++
       }
       await refreshShiftTemplatesData()
       if (created === 0) {
         toast.info('A / B / C shifts already exist.')
       } else {
-        toast.success(`Created ${created} starter shift${created !== 1 ? 's' : ''}`)
-      }
-      if (firstCreatedId) {
-        setTemplatePickerOpen(false)
-        setEditShiftId(firstCreatedId)
+        toast.success(`Created ${created} starter shift${created !== 1 ? 's' : ''} (${activeEmployees.length} employees pre-loaded)`)
       }
     } catch (err) {
       toast.error(`Quick-create failed: ${err.message}`)
@@ -655,6 +667,11 @@ export default function AnnualScheduleCalendar() {
             <button type="button" className={styles.actionBtn} onClick={() => setCopyDayOpen(true)} disabled={busy}>
               Copy Day
             </button>
+            {/* Phase E.8 — Manage Shifts: dedicated maintenance surface
+                with stats + per-shift Edit / Duplicate / Rename / Delete. */}
+            <button type="button" className={styles.actionBtn} onClick={() => setManagerOpen(true)} disabled={busy}>
+              Manage Shifts
+            </button>
             {/* More menu — Mark all + Clear day overrides are
                 lower-frequency so they hide behind a single click. */}
             <div className={styles.moreMenuWrap}>
@@ -768,6 +785,7 @@ export default function AnnualScheduleCalendar() {
       {templatePickerOpen && (
         <TemplatePickerModal
           templates={shiftTemplates}
+          activeEmployees={activeEmployees}
           selectedDate={selectedDate}
           destHasOverrides={scheduleOverrides.some(o => o.effectiveDate === selectedDate)}
           busy={busy}
@@ -791,6 +809,20 @@ export default function AnnualScheduleCalendar() {
             refreshShiftTemplatesData()
             setEditShiftId(null)
           }}
+        />
+      )}
+
+      {/* ── Shift Manager modal (Phase E.8 revision) ── */}
+      {managerOpen && (
+        <ShiftManagerModal
+          templates={shiftTemplates}
+          busy={busy}
+          onClose={() => setManagerOpen(false)}
+          onEdit={(t) => { setManagerOpen(false); setEditShiftId(t.id) }}
+          onDelete={handleDeleteTemplate}
+          onRename={handleRenameTemplate}
+          onDuplicate={handleDuplicateTemplate}
+          onQuickCreate={handleQuickCreateDefaults}
         />
       )}
 
@@ -826,6 +858,7 @@ export default function AnnualScheduleCalendar() {
 // needed → click Apply.
 function TemplatePickerModal({
   templates,
+  activeEmployees,
   selectedDate,
   destHasOverrides,
   busy,
@@ -945,6 +978,33 @@ function TemplatePickerModal({
                       </div>
                     </dl>
 
+                    {/* Phase E.8 — Row list preview. Shows which
+                        employees will be written + their status +
+                        times so the supervisor sees the actual diff
+                        before clicking Apply. */}
+                    {!isEmpty && activeRows && activeRows.length > 0 && (
+                      <details className={styles.previewRowsBlock}>
+                        <summary className={styles.previewRowsSummary}>Rows that will be applied ({activeRows.length})</summary>
+                        <ul className={styles.previewRowsList}>
+                          {activeRows.map(r => {
+                            const name = activeEmployees.find(e => e.id === r.employeeId)?.name ?? r.employeeId
+                            return (
+                              <li key={r.id ?? r.employeeId} data-status={r.status}>
+                                <span className={styles.previewRowName}>{name}</span>
+                                <span className={styles.previewRowStatus}>{r.status}</span>
+                                <span className={styles.previewRowTimes}>
+                                  {r.status === 'scheduled' && r.startTime && r.endTime
+                                    ? `${r.startTime}–${r.endTime}`
+                                    : '—'}
+                                </span>
+                                <span className={styles.previewRowRole}>{r.role ?? ''}</span>
+                              </li>
+                            )
+                          })}
+                        </ul>
+                      </details>
+                    )}
+
                     {/* Phase E.8 — 0-row guard: a shift with no rows
                         would apply silently and do nothing. Surface
                         it clearly and route the supervisor to Edit. */}
@@ -1032,6 +1092,140 @@ function SaveAsModal({ date, rowCount, onClose, onSave, busy }) {
             {busy ? 'Saving…' : 'Save Shift'}
           </button>
         </footer>
+      </div>
+    </div>
+  )
+}
+
+// Phase E.8 (revision) — Shift Manager modal.
+//
+// The "browse + maintain" surface for saved shifts. Distinct from the
+// picker (which is the "apply now" surface). Lists every shift with
+// computed stats — scheduled / off / hours — and exposes Edit /
+// Duplicate / Rename / Delete on each row. Empty shifts get a clear
+// "Empty" badge.
+//
+// Stats are computed by lazily fetching the full template body for
+// each shift on mount; the list endpoint only carries rowCount, not
+// the full rows[]. Caches results in component state so re-renders
+// don't re-fetch.
+function ShiftManagerModal({
+  templates,
+  busy,
+  onClose,
+  onEdit,
+  onDelete,
+  onRename,
+  onDuplicate,
+  onQuickCreate,
+}) {
+  const [statsById, setStatsById] = useState({})
+  const [loading, setLoading]     = useState(true)
+
+  useEffect(() => {
+    function onKey(e) { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  // Fan-out fetch all templates' rows in parallel for the stats grid.
+  // For a typical shift library (3–10 templates), this is fast and
+  // means the supervisor sees full stats immediately without per-row
+  // click-to-load latency.
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    Promise.all(
+      templates.map(t =>
+        fetchShiftTemplateById(t.id)
+          .then(full => [t.id, summarizeRows(full.rows ?? [])])
+          .catch(() => [t.id, { scheduled: 0, off: 0, totalHours: 0 }]),
+      ),
+    ).then(pairs => {
+      if (cancelled) return
+      setStatsById(Object.fromEntries(pairs))
+      setLoading(false)
+    })
+    return () => { cancelled = true }
+  }, [templates])
+
+  return (
+    <div className={styles.modalOverlay} onClick={onClose}>
+      <div className={`${styles.modal} ${styles.modalWide}`} onClick={e => e.stopPropagation()}>
+        <header className={styles.modalHeader}>
+          <h3 className={styles.modalTitle}>Manage Shifts</h3>
+          <button type="button" className={styles.modalClose} onClick={onClose}>×</button>
+        </header>
+        <div className={styles.modalBody}>
+          <p className={styles.modalHint}>
+            Saved shifts apply to any calendar date. Edit a shift to change which employees are scheduled, off, sick, or on vacation.
+          </p>
+
+          {templates.length === 0 ? (
+            <div className={styles.quickCreateBanner}>
+              <p>No shifts yet. Create A / B / C starters to get going:</p>
+              <ul className={styles.quickCreateList}>
+                {QUICK_CREATE_DEFAULTS.map(d => (
+                  <li key={d.name}>
+                    <strong>{d.name}</strong> <span>· {d.label} · {d.startTime}–{d.endTime}</span>
+                  </li>
+                ))}
+              </ul>
+              <button type="button" className={styles.actionBtnPrimary} onClick={onQuickCreate} disabled={busy}>
+                Create A / B / C starter shifts
+              </button>
+              <p className={styles.quickCreateNote}>
+                Each starter is pre-loaded with every active employee at default times. Edit any shift to fine-tune.
+              </p>
+            </div>
+          ) : (
+            <table className={styles.managerTable}>
+              <thead>
+                <tr>
+                  <th>Shift</th>
+                  <th>Rows</th>
+                  <th>Scheduled</th>
+                  <th>Off / Sick / Vac</th>
+                  <th>Hours</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {templates.map(t => {
+                  const stats = statsById[t.id]
+                  const rowCount = t.rowCount ?? 0
+                  const isEmpty = rowCount === 0
+                  return (
+                    <tr key={t.id} data-empty={isEmpty ? 'true' : undefined}>
+                      <td>
+                        <div className={styles.managerShiftMeta}>
+                          <strong>{t.name}</strong>
+                          {t.label && <span className={styles.templateLabel}>{t.label}</span>}
+                          {t.description && <span className={styles.managerShiftDesc}>{t.description}</span>}
+                        </div>
+                      </td>
+                      <td className={styles.managerNumCell}>
+                        {rowCount}
+                        {isEmpty && <span className={styles.managerEmptyBadge}>Empty</span>}
+                      </td>
+                      <td className={styles.managerNumCell}>{loading ? '…' : stats?.scheduled ?? 0}</td>
+                      <td className={styles.managerNumCell}>{loading ? '…' : stats?.off ?? 0}</td>
+                      <td className={styles.managerNumCell}>{loading ? '…' : `${stats?.totalHours ?? 0}h`}</td>
+                      <td>
+                        <div className={styles.templateActions}>
+                          <button type="button" className={styles.actionBtnSmall} disabled={busy} onClick={() => onEdit(t)} title="Edit shift rows">Edit</button>
+                          <button type="button" className={styles.actionBtnSmall} disabled={busy} onClick={() => onDuplicate(t)} title="Duplicate">Duplicate</button>
+                          <button type="button" className={styles.actionBtnSmall} disabled={busy} onClick={() => onRename(t)} title="Rename">Rename</button>
+                          <button type="button" className={`${styles.actionBtnSmall} ${styles.actionBtnDanger}`} disabled={busy} onClick={() => onDelete(t)} title="Delete">Delete</button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
     </div>
   )

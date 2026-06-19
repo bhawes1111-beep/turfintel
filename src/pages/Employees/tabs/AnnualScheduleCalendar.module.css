@@ -721,6 +721,122 @@
   font-weight: 700;
 }
 
+/* ── Phase E.8 (revision) — Shift Manager table ── */
+.managerTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.managerTable th {
+  text-align: left;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(212, 237, 212, 0.55);
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(74, 158, 74, 0.18);
+}
+.managerTable td {
+  padding: 8px;
+  border-bottom: 1px solid rgba(74, 158, 74, 0.08);
+  color: #d4edd4;
+  vertical-align: top;
+}
+.managerTable tbody tr[data-empty="true"] {
+  background: rgba(251, 191, 36, 0.05);
+}
+
+.managerShiftMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.managerShiftMeta strong { color: #ecfdf5; font-size: 13px; }
+.managerShiftDesc {
+  font-size: 10.5px;
+  color: rgba(212, 237, 212, 0.6);
+  font-style: italic;
+}
+.managerNumCell {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+.managerEmptyBadge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: rgba(251, 191, 36, 0.15);
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  border-radius: 9px;
+  color: #fbbf24;
+}
+
+/* ── Phase E.8 — Apply preview row list ── */
+.previewRowsBlock {
+  margin-top: 4px;
+  border: 1px solid rgba(74, 158, 74, 0.18);
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.18);
+}
+.previewRowsSummary {
+  cursor: pointer;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(212, 237, 212, 0.65);
+  user-select: none;
+  list-style: none;
+}
+.previewRowsSummary::-webkit-details-marker { display: none; }
+.previewRowsSummary::before {
+  content: '▸';
+  display: inline-block;
+  margin-right: 6px;
+  font-size: 11px;
+  transition: transform 0.12s ease;
+}
+.previewRowsBlock[open] .previewRowsSummary::before { transform: rotate(90deg); }
+
+.previewRowsList {
+  list-style: none;
+  padding: 0 10px 8px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+.previewRowsList li {
+  display: grid;
+  grid-template-columns: 1.4fr 0.7fr 0.9fr 0.8fr;
+  gap: 6px;
+  font-size: 11px;
+  align-items: baseline;
+  padding: 2px 0;
+}
+.previewRowName  { color: #ecfdf5; font-weight: 600; }
+.previewRowStatus {
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(212, 237, 212, 0.55);
+}
+.previewRowsList li[data-status="scheduled"] .previewRowStatus { color: #86efac; }
+.previewRowsList li[data-status="off"] .previewRowStatus,
+.previewRowsList li[data-status="vacation"] .previewRowStatus,
+.previewRowsList li[data-status="sick"] .previewRowStatus { color: #fca5a5; }
+.previewRowTimes { font-variant-numeric: tabular-nums; color: rgba(212, 237, 212, 0.7); }
+.previewRowRole  { color: rgba(212, 237, 212, 0.55); font-style: italic; }
+
 @media (max-width: 760px) {
   .modalWide { width: 100%; }
   .pickerLayout { grid-template-columns: 1fr; }

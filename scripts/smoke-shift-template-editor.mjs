@@ -235,21 +235,37 @@ assert(/\.templateRow\[data-empty="true"\] \.templateRowCount\s*\{/.test(CSS),
   'CSS highlights .templateRowCount inside an empty-shift tile')
 
 // ── Quick-create A/B/C is not silently useless ──────────────────────
-section('Quick-create A/B/C — auto-opens Edit Shift on the first new shell')
+section('Quick-create A/B/C — pre-seeded with active employees + default times')
 
 const qcMatch = CAL.match(/async function handleQuickCreateDefaults[\s\S]*?\n  \}/)
 const qcSrc   = qcMatch ? qcMatch[0] : ''
 assert(qcSrc.length > 0, 'handleQuickCreateDefaults body extracted')
-assert(/let firstCreatedId = null/.test(qcSrc),
-  'quick-create tracks the first newly-created shift id')
-assert(/if \(!firstCreatedId && saved\?\.id\) firstCreatedId = saved\.id/.test(qcSrc),
-  'quick-create captures the first saved.id from createShiftTemplate')
-assert(/if \(firstCreatedId\) \{[\s\S]{0,300}setEditShiftId\(firstCreatedId\)/.test(qcSrc),
-  'quick-create immediately opens EditShiftModal on the first created shift')
 
-// Updated banner copy clarifies what happens next.
-assert(/Each starter opens in the editor so you can fill in/.test(CAL),
-  'quick-create banner now explains "each starter opens in the editor"')
+// Phase E.8 revision — starters pre-seed rows from active employees so
+// the very first apply produces real schedule rows (no 0-row no-op).
+assert(/const rows = activeEmployees\.map\(\(emp, i\) =>/.test(qcSrc),
+  'quick-create seeds rows from activeEmployees (one row per active employee)')
+assert(/status:\s*['"]scheduled['"]/.test(qcSrc),
+  'quick-create seeds each row with status: scheduled (default)')
+assert(/startTime:\s*def\.startTime/.test(qcSrc),
+  'quick-create seeds each row with the default startTime from QUICK_CREATE_DEFAULTS')
+assert(/endTime:\s*def\.endTime/.test(qcSrc),
+  'quick-create seeds each row with the default endTime from QUICK_CREATE_DEFAULTS')
+
+// Defaults carry sensible start/end times so applying immediately
+// produces visible schedule rows.
+for (const [name, start, end] of [
+  ['A Shift', '06:00', '14:00'],
+  ['B Shift', '08:00', '16:00'],
+  ['C Shift', '06:00', '10:00'],
+]) {
+  const r = new RegExp(`name:\\s*['"]${name}['"],[\\s\\S]{0,400}startTime:\\s*['"]${start}['"],[\\s\\S]{0,400}endTime:\\s*['"]${end}['"]`)
+  assert(r.test(CAL), `QUICK_CREATE_DEFAULTS includes ${name} with default ${start}–${end}`)
+}
+
+// Banner copy clarifies what happens next.
+assert(/Each starter is pre-loaded with every active employee at default times/.test(CAL),
+  'Shift Manager banner explains starters are pre-loaded with active employees')
 
 // ── Save as Shift — name collision is explicit ──────────────────────
 section('Save as Shift — name collision asks "update existing or cancel"')

@@ -126,8 +126,11 @@ for (const name of ['A Shift', 'B Shift', 'C Shift']) {
 assert(/async function handleQuickCreateDefaults/.test(CAL),
   'handleQuickCreateDefaults helper present')
 // Quick-create uses the existing createShiftTemplate store helper.
-assert(/await createShiftTemplate\(\{ name: def\.name, label: def\.label, rows: \[\] \}\)/.test(CAL),
-  'handleQuickCreateDefaults creates each default via createShiftTemplate (rows: [])')
+// Phase E.8 revision — starters now pre-seed rows from activeEmployees
+// instead of `rows: []`. The earlier E.6 pin checked the empty-rows
+// shape; the new behavior passes a populated `rows` array.
+assert(/await createShiftTemplate\(\{\s*\n\s*name:\s*def\.name,\s*\n\s*label:\s*def\.label,\s*\n\s*rows,\s*\n\s*\}\)/.test(CAL),
+  'handleQuickCreateDefaults creates each default via createShiftTemplate with pre-seeded rows (E.8 revision)')
 
 // Quick-create button + banner copy live in the template picker.
 // Phase E.8 — Renamed to "starter shifts" as part of the "Shift" UI
