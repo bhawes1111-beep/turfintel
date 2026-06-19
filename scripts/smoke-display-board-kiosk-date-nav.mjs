@@ -282,6 +282,76 @@ const newMigrations = migrationFiles.filter(f => /^00(5[5-9]|[6-9]\d|\d{3,})/.te
 assert(newMigrations.length === 0,
   `no migration past 0054 (0054_shift_templates accepted) (found: ${newMigrations.join(', ') || 'none'})`)
 
+// ── Phase E.10 — Mobile swipe date navigation ────────────────────────
+section('Mobile swipe — touch handlers + thresholds + button regression')
+
+// Constants — distance + vertical tolerance.
+assert(/const SWIPE_MIN_DISTANCE\s*=\s*60/.test(DB),
+  'SWIPE_MIN_DISTANCE = 60 (px) defined as a top-level constant')
+assert(/const SWIPE_VERTICAL_TOLERANCE_RATIO\s*=\s*1\.25/.test(DB),
+  'SWIPE_VERTICAL_TOLERANCE_RATIO = 1.25 defined as a top-level constant')
+
+// Ref-backed touch start (no re-render churn during a gesture).
+assert(/const touchStartRef = useRef\(null\)/.test(DB),
+  'touchStartRef = useRef(null) — gesture start tracked without re-renders')
+
+// handleBoardTouchStart captures clientX + clientY.
+const tsMatch = DB.match(/function handleBoardTouchStart\([\s\S]*?\n\s{2}\}/)
+const tsSrc   = tsMatch ? tsMatch[0] : ''
+assert(tsSrc.length > 0, 'handleBoardTouchStart body extracted')
+assert(/const t = e\.touches\?\.\[0\]/.test(tsSrc),
+  'handleBoardTouchStart reads the first finger from e.touches[0]')
+assert(/touchStartRef\.current = \{ x: t\.clientX, y: t\.clientY \}/.test(tsSrc),
+  'handleBoardTouchStart stores { x: clientX, y: clientY } in the ref')
+
+// handleBoardTouchEnd compares against the start point.
+const teMatch = DB.match(/function handleBoardTouchEnd\([\s\S]*?\n\s{2}\}/)
+const teSrc   = teMatch ? teMatch[0] : ''
+assert(teSrc.length > 0, 'handleBoardTouchEnd body extracted')
+assert(/const start = touchStartRef\.current/.test(teSrc),
+  'handleBoardTouchEnd reads the captured start point')
+assert(/touchStartRef\.current = null/.test(teSrc),
+  'handleBoardTouchEnd clears the ref so a missed touchstart can\'t cascade into the next gesture')
+assert(/e\.changedTouches\?\.\[0\]/.test(teSrc),
+  'handleBoardTouchEnd reads the endpoint from e.changedTouches[0]')
+
+// Short swipes are ignored (the "tiny accidental scroll/tap" guard).
+assert(/if \(absDx < SWIPE_MIN_DISTANCE\) return/.test(teSrc),
+  'handleBoardTouchEnd ignores swipes shorter than SWIPE_MIN_DISTANCE')
+
+// Vertical-dominant gestures are ignored.
+assert(/if \(absDx < absDy \* SWIPE_VERTICAL_TOLERANCE_RATIO\) return/.test(teSrc),
+  'handleBoardTouchEnd ignores vertical-dominant gestures (|dx| < |dy| * tolerance)')
+
+// Swipe direction → date delta.
+// Finger moves right (dx > 0) → previous day (-1).
+// Finger moves left  (dx < 0) → next day (+1).
+assert(/shiftBoardDate\(dx > 0 \? -1 : 1\)/.test(teSrc),
+  'handleBoardTouchEnd calls shiftBoardDate(-1) on swipe right, +1 on swipe left')
+
+// Touch handlers are wired ONTO the boardMode root <div>.
+assert(/data-board-mode="true"\s*\n\s*onTouchStart=\{handleBoardTouchStart\}\s*\n\s*onTouchEnd=\{handleBoardTouchEnd\}/.test(DB),
+  'boardMode root <div> wires onTouchStart + onTouchEnd handlers')
+
+// Accessibility regression — the existing prev/next BUTTONS still exist
+// (we keep them so mouse + screen-reader users still have a non-swipe path).
+assert(/aria-label="Previous board date"/.test(DB),
+  'regression: Previous-day arrow button still present')
+assert(/aria-label="Next board date"/.test(DB),
+  'regression: Next-day arrow button still present')
+
+// Clickable calendar (the date picker used in the non-board admin view)
+// still has its onChange wired (regression couple).
+assert(/onChange=\{setSelectedDate\}/.test(DB),
+  'regression: clickable calendar still calls setSelectedDate on change')
+
+// Negative pin: NO preventDefault inside the touch handlers — we don't
+// want to block normal vertical scrolling on the crew bars list.
+assert(!/preventDefault\(\)/.test(tsSrc),
+  'handleBoardTouchStart does NOT call preventDefault (vertical scroll preserved)')
+assert(!/preventDefault\(\)/.test(teSrc),
+  'handleBoardTouchEnd does NOT call preventDefault (vertical scroll preserved)')
+
 // ── Summary ────────────────────────────────────────────────────────────
 console.log(`\n${failed === 0 ? '✅' : '❌'}  ${passed} passed, ${failed} failed`)
 if (failed > 0) process.exit(1)

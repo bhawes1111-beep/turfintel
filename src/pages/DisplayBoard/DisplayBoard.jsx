@@ -74,6 +74,16 @@ const BOARD_REFRESH_MS = 3 * 60 * 1000
 // null below so it never re-pulls after the initial mount.
 const KIOSK_REFRESH_MS = 60 * 1000
 
+// Phase E.10 — Mobile swipe date navigation thresholds.
+//   • SWIPE_MIN_DISTANCE: a horizontal touch must travel at least this
+//     many CSS pixels to count as a swipe (filters tiny accidental
+//     scrolls / taps).
+//   • SWIPE_VERTICAL_TOLERANCE_RATIO: horizontal distance must exceed
+//     vertical distance by this factor — otherwise the gesture is a
+//     vertical scroll attempt and we let it pass through unmodified.
+const SWIPE_MIN_DISTANCE              = 60
+const SWIPE_VERTICAL_TOLERANCE_RATIO  = 1.25
+
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 const PRIORITY_ORDER = { high: 0, medium: 1, routine: 2, low: 3 }
@@ -254,6 +264,40 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
   function shiftBoardDate(delta) {
     setBoardDateTouched(true)
     setSelectedDate(prev => shiftDate(prev, delta))
+  }
+
+  // Phase E.10 — Mobile swipe date navigation. Tracks the start of
+  // each touch in a ref (no re-render) and compares against the
+  // endpoint in handleTouchEnd. Only fires shiftBoardDate when:
+  //   • horizontal distance >= SWIPE_MIN_DISTANCE
+  //   • |dx| > |dy| * SWIPE_VERTICAL_TOLERANCE_RATIO
+  // Either condition failing → the gesture is treated as a normal
+  // vertical scroll or an accidental tap and propagates unchanged.
+  // We don't preventDefault — buttons + the date picker still work,
+  // and vertical scrolling on the crew bars stays smooth.
+  const touchStartRef = useRef(null)
+
+  function handleBoardTouchStart(e) {
+    const t = e.touches?.[0]
+    if (!t) return
+    touchStartRef.current = { x: t.clientX, y: t.clientY }
+  }
+
+  function handleBoardTouchEnd(e) {
+    const start = touchStartRef.current
+    touchStartRef.current = null
+    if (!start) return
+    const t = e.changedTouches?.[0]
+    if (!t) return
+    const dx = t.clientX - start.x
+    const dy = t.clientY - start.y
+    const absDx = Math.abs(dx)
+    const absDy = Math.abs(dy)
+    if (absDx < SWIPE_MIN_DISTANCE) return                          // too short — likely a tap
+    if (absDx < absDy * SWIPE_VERTICAL_TOLERANCE_RATIO) return      // vertical-dominant — let scrolling win
+    // dx > 0 → finger moved right → swipe RIGHT → previous day
+    // dx < 0 → finger moved left  → swipe LEFT  → next day
+    shiftBoardDate(dx > 0 ? -1 : 1)
   }
 
   // Live clock — tick every second.
@@ -687,6 +731,8 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
       <div
         className={`${styles.root} ${styles.rootBoard} ${styles.boardSimple}`}
         data-board-mode="true"
+        onTouchStart={handleBoardTouchStart}
+        onTouchEnd={handleBoardTouchEnd}
       >
         {/* Phase 9C.6 — Date navigation arrows. ‹ / › shift selectedDate
             by one day in-memory; the date label remains centered. The
