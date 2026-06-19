@@ -300,6 +300,37 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
     shiftBoardDate(dx > 0 ? -1 : 1)
   }
 
+  // Phase E.10b — Clickable date title opens a native date picker.
+  // The button shows the formatted date; a sibling <input type="date">
+  // is visually hidden but stays in the DOM so it can receive focus +
+  // host the platform date picker. showPicker() is the modern path
+  // (Chrome 99+, Safari 16.4+, Firefox 101+); we fall back to focus()
+  // then click() for older browsers.
+  const dateInputRef = useRef(null)
+
+  function handleDateTitleClick() {
+    const el = dateInputRef.current
+    if (!el) return
+    try {
+      if (typeof el.showPicker === 'function') {
+        el.showPicker()
+        return
+      }
+    } catch {
+      // Some browsers throw if the input isn't focused first; fall
+      // through to the alternate paths.
+    }
+    if (typeof el.focus === 'function') el.focus()
+    if (typeof el.click === 'function') el.click()
+  }
+
+  function handleDatePickerChange(e) {
+    const next = e.target.value
+    if (typeof next !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(next)) return
+    setBoardDateTouched(true)
+    setSelectedDate(next)
+  }
+
   // Live clock — tick every second.
   const [now, setNow] = useState(() => new Date())
   useEffect(() => {
@@ -735,28 +766,48 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
         onTouchEnd={handleBoardTouchEnd}
       >
         {/* Phase 9C.6 — Date navigation arrows. ‹ / › shift selectedDate
-            by one day in-memory; the date label remains centered. The
-            arrows are view-only (no data mutation), so the public kiosk
-            stays no-login and side-effect-free. */}
+            by one day in-memory; the date label remains centered.
+            Phase E.10b — Date label is now a button that opens a
+            native date picker (via the hidden sibling <input>). All
+            three controls + the E.10 swipe gesture mutate the same
+            selectedDate state, so the kiosk stays no-login + side-
+            effect-free. */}
         <header className={styles.boardDateTop}>
           <button
             type="button"
-            className={styles.boardDateArrow}
+            className={`${styles.boardDateArrow} ${styles.boardDateNav}`}
             onClick={() => shiftBoardDate(-1)}
             aria-label="Previous board date"
             title="Previous day"
           >
-            ‹
+            <span className={styles.boardDateNavIcon} aria-hidden="true">‹</span>
           </button>
-          <span className={styles.boardDateLabel}>{prettyDate(selectedDate)}</span>
           <button
             type="button"
-            className={styles.boardDateArrow}
+            className={`${styles.boardDateLabel} ${styles.boardDateTitleButton}`}
+            onClick={handleDateTitleClick}
+            aria-label="Choose display date"
+            title="Choose display date"
+          >
+            {prettyDate(selectedDate)}
+          </button>
+          <input
+            ref={dateInputRef}
+            type="date"
+            value={selectedDate}
+            onChange={handleDatePickerChange}
+            className={styles.boardDateNativeInput}
+            aria-label="Choose display date"
+            tabIndex={-1}
+          />
+          <button
+            type="button"
+            className={`${styles.boardDateArrow} ${styles.boardDateNav}`}
             onClick={() => shiftBoardDate(1)}
             aria-label="Next board date"
             title="Next day"
           >
-            ›
+            <span className={styles.boardDateNavIcon} aria-hidden="true">›</span>
           </button>
         </header>
         {/* Phase 9C.10 — Daily Notes strip. Reuses the already-derived

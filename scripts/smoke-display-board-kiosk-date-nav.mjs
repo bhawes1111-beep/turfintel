@@ -112,12 +112,17 @@ assert(/title="Next day"/.test(earlyReturnJsx),
   'right arrow title="Next day"')
 
 // Buttons use the new boardDateArrow class; the label is centered.
-const arrowMatches = (earlyReturnJsx.match(/className=\{styles\.boardDateArrow\}/g) ?? []).length
+// Phase E.10b — the arrow className is now a composed template literal
+// (boardDateArrow + boardDateNav). The label is now a clickable
+// button (boardDateLabel + boardDateTitleButton). Match the substring.
+const arrowMatches = (earlyReturnJsx.match(/className=\{`\$\{styles\.boardDateArrow\}\s+\$\{styles\.boardDateNav\}`\}/g) ?? []).length
 assert(arrowMatches === 2,
-  `boardDateArrow class applied exactly twice (one per arrow); found ${arrowMatches}`)
+  `boardDateArrow + boardDateNav composed className applied exactly twice (one per arrow); found ${arrowMatches}`)
 
-assert(/className=\{styles\.boardDateLabel\}>\{prettyDate\(selectedDate\)\}/.test(earlyReturnJsx),
-  '<span className={styles.boardDateLabel}>{prettyDate(selectedDate)}</span> wraps the date text')
+assert(/className=\{`\$\{styles\.boardDateLabel\}\s+\$\{styles\.boardDateTitleButton\}`\}/.test(earlyReturnJsx),
+  'date label uses composed `${boardDateLabel} ${boardDateTitleButton}` className')
+assert(/\{prettyDate\(selectedDate\)\}/.test(earlyReturnJsx),
+  'date label text still rendered via {prettyDate(selectedDate)}')
 
 // Arrows use ‹ / › glyphs to match the existing DateClockPanel style.
 assert(/‹/.test(earlyReturnJsx),

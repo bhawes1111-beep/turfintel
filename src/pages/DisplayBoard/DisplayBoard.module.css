@@ -2229,6 +2229,93 @@
   outline-offset: 3px;
 }
 
+/* ── Phase E.10b — Polished date nav buttons (layered on top of
+   the existing .boardDateArrow rules). Softer circular pill with a
+   radial glow at the top and a subtle lift on hover/focus. Chevron
+   lives in its own .boardDateNavIcon span so we can fine-tune the
+   vertical optical alignment without touching the button's own
+   flex layout. ────────────────────────────────────────────────── */
+.boardDateNav {
+  width:  clamp(44px, 4vw, 58px);
+  height: clamp(44px, 4vw, 58px);
+  border-radius: 999px;
+  border: 1px solid rgba(74, 222, 128, 0.35);
+  background:
+    radial-gradient(circle at 50% 35%, rgba(74, 222, 128, 0.14), rgba(2, 24, 14, 0.65));
+  color: #bbf7d0;
+  box-shadow:
+    0 0 0 1px rgba(74, 222, 128, 0.08),
+    0 10px 24px rgba(0, 0, 0, 0.22);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    transform 120ms ease,
+    border-color 120ms ease,
+    background 120ms ease;
+}
+
+.boardDateNav:hover,
+.boardDateNav:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(74, 222, 128, 0.7);
+  background:
+    radial-gradient(circle at 50% 35%, rgba(74, 222, 128, 0.22), rgba(2, 24, 14, 0.78));
+}
+
+.boardDateNav:active {
+  transform: translateY(0);
+}
+
+.boardDateNavIcon {
+  font-size: clamp(26px, 2.6vw, 34px);
+  line-height: 1;
+  /* Chevron glyphs sit slightly low optically inside circular buttons.
+     This 1-px nudge centers them vertically without affecting flex. */
+  transform: translateY(-1px);
+}
+
+/* Phase E.10b — Clickable date title. Reset native button chrome so
+   the date reads as text; add a soft hover state + focus ring so it's
+   discoverable as interactive without competing with the centered
+   weight of the date itself. */
+.boardDateTitleButton {
+  background: transparent;
+  border: none;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+  padding: 4px 12px;
+  border-radius: 8px;
+  transition: background 120ms ease, color 120ms ease;
+}
+.boardDateTitleButton:hover {
+  background: rgba(74, 222, 128, 0.08);
+  color: #ecfdf5;
+}
+.boardDateTitleButton:focus-visible {
+  outline: 2px solid rgba(134, 239, 172, 0.7);
+  outline-offset: 3px;
+}
+
+/* Native date input — hidden from layout but still in the DOM so
+   showPicker()/focus()/click() fallbacks can target it. Positioned
+   underneath the date title button so the platform picker (when it
+   uses an anchor) appears near the click target. */
+.boardDateNativeInput {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  /* Keep the input visually invisible without using display: none —
+     the platform picker can refuse to anchor against a fully-hidden
+     element on some browsers. */
+}
+
 /* The centered date label. min-width keeps the label at a stable
    width so the arrows stay anchored regardless of weekday length
    (e.g. "Mon" vs "Wednesday" both render the same row width). The
