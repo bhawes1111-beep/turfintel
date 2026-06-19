@@ -122,14 +122,16 @@ assert(/op\.outStatus === 'sick'\s*\?\s*'Sick'/.test(KIOSK),
 assert(/:\s*'Off'/.test(KIOSK),
   'render defaults out status label to "Off"')
 
-// Out card uses a distinct CSS class on the task line + an article-level data attr.
-// Compact pass (E.9 follow-up) — the article className is now a
-// composed template literal that includes the base .boardPersonBar
-// PLUS the new compact marker class. Match the substring.
+// Out card uses a distinct CSS class on the article + an article-level data attr.
+// Phase E.9b — the article className is now a composed template literal
+// that includes the base .boardPersonBar + .crewCardOut + per-status
+// variant. Match the substring.
 assert(/<article\s*\n\s*key=\{op\.key\}\s*\n\s*className=\{`\$\{styles\.boardPersonBar\}[\s\S]{0,200}\}`\}\s*\n\s*data-out-status=\{op\.outStatus\}/.test(KIOSK),
   '<article> for out cards carries data-out-status={op.outStatus} and a composed className')
-assert(/<p className=\{styles\.boardOutStatusText\} data-out-status=\{op\.outStatus\}>\{label\}<\/p>/.test(KIOSK),
-  'out status label uses styles.boardOutStatusText + data-out-status')
+// Phase E.9b — status label is now a <span> badge inside an inline
+// header row, not a standalone <p>.
+assert(/<span\s*\n\s*className=\{styles\.crewCardOutBadge\}\s*\n\s*data-out-status=\{op\.outStatus\}\s*\n?\s*>\s*\n?\s*\{label\}/.test(KIOSK),
+  'status badge is a <span className={styles.crewCardOutBadge}> with data-out-status')
 
 // Out branch must NOT render assignment text / notes / Spanish.
 const outBranchMatch = KIOSK.match(/if \(op\.outStatus\) \{[\s\S]*?return \(\s*<article[\s\S]*?<\/article>\s*\)/)
@@ -177,44 +179,105 @@ for (const cls of ['crewCardOut', 'crewCardOutOff', 'crewCardOutVacation', 'crew
 assert(!/className=\{styles\.boardPersonBar\}\s*\n\s*data-out-status=/.test(KIOSK),
   'out card article does NOT use the bare .boardPersonBar class (must compose with .crewCardOut)')
 
-// Compact rules actually shrink the box: smaller width, reduced
-// padding, reduced gap, narrower border-left rail. Pin those.
-const compactRule = KIOSK_CSS.match(/\.crewCardOut\s*\{[\s\S]*?\n\}/)
-const compactSrc  = compactRule ? compactRule[0] : ''
-assert(compactSrc.length > 0, '.crewCardOut CSS rule extracted')
-assert(/width:\s*fit-content/.test(compactSrc),
-  '.crewCardOut uses width: fit-content (does not stretch to full assignment-card width)')
-assert(/align-self:\s*flex-start/.test(compactSrc),
-  '.crewCardOut sits at the start of the column (does not span full width)')
-assert(/padding:\s*\d+px\s+\d+px/.test(compactSrc),
-  '.crewCardOut overrides the base scaled padding (compact spacing)')
-assert(/gap:\s*\dpx/.test(compactSrc),
-  '.crewCardOut overrides the base scaled gap')
-assert(/border-left-width:\s*3px/.test(compactSrc),
-  '.crewCardOut shrinks the left rail width (compact accent)')
+// Phase E.9b — Full-width sizing. The previous compact layout
+// (width: fit-content / align-self: flex-start / 6px padding) is
+// replaced with full-width rules so the out bar matches assignment
+// bars' vertical rhythm.
+const fwRule = KIOSK_CSS.match(/\.crewCardOut\s*\{[\s\S]*?\n\}/)
+const fwSrc  = fwRule ? fwRule[0] : ''
+assert(fwSrc.length > 0, '.crewCardOut CSS rule extracted')
+assert(/width:\s*100%/.test(fwSrc),
+  '.crewCardOut uses width: 100% (full-width bar)')
+assert(/align-self:\s*stretch/.test(fwSrc),
+  '.crewCardOut uses align-self: stretch (matches assignment bars)')
 
-// Suppression — even if a stray .boardTaskBlock / .boardNotesText
-// element appeared inside a compact card, the CSS would hide it.
+// Negative pin: the compact layout properties are GONE.
+assert(!/width:\s*fit-content/.test(fwSrc),
+  '.crewCardOut no longer uses width: fit-content (compact layout removed)')
+assert(!/align-self:\s*flex-start/.test(fwSrc),
+  '.crewCardOut no longer uses align-self: flex-start (compact layout removed)')
+
+// Padding still scales with --board-bar-scale so the bar tracks the
+// rest of the kiosk density logic, just slightly shorter vertically.
+assert(/padding:\s*calc\(\d+px \* var\(--board-bar-scale, 1\)\)\s+calc\(\d+px \* var\(--board-bar-scale, 1\)\)/.test(fwSrc),
+  '.crewCardOut padding scales via --board-bar-scale (matches density of assignment bars)')
+
+// Suppression rules still in place — task title / notes / Spanish are
+// never rendered, even if a future refactor injects those elements.
 assert(/\.crewCardOut\s+\.boardTaskBlock,\s*\n\s*\.crewCardOut\s+\.boardNotesText,\s*\n\s*\.crewCardOut\s+\.boardTaskText\s*\{\s*display:\s*none;\s*\}/.test(KIOSK_CSS),
-  'CSS hides .boardTaskBlock / .boardNotesText / .boardTaskText inside any compact out card (defense-in-depth suppression)')
+  'CSS hides .boardTaskBlock / .boardNotesText / .boardTaskText inside any out card (defense-in-depth suppression)')
 
-// Compact typography — name + label use smaller font caps than the
-// base .boardPersonBar / .boardOutStatusText rules.
-assert(/\.crewCardOut\s+\.boardPersonName\s*\{[\s\S]{0,200}font-size:\s*clamp\(/.test(KIOSK_CSS),
-  '.crewCardOut .boardPersonName overrides font-size with a smaller clamp()')
-assert(/\.crewCardOut\s+\.boardOutStatusText\s*\{[\s\S]{0,200}font-size:\s*clamp\(/.test(KIOSK_CSS),
-  '.crewCardOut .boardOutStatusText overrides font-size with a smaller clamp()')
+// Phase E.9b — Inline header row.
+assert(/\.crewCardOutHeader\s*\{/.test(KIOSK_CSS),
+  '.crewCardOutHeader CSS rule defined')
+const headerRule = KIOSK_CSS.match(/\.crewCardOutHeader\s*\{[\s\S]*?\n\}/)
+const headerSrc  = headerRule ? headerRule[0] : ''
+assert(/display:\s*flex/.test(headerSrc),
+  '.crewCardOutHeader uses display: flex (inline header row)')
+assert(/align-items:\s*center/.test(headerSrc),
+  '.crewCardOutHeader vertically centers name + badge')
+assert(/flex-wrap:\s*wrap/.test(headerSrc),
+  '.crewCardOutHeader wraps so long names do not overlap the badge')
 
-// Compact render no longer wraps the label in .boardTaskBlock. (The
-// E.9 launch did wrap it; compact pass removes that for tighter
-// vertical rhythm.) Strip comments first so JSX/JS comments that
-// mention .boardTaskBlock as documentation don't trip the pin.
+// Phase E.9b — Status badge styling. Anchor on a line-start match so
+// the descendant rule `.crewCardOutHeader .crewCardOutBadge { ... }`
+// doesn't get picked up instead of the main .crewCardOutBadge rule.
+assert(/^\.crewCardOutBadge\s*\{/m.test(KIOSK_CSS),
+  '.crewCardOutBadge CSS rule defined (top-level)')
+const badgeRule = KIOSK_CSS.match(/^\.crewCardOutBadge\s*\{[\s\S]*?\n\}/m)
+const badgeSrc  = badgeRule ? badgeRule[0] : ''
+assert(/font-size:\s*clamp\(16px,\s*1\.4vw,\s*22px\)/.test(badgeSrc),
+  '.crewCardOutBadge font-size uses clamp(16px, 1.4vw, 22px)')
+assert(/font-weight:\s*900/.test(badgeSrc),
+  '.crewCardOutBadge font-weight: 900 (heavy weight for TV scan)')
+assert(/border-radius:\s*999px/.test(badgeSrc),
+  '.crewCardOutBadge uses pill-shaped border-radius: 999px')
+assert(/border:\s*1px solid currentColor/.test(badgeSrc),
+  '.crewCardOutBadge border uses currentColor (matches per-status color)')
+assert(/text-transform:\s*uppercase/.test(badgeSrc),
+  '.crewCardOutBadge text-transform: uppercase')
+
+// Per-status badge colors.
+assert(/\.crewCardOutBadge\[data-out-status="off"\]\s*\{[\s\S]{0,200}color:\s*#cbd5e1/.test(KIOSK_CSS),
+  '.crewCardOutBadge[data-out-status="off"] uses slate color (#cbd5e1)')
+assert(/\.crewCardOutBadge\[data-out-status="vacation"\]\s*\{[\s\S]{0,200}color:\s*#93c5fd/.test(KIOSK_CSS),
+  '.crewCardOutBadge[data-out-status="vacation"] uses blue color (#93c5fd)')
+assert(/\.crewCardOutBadge\[data-out-status="sick"\]\s*\{[\s\S]{0,200}color:\s*#fda4af/.test(KIOSK_CSS),
+  '.crewCardOutBadge[data-out-status="sick"] uses rose color (#fda4af)')
+
+// Out-card name typography — readable but not as bold as a working
+// card's name (the badge carries the primary signal).
+assert(/\.crewCardOut\s+\.boardPersonName\s*\{[\s\S]{0,200}font-size:\s*clamp\(24px,\s*2\.6vw,\s*36px\)/.test(KIOSK_CSS),
+  '.crewCardOut .boardPersonName overrides font-size with clamp(24px, 2.6vw, 36px)')
+
+// Out branch JSX renders the inline header + badge structure.
 const outBranchMatch2 = KIOSK.match(/if \(op\.outStatus\) \{[\s\S]*?return \(\s*<article[\s\S]*?<\/article>\s*\)/)
 const outBranchSrc2   = outBranchMatch2 ? outBranchMatch2[0] : ''
-assert(outBranchSrc2.length > 0, 'compact out-status render branch extracted')
+assert(outBranchSrc2.length > 0, 'out-status render branch extracted')
 const outBranchCode = stripComments(outBranchSrc2)
+// Wraps name + badge in .crewCardOutHeader.
+assert(/<div className=\{styles\.crewCardOutHeader\}>/.test(outBranchCode),
+  'out card render wraps name + badge in <div className={styles.crewCardOutHeader}>')
+// Name is still rendered.
+assert(/<h2 className=\{styles\.boardPersonName\}>\{op\.employeeName \?\? 'Unassigned'\}<\/h2>/.test(outBranchCode),
+  'out card render still includes the <h2> name')
+// Suppression invariants — no task / notes / assignments / Spanish render in the out branch.
 assert(!/boardTaskBlock/.test(outBranchCode),
-  'compact out render branch no longer wraps the label in .boardTaskBlock (tighter rhythm)')
+  'out branch JSX does not wrap in .boardTaskBlock')
+assert(!/boardTaskText/.test(outBranchCode),
+  'out branch JSX does not render boardTaskText')
+assert(!/boardNotesText/.test(outBranchCode),
+  'out branch JSX does not render boardNotesText')
+assert(!/op\.assignments\.map/.test(outBranchCode),
+  'out branch JSX does not iterate op.assignments')
+assert(!/showSpanishNotes/.test(outBranchCode),
+  'out branch JSX does not consult showSpanishNotes')
+
+// Dead .boardOutStatusText rules removed (the standalone <p> form is
+// gone in E.9b). Pin to make sure we don't accidentally reintroduce
+// the old rule when adding future polish.
+assert(!/\.boardOutStatusText\s*\{/.test(KIOSK_CSS),
+  'dead .boardOutStatusText CSS rules removed (replaced by .crewCardOutBadge)')
 
 // ── Normal working cards keep the existing layout class ─────────────
 section('Normal working cards retain existing .boardPersonBar-only sizing')
@@ -237,15 +300,14 @@ assert(/\.boardPersonBar\[data-out-status="vacation"\]\s*\{[\s\S]{0,300}rgba\(37
 assert(/\.boardPersonBar\[data-out-status="sick"\]\s*\{[\s\S]{0,300}rgba\(244,\s*63,\s*94/.test(KIOSK_CSS),
   '.boardPersonBar[data-out-status="sick"] uses a rose tint')
 
-// Label class is its own rule so it stands out from assignment text.
-assert(/\.boardOutStatusText\s*\{/.test(KIOSK_CSS),
-  'CSS .boardOutStatusText rule defined')
-assert(/\.boardOutStatusText\[data-out-status="off"\]\s*\{[\s\S]{0,200}color:\s*#cbd5e1/.test(KIOSK_CSS),
-  '.boardOutStatusText[data-out-status="off"] uses slate color (#cbd5e1)')
-assert(/\.boardOutStatusText\[data-out-status="vacation"\]\s*\{[\s\S]{0,200}color:\s*#93c5fd/.test(KIOSK_CSS),
-  '.boardOutStatusText[data-out-status="vacation"] uses blue color (#93c5fd)')
-assert(/\.boardOutStatusText\[data-out-status="sick"\]\s*\{[\s\S]{0,200}color:\s*#fda4af/.test(KIOSK_CSS),
-  '.boardOutStatusText[data-out-status="sick"] uses rose color (#fda4af)')
+// Phase E.9b — Badge color classes (replaces the dead
+// .boardOutStatusText rules pinned above in the compact section).
+assert(/\.crewCardOutBadge\[data-out-status="off"\]\s*\{[\s\S]{0,200}color:\s*#cbd5e1/.test(KIOSK_CSS),
+  '.crewCardOutBadge[data-out-status="off"] uses slate color (#cbd5e1)')
+assert(/\.crewCardOutBadge\[data-out-status="vacation"\]\s*\{[\s\S]{0,200}color:\s*#93c5fd/.test(KIOSK_CSS),
+  '.crewCardOutBadge[data-out-status="vacation"] uses blue color (#93c5fd)')
+assert(/\.crewCardOutBadge\[data-out-status="sick"\]\s*\{[\s\S]{0,200}color:\s*#fda4af/.test(KIOSK_CSS),
+  '.crewCardOutBadge[data-out-status="sick"] uses rose color (#fda4af)')
 
 // All three colors come from distinct CSS classes (not inline styles).
 const offClassCount = (KIOSK_CSS.match(/data-out-status="off"/g) ?? []).length

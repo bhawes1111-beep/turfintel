@@ -1301,13 +1301,13 @@ function BoardModeCrewBars({ operatorCards }) {
             op.outStatus === 'vacation' ? 'Vacation'
             : op.outStatus === 'sick'    ? 'Sick'
             : 'Off'
-          // Phase E.9 (compact) — Out cards add a marker class
-          // (.crewCardOut + .crewCardOutOff/Vacation/Sick) on top of
-          // the base .boardPersonBar so the parent flex layout still
-          // works while the compact rules override sizing/padding.
-          // No .boardTaskBlock wrapper — that element exists to
-          // separate stacked assignment blocks and just adds vertical
-          // padding/border-top noise here.
+          // Phase E.9b — Out cards stretch full-width like assignment
+          // bars so the board's vertical rhythm stays consistent. The
+          // name + status badge sit on a single inline header row
+          // (.crewCardOutHeader) instead of stacking. Marker classes
+          // (.crewCardOut + per-status variant) layer on top of the
+          // base .boardPersonBar so suppression rules + the muted
+          // color tints continue to apply.
           const outClass =
             op.outStatus === 'vacation' ? styles.crewCardOutVacation
             : op.outStatus === 'sick'    ? styles.crewCardOutSick
@@ -1318,8 +1318,15 @@ function BoardModeCrewBars({ operatorCards }) {
               className={`${styles.boardPersonBar} ${styles.crewCardOut} ${outClass}`}
               data-out-status={op.outStatus}
             >
-              <h2 className={styles.boardPersonName}>{op.employeeName ?? 'Unassigned'}</h2>
-              <p className={styles.boardOutStatusText} data-out-status={op.outStatus}>{label}</p>
+              <div className={styles.crewCardOutHeader}>
+                <h2 className={styles.boardPersonName}>{op.employeeName ?? 'Unassigned'}</h2>
+                <span
+                  className={styles.crewCardOutBadge}
+                  data-out-status={op.outStatus}
+                >
+                  {label}
+                </span>
+              </div>
             </article>
           )
         }

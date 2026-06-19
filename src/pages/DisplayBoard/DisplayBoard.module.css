@@ -2030,77 +2030,82 @@
   opacity: 0.85;
 }
 
-.boardOutStatusText {
-  margin: 0;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-size: clamp(18px, 2.4vw, 36px);
-  line-height: 1.1;
-}
-.boardOutStatusText[data-out-status="off"]      { color: #cbd5e1; }
-.boardOutStatusText[data-out-status="vacation"] { color: #93c5fd; }
-.boardOutStatusText[data-out-status="sick"]     { color: #fda4af; }
+/* Phase E.9b — .boardOutStatusText (used by the standalone label
+   paragraph in the original E.9 launch) is no longer rendered; the
+   compact follow-up wrapped it, and this revision replaces the
+   standalone <p> with an inline <span> badge inside .crewCardOutHeader.
+   Rules removed to avoid dead CSS — color values live on the badge. */
 
-/* ── Phase E.9 (compact) — Out-status cards as small roster tags ──
-   Out cards should NOT reserve the same height/width as a working
-   assignment card. Compact rules override the base .boardPersonBar
-   padding/gap (which are scaled to fit assignment + notes + chips)
-   and the name typography (the loud 48-px cap is unnecessary when
-   the card carries one short label). The status color stays.
+/* ── Phase E.9b — Full-width out-status rows with inline status badge ──
+   Out cards stretch to the same width as working assignment bars so
+   the board keeps a consistent vertical rhythm. Name and a colored
+   "OFF" / "VACATION" / "SICK" badge sit on a single header row.
 
-   Layout note: out cards become inline-flex so they sit side-by-side
-   in a row, wrapping naturally. The parent .boardBars is a flex
-   column, so consecutive out cards stack into a wrap-row only when
-   directly adjacent to another out card. We achieve that with a
-   simple sibling selector below. */
+   Out cards stay visually muted compared to working cards: the base
+   .boardPersonBar background gets overridden by the per-status data-
+   attribute rules above (slate / blue / rose tint). Vertical padding
+   shrinks slightly because there's no stacked task content. */
 
 .crewCardOut {
-  /* Use auto/fit-content widths where the column allows — keep min
-     instead of 100% so an out card never stretches to a full
-     assignment-card width on a wide TV layout. */
-  width: fit-content;
-  max-width: 100%;
-  align-self: flex-start;
-  padding: 6px 14px;
-  gap: 2px;
-  border-radius: 8px;
-  /* Honor the 4-px left rail accent that .boardPersonBar establishes,
-     but shrink so it doesn't overpower a compact tag. */
-  border-left-width: 3px;
+  /* Full-width like assignment cards — undo the previous compact
+     fit-content/flex-start layout. */
+  width: 100%;
+  align-self: stretch;
+  /* Slightly tighter than the scaled assignment-card padding because
+     an out card carries only one line. Still wide enough to read
+     comfortably from a TV. */
+  padding: calc(12px * var(--board-bar-scale, 1)) calc(26px * var(--board-bar-scale, 1));
+  gap: 0;
 }
 
-/* Side-by-side packing: two consecutive out cards collapse the gap
-   slightly so the eye reads them as a roster strip rather than two
-   isolated cards. */
-.crewCardOut + .crewCardOut {
-  margin-top: calc(-1 * (var(--board-bar-scale, 1)) * 10px);
+/* Inline header row — name on the left, badge on the right. flex-wrap
+   keeps long names from overlapping the badge on narrow viewports. */
+.crewCardOutHeader {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  width: 100%;
 }
 
-/* Tighter name + label typography on compact cards. The fluid clamp()
-   still keeps the smallest TV sizes readable; only the upper cap
-   shrinks (35–45 % of the assignment-card cap). */
+/* Push the badge to the right edge of the bar so the name + status
+   read as "Trent Lanier ······ OFF" at a glance. */
+.crewCardOutHeader .crewCardOutBadge {
+  margin-left: auto;
+}
+
+.crewCardOutBadge {
+  font-size: clamp(16px, 1.4vw, 22px);
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.crewCardOutBadge[data-out-status="off"]      { color: #cbd5e1; }
+.crewCardOutBadge[data-out-status="vacation"] { color: #93c5fd; }
+.crewCardOutBadge[data-out-status="sick"]     { color: #fda4af; }
+
+/* Slightly de-emphasized name typography on out cards — the badge
+   carries the primary signal, the name supports it. Still clamp-fluid
+   so TV viewers can read it from across the shop. */
 .crewCardOut .boardPersonName {
   margin: 0;
-  font-size: clamp(20px, 1.8vw, 26px);
+  font-size: clamp(24px, 2.6vw, 36px);
   letter-spacing: 0.04em;
 }
-.crewCardOut .boardOutStatusText {
-  font-size: clamp(13px, 1.2vw, 18px);
-  letter-spacing: 0.06em;
-}
 
-/* Suppression — make absolutely sure no assignment-card detail can
-   sneak in even if a stray .boardTaskBlock / .boardNotesText element
-   gets injected (e.g. via a future refactor). Defense in depth. */
+/* Suppression — defense-in-depth in case a future refactor
+   accidentally injects an assignment block inside an out card. */
 .crewCardOut .boardTaskBlock,
 .crewCardOut .boardNotesText,
 .crewCardOut .boardTaskText { display: none; }
 
-/* Status variants — backgrounds + border accents. These layer on top
-   of the data-attribute rules above (same color logic; the variants
-   exist so the spec's class-name contract is honored and any future
-   non-data-attribute consumer still gets the color). */
+/* Status variants — left-rail accent matches the badge color so the
+   bar reads as a coherent unit. */
 .crewCardOutOff      { border-left-color: rgba(148, 163, 184, 0.7); }
 .crewCardOutVacation { border-left-color: rgba(96, 165, 250, 0.7); }
 .crewCardOutSick     { border-left-color: rgba(251, 113, 133, 0.7); }
