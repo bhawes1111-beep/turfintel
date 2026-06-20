@@ -120,15 +120,23 @@ section('Edit state + button — gated by canEditSprays')
 assert(/const \[editingRecord, setEditingRecord\] = useState\(null\)/.test(CW),
   'editingRecord state declared (null when no edit open)')
 
-// Edit button rendered conditionally on canEditSprays.
-assert(/\{canEditSprays && \(\s*\n?\s*<button[\s\S]{0,300}className=\{styles\.editBtn\}[\s\S]{0,300}onClick=\{\(\) => setEditingRecord\(r\)\}/.test(CW),
-  'Edit button rendered only when canEditSprays; click wires setEditingRecord(r)')
+// Edit affordance rendered conditionally on canEditSprays. Phase S.7b
+// switched <button> to <span role="button"> so the outer row-as-<button>
+// (sheet opener) doesn't nest a button-in-button (invalid HTML). Click
+// still wires setEditingRecord(r) and stops propagation so the sheet
+// doesn't also open.
+assert(/\{canEditSprays && \(\s*\n?\s*<span[\s\S]{0,500}className=\{styles\.editBtn\}[\s\S]{0,500}setEditingRecord\(r\)/.test(CW),
+  'Edit affordance rendered only when canEditSprays; click wires setEditingRecord(r)')
 assert(/aria-label=\{`Edit spray record for /.test(CW),
-  'Edit button has accessible aria-label')
+  'Edit affordance has accessible aria-label')
 
-// Button text.
-assert(/>\s*Edit\s*<\/button>/.test(CW),
-  'Edit button text reads "Edit"')
+// Affordance text.
+assert(/>\s*Edit\s*<\/span>/.test(CW),
+  'Edit affordance text reads "Edit"')
+
+// stopPropagation pins — row click opens sheet, Edit click goes to modal.
+assert(/onClick=\{\(e\) => \{ e\.stopPropagation\(\); setEditingRecord\(r\) \}\}/.test(CW),
+  'Edit click stops propagation so the row-level view-sheet click does not also fire')
 
 // CSS for the button.
 assert(/\.editBtn\s*\{/.test(CW_CSS),

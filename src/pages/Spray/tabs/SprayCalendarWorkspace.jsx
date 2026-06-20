@@ -34,6 +34,10 @@ import BuildSpraySheet from './BuildSpraySheet'
 // calendar workspace gets the same safe-edit semantics as Records
 // (mutable-field whitelist + snapshot exclusion + product mix read-only).
 import EditSprayRecordModal from './EditSprayRecordModal'
+// Phase S.7b — Full read-only application sheet. Opens when a
+// completed-row card is clicked; offers an Edit button that delegates
+// to the same EditSprayRecordModal above.
+import SprayApplicationSheetModal from './SprayApplicationSheetModal'
 import styles from './SprayCalendarWorkspace.module.css'
 
 // ── Date helpers (local-noon — no UTC drift) ──────────────────────────
@@ -128,6 +132,10 @@ export default function SprayCalendarWorkspace() {
   const [jumpInput, setJumpInput] = useState('')
   // Phase S.7a — Currently-editing record. Mirrors Records' pattern.
   const [editingRecord, setEditingRecord] = useState(null)
+  // Phase S.7b — Currently-viewed record in the full application sheet.
+  // Distinct from editingRecord: the sheet is read-only first; an
+  // explicit Edit button transitions to the existing edit modal.
+  const [viewingRecord, setViewingRecord] = useState(null)
 
   // Phase S.7a — Permission gate. The worker is the source of truth
   // (POST /api/sprays/:id gated by canEditSprays); this client gate
@@ -380,40 +388,61 @@ export default function SprayCalendarWorkspace() {
                         : null,
                     ].filter(Boolean)
                     return (
-                      <li key={r.id} className={styles.selectedDayRow}>
-                        <div className={styles.completedRowBody}>
-                          <span className={styles.rowMain}>
-                            {areas.join(', ') || '—'}
-                            {r.applicator && (
-                              <span className={styles.rowMeta}> · {r.applicator}</span>
-                            )}
-                          </span>
-                          {(r.startTime || r.endTime) && (
-                            <span className={styles.rowSubMeta}>
-                              {r.startTime ?? '—'}{r.endTime ? ` → ${r.endTime}` : ''}
+                      // Phase S.7b — Row is now a button; click opens
+                      // the full read-only sheet. Per-row Edit button
+                      // stops propagation so the sheet doesn't also
+                      // open. All users (including read-only viewers)
+                      // can open the sheet; only canEditSprays sees
+                      // the Edit affordance inside the sheet.
+                      <li key={r.id} className={styles.selectedDayRowItem}>
+                        <button
+                          type="button"
+                          className={styles.selectedDayRow}
+                          onClick={() => setViewingRecord(r)}
+                          aria-label={`View spray application sheet for ${areas.join(', ') || r.date}`}
+                        >
+                          <div className={styles.completedRowBody}>
+                            <span className={styles.rowMain}>
+                              {areas.join(', ') || '—'}
+                              {r.applicator && (
+                                <span className={styles.rowMeta}> · {r.applicator}</span>
+                              )}
                             </span>
-                          )}
-                          {weatherBits.length > 0 && (
-                            <span className={styles.rowSubMeta}>{weatherBits.join(' · ')}</span>
-                          )}
-                        </div>
-                        <div className={styles.completedRowActions}>
-                          {ni && <span className={styles.rowNeedsInfo}>Needs info</span>}
-                          {/* Phase S.7a — Edit button. S.5a.2 gate:
-                              hidden entirely for users without canEditSprays
-                              (no view-only purpose; the row already shows
-                              everything visible read-only). */}
-                          {canEditSprays && (
-                            <button
-                              type="button"
-                              className={styles.editBtn}
-                              onClick={() => setEditingRecord(r)}
-                              aria-label={`Edit spray record for ${areas.join(', ') || r.date}`}
-                            >
-                              Edit
-                            </button>
-                          )}
-                        </div>
+                            {(r.startTime || r.endTime) && (
+                              <span className={styles.rowSubMeta}>
+                                {r.startTime ?? '—'}{r.endTime ? ` → ${r.endTime}` : ''}
+                              </span>
+                            )}
+                            {weatherBits.length > 0 && (
+                              <span className={styles.rowSubMeta}>{weatherBits.join(' · ')}</span>
+                            )}
+                          </div>
+                          <div className={styles.completedRowActions}>
+                            {ni && <span className={styles.rowNeedsInfo}>Needs info</span>}
+                            {/* Phase S.7a — Edit button. S.5a.2 gate:
+                                hidden entirely for users without canEditSprays
+                                (no view-only purpose; the row already shows
+                                everything visible read-only).
+                                Phase S.7b — stopPropagation so the row's
+                                view-sheet click doesn't also fire. */}
+                            {canEditSprays && (
+                              <span
+                                role="button"
+                                tabIndex={0}
+                                className={styles.editBtn}
+                                onClick={(e) => { e.stopPropagation(); setEditingRecord(r) }}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' || e.key === ' ') {
+                                    e.preventDefault(); e.stopPropagation(); setEditingRecord(r)
+                                  }
+                                }}
+                                aria-label={`Edit spray record for ${areas.join(', ') || r.date}`}
+                              >
+                                Edit
+                              </span>
+                            )}
+                          </div>
+                        </button>
                       </li>
                     )
                   })}
@@ -459,6 +488,19 @@ export default function SprayCalendarWorkspace() {
             autosave + permission gating. */}
         <BuildSpraySheet initialDate={selectedDate} onCommit={handleEmbeddedCommit} />
       </section>
+
+{/* Phase S.7b — Full read-only application sheet modal. Opens on
+          completed-row click. Its Edit action closes the sheet and
+          opens the existing EditSprayRecordModal (so the user can
+          flow View → Edit → Save → calendar refreshes). */}
+      {viewingRecord && (
+        <SprayApplicationSheetModal
+          record={viewingRecord}
+          canEdit={canEditSprays}
+          onEdit={(rec) => { setViewingRecord(null); setEditingRecord(rec) }}
+          onClose={() => setViewingRecord(null)}
+        />
+      )}
 
       {/* Phase S.7a — Edit Spray Record modal. Reuses S.5a.1's
           EditSprayRecordModal byte-for-byte; the modal owns its own

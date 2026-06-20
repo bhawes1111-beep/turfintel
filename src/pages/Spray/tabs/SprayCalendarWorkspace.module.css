@@ -347,6 +347,29 @@
   padding: 6px 9px;
 }
 
+/* Phase S.7b — When a row is a <button> (completed sprays are now
+   clickable to open the full sheet), strip the default button look
+   so it visually matches the planned-spray <li>. */
+button.selectedDayRow {
+  width: 100%;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+button.selectedDayRow:hover {
+  background: rgba(74, 222, 128, 0.10);
+  border-color: rgba(74, 222, 128, 0.32);
+}
+button.selectedDayRow:focus-visible {
+  outline: 2px solid rgba(74, 222, 128, 0.85);
+  outline-offset: 1px;
+}
+
+.selectedDayRowItem {
+  list-style: none;
+}
+
 .rowMain {
   font-size: 12.5px;
   color: rgba(255, 255, 255, 0.92);
