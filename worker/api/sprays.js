@@ -335,17 +335,218 @@ export async function updateSpray(env, id, request) {
     sets.push('holes = ?')
     binds.push(body.holes != null ? JSON.stringify(body.holes) : null)
   }
-  if (sets.length === 0) return badRequest('No mutable fields supplied')
 
-  sets.push(`updated_at = datetime('now')`)
-  binds.push(id)
+  // Phase S.7b.2 — Product-row replacement. When `body.products` is an
+  // array, atomically reverse the existing inventory_usage for this
+  // spray, replace spray_products, deduct new inventory, and insert
+  // new inventory_usage rows. Snapshot resolution mirrors createSpray
+  // (caller-supplied wins → tryCatalogEnrich fallback → NULL).
+  //
+  // Order matters: reversal-before-replace means if the new INSERTs
+  // fail partway, the old inventory is still correctly restored and
+  // the user can retry. This matches deleteSpray's sequential pattern.
+  //
+  // D1 does support db.batch() for atomicity but the rest of this
+  // worker uses sequential statements — keeping consistent.
+  let productEditApplied = false
+  if (Array.isArray(body.products)) {
+    if (body.products.length === 0) {
+      return badRequest('Completed spray must have at least one product row')
+    }
+    for (const p of body.products) {
+      const name = p.name ?? p.product_name ?? p.productName
+      if (!name || String(name).trim() === '') {
+        return badRequest('Each product row requires a name')
+      }
+      if (p.quantityUsed != null && Number.isNaN(Number(p.quantityUsed))) {
+        return badRequest(`Invalid quantityUsed for ${name}`)
+      }
+      if (p.rate != null && Number.isNaN(Number(p.rate))) {
+        return badRequest(`Invalid rate for ${name}`)
+      }
+    }
+    productEditApplied = true
+    await replaceSprayProducts(env, id, body.products)
+  }
 
-  const result = await env.DB.prepare(
-    `UPDATE spray_records SET ${sets.join(', ')} WHERE id = ?`,
-  ).bind(...binds).run()
+  // Phase S.7b.2 — Recompute total_cost_snapshot from new product
+  // totals when products were replaced. Caller can still PATCH it
+  // explicitly via MUTABLE_RECORD_COLS to override.
+  if (productEditApplied && !Object.prototype.hasOwnProperty.call(body, 'totalCostSnapshot')) {
+    const recomputed = body.products.reduce(
+      (sum, p) => sum + (Number(p.totalCostSnapshot) || 0),
+      0,
+    )
+    sets.push('total_cost_snapshot = ?')
+    binds.push(recomputed > 0 ? recomputed : null)
+  }
 
-  if (!result.success || result.meta.changes === 0) return notFound('Spray record not found')
+  // Phase S.7b.2 — Audit reason. When provided, append a timestamped
+  // line to notes so the change-log lives inside the existing field
+  // (no new audit table). Honors any explicit notes PATCH in the
+  // same payload (notes set above wins as the base, then reason is
+  // appended).
+  if (productEditApplied && body.editReason && String(body.editReason).trim()) {
+    const reason = String(body.editReason).trim()
+    const ts     = new Date().toISOString().slice(0, 10)
+    const existing = await env.DB.prepare(
+      'SELECT notes FROM spray_records WHERE id = ?',
+    ).bind(id).first()
+    const prev = (Object.prototype.hasOwnProperty.call(body, 'notes')
+      ? body.notes
+      : existing?.notes) ?? ''
+    const line = `Chemical mix edited on ${ts}: ${reason}`
+    const next = prev ? `${prev}\n${line}` : line
+    // Replace any earlier notes binding from MUTABLE_RECORD_COLS so
+    // the audit line is the final notes value written.
+    const notesIdx = sets.findIndex(s => s === 'notes = ?')
+    if (notesIdx >= 0) {
+      binds[notesIdx] = next
+    } else {
+      sets.push('notes = ?')
+      binds.push(next)
+    }
+  }
+
+  if (sets.length === 0 && !productEditApplied) {
+    return badRequest('No mutable fields supplied')
+  }
+
+  if (sets.length > 0) {
+    sets.push(`updated_at = datetime('now')`)
+    binds.push(id)
+    const result = await env.DB.prepare(
+      `UPDATE spray_records SET ${sets.join(', ')} WHERE id = ?`,
+    ).bind(...binds).run()
+    if (!result.success || result.meta.changes === 0) return notFound('Spray record not found')
+  } else if (productEditApplied) {
+    // Product-only edit — still bump updated_at so the audit trail
+    // reflects the change even when no record-level field changed.
+    await env.DB.prepare(
+      `UPDATE spray_records SET updated_at = datetime('now') WHERE id = ?`,
+    ).bind(id).run()
+  }
+
   return getSpray(env, id)
+}
+
+// Phase S.7b.2 — Replace the product mix on an existing spray.
+//
+// Sequence (mirrors deleteSpray's reversal then createSpray's insert):
+//   1. Walk unreverted inventory_usage rows for this spray.
+//      Restore inventory_items.quantity by name match.
+//      Mark each usage row reverted_at = now.
+//   2. DELETE FROM spray_products WHERE spray_record_id = id.
+//   3. For each new product row:
+//      a. Resolve EPA + active ingredient snapshots (caller wins,
+//         then tryCatalogEnrich, then NULL).
+//      b. INSERT INTO spray_products.
+//      c. If inventoryItemId + quantityUsed present, deduct
+//         inventory_items.quantity and INSERT inventory_usage row.
+//
+// The function does NOT touch spray_records itself — the caller
+// (updateSpray) handles updated_at + total_cost recompute.
+async function replaceSprayProducts(env, sprayId, products) {
+  // 1. Reverse existing inventory usage.
+  const { results: oldUsage } = await env.DB.prepare(
+    `SELECT * FROM inventory_usage
+       WHERE source_id = ? AND reverted_at IS NULL`,
+  ).bind(sprayId).all()
+  const nowIso = new Date().toISOString().slice(0, 19).replace('T', ' ')
+  for (const u of oldUsage) {
+    let item = await env.DB.prepare(
+      'SELECT id, quantity FROM inventory_items WHERE name = ? LIMIT 1',
+    ).bind(u.product_name).first()
+    if (!item) {
+      item = await env.DB.prepare(
+        'SELECT id, quantity FROM inventory_items WHERE LOWER(name) = LOWER(?) LIMIT 1',
+      ).bind(u.product_name).first()
+    }
+    if (item) {
+      const restoredQty = (item.quantity ?? 0) + (u.quantity_used ?? 0)
+      await env.DB.prepare(
+        `UPDATE inventory_items SET quantity = ?, updated_at = datetime('now') WHERE id = ?`,
+      ).bind(restoredQty, item.id).run()
+    }
+    await env.DB.prepare(
+      `UPDATE inventory_usage SET reverted_at = ? WHERE id = ?`,
+    ).bind(nowIso, u.id).run()
+  }
+
+  // 2. Drop existing product rows for this spray.
+  await env.DB.prepare(
+    `DELETE FROM spray_products WHERE spray_record_id = ?`,
+  ).bind(sprayId).run()
+
+  // 3. Insert fresh rows + deduct new inventory + log new usage.
+  for (const p of products) {
+    // Snapshot resolution — caller-supplied wins, catalog fills gaps,
+    // anything missing stays NULL (rendered as "—" client-side).
+    let epaSnap = p.epaNumberSnapshot         ?? null
+    let aiSnap  = p.activeIngredientsSnapshot ?? null
+    if ((epaSnap === null || aiSnap === null) && p.productCatalogId) {
+      const enriched = await tryCatalogEnrich(env, p.productCatalogId)
+      if (enriched) {
+        if (epaSnap === null) epaSnap = enriched.epaNumber
+        if (aiSnap  === null) aiSnap  = enriched.activeIngredientsJson
+      }
+    }
+    const productName = p.name ?? p.product_name ?? p.productName
+    const productRowId = p.id ?? generateId('sprod')
+    await env.DB.prepare(`
+      INSERT INTO spray_products (
+        id, spray_record_id, inventory_item_id,
+        product_name, product_type, rate, unit, quantity_used,
+        epa_number_snapshot, active_ingredients_snapshot,
+        product_cost_snapshot, product_cost_unit_snapshot, total_cost_snapshot
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      productRowId,
+      sprayId,
+      p.inventoryItemId ?? null,
+      productName,
+      p.type ?? p.product_type ?? null,
+      p.rate ?? null,
+      p.unit ?? null,
+      p.quantityUsed ?? null,
+      epaSnap,
+      aiSnap,
+      p.productCostSnapshot      ?? null,
+      p.productCostUnitSnapshot  ?? null,
+      p.totalCostSnapshot        ?? null,
+    ).run()
+
+    // Deduct + log usage when we have enough info to do so. Match
+    // createSpray's behavior: rows without inventoryItemId OR without
+    // quantityUsed are recorded on the spray (compliance) but do not
+    // touch inventory.
+    if (p.inventoryItemId && p.quantityUsed != null && Number(p.quantityUsed) > 0) {
+      const item = await env.DB.prepare(
+        'SELECT id, quantity FROM inventory_items WHERE id = ? LIMIT 1',
+      ).bind(p.inventoryItemId).first()
+      if (item) {
+        const newQty = Math.max(0, (item.quantity ?? 0) - Number(p.quantityUsed))
+        await env.DB.prepare(
+          `UPDATE inventory_items SET quantity = ?, updated_at = datetime('now') WHERE id = ?`,
+        ).bind(newQty, item.id).run()
+      }
+      await env.DB.prepare(`
+        INSERT INTO inventory_usage (
+          id, product_name, quantity_used, unit, source_id, date, area, applicator, course_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(
+        generateId('usage'),
+        productName,
+        Number(p.quantityUsed),
+        p.unit ?? null,
+        sprayId,
+        null,
+        null,
+        null,
+        null,
+      ).run()
+    }
+  }
 }
 
 /**

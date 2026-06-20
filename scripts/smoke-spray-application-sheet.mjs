@@ -60,9 +60,12 @@ const past0054 = migrationFiles.filter(f => /^00(5[5-9]|[6-9]\d|\d{3,})/.test(f)
 assert(past0054.length === 0,
   `no migration past 0054 (found: ${past0054.join(', ') || 'none'})`)
 
+// Phase S.7b.2 — worker/api/sprays.js gained Phase S.7b.2 product-edit
+// support. The other worker files remain untouched (no permission /
+// migration / routing changes — the existing /api/sprays prefix
+// already gates updateSpray via canEditSprays).
 for (const path of [
   'worker/index.js',
-  'worker/api/sprays.js',
   'worker/api/sprayPrograms.js',
   'worker/api/productCatalog.js',
   'worker/lib/mutationPermissions.js',
@@ -70,29 +73,60 @@ for (const path of [
 ]) {
   const src = readFileSync(path, 'utf8')
   assert(!src.includes('Phase S.7b'),
-    `${path} carries no Phase S.7b edits`)
+    `${path} carries no Phase S.7b/.2 edits`)
 }
 
-// ── Worker product-edit audit invariants ───────────────────────────
-section('Worker — updateSpray still spray_records-only (no product editing)')
+// ── Worker product-edit audit invariants (S.7b.2) ──────────────────
+section('Worker — updateSpray now supports product editing via replaceSprayProducts')
 
-// updateSpray only walks MUTABLE_RECORD_COLS + conditions/holes — does
-// NOT touch spray_products or spray_areas.
-const updateBody = SPRAYS_W.match(/export async function updateSpray[\s\S]{0,2000}?^\}/m)?.[0] ?? ''
-assert(updateBody.length > 0, 'updateSpray() found in worker')
-assert(!/INSERT INTO spray_products/.test(updateBody),
-  'updateSpray() does NOT insert into spray_products (S.7b deferral)')
-assert(!/UPDATE spray_products/.test(updateBody),
-  'updateSpray() does NOT update spray_products (S.7b deferral)')
-assert(!/DELETE FROM spray_products/.test(updateBody),
-  'updateSpray() does NOT delete from spray_products (S.7b deferral)')
-assert(!/inventory_usage/.test(updateBody),
-  'updateSpray() does NOT touch inventory_usage (S.7b deferral — no silent inventory rewrite)')
-assert(!/inventory_items/.test(updateBody),
-  'updateSpray() does NOT touch inventory_items (S.7b deferral)')
+// Phase S.7b.2 — updateSpray() now triggers replaceSprayProducts when
+// `body.products` is present. Inventory + spray_products mutations
+// live in the dedicated helper for clarity + smoke targeting.
+assert(/export async function updateSpray/.test(SPRAYS_W),
+  'updateSpray() still exported')
+assert(/async function replaceSprayProducts\(env, sprayId, products\)/.test(SPRAYS_W),
+  'replaceSprayProducts(env, sprayId, products) helper declared (S.7b.2)')
 
-// Inventory reversal still ONLY happens on deleteSpray (the existing
-// audited path). Smoke-pin the location so any future drift is loud.
+// updateSpray must gate the products branch on Array.isArray(body.products).
+assert(/if \(Array\.isArray\(body\.products\)\)/.test(SPRAYS_W),
+  'updateSpray() gates product replacement on Array.isArray(body.products)')
+
+// Worker-side validation: at least one row + each row needs a name.
+assert(/Completed spray must have at least one product row/.test(SPRAYS_W),
+  'worker rejects empty product array')
+assert(/Each product row requires a name/.test(SPRAYS_W),
+  'worker rejects product rows without a name')
+
+// replaceSprayProducts must touch spray_products + inventory_usage
+// + inventory_items in the documented order.
+const replaceBody = SPRAYS_W.match(/async function replaceSprayProducts[\s\S]{0,5000}?^\}/m)?.[0] ?? ''
+assert(replaceBody.length > 0, 'replaceSprayProducts() body found')
+assert(/SELECT \* FROM inventory_usage/.test(replaceBody),
+  'replaceSprayProducts() reads existing inventory_usage rows for the spray')
+assert(/UPDATE inventory_items SET quantity = \?/.test(replaceBody),
+  'replaceSprayProducts() restores inventory_items.quantity for reversed rows')
+assert(/UPDATE inventory_usage SET reverted_at = \?/.test(replaceBody),
+  'replaceSprayProducts() marks old usage rows reverted_at')
+assert(/DELETE FROM spray_products WHERE spray_record_id = \?/.test(replaceBody),
+  'replaceSprayProducts() deletes the old spray_products rows for this record')
+assert(/INSERT INTO spray_products/.test(replaceBody),
+  'replaceSprayProducts() inserts the new spray_products rows')
+assert(/INSERT INTO inventory_usage/.test(replaceBody),
+  'replaceSprayProducts() inserts new inventory_usage rows for new deductions')
+assert(/tryCatalogEnrich/.test(replaceBody),
+  'replaceSprayProducts() uses tryCatalogEnrich for snapshot fallback')
+
+// Total cost recompute lives in updateSpray() (after the helper).
+assert(/total_cost_snapshot = \?/.test(SPRAYS_W),
+  'updateSpray() recomputes total_cost_snapshot from new product totals')
+assert(/recomputed > 0 \? recomputed : null/.test(SPRAYS_W),
+  'total_cost_snapshot stays NULL when no per-row totals provided')
+
+// Audit reason appends to notes (no new audit table required).
+assert(/Chemical mix edited on/.test(SPRAYS_W),
+  'audit reason appended to notes with "Chemical mix edited on YYYY-MM-DD:" prefix')
+
+// deleteSpray reversal pipeline preserved (S.7b couple).
 const deleteBody = SPRAYS_W.match(/export async function deleteSpray[\s\S]{0,3000}?^\}/m)?.[0] ?? ''
 assert(/inventory_usage/.test(deleteBody),
   'deleteSpray() still walks inventory_usage (existing reversal path preserved)')
@@ -112,11 +146,14 @@ assert(/role="dialog"\s+aria-modal="true"/.test(SHEET),
 assert(/data-modal="spray-application-sheet"/.test(SHEET),
   'modal carries data-modal="spray-application-sheet" hook')
 
-// Read-only by construction — no mutation calls.
-assert(!/patchSpray\b|createSpray\b|deleteSpray\b/.test(SHEET_CODE),
-  'sheet itself never calls patchSpray / createSpray / deleteSpray (read-only)')
+// Phase S.7b.2 — sheet now uses patchSpray() for chemical-edit saves.
+// It still never calls createSpray or deleteSpray, never raw fetch.
+assert(/import \{ patchSpray \} from '\.\.\/\.\.\/\.\.\/utils\/sprays\/spraysStore'/.test(SHEET_CODE),
+  'sheet imports patchSpray (S.7b.2 chemical-edit save path)')
+assert(!/createSpray\b|deleteSpray\b/.test(SHEET_CODE),
+  'sheet itself never calls createSpray / deleteSpray (commit + soft-delete remain elsewhere)')
 assert(!/fetch\(/.test(SHEET_CODE),
-  'sheet does not call fetch() (relies on parent store data)')
+  'sheet does not call fetch() directly (uses patchSpray helper)')
 
 // Imports shared Needs Info helper (S.6a invariant).
 assert(/import \{ recordNeedsInfo \} from '\.\.\/\.\.\/\.\.\/utils\/sprays\/recordNeedsInfo'/.test(SHEET),
@@ -188,20 +225,61 @@ assert(/record\.deletedAt/.test(SHEET),
 // ── Sheet actions — Edit gated by canEdit; Close always visible ────
 section('Sheet actions — Edit gated by canEdit prop; Close always visible')
 
-assert(/\{canEdit && \(\s*\n?\s*<button[\s\S]{0,200}className=\{styles\.btnPrimary\}[\s\S]{0,200}onClick=\{\(\) => onEdit\?\.\(record\)\}/.test(SHEET),
-  'Edit button rendered only when canEdit prop is true; click fires onEdit?.(record)')
-assert(/<button type="button" className=\{styles\.btnSecondary\} onClick=\{onClose\}>\s*\n?\s*Close/.test(SHEET),
-  'Close button always visible (works for read-only viewers too)')
+// Phase S.7b.2 — Edit button is also gated by !editMode so the
+// chrome stays clean when chemical-edit mode is active.
+assert(/\{canEdit && !editMode && \(\s*\n?\s*<button[\s\S]{0,200}className=\{styles\.btnPrimary\}[\s\S]{0,200}onClick=\{\(\) => onEdit\?\.\(record\)\}/.test(SHEET),
+  'Edit button (application fields) rendered only when canEdit && !editMode')
+assert(/\{canEdit && canEditSprays && !editMode && \(\s*\n?\s*<button[\s\S]{0,400}onClick=\{startEditingChemicals\}/.test(SHEET),
+  'Edit chemicals button rendered when canEdit && canEditSprays && !editMode (S.7b.2)')
+assert(/<button\s+type="button"\s+className=\{styles\.btnSecondary\}\s+onClick=\{onClose\}\s+disabled=\{busy\}\s*>\s*\n?\s*Close/.test(SHEET),
+  'Close button always visible; disabled while save is in flight')
 
-// ── Product editing intentionally deferred — yellow callout ─────────
-section('Product editing — explicitly deferred with user-visible callout')
+// ── Product editing now LIVE (S.7b.2) ──────────────────────────────
+section('Product editing — chemical edit UI shipped')
 
-assert(/editNote/.test(SHEET) && /editNote/.test(SHEET_CSS),
-  'editNote callout rendered + styled (yellow info banner)')
-assert(/Editing product rows is not yet supported/.test(SHEET),
-  'callout text explains the limitation in plain language')
-assert(/delete the record \(inventory restores\)/.test(SHEET),
-  'callout points users to the safe workaround (delete + re-commit restores inventory)')
+// The S.7b deferral callout is gone — replaced by the inline editor.
+assert(!/editNote/.test(SHEET),
+  'S.7b deferral callout removed (chemical editing now shipped)')
+assert(!/Editing product rows is not yet supported/.test(SHEET),
+  'S.7b deferral copy removed')
+
+// Edit-mode chrome.
+assert(/chemEditWarn/.test(SHEET) && /chemEditWarn/.test(SHEET_CSS),
+  'chemical edit warning callout rendered + styled (yellow info banner)')
+assert(/reverse the inventory for the previous\s+product mix, apply the new mix, refresh snapshots/.test(SHEET),
+  'warning explains the worker-side pipeline: reverse + reapply + resnapshot + recompute')
+assert(/Add chemical/.test(SHEET),
+  'Add chemical button present')
+assert(/Remove chemical|aria-label=\{`Remove product/.test(SHEET),
+  'Remove control present per row')
+assert(/Save chemicals/.test(SHEET),
+  'Save chemicals primary action present')
+
+// Reason field.
+assert(/Reason for chemical change/.test(SHEET),
+  'Reason for chemical change field rendered')
+assert(/aria-label="Reason for chemical change"/.test(SHEET),
+  'reason field has accessible aria-label')
+
+// Functions wired.
+assert(/function startEditingChemicals\(\)/.test(SHEET),
+  'startEditingChemicals() declared (enters edit mode + seeds draftRows from record.products)')
+assert(/function cancelEditingChemicals\(\)/.test(SHEET),
+  'cancelEditingChemicals() declared')
+assert(/function patchDraftRow\(i, patch\)/.test(SHEET),
+  'patchDraftRow() declared (per-row updates)')
+assert(/function addDraftRow\(\)/.test(SHEET),
+  'addDraftRow() declared')
+assert(/function removeDraftRow\(i\)/.test(SHEET),
+  'removeDraftRow() declared')
+assert(/async function handleSaveChemicals\(\)/.test(SHEET),
+  'handleSaveChemicals() declared (calls patchSpray with products payload)')
+
+// Save calls patchSpray with the products payload + optional editReason.
+assert(/await patchSpray\(record\.id, payload\)/.test(SHEET),
+  'save calls patchSpray(record.id, payload) — same store helper as the application-fields edit')
+assert(/if \(editReason\.trim\(\)\) payload\.editReason = editReason\.trim\(\)/.test(SHEET),
+  'editReason only included when non-blank (worker treats missing as no audit append)')
 
 // ── Wired into the calendar workspace ──────────────────────────────
 section('SprayCalendarWorkspace — sheet wired + view-record state')

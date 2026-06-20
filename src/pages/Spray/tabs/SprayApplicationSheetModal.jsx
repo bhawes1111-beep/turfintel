@@ -21,8 +21,15 @@
 // All chrome is read-only. Permission for the Edit affordance is
 // driven by `canEdit` prop from the parent (calendar workspace).
 
+import { useMemo, useState } from 'react'
 import styles from './SprayApplicationSheetModal.module.css'
 import { recordNeedsInfo } from '../../../utils/sprays/recordNeedsInfo'
+// Phase S.7b.2 — Chemical edit mode uses the existing patchSpray()
+// helper. The worker's PATCH /api/sprays/:id now accepts a `products`
+// payload that triggers replace-and-resnapshot + inventory adjust.
+import { patchSpray } from '../../../utils/sprays/spraysStore'
+import { useToast } from '../../../utils/feedback/toastContext'
+import { useAuth } from '../../../context/AuthContext'
 
 function fmt(v, fallback = '—') {
   if (v == null) return fallback
@@ -50,15 +57,127 @@ export default function SprayApplicationSheetModal({
   onEdit,
   onClose,
 }) {
-  if (!record) return null
+  // Phase S.7b.2 — Hooks first, then guard. React requires the hooks
+  // order to be stable so the early-null return must follow hook calls.
+  const toast = useToast()
+  const { can } = useAuth()
+  const canEditSprays = can('canEditSprays')
+  const [editMode, setEditMode]   = useState(false)
+  const [draftRows, setDraftRows] = useState(() => [])
+  const [editReason, setEditReason] = useState('')
+  const [busy, setBusy] = useState(false)
 
   const ni = recordNeedsInfo(record)
-  const c  = record.conditions ?? {}
-  const products = Array.isArray(record.products) ? record.products : []
-  const areas    = Array.isArray(record.areas)    ? record.areas    : []
+  const c  = record?.conditions ?? {}
+  const products = useMemo(
+    () => (Array.isArray(record?.products) ? record.products : []),
+    [record?.products],
+  )
+  const areas    = Array.isArray(record?.areas) ? record.areas : []
+
+  if (!record) return null
+
+  function startEditingChemicals() {
+    setDraftRows(products.map(p => ({
+      id:                       p.id,
+      name:                     p.name ?? '',
+      type:                     p.type ?? '',
+      rate:                     p.rate ?? '',
+      unit:                     p.unit ?? '',
+      quantityUsed:             p.quantityUsed ?? '',
+      inventoryItemId:          p.inventoryItemId ?? null,
+      productCatalogId:         p.productCatalogId ?? null,
+      epaNumberSnapshot:        p.epaNumberSnapshot ?? null,
+      activeIngredientsSnapshot: p.activeIngredientsSnapshot ?? null,
+      productCostSnapshot:      p.productCostSnapshot ?? null,
+      productCostUnitSnapshot:  p.productCostUnitSnapshot ?? null,
+      totalCostSnapshot:        p.totalCostSnapshot ?? null,
+    })))
+    setEditReason('')
+    setEditMode(true)
+  }
+
+  function cancelEditingChemicals() {
+    setEditMode(false)
+    setDraftRows([])
+    setEditReason('')
+  }
+
+  function patchDraftRow(i, patch) {
+    setDraftRows(prev => prev.map((r, idx) => idx === i ? { ...r, ...patch } : r))
+  }
+  function addDraftRow() {
+    setDraftRows(prev => [...prev, {
+      name: '', type: '', rate: '', unit: '', quantityUsed: '',
+      inventoryItemId: null, productCatalogId: null,
+      epaNumberSnapshot: null, activeIngredientsSnapshot: null,
+      productCostSnapshot: null, productCostUnitSnapshot: null,
+      totalCostSnapshot: null,
+    }])
+  }
+  function removeDraftRow(i) {
+    setDraftRows(prev => prev.filter((_, idx) => idx !== i))
+  }
+
+  async function handleSaveChemicals() {
+    if (draftRows.length === 0) {
+      toast.info?.('Completed spray must have at least one product row.')
+      return
+    }
+    for (const r of draftRows) {
+      if (!r.name || !String(r.name).trim()) {
+        toast.info?.('Each product row needs a name.')
+        return
+      }
+      if (r.quantityUsed !== '' && r.quantityUsed != null && Number.isNaN(Number(r.quantityUsed))) {
+        toast.info?.(`Quantity for "${r.name}" is not a number.`)
+        return
+      }
+      if (r.rate !== '' && r.rate != null && Number.isNaN(Number(r.rate))) {
+        toast.info?.(`Rate for "${r.name}" is not a number.`)
+        return
+      }
+    }
+    if (!editReason.trim()) {
+      const proceed = window.confirm(
+        'No reason for chemical change provided. Continue without an audit note?',
+      )
+      if (!proceed) return
+    }
+    setBusy(true)
+    try {
+      const payload = {
+        products: draftRows.map(r => ({
+          id:                       r.id,
+          name:                     String(r.name).trim(),
+          type:                     r.type || null,
+          rate:                     r.rate === '' ? null : Number(r.rate),
+          unit:                     r.unit || null,
+          quantityUsed:             r.quantityUsed === '' ? null : Number(r.quantityUsed),
+          inventoryItemId:          r.inventoryItemId,
+          productCatalogId:         r.productCatalogId,
+          epaNumberSnapshot:        r.epaNumberSnapshot,
+          activeIngredientsSnapshot: r.activeIngredientsSnapshot,
+          productCostSnapshot:      r.productCostSnapshot == null ? null : Number(r.productCostSnapshot),
+          productCostUnitSnapshot:  r.productCostUnitSnapshot,
+          totalCostSnapshot:        r.totalCostSnapshot == null ? null : Number(r.totalCostSnapshot),
+        })),
+      }
+      if (editReason.trim()) payload.editReason = editReason.trim()
+      await patchSpray(record.id, payload)
+      toast.success?.(`Updated chemicals for spray on ${record.date}`)
+      setEditMode(false)
+      setDraftRows([])
+      setEditReason('')
+    } catch (err) {
+      toast.error?.(`Update failed: ${err.message ?? err}`)
+    } finally {
+      setBusy(false)
+    }
+  }
 
   function handleBackdrop(e) {
-    if (e.target === e.currentTarget) onClose?.()
+    if (e.target === e.currentTarget && !busy) onClose?.()
   }
 
   return (
@@ -105,12 +224,29 @@ export default function SprayApplicationSheetModal({
             </p>
           </div>
           <div className={styles.headerActions}>
-            {canEdit && (
+            {canEdit && !editMode && (
               <button type="button" className={styles.btnPrimary} onClick={() => onEdit?.(record)}>
                 Edit
               </button>
             )}
-            <button type="button" className={styles.btnSecondary} onClick={onClose}>
+            {/* Phase S.7b.2 — Chemical edit mode. Hidden for read-only
+                users; disabled while a save is in flight. */}
+            {canEdit && canEditSprays && !editMode && (
+              <button
+                type="button"
+                className={styles.btnSecondary}
+                onClick={startEditingChemicals}
+                aria-label="Edit chemicals on this spray"
+              >
+                Edit chemicals
+              </button>
+            )}
+            <button
+              type="button"
+              className={styles.btnSecondary}
+              onClick={onClose}
+              disabled={busy}
+            >
               Close
             </button>
           </div>
@@ -172,10 +308,145 @@ export default function SprayApplicationSheetModal({
             )}
           </section>
 
-          {/* Products */}
+          {/* Products — view OR edit mode */}
           <section className={styles.section}>
-            <h3 className={styles.sectionTitle}>Products / chemicals ({products.length})</h3>
-            {products.length === 0 ? (
+            <h3 className={styles.sectionTitle}>
+              Products / chemicals ({editMode ? draftRows.length : products.length})
+            </h3>
+
+            {editMode ? (
+              <>
+                {/* Phase S.7b.2 — Inline editor. Worker handles
+                    inventory reversal+reapply + snapshot resolution +
+                    total_cost_snapshot recompute. */}
+                <div className={styles.chemEditWarn}>
+                  Editing chemicals will reverse the inventory for the previous
+                  product mix, apply the new mix, refresh snapshots, and
+                  recalculate the record total cost. This change is logged in
+                  the record's notes.
+                </div>
+                {draftRows.length === 0 ? (
+                  <p className={styles.emptyMsg}>No product rows in this draft. Add one to continue.</p>
+                ) : (
+                  <ul className={styles.chemEditList}>
+                    {draftRows.map((r, i) => (
+                      <li key={i} className={styles.chemEditRow}>
+                        <div className={styles.chemEditFieldGrid}>
+                          <label className={styles.chemEditField}>
+                            <span className={styles.chemEditLabel}>Name</span>
+                            <input
+                              type="text"
+                              value={r.name}
+                              onChange={e => patchDraftRow(i, { name: e.target.value })}
+                              placeholder="Product name"
+                              aria-label={`Product ${i + 1} name`}
+                            />
+                          </label>
+                          <label className={styles.chemEditField}>
+                            <span className={styles.chemEditLabel}>Type</span>
+                            <input
+                              type="text"
+                              value={r.type ?? ''}
+                              onChange={e => patchDraftRow(i, { type: e.target.value })}
+                              placeholder="Fungicide…"
+                              aria-label={`Product ${i + 1} type`}
+                            />
+                          </label>
+                          <label className={styles.chemEditField}>
+                            <span className={styles.chemEditLabel}>Rate</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={r.rate ?? ''}
+                              onChange={e => patchDraftRow(i, { rate: e.target.value })}
+                              aria-label={`Product ${i + 1} rate`}
+                            />
+                          </label>
+                          <label className={styles.chemEditField}>
+                            <span className={styles.chemEditLabel}>Rate unit</span>
+                            <input
+                              type="text"
+                              value={r.unit ?? ''}
+                              onChange={e => patchDraftRow(i, { unit: e.target.value })}
+                              placeholder="oz/M…"
+                              aria-label={`Product ${i + 1} rate unit`}
+                            />
+                          </label>
+                          <label className={styles.chemEditField}>
+                            <span className={styles.chemEditLabel}>Quantity used</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={r.quantityUsed ?? ''}
+                              onChange={e => patchDraftRow(i, { quantityUsed: e.target.value })}
+                              aria-label={`Product ${i + 1} quantity used`}
+                            />
+                          </label>
+                          <label className={styles.chemEditField}>
+                            <span className={styles.chemEditLabel}>Row total cost</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={r.totalCostSnapshot ?? ''}
+                              onChange={e => patchDraftRow(i, { totalCostSnapshot: e.target.value })}
+                              aria-label={`Product ${i + 1} row total cost`}
+                            />
+                          </label>
+                        </div>
+                        <button
+                          type="button"
+                          className={styles.chemRemoveBtn}
+                          onClick={() => removeDraftRow(i)}
+                          aria-label={`Remove product ${i + 1}`}
+                        >
+                          Remove
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <div className={styles.chemEditAddRow}>
+                  <button
+                    type="button"
+                    className={styles.btnSecondary}
+                    onClick={addDraftRow}
+                    aria-label="Add another chemical row"
+                  >
+                    + Add chemical
+                  </button>
+                </div>
+
+                <label className={styles.chemReasonField}>
+                  <span className={styles.chemReasonLabel}>Reason for chemical change</span>
+                  <textarea
+                    rows={2}
+                    value={editReason}
+                    onChange={e => setEditReason(e.target.value)}
+                    placeholder="e.g. corrected rate for Daconil"
+                    aria-label="Reason for chemical change"
+                  />
+                </label>
+
+                <div className={styles.chemEditActions}>
+                  <button
+                    type="button"
+                    className={styles.btnPrimary}
+                    onClick={handleSaveChemicals}
+                    disabled={busy}
+                  >
+                    {busy ? 'Saving…' : 'Save chemicals'}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.btnSecondary}
+                    onClick={cancelEditingChemicals}
+                    disabled={busy}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </>
+            ) : products.length === 0 ? (
               <p className={styles.emptyMsg}>No product rows recorded.</p>
             ) : (
               <div className={styles.productList}>
@@ -214,19 +485,6 @@ export default function SprayApplicationSheetModal({
               </span>
             )}
           </section>
-
-          {/* Phase S.7b note — Product/chemical editing intentionally
-              deferred. See PHASE-S.7b audit note: worker updateSpray
-              does not currently touch spray_products or inventory_usage,
-              so adding a product editor here would silently desync
-              compliance snapshots from inventory ledger entries. */}
-          <p className={styles.editNote}>
-            Editing product rows is not yet supported on a completed spray —
-            inventory reversal/reapply requires an inventory ledger update
-            that hasn't been wired yet. To correct a chemical mistake today,
-            delete the record (inventory restores) and re-commit with the
-            corrected mix.
-          </p>
         </div>
       </div>
     </div>

@@ -65,8 +65,9 @@ assert(past0054.length === 0,
   `no migration past 0054 (found: ${past0054.join(', ') || 'none'})`)
 
 for (const path of [
+  // Phase S.7b.2 — worker/api/sprays.js gained product-edit support;
+  // it is the only worker file allowed to carry a Phase S.7* marker.
   'worker/index.js',
-  'worker/api/sprays.js',
   'worker/api/sprayPrograms.js',
   'worker/api/productCatalog.js',
   'worker/lib/mutationPermissions.js',

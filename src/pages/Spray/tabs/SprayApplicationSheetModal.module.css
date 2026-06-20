@@ -301,6 +301,121 @@
   line-height: 1.45;
 }
 
+/* Phase S.7b.2 — Chemical edit mode */
+.chemEditWarn {
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.32);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 11.5px;
+  color: rgba(254, 240, 138, 0.92);
+  margin: 0 0 10px;
+  line-height: 1.45;
+}
+
+.chemEditList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chemEditRow {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.chemEditFieldGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 6px 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.chemEditField {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.chemEditLabel {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.chemEditField input {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.92);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12.5px;
+  width: 100%;
+}
+
+.chemRemoveBtn {
+  background: rgba(248, 113, 113, 0.18);
+  border: 1px solid rgba(248, 113, 113, 0.55);
+  color: rgba(254, 226, 226, 1);
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  align-self: flex-start;
+}
+.chemRemoveBtn:hover {
+  background: rgba(248, 113, 113, 0.32);
+}
+
+.chemEditAddRow {
+  margin: 10px 0;
+}
+
+.chemReasonField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 10px 0;
+}
+
+.chemReasonLabel {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.chemReasonField textarea {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.92);
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 12.5px;
+  resize: vertical;
+}
+
+.chemEditActions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
 /* Mobile */
 @media (max-width: 700px) {
   .backdrop { padding: 12px 8px; }
