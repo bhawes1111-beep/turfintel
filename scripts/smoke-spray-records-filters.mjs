@@ -127,15 +127,23 @@ for (const dep of ['effStart', 'effEnd', 'applicatorFilter', 'productFilter', 'n
 }
 
 // ── recordNeedsInfo pure helper ─────────────────────────────────────
-section('recordNeedsInfo — pure, display-only, no mutation')
+// Phase S.6a — heuristic extracted to src/utils/sprays/recordNeedsInfo.js
+// so SprayRecords + SprayWorkspace + the report builder all share the
+// same predicate. Smoke now pins the helper file directly.
+section('recordNeedsInfo — pure shared helper (S.6a consolidation)')
 
-assert(/^function recordNeedsInfo\(record\)/m.test(RECORDS),
-  'recordNeedsInfo defined as a top-level pure function')
+const HEURISTIC = readFileSync('src/utils/sprays/recordNeedsInfo.js', 'utf8')
 
-const heuristicMatch = RECORDS.match(/function recordNeedsInfo\(record\)\s*\{([\s\S]*?)\n\}/)
-const heuristicSrc   = heuristicMatch ? heuristicMatch[1] : ''
-assert(heuristicSrc.length > 0, 'recordNeedsInfo body extracted')
+assert(/^export function recordNeedsInfo\(record\)/m.test(HEURISTIC),
+  'recordNeedsInfo exported from src/utils/sprays/recordNeedsInfo.js')
+// SprayRecords imports the shared helper rather than declaring a local copy.
+assert(/import \{ recordNeedsInfo \} from '\.\.\/\.\.\/\.\.\/utils\/sprays\/recordNeedsInfo'/.test(RECORDS),
+  'SprayRecords imports the shared recordNeedsInfo helper')
+// Negative pin: SprayRecords no longer declares a local copy.
+assert(!/^function recordNeedsInfo\(record\)/m.test(RECORDS),
+  'SprayRecords no longer declares a local recordNeedsInfo() (removed in S.6a)')
 
+const heuristicSrc = HEURISTIC
 // Only flags completed records.
 assert(/if \(record\.status !== 'completed'\) return false/.test(heuristicSrc),
   'recordNeedsInfo only considers status === "completed"')
@@ -154,7 +162,7 @@ for (const [check, label] of [
     `recordNeedsInfo checks: ${label}`)
 }
 
-// Pure — no mutators anywhere in the helper body.
+// Pure — no mutators anywhere in the helper.
 const heuristicCode = stripComments(heuristicSrc)
 assert(!/patchSpray|createSpray|deleteSpray|setRecords|setState/.test(heuristicCode),
   'recordNeedsInfo never mutates records or store state (pure)')

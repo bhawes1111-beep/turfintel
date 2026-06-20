@@ -23,6 +23,10 @@ import {
   listSprayProgramItems,
 } from '../../../utils/sprayPrograms/sprayProgramStore'
 import { useSelectedCourseId } from '../../../utils/courses/courseStore'
+// Phase S.6a — Shared needs-info heuristic. Replaces the local
+// duplicate which used the wrong field names (windSpeed vs.
+// windSpeedMph, temperature vs. temp).
+import { recordNeedsInfo } from '../../../utils/sprays/recordNeedsInfo'
 import styles from './SprayWorkspace.module.css'
 
 function todayIso() { return new Date().toISOString().slice(0, 10) }
@@ -54,27 +58,12 @@ function dateInWindow(dateIso, startIso, endIso) {
   return dateIso >= start && dateIso <= end
 }
 
-// Compliance / incompleteness check on a record. We don't change the
-// authoritative validation in BuildSpraySheet — just surface a
-// heuristic flag so the workspace can hint "this record needs more
-// info" without forcing the supervisor through the full builder.
-function isRecordIncomplete(record) {
-  if (!record) return false
-  // A completed record with no products / no areas is clearly
-  // incomplete. Also flag missing weather/conditions block (since
-  // Phase S.3 made compliance snapshots mandatory for completed
-  // records).
-  if (record.status === 'completed') {
-    if (!Array.isArray(record.products) || record.products.length === 0) return true
-    if (!Array.isArray(record.areas)    || record.areas.length    === 0) return true
-    if (!record.conditions || (
-      record.conditions.windSpeed == null
-      && record.conditions.temperature == null
-      && record.conditions.humidity == null
-    )) return true
-  }
-  return false
-}
+// Phase S.6a — recordNeedsInfo() moved to src/utils/sprays/
+// recordNeedsInfo.js. The local copy here used wrong field names
+// (windSpeed vs. windSpeedMph, temperature vs. temp) and disagreed
+// with the SprayRecords filter toggle. The shared helper is the
+// single source of truth across Workspace, Records, and the
+// compliance packet report builder.
 
 export default function SprayWorkspace({ onNavigateTab }) {
   const { records } = useSpraysData()
@@ -110,7 +99,7 @@ export default function SprayWorkspace({ onNavigateTab }) {
   const dayInProgress   = useMemo(() => dayRecords.filter(r => r.status === 'in-progress'),  [dayRecords])
   const dayPendingReview= useMemo(() => dayRecords.filter(r => r.status === 'pending-review'),[dayRecords])
   const dayPlannedRecs  = useMemo(() => dayRecords.filter(r => r.status === 'planned'),      [dayRecords])
-  const dayIncomplete   = useMemo(() => dayRecords.filter(isRecordIncomplete),               [dayRecords])
+  const dayIncomplete   = useMemo(() => dayRecords.filter(recordNeedsInfo),                   [dayRecords])
 
   // ── Planned program items for the selected day ──────────────────────
   const dayPlannedItems = useMemo(() => {

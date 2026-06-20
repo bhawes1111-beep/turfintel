@@ -1,6 +1,11 @@
 import { useState, useMemo, useEffect } from 'react'
 import { TYPE_COLORS } from '../../../data/spray'
 import { useSpraysData } from '../../../utils/sprays/spraysStore'
+// Phase S.6a — Shared needs-info heuristic. Used here by the Needs
+// Info filter toggle (S.5c.1). The same helper now also drives the
+// Workspace card and the Compliance Packet report so all three
+// surfaces give the same verdict.
+import { recordNeedsInfo } from '../../../utils/sprays/recordNeedsInfo'
 import {
   buildSpraySummaryReport,
   buildSprayCompliancePacket,
@@ -48,35 +53,9 @@ function conditionsSummary(c) {
   return parts.join(' · ')
 }
 
-// Phase S.5c.1 — "Needs Info" heuristic.
-//
-// A pure, side-effect-free predicate. Returns true when the record is
-// missing a clearly-required field for compliance reporting. This is
-// a display-only filter — it does NOT mutate the record or call any
-// patch endpoint. The list of required fields mirrors S.4 Workspace
-// `isRecordIncomplete` but extends it slightly per the S.5c.1 spec
-// (applicator + wind speed/direction). Only runs against `completed`
-// records — planned / in-progress / pending-review are by definition
-// expected to be incomplete.
-function recordNeedsInfo(record) {
-  if (!record) return false
-  if (record.status !== 'completed') return false
-  if (!record.date) return true
-  if (!record.applicator || !record.applicator.trim()) return true
-  if (!Array.isArray(record.products) || record.products.length === 0) return true
-  if (!Array.isArray(record.areas)    || record.areas.length    === 0) return true
-  const c = record.conditions
-  if (!c) return true
-  // Need at least basic weather. We treat "all three core weather
-  // fields missing" as needs-info — many states require temp / wind /
-  // humidity on the application record. Wind speed OR direction
-  // missing alone is also flagged since both are S.3 compliance.
-  const hasAnyWeather = c.temp != null || c.humidity != null || c.wind != null
-  if (!hasAnyWeather) return true
-  if (c.windSpeedMph == null) return true
-  if (!c.windDirection)        return true
-  return false
-}
+// Phase S.5c.1 → S.6a — recordNeedsInfo() moved to src/utils/sprays/
+// recordNeedsInfo.js so the Records filter toggle, the Workspace card,
+// and the Compliance Packet report all use the same predicate.
 
 export default function SprayRecords() {
   const { records: SPRAY_RECORDS }      = useSpraysData()
@@ -661,6 +640,23 @@ export default function SprayRecords() {
                       <span className={styles.modalFieldValue}>{selected.applicatorLicense}</span>
                     </div>
                   )}
+                  {/* Phase S.6a — Start / End time. Worker has supported
+                      both since the S.3 baseline; the builder captures
+                      them (S.5b.1); this is the matching display path.
+                      Each renders only when populated to keep older
+                      records visually clean. */}
+                  {selected.startTime && (
+                    <div className={styles.modalField}>
+                      <span className={styles.modalFieldLabel}>Start Time</span>
+                      <span className={styles.modalFieldValue}>{selected.startTime}</span>
+                    </div>
+                  )}
+                  {selected.endTime && (
+                    <div className={styles.modalField}>
+                      <span className={styles.modalFieldLabel}>End Time</span>
+                      <span className={styles.modalFieldValue}>{selected.endTime}</span>
+                    </div>
+                  )}
                   <div className={styles.modalField}>
                     <span className={styles.modalFieldLabel}>Carrier Volume</span>
                     <span className={styles.modalFieldValue}>{selected.carrierVolume}</span>
@@ -729,13 +725,26 @@ export default function SprayRecords() {
               </section>
 
               {/* Conditions */}
-              {selected.conditions?.temp && (
+              {/* Phase S.6a — Render weather when ANY weather field is
+                  populated, not just temp. Previously a humidity-only
+                  or wind-only record would have its entire weather
+                  section hidden. */}
+              {selected.conditions && (
+                selected.conditions.temp          != null
+                || selected.conditions.humidity      != null
+                || selected.conditions.wind          != null
+                || selected.conditions.windSpeedMph  != null
+                || selected.conditions.windDirection
+                || selected.conditions.soilTemp      != null
+              ) && (
                 <section className={styles.modalSection}>
                   <h3 className={styles.modalSectionTitle}>Conditions at Application</h3>
                   <div className={styles.modalGrid}>
                     <div className={styles.modalField}>
                       <span className={styles.modalFieldLabel}>Temperature</span>
-                      <span className={styles.modalFieldValue}>{selected.conditions.temp}°F</span>
+                      <span className={styles.modalFieldValue}>
+                        {selected.conditions.temp != null ? `${selected.conditions.temp}°F` : '—'}
+                      </span>
                     </div>
                     <div className={styles.modalField}>
                       <span className={styles.modalFieldLabel}>Wind</span>
@@ -757,11 +766,15 @@ export default function SprayRecords() {
                     )}
                     <div className={styles.modalField}>
                       <span className={styles.modalFieldLabel}>Humidity</span>
-                      <span className={styles.modalFieldValue}>{selected.conditions.humidity ? `${selected.conditions.humidity}%` : '—'}</span>
+                      <span className={styles.modalFieldValue}>
+                        {selected.conditions.humidity != null ? `${selected.conditions.humidity}%` : '—'}
+                      </span>
                     </div>
                     <div className={styles.modalField}>
                       <span className={styles.modalFieldLabel}>Soil Temp</span>
-                      <span className={styles.modalFieldValue}>{selected.conditions.soilTemp ? `${selected.conditions.soilTemp}°F` : '—'}</span>
+                      <span className={styles.modalFieldValue}>
+                        {selected.conditions.soilTemp != null ? `${selected.conditions.soilTemp}°F` : '—'}
+                      </span>
                     </div>
                   </div>
                 </section>

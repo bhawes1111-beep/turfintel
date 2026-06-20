@@ -7,6 +7,10 @@ import {
   SECTION_TYPE,
 } from './reportSchemas.js'
 import { HEALTH_TYPE_LABELS, SEVERITY_LABELS } from '../turfHealth/healthTypes.js'
+// Phase S.6a — Shared needs-info heuristic for the compliance packet
+// per-record flag + summary count. Replaces the local
+// recordNeedsInfoLocal helper which duplicated the same logic.
+import { recordNeedsInfo } from '../sprays/recordNeedsInfo.js'
 
 // Duplicated here to keep reports/ self-contained — no coupling to Irrigation page
 const ISSUE_TYPE_LABELS = {
@@ -265,24 +269,9 @@ function formatWeatherLine(c) {
   return bits.length > 0 ? bits.join(' · ') : '—'
 }
 
-// Same compliance heuristic the Records view uses, duplicated here so
-// the report is self-contained and the title-side count stays in sync
-// with what the supervisor sees in the filter pane.
-function recordNeedsInfoLocal(record) {
-  if (!record) return false
-  if (record.status !== 'completed') return false
-  if (!record.date) return true
-  if (!record.applicator || !record.applicator.trim()) return true
-  if (!Array.isArray(record.products) || record.products.length === 0) return true
-  if (!Array.isArray(record.areas)    || record.areas.length    === 0) return true
-  const c = record.conditions
-  if (!c) return true
-  const hasAnyWeather = c.temp != null || c.humidity != null || c.wind != null
-  if (!hasAnyWeather) return true
-  if (c.windSpeedMph == null) return true
-  if (!c.windDirection)        return true
-  return false
-}
+// Phase S.6a — recordNeedsInfoLocal removed. Now imported from
+// ../sprays/recordNeedsInfo.js as the single source of truth shared
+// with SprayWorkspace + SprayRecords.
 
 /**
  * Build a date-range compliance packet PDF.
@@ -304,7 +293,7 @@ export function buildSprayCompliancePacket(records = [], options = {}) {
   const safeRecords = Array.isArray(records) ? records : []
 
   const completedCount = safeRecords.filter(r => r.status === 'completed').length
-  const needsInfoCount = safeRecords.filter(recordNeedsInfoLocal).length
+  const needsInfoCount = safeRecords.filter(recordNeedsInfo).length
   const products       = [
     ...new Set(safeRecords.flatMap(r => (r.products ?? []).map(p => p?.name).filter(Boolean))),
   ]
@@ -340,7 +329,7 @@ export function buildSprayCompliancePacket(records = [], options = {}) {
       .filter(Boolean)
       .join(' + ') || '(no products)'
 
-    const needsFlag = recordNeedsInfoLocal(r) ? ' — NEEDS INFO' : ''
+    const needsFlag = recordNeedsInfo(r) ? ' — NEEDS INFO' : ''
     const sectionTitle = `${r.date ?? '(no date)'} · ${productSummary}${needsFlag}`
 
     const areaList = (r.areas ?? [])
@@ -353,6 +342,11 @@ export function buildSprayCompliancePacket(records = [], options = {}) {
 
     const fields = {
       'Date':              r.date              ?? '—',
+      // Phase S.6a — Start / End time added to the per-record block.
+      // Captured by builder + edit modal since S.5b.1; previously not
+      // surfaced in the audit packet PDF.
+      'Start Time':        r.startTime         ?? '—',
+      'End Time':          r.endTime           ?? '—',
       'Status':            r.status            ?? '—',
       'Applicator':        r.applicator        ?? '—',
       'License':           r.applicatorLicense ?? '—',
@@ -368,7 +362,7 @@ export function buildSprayCompliancePacket(records = [], options = {}) {
                             : '—',
       'Notes':             (r.notes ?? '').trim() || '—',
     }
-    if (recordNeedsInfoLocal(r)) {
+    if (recordNeedsInfo(r)) {
       fields['Compliance Flag'] = 'Record missing required compliance information.'
     }
 

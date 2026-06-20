@@ -168,14 +168,15 @@ for (const title of [
 }
 
 // Cards key off existing record fields — no new data shape invented.
-// `conditions` is read inside isRecordIncomplete(record) so use a
-// looser match for it.
+// Phase S.6a — `.conditions` reads moved into the shared helper
+// `src/utils/sprays/recordNeedsInfo.js`. Workspace now imports the
+// helper instead of reading conditions inline.
 for (const field of ['r.date === selectedDate', 'r.status', 'r.products', 'r.areas']) {
   assert(WS.includes(field),
     `Workspace reads existing field/expression: ${field}`)
 }
-assert(/\.conditions/.test(WS),
-  'Workspace reads existing `.conditions` block (compliance heuristic)')
+assert(/import \{ recordNeedsInfo \} from '\.\.\/\.\.\/\.\.\/utils\/sprays\/recordNeedsInfo'/.test(WS),
+  'Workspace imports shared recordNeedsInfo helper (S.6a — conditions reads now live in the helper)')
 
 // Date navigator with prev/next + jump-to-date + Today.
 assert(/aria-label="Previous day"/.test(WS),

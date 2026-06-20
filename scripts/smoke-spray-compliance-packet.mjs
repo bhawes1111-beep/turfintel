@@ -68,9 +68,12 @@ assert(/^function formatProductLine\(p\)/m.test(RB),
 assert(/^function formatWeatherLine\(c\)/m.test(RB),
   'formatWeatherLine helper defined')
 
-// Local copy of recordNeedsInfo so the builder is self-contained.
-assert(/^function recordNeedsInfoLocal\(record\)/m.test(RB),
-  'recordNeedsInfoLocal helper defined (builder is self-contained)')
+// Phase S.6a — Builder imports the shared recordNeedsInfo helper
+// from src/utils/sprays/recordNeedsInfo.js (no more local copy).
+assert(/import \{ recordNeedsInfo \} from '\.\.\/sprays\/recordNeedsInfo\.js'/.test(RB),
+  'reportBuilder imports the shared recordNeedsInfo helper (S.6a)')
+assert(!/^function recordNeedsInfoLocal\(record\)/m.test(RB),
+  'reportBuilder no longer declares a local recordNeedsInfoLocal copy (S.6a)')
 
 // ── Builder reads ONLY snapshot fields for compliance data ──────────
 section('Snapshot integrity — builder never re-resolves the product catalog')
