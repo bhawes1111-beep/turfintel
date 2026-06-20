@@ -27,7 +27,11 @@ import { recordNeedsInfo } from '../../../utils/sprays/recordNeedsInfo'
 // Phase S.7b.2 — Chemical edit mode uses the existing patchSpray()
 // helper. The worker's PATCH /api/sprays/:id now accepts a `products`
 // payload that triggers replace-and-resnapshot + inventory adjust.
-import { patchSpray } from '../../../utils/sprays/spraysStore'
+import { patchSpray, deleteSpray } from '../../../utils/sprays/spraysStore'
+// Phase S.7c — Refresh inventory store after a delete so the
+// restored on-hand quantities surface immediately in the spray
+// picker + Inventory tab without a page reload.
+import { refreshInventoryData } from '../../../utils/inventory/inventoryStore'
 import { useToast } from '../../../utils/feedback/toastContext'
 import { useAuth } from '../../../context/AuthContext'
 // Phase S.7b.3 — Real product picker. Same shared component
@@ -87,6 +91,11 @@ export default function SprayApplicationSheetModal({
   const [draftRows, setDraftRows] = useState(() => [])
   const [editReason, setEditReason] = useState('')
   const [busy, setBusy] = useState(false)
+  // Phase S.7c — Delete-confirmation state. Two-step gate so a stray
+  // click can't blow away a record that took inventory + compliance
+  // snapshots to build.
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [deleteBusy, setDeleteBusy] = useState(false)
 
   const ni = recordNeedsInfo(record)
   const c  = record?.conditions ?? {}
@@ -372,6 +381,34 @@ export default function SprayApplicationSheetModal({
     }
   }
 
+  // Phase S.7c — Soft-delete via existing deleteSpray pipeline. The
+  // worker (deleteSpray in worker/api/sprays.js) walks
+  // inventory_usage WHERE source_id = ? AND reverted_at IS NULL,
+  // restores inventory_items.quantity, marks reverted_at, and marks
+  // the spray status='deleted'. Sheet closes on success; calendar +
+  // Records + spray picker all refresh via the existing store contract.
+  async function handleDeleteSpray() {
+    if (deleteBusy) return
+    setDeleteBusy(true)
+    try {
+      await deleteSpray(record.id)
+      // Force-refresh inventory so the restored on-hand quantities
+      // surface in the spray picker + Inventory tab immediately.
+      refreshInventoryData().catch(() => { /* non-fatal */ })
+      toast.success?.(`Spray on ${record.date} deleted · inventory restored`)
+      setDeleteConfirmOpen(false)
+      // Closing the sheet by clearing viewingRecordId in the parent
+      // is the cleanest path — the parent watches the store, sees
+      // the deleted record vanish from the list, and the sheet
+      // unmounts naturally. Calling onClose explicitly to be safe.
+      onClose?.()
+    } catch (err) {
+      toast.error?.(`Delete failed: ${err.message ?? err}`)
+    } finally {
+      setDeleteBusy(false)
+    }
+  }
+
   function handleBackdrop(e) {
     if (e.target === e.currentTarget && !busy) onClose?.()
   }
@@ -435,6 +472,18 @@ export default function SprayApplicationSheetModal({
                 aria-label="Edit chemicals on this spray"
               >
                 Edit chemicals
+              </button>
+            )}
+            {/* Phase S.7c — Delete Spray. Gated behind canEditSprays;
+                opens a confirmation modal before the actual delete. */}
+            {canEdit && canEditSprays && !editMode && (
+              <button
+                type="button"
+                className={styles.btnDanger}
+                onClick={() => setDeleteConfirmOpen(true)}
+                aria-label="Delete this spray record"
+              >
+                Delete Spray
               </button>
             )}
             <button
@@ -787,6 +836,49 @@ export default function SprayApplicationSheetModal({
           </section>
         </div>
       </div>
+
+      {/* Phase S.7c — Delete confirmation dialog. Nested inside the
+          sheet's backdrop element so it sits above the sheet visually
+          while reusing the dialog stacking context. */}
+      {deleteConfirmOpen && (
+        <div
+          className={styles.deleteConfirmBackdrop}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Confirm delete spray"
+          onClick={(e) => { if (e.target === e.currentTarget && !deleteBusy) setDeleteConfirmOpen(false) }}
+        >
+          <div className={styles.deleteConfirmModal} data-modal="delete-spray-confirm">
+            <h3 className={styles.deleteConfirmTitle}>Delete this spray record?</h3>
+            <p className={styles.deleteConfirmBody}>
+              Inventory used by this spray will be restored to on-hand quantities.
+              This will remove the spray from the calendar and Records tab.
+              <br />
+              <strong>This action cannot be undone easily</strong> — re-creating the
+              record requires a fresh Build Spray commit.
+            </p>
+            <div className={styles.deleteConfirmActions}>
+              <button
+                type="button"
+                className={styles.btnSecondary}
+                onClick={() => setDeleteConfirmOpen(false)}
+                disabled={deleteBusy}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={styles.btnDanger}
+                onClick={handleDeleteSpray}
+                disabled={deleteBusy}
+                aria-label="Confirm delete this spray record"
+              >
+                {deleteBusy ? 'Deleting…' : 'Delete spray + restore inventory'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

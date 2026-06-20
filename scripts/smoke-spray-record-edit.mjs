@@ -148,8 +148,10 @@ section('Product mix — read-only in this phase')
 
 assert(/Product mix \(read-only\)/.test(MODAL),
   'product section header reads "Product mix (read-only)"')
-assert(/Product mix edits will be handled in a later phase to preserve inventory and compliance snapshots\./.test(MODAL),
-  'explicit "later phase" notice surfaced to the supervisor')
+// Phase S.7c — Product mix copy now points to the full spray sheet's
+// Edit chemicals action (chemical editing shipped in S.7b.2/3/4/5/6).
+assert(/Product mix edits live in the full spray sheet's <strong>Edit chemicals<\/strong> action/.test(MODAL),
+  'product mix copy points to full sheet Edit chemicals action (S.7c rewrite)')
 
 // Negative pin — the modal never mutates product rows.
 assert(!/setField\(['"]products['"]/.test(MODAL_CODE),

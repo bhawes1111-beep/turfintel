@@ -41,7 +41,7 @@ const WIND_DIRECTIONS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
 // Pure helper — strips snapshot/derived fields so we never accidentally
 // echo back a value that should remain frozen at write time.
 function buildPatchPayload(formState) {
-  return {
+  const payload = {
     date:              formState.date              || null,
     startTime:         formState.startTime         || null,
     endTime:           formState.endTime           || null,
@@ -59,6 +59,18 @@ function buildPatchPayload(formState) {
       soilTemp:       formState.soilTemp       === '' ? null : Number(formState.soilTemp),
     },
   }
+  // Phase S.7c — Sprayed areas. Sent only when the form's areas
+  // collection has been touched (areasTouched flag) so unchanged
+  // edits don't trigger the worker's replace-areas pipeline. Worker
+  // validates at least one row + name + non-negative acreage; on
+  // success it DELETEs existing spray_areas and INSERTs the new set.
+  if (formState.areasTouched && Array.isArray(formState.areas)) {
+    payload.areas = formState.areas.map(a => ({
+      name:    String(a.name ?? '').trim(),
+      acreage: a.acreage === '' || a.acreage == null ? null : Number(a.acreage),
+    }))
+  }
+  return payload
 }
 
 export default function EditSprayRecordModal({ record, onClose, onSaved }) {
@@ -67,6 +79,9 @@ export default function EditSprayRecordModal({ record, onClose, onSaved }) {
 
   // Seed form from the record. Conditions live in a nested object
   // server-side; flatten for editing convenience and re-nest on save.
+  // Phase S.7c — Areas seeded from record.areas. areasTouched starts
+  // false; any add/edit/remove flips it so buildPatchPayload includes
+  // the areas array on the PATCH.
   const [form, setForm] = useState(() => ({
     date:              record.date              ?? '',
     startTime:         record.startTime         ?? '',
@@ -82,6 +97,12 @@ export default function EditSprayRecordModal({ record, onClose, onSaved }) {
     windDirection:     record.conditions?.windDirection ?? '',
     humidity:          record.conditions?.humidity      ?? '',
     soilTemp:          record.conditions?.soilTemp      ?? '',
+    // Areas: each row { name, acreage }. Always at least one slot so
+    // the user has somewhere to type when a record loaded with none.
+    areas:             Array.isArray(record.areas) && record.areas.length > 0
+      ? record.areas.map(a => ({ name: a.name ?? '', acreage: a.acreage ?? '' }))
+      : [{ name: '', acreage: '' }],
+    areasTouched:      false,
   }))
 
   useEffect(() => {
@@ -92,6 +113,30 @@ export default function EditSprayRecordModal({ record, onClose, onSaved }) {
 
   function setField(key, value) {
     setForm(prev => ({ ...prev, [key]: value }))
+  }
+
+  // Phase S.7c — Area-row handlers. Any touch flips areasTouched
+  // so buildPatchPayload sends the areas array on save.
+  function patchArea(i, patch) {
+    setForm(prev => ({
+      ...prev,
+      areasTouched: true,
+      areas: prev.areas.map((a, idx) => idx === i ? { ...a, ...patch } : a),
+    }))
+  }
+  function addArea() {
+    setForm(prev => ({
+      ...prev,
+      areasTouched: true,
+      areas: [...prev.areas, { name: '', acreage: '' }],
+    }))
+  }
+  function removeArea(i) {
+    setForm(prev => ({
+      ...prev,
+      areasTouched: true,
+      areas: prev.areas.filter((_, idx) => idx !== i),
+    }))
   }
 
   async function handleSave() {
@@ -107,6 +152,27 @@ export default function EditSprayRecordModal({ record, onClose, onSaved }) {
     if (form.endTime && !/^\d{2}:\d{2}$/.test(form.endTime)) {
       toast.error('End time must be HH:MM.')
       return
+    }
+    // Phase S.7c — Area validation (only when user touched the section).
+    if (form.areasTouched) {
+      if (form.areas.length === 0) {
+        toast.error('At least one sprayed area is required.')
+        return
+      }
+      for (const a of form.areas) {
+        if (!a.name || !String(a.name).trim()) {
+          toast.error('Each area row needs a name.')
+          return
+        }
+        if (a.acreage !== '' && a.acreage != null && Number.isNaN(Number(a.acreage))) {
+          toast.error(`Acreage for "${a.name}" must be a number.`)
+          return
+        }
+        if (a.acreage !== '' && a.acreage != null && Number(a.acreage) < 0) {
+          toast.error(`Acreage for "${a.name}" cannot be negative.`)
+          return
+        }
+      }
     }
     setBusy(true)
     try {
@@ -321,11 +387,64 @@ export default function EditSprayRecordModal({ record, onClose, onSaved }) {
             />
           </section>
 
+          {/* ── Sprayed areas (S.7c) ── */}
+          <section className={styles.modalSection}>
+            <h3 className={styles.modalSectionTitle}>Sprayed areas</h3>
+            <p className={styles.editHint}>
+              Acreage feeds rate math in the chemical editor + compliance reports. Add a row per area.
+            </p>
+            <ul className={styles.editAreaList}>
+              {form.areas.map((a, i) => (
+                <li key={i} className={styles.editAreaRow}>
+                  <label className={styles.editAreaField}>
+                    <span className={styles.editFieldLabel}>Area name</span>
+                    <input
+                      type="text"
+                      value={a.name}
+                      onChange={e => patchArea(i, { name: e.target.value })}
+                      placeholder="Greens"
+                      aria-label={`Area ${i + 1} name`}
+                    />
+                  </label>
+                  <label className={styles.editAreaField}>
+                    <span className={styles.editFieldLabel}>Acreage</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={a.acreage ?? ''}
+                      onChange={e => patchArea(i, { acreage: e.target.value })}
+                      placeholder="0.00"
+                      aria-label={`Area ${i + 1} acreage`}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className={styles.editAreaRemoveBtn}
+                    onClick={() => removeArea(i)}
+                    aria-label={`Remove area ${i + 1}`}
+                    disabled={form.areas.length <= 1}
+                    title={form.areas.length <= 1 ? 'At least one area is required' : 'Remove this area'}
+                  >
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <button
+              type="button"
+              className={styles.editAreaAddBtn}
+              onClick={addArea}
+            >
+              + Add area
+            </button>
+          </section>
+
           {/* ── Product mix (read-only) ── */}
           <section className={styles.modalSection}>
             <h3 className={styles.modalSectionTitle}>Product mix (read-only)</h3>
             <p className={styles.editHint}>
-              Product mix edits will be handled in a later phase to preserve inventory and compliance snapshots.
+              Product mix edits live in the full spray sheet's <strong>Edit chemicals</strong> action to preserve inventory and compliance snapshots.
             </p>
             {(record.products ?? []).length === 0 ? (
               <p className={styles.editEmpty}>No products on this record.</p>

@@ -122,6 +122,69 @@
   background: rgba(255, 255, 255, 0.14);
 }
 
+/* Phase S.7c — Destructive action button. Same shape/size as the
+   other header buttons so the action row stays visually balanced;
+   red coloring signals the destructive intent. */
+.btnDanger {
+  background: rgba(220, 38, 38, 0.18);
+  color: rgba(254, 226, 226, 1);
+  border: 1px solid rgba(220, 38, 38, 0.55);
+  border-radius: 6px;
+  padding: 5px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btnDanger:hover:not(:disabled) {
+  background: rgba(220, 38, 38, 0.32);
+  border-color: rgba(220, 38, 38, 0.85);
+}
+.btnDanger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Delete-confirmation modal — sits above the sheet. */
+.deleteConfirmBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.68);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 24px 16px;
+}
+
+.deleteConfirmModal {
+  background: var(--color-card);
+  border: 1px solid rgba(220, 38, 38, 0.55);
+  border-radius: 10px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+  width: min(480px, 100%);
+  padding: 18px 22px;
+}
+
+.deleteConfirmTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: rgba(254, 226, 226, 1);
+  margin: 0 0 8px;
+}
+
+.deleteConfirmBody {
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.5;
+  margin: 0 0 16px;
+}
+
+.deleteConfirmActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 /* ── Body ────────────────────────────────────────────────────────── */
 .body {
   padding: 16px 20px;

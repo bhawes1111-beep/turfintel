@@ -146,14 +146,15 @@ assert(/role="dialog"\s+aria-modal="true"/.test(SHEET),
 assert(/data-modal="spray-application-sheet"/.test(SHEET),
   'modal carries data-modal="spray-application-sheet" hook')
 
-// Phase S.7b.2 — sheet now uses patchSpray() for chemical-edit saves.
-// It still never calls createSpray or deleteSpray, never raw fetch.
-assert(/import \{ patchSpray \} from '\.\.\/\.\.\/\.\.\/utils\/sprays\/spraysStore'/.test(SHEET_CODE),
-  'sheet imports patchSpray (S.7b.2 chemical-edit save path)')
-assert(!/createSpray\b|deleteSpray\b/.test(SHEET_CODE),
-  'sheet itself never calls createSpray / deleteSpray (commit + soft-delete remain elsewhere)')
+// Phase S.7b.2 — sheet uses patchSpray() for chemical-edit saves.
+// Phase S.7c — sheet also uses deleteSpray() for the soft-delete
+// action; both flow through spraysStore helpers (no raw fetch).
+assert(/import \{ patchSpray, deleteSpray \} from '\.\.\/\.\.\/\.\.\/utils\/sprays\/spraysStore'/.test(SHEET_CODE),
+  'sheet imports patchSpray + deleteSpray from spraysStore (S.7b.2 + S.7c)')
+assert(!/createSpray\b/.test(SHEET_CODE),
+  'sheet itself never calls createSpray (commit path remains in BuildSpraySheet)')
 assert(!/fetch\(/.test(SHEET_CODE),
-  'sheet does not call fetch() directly (uses patchSpray helper)')
+  'sheet does not call fetch() directly (uses spraysStore helpers)')
 
 // Imports shared Needs Info helper (S.6a invariant).
 assert(/import \{ recordNeedsInfo \} from '\.\.\/\.\.\/\.\.\/utils\/sprays\/recordNeedsInfo'/.test(SHEET),

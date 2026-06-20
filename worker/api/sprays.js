@@ -348,6 +348,31 @@ export async function updateSpray(env, id, request) {
   //
   // D1 does support db.batch() for atomicity but the rest of this
   // worker uses sequential statements — keeping consistent.
+  // Phase S.7c — Area-row replacement. When `body.areas` is an
+  // array, validate + DELETE existing spray_areas + INSERT the new
+  // set. Symmetrical with replaceSprayProducts but simpler: areas
+  // don't touch inventory or snapshots.
+  let areaEditApplied = false
+  if (Array.isArray(body.areas)) {
+    if (body.areas.length === 0) {
+      return badRequest('Completed spray must have at least one area row')
+    }
+    for (const a of body.areas) {
+      const name = a.name ?? a.area_name
+      if (!name || String(name).trim() === '') {
+        return badRequest('Each area row requires a name')
+      }
+      if (a.acreage != null && a.acreage !== '' && Number.isNaN(Number(a.acreage))) {
+        return badRequest(`Invalid acreage for area ${name}`)
+      }
+      if (a.acreage != null && a.acreage !== '' && Number(a.acreage) < 0) {
+        return badRequest(`Acreage for area ${name} cannot be negative`)
+      }
+    }
+    areaEditApplied = true
+    await replaceSprayAreas(env, id, body.areas)
+  }
+
   let productEditApplied = false
   if (Array.isArray(body.products)) {
     if (body.products.length === 0) {
@@ -418,7 +443,7 @@ export async function updateSpray(env, id, request) {
     }
   }
 
-  if (sets.length === 0 && !productEditApplied) {
+  if (sets.length === 0 && !productEditApplied && !areaEditApplied) {
     return badRequest('No mutable fields supplied')
   }
 
@@ -429,15 +454,39 @@ export async function updateSpray(env, id, request) {
       `UPDATE spray_records SET ${sets.join(', ')} WHERE id = ?`,
     ).bind(...binds).run()
     if (!result.success || result.meta.changes === 0) return notFound('Spray record not found')
-  } else if (productEditApplied) {
-    // Product-only edit — still bump updated_at so the audit trail
-    // reflects the change even when no record-level field changed.
+  } else if (productEditApplied || areaEditApplied) {
+    // Phase S.7c — Product- or area-only edit. Still bump updated_at
+    // so the audit trail reflects the change even when no record-
+    // level field changed.
     await env.DB.prepare(
       `UPDATE spray_records SET updated_at = datetime('now') WHERE id = ?`,
     ).bind(id).run()
   }
 
   return getSpray(env, id)
+}
+
+// Phase S.7c — Replace the area rows for an existing spray. Mirrors
+// replaceSprayProducts but simpler: no inventory ledger, no
+// snapshot enrichment. Areas drive rate math + report acreage but
+// have no compliance-frozen state of their own.
+async function replaceSprayAreas(env, sprayId, areas) {
+  await env.DB.prepare(
+    `DELETE FROM spray_areas WHERE spray_record_id = ?`,
+  ).bind(sprayId).run()
+  for (const a of areas) {
+    const name = a.name ?? a.area_name
+    const acreage = (a.acreage == null || a.acreage === '') ? null : Number(a.acreage)
+    await env.DB.prepare(`
+      INSERT INTO spray_areas (id, spray_record_id, area_name, acreage)
+      VALUES (?, ?, ?, ?)
+    `).bind(
+      a.id ?? generateId('sarea'),
+      sprayId,
+      String(name).trim(),
+      acreage,
+    ).run()
+  }
 }
 
 // Phase S.7b.2 — Replace the product mix on an existing spray.

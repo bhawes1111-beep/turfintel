@@ -76,7 +76,10 @@ export async function patchSpray(id, updates) {
     // canonical list response (e.g. soft-delete state, snapshot
     // backfill), refreshSpraysData re-pulls /api/sprays and rebuilds
     // the store so the calendar/sheet always reflect persisted state.
-    if (Array.isArray(updates?.products)) {
+    // Phase S.7c — Same treatment for area edits: changes to
+    // record.areas drive rate math + calendar area chips + report
+    // acreage, so any drift would surface in user-facing surfaces.
+    if (Array.isArray(updates?.products) || Array.isArray(updates?.areas)) {
       refreshSpraysData().catch(() => { /* non-fatal — saved already in store */ })
     }
     return saved

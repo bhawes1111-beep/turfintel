@@ -130,10 +130,11 @@ section('FIX 2: patchSpray refreshes spraysStore after products edit')
 assert(/setState\(\{ records: state\.records\.map\(r => r\.id === id \? saved : r\) \}\)/.test(STORE),
   'patchSpray still merges the saved record into state (primary path)')
 
-// New: after the merge, if products were in the payload, force a
-// refreshSpraysData() to re-pull from the worker. Non-fatal catch.
-assert(/if \(Array\.isArray\(updates\?\.products\)\) \{\s*\n?\s*refreshSpraysData\(\)\.catch\(/.test(STORE),
-  'patchSpray triggers refreshSpraysData() when products were edited (S.7b.4 belt-and-suspenders)')
+// New: after the merge, if products OR areas were in the payload,
+// force a refreshSpraysData() to re-pull from the worker. Non-fatal
+// catch. Phase S.7c added the areas branch.
+assert(/if \(Array\.isArray\(updates\?\.products\) \|\| Array\.isArray\(updates\?\.areas\)\) \{\s*\n?\s*refreshSpraysData\(\)\.catch\(/.test(STORE),
+  'patchSpray triggers refreshSpraysData() when products OR areas were edited (S.7b.4 + S.7c)')
 
 // patchSpray still returns the saved record so callers can use it
 // directly (sheet handler awaits the promise).

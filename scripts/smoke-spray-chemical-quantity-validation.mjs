@@ -205,8 +205,9 @@ section('Sheet refresh after save — patchSpray + store update preserved')
 
 assert(/await patchSpray\(record\.id, payload\)/.test(SHEET),
   'save still calls patchSpray(record.id, payload)')
-assert(/if \(Array\.isArray\(updates\?\.products\)\) \{\s*\n?\s*refreshSpraysData\(\)\.catch\(/.test(STORE),
-  'patchSpray still triggers refreshSpraysData() after products PATCH (S.7b.4 belt-and-suspenders)')
+// Phase S.7c — refresh also fires on areas edits.
+assert(/if \(Array\.isArray\(updates\?\.products\) \|\| Array\.isArray\(updates\?\.areas\)\) \{\s*\n?\s*refreshSpraysData\(\)\.catch\(/.test(STORE),
+  'patchSpray triggers refreshSpraysData() after products OR areas PATCH (S.7b.4 + S.7c)')
 assert(/const \[viewingRecordId, setViewingRecordId\] = useState\(null\)/.test(readFileSync('src/pages/Spray/tabs/SprayCalendarWorkspace.jsx', 'utf8')),
   'calendar workspace still uses id-based lookup (S.7b.4 fix preserved)')
 

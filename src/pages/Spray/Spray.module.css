@@ -2919,3 +2919,90 @@ select.naInput option {
     font-size: 12.5px;
   }
 }
+
+/* Phase S.7c — Sprayed areas editor in EditSprayRecordModal. */
+.editAreaList {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.editAreaRow {
+  display: grid;
+  grid-template-columns: 1fr 120px auto;
+  gap: 8px;
+  align-items: end;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  padding: 8px 10px;
+}
+
+.editAreaField {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.editFieldLabel {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.editAreaField input {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.92);
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-size: 13px;
+}
+
+.editAreaRemoveBtn {
+  background: rgba(248, 113, 113, 0.18);
+  border: 1px solid rgba(248, 113, 113, 0.55);
+  color: rgba(254, 226, 226, 1);
+  border-radius: 4px;
+  padding: 5px 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.editAreaRemoveBtn:hover:not(:disabled) {
+  background: rgba(248, 113, 113, 0.32);
+}
+.editAreaRemoveBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.editAreaAddBtn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.88);
+  border-radius: 4px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.editAreaAddBtn:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+@media (max-width: 540px) {
+  .editAreaRow {
+    grid-template-columns: 1fr 1fr;
+  }
+  .editAreaRemoveBtn {
+    grid-column: span 2;
+    justify-self: end;
+  }
+}
