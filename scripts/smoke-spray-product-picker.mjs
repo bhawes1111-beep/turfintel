@@ -182,20 +182,29 @@ assert(/Not linked to inventory — record will save but no inventory deduction/
 assert(/\.chemNoInventoryWarn\s*\{/.test(SHEET_CSS),
   '.chemNoInventoryWarn class styled (visible amber)')
 
-// Name remains editable (override) so a saved-product row's display
-// name can still be hand-edited.
-assert(/Name override/.test(SHEET),
-  'Name override field present (display-name editable independent of picker)')
+// Phase S.7b.6 — Removed the separate "Name override" field in the
+// redesign (name auto-fills from the picker; if the user wants a
+// different display name they re-pick or re-type product). Name
+// still saves via r.name. Validation rejects rows without a name.
+assert(/name:\s+String\(r\.name\)\.trim\(\)/.test(SHEET),
+  'name still in save payload via r.name.trim()')
+assert(/Each product row needs a name/.test(SHEET),
+  'name-required validation remains (worker also enforces)')
 
 // ── Save payload contract preserved (S.7b.2 couple) ───────────────
 section('Save payload — products include picker fields')
 
 // The sheet payload mapping was already exhaustive in S.7b.2.
-// Re-pin the critical fields now that picker drives them.
-for (const field of ['inventoryItemId', 'productCatalogId', 'name', 'type', 'rate', 'unit', 'quantityUsed']) {
-  assert(new RegExp(`${field}:\\s*r\\.${field}|${field}:\\s*String\\(r\\.${field}\\)|${field}:\\s*r\\.${field}\\.trim|${field}:\\s*r\\.rate === ''`).test(SHEET),
+// Phase S.7b.6 — rate now formatted via formatRateLabel; quantityUsed
+// comes from r.totalUsed (in-editor rename).
+for (const field of ['inventoryItemId', 'productCatalogId', 'name', 'type', 'unit']) {
+  assert(new RegExp(`${field}:\\s*r\\.${field}|${field}:\\s*String\\(r\\.${field}\\)|${field}:\\s*r\\.${field}\\.trim`).test(SHEET),
     `payload includes ${field}: r.${field} (or equivalent transform)`)
 }
+assert(/quantityUsed:\s+r\.totalUsed/.test(SHEET),
+  'payload maps totalUsed → quantityUsed (worker contract unchanged)')
+assert(/rate:\s+r\.rate === '' \|\| r\.rate == null \? null : formatRateLabel\(r\.rate, r\.rateUnit\)/.test(SHEET),
+  'payload formats rate as label string via formatRateLabel(r.rate, r.rateUnit)')
 
 // Snapshot fields still passed through (preserved unless picker reset them).
 for (const field of ['epaNumberSnapshot', 'activeIngredientsSnapshot', 'productCostSnapshot', 'productCostUnitSnapshot', 'totalCostSnapshot']) {

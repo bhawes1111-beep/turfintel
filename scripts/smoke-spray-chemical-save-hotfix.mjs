@@ -147,10 +147,11 @@ section('FIX 3: Sheet warns when row has inventory link but blank/invalid quanti
 // rowStatus()-driven render. The old chemNoQuantityWarn span is
 // kept as a CSS fallback but the render path is now the blocking
 // warn class. Specific copy is still pinned, just on the new tree.
-assert(/Enter quantity used to deduct inventory for this row/.test(SHEET),
-  'blank-quantity warning copy distinguishes from zero (S.7b.5: "Enter quantity used to deduct…")')
-assert(/Quantity used must be greater than 0 to deduct inventory/.test(SHEET),
-  'zero/negative-quantity warning copy is specific (S.7b.5: "must be greater than 0…")')
+// Phase S.7b.6 — Copy retargeted to "total used" terminology.
+assert(/Enter total used or rate to calculate inventory deduction/.test(SHEET),
+  'blank-quantity warning copy (S.7b.6 rewrite): "Enter total used or rate…")')
+assert(/Total used must be greater than 0 to deduct inventory/.test(SHEET),
+  'zero/negative-quantity warning copy (S.7b.6 rewrite): "Total used must be greater than 0…"')
 assert(/chemBlockingWarn/.test(SHEET) && /chemBlockingWarn/.test(SHEET_CSS),
   '.chemBlockingWarn class rendered + styled for save-blocking states')
 
@@ -169,11 +170,16 @@ assert(/products: draftRows\.map/.test(SHEET),
 assert(/await patchSpray\(record\.id, payload\)/.test(SHEET),
   'save calls patchSpray(record.id, payload)')
 
-// All critical fields still in payload.
-for (const field of ['inventoryItemId', 'productCatalogId', 'name', 'rate', 'unit', 'quantityUsed']) {
-  assert(new RegExp(`${field}:\\s*r\\.${field}|${field}:\\s*r\\.${field} === ''|${field}:\\s*String\\(r\\.${field}\\)|${field}:\\s*r\\.rate === ''`).test(SHEET),
+// All critical fields still in payload. Phase S.7b.6 maps rate via
+// formatRateLabel(r.rate, r.rateUnit) and quantityUsed via r.totalUsed.
+for (const field of ['inventoryItemId', 'productCatalogId', 'name', 'unit']) {
+  assert(new RegExp(`${field}:\\s*r\\.${field}|${field}:\\s*String\\(r\\.${field}\\)`).test(SHEET),
     `save payload includes ${field}`)
 }
+assert(/quantityUsed:\s+r\.totalUsed/.test(SHEET),
+  'save payload maps totalUsed → quantityUsed (S.7b.6 rename)')
+assert(/rate:\s+r\.rate === '' \|\| r\.rate == null \? null : formatRateLabel/.test(SHEET),
+  'save payload formats rate as label string (S.7b.6 — matches BuildSpraySheet commit shape)')
 
 // Toast + state cleanup on success.
 assert(/toast\.success\?\.\(`Updated chemicals for spray on \$\{record\.date\}`\)/.test(SHEET),

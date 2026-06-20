@@ -82,13 +82,13 @@ assert(/if \(status\.kind === 'qty-blank'\)/.test(SHEET),
 assert(/if \(status\.kind === 'qty-nonpositive'\)/.test(SHEET),
   'save blocks on qty-nonpositive with toast.error')
 
-// Toast copy verifies the user is told exactly what to do.
-assert(/Enter a quantity used greater than 0 for "\$\{r\.name\}" \(linked to inventory\)/.test(SHEET),
-  'qty-blank toast: "Enter a quantity used greater than 0 for X (linked to inventory)"')
-assert(/Quantity used for "\$\{r\.name\}" must be greater than 0 to deduct inventory/.test(SHEET),
-  'qty-nonpositive toast: "Quantity used for X must be greater than 0 to deduct inventory"')
-assert(/Quantity for "\$\{r\.name\}" is not a number/.test(SHEET),
-  'qty-invalid toast: "Quantity for X is not a number"')
+// Phase S.7b.6 — Toast copy retargeted to "total used" terminology.
+assert(/Enter total used or rate for "\$\{r\.name\}" \(linked to inventory\)/.test(SHEET),
+  'qty-blank toast: "Enter total used or rate for X (linked to inventory)" (S.7b.6 rewrite)')
+assert(/Total used for "\$\{r\.name\}" must be greater than 0/.test(SHEET),
+  'qty-nonpositive toast: "Total used for X must be greater than 0" (S.7b.6 rewrite)')
+assert(/Total used for "\$\{r\.name\}" must be a number/.test(SHEET),
+  'qty-invalid toast: "Total used for X must be a number" (S.7b.6 rewrite)')
 
 // ── Per-row status line copy + visibility ─────────────────────────
 section('Per-row status line — distinguishes blank vs zero vs valid')
@@ -97,13 +97,13 @@ section('Per-row status line — distinguishes blank vs zero vs valid')
 assert(/Not linked to inventory — record will save but no inventory deduction/.test(SHEET),
   'no-link status copy preserved')
 
-// Distinct blank vs zero copy.
-assert(/Enter quantity used to deduct inventory for this row/.test(SHEET),
-  'qty-blank status: "Enter quantity used to deduct inventory for this row." (not "blank")')
-assert(/Quantity used must be greater than 0 to deduct inventory/.test(SHEET),
-  'qty-nonpositive status: "Quantity used must be greater than 0 to deduct inventory."')
-assert(/Quantity used must be a number/.test(SHEET),
-  'qty-invalid status: "Quantity used must be a number."')
+// Distinct blank vs zero copy (S.7b.6 — "total used" terminology).
+assert(/Enter total used or rate to calculate inventory deduction/.test(SHEET),
+  'qty-blank status: "Enter total used or rate to calculate inventory deduction." (S.7b.6 rewrite)')
+assert(/Total used must be greater than 0 to deduct inventory/.test(SHEET),
+  'qty-nonpositive status: "Total used must be greater than 0 to deduct inventory." (S.7b.6 rewrite)')
+assert(/Total used must be a number/.test(SHEET),
+  'qty-invalid status: "Total used must be a number." (S.7b.6 rewrite)')
 
 // Valid row shows on-hand info.
 assert(/Will deduct \{s\.qty\}/.test(SHEET),
@@ -176,17 +176,29 @@ assert(/inventoryItemId:\s*item\.id/.test(PICKER) &&
 assert(!/quantityUsed:/.test(PICKER),
   'mapInventoryItemToProductRow does NOT touch quantityUsed (preserves user input)')
 
-// addDraftRow seeds quantityUsed as empty string (so user MUST enter).
-assert(/function addDraftRow\(\)[\s\S]{0,300}quantityUsed: '',/.test(SHEET),
-  'addDraftRow seeds quantityUsed as empty string (forces user input — no silent default of 0)')
+// Phase S.7b.6 — addDraftRow seeds totalUsed (renamed from
+// quantityUsed in-editor). Save handler maps totalUsed → quantityUsed
+// in the payload before sending to the worker.
+assert(/function addDraftRow\(\)[\s\S]{0,500}totalUsed: '',/.test(SHEET),
+  'addDraftRow seeds totalUsed as empty string (forces user input — no silent default of 0)')
 
 // ── Save payload still complete (S.7b.3 regression couple) ────────
 section('Save payload — all picker fields still sent')
 
-for (const field of ['inventoryItemId', 'productCatalogId', 'name', 'rate', 'unit', 'quantityUsed']) {
-  assert(new RegExp(`${field}:\\s*r\\.${field}|${field}:\\s*r\\.${field} === ''|${field}:\\s*String\\(r\\.${field}\\)|${field}:\\s*r\\.rate === ''`).test(SHEET),
+// Phase S.7b.6 — quantityUsed payload is now derived from r.totalUsed
+// (renamed in-editor), and rate is formatted as a label string via
+// formatRateLabel(r.rate, r.rateUnit) to match BuildSpraySheet's
+// commit-time write shape.
+for (const field of ['inventoryItemId', 'productCatalogId', 'name', 'unit']) {
+  assert(new RegExp(`${field}:\\s*r\\.${field}|${field}:\\s*String\\(r\\.${field}\\)`).test(SHEET),
     `save payload includes ${field}`)
 }
+assert(/quantityUsed:\s+r\.totalUsed === '' \|\| r\.totalUsed == null \? null : Number\(r\.totalUsed\)/.test(SHEET),
+  'save payload maps totalUsed → quantityUsed (worker contract unchanged)')
+assert(/rate:\s+r\.rate === '' \|\| r\.rate == null \? null : formatRateLabel\(r\.rate, r\.rateUnit\)/.test(SHEET),
+  'save payload formats rate as label string via formatRateLabel(r.rate, r.rateUnit) — matches BuildSpraySheet commit shape')
+assert(/rateUnit:\s+r\.rateUnit \?\? null/.test(SHEET),
+  'save payload includes rateUnit')
 
 // ── Sheet refresh after save (S.7b.4 regression couple) ───────────
 section('Sheet refresh after save — patchSpray + store update preserved')

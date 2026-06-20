@@ -414,6 +414,128 @@
   color: rgba(254, 215, 170, 0.95);
 }
 
+/* Phase S.7b.6 — Redesigned chemical editor: acreage banner +
+   card-style row with top / calc / status sections. */
+
+.chemAcresBanner,
+.chemAcresBannerWarn {
+  font-size: 12.5px;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin: 0 0 10px;
+}
+
+.chemAcresBanner {
+  background: rgba(74, 222, 128, 0.12);
+  border: 1px solid rgba(74, 222, 128, 0.32);
+  color: rgba(220, 252, 231, 1);
+}
+
+.chemAcresBannerWarn {
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.32);
+  color: rgba(254, 240, 138, 0.92);
+}
+
+.chemEditCard {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chemTopRow {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.chemTopField {
+  flex: 1 1 220px;
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chemTopFieldNarrow {
+  flex: 0 0 160px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chemCalcRow {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px 10px;
+}
+
+.chemCalcField {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.chemCalcField input,
+.chemCalcField select,
+.chemTopFieldNarrow input,
+.chemTopField select {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.92);
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-size: 13px;
+  width: 100%;
+}
+
+.chemCalcField input:focus,
+.chemCalcField select:focus,
+.chemTopFieldNarrow input:focus,
+.chemTopField select:focus {
+  outline: 2px solid rgba(74, 222, 128, 0.55);
+  outline-offset: 1px;
+}
+
+.chemReadOnly {
+  background: rgba(255, 255, 255, 0.05) !important;
+  cursor: default;
+  opacity: 0.85;
+}
+
+.chemStatusRow {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.chemStatusHint {
+  font-size: 11px;
+  color: rgba(254, 240, 138, 0.75);
+  font-style: italic;
+}
+
+/* Mobile — stack the calculation row 2x then 1x. */
+@media (max-width: 640px) {
+  .chemCalcRow {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (max-width: 420px) {
+  .chemCalcRow {
+    grid-template-columns: 1fr;
+  }
+  .chemTopFieldNarrow {
+    flex: 1 1 100%;
+  }
+}
+
 .chemRemoveBtn {
   background: rgba(248, 113, 113, 0.18);
   border: 1px solid rgba(248, 113, 113, 0.55);

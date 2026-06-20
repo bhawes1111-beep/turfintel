@@ -179,11 +179,19 @@ assert(/onClick=\{addDraftRow\}/.test(SHEET),
 assert(/onClick=\{\(\) => removeDraftRow\(i\)\}/.test(SHEET),
   'Per-row Remove wires removeDraftRow(i)')
 
-// Each editable field present.
-for (const field of ['name', 'type', 'rate', 'unit', 'quantityUsed', 'totalCostSnapshot']) {
+// Phase S.7b.6 — type + unit still go through patchDraftRow; rate,
+// totalUsed, and rateUnit go through dedicated math handlers that
+// trigger bidirectional auto-calc.
+for (const field of ['type', 'unit']) {
   assert(new RegExp(`patchDraftRow\\(i, \\{ ${field}:`).test(SHEET),
     `field editor for ${field} wired through patchDraftRow`)
 }
+assert(/editTotalUsed\(i, e\.target\.value\)/.test(SHEET),
+  'totalUsed input wires editTotalUsed() (bidirectional math handler — S.7b.6)')
+assert(/editRate\(i, e\.target\.value\)/.test(SHEET),
+  'rate input wires editRate() (bidirectional math handler — S.7b.6)')
+assert(/editRateUnit\(i, e\.target\.value\)/.test(SHEET),
+  'rate unit select wires editRateUnit() (rebases math on unit change — S.7b.6)')
 
 // Reason for change field.
 assert(/Reason for chemical change/.test(SHEET),
