@@ -1,7 +1,9 @@
 import { useState, useMemo, useEffect } from 'react'
 import { TYPE_COLORS } from '../../../data/spray'
 import { useSpraysData } from '../../../utils/sprays/spraysStore'
-import { buildSpraySummaryReport } from '../../../utils/reports/reportBuilder'
+import { buildSpraySummaryReport, buildSprayCompliancePacket } from '../../../utils/reports/reportBuilder'
+import { useToast } from '../../../utils/feedback/toastContext'
+import { useCourse } from '../../../context/CourseContext'
 import { createAttachmentRef } from '../../../utils/reports/reportSchemas'
 import { getMediaByModule, getThumbnailBlob } from '../../../utils/media/mediaStore'
 import UploadCenter from '../../../components/uploads/UploadCenter'
@@ -69,6 +71,8 @@ function recordNeedsInfo(record) {
 
 export default function SprayRecords() {
   const { records: SPRAY_RECORDS }      = useSpraysData()
+  const { activeCourse }                = useCourse()
+  const toast                           = useToast()
   const [search, setSearch]             = useState('')
   const [typeFilter, setTypeFilter]     = useState('All')
   const [statusFilter, setStatusFilter] = useState('All')
@@ -246,6 +250,39 @@ export default function SprayRecords() {
     setNeedsInfoOnly(false)
   }
 
+  // Phase S.5c.2 — Export the currently visible/filtered records as a
+  // compliance packet PDF. Reuses ReportPreviewModal via setActiveReport
+  // so the existing print/PDF export pipeline drives the output.
+  // Refuses to generate an empty packet — toasts and bails instead.
+  function handleExportCompliancePacket() {
+    if (visible.length === 0) {
+      toast.info('No records match the current filters. Adjust the filters and try again.')
+      return
+    }
+    // Build a human-readable dateRange + filtersSummary so the cover
+    // section tells the supervisor exactly what was exported.
+    const dateRange =
+      effStart && effEnd ? `${effStart} → ${effEnd}`
+      : effStart         ? `On or after ${effStart}`
+      : effEnd           ? `On or before ${effEnd}`
+      : 'All dates'
+    const filterBits = []
+    if (search)                     filterBits.push(`Search: "${search}"`)
+    if (typeFilter      !== 'All')  filterBits.push(`Type: ${typeFilter}`)
+    if (statusFilter    !== 'All')  filterBits.push(`Status: ${statusFilter}`)
+    if (applicatorFilter !== 'All') filterBits.push(`Applicator: ${applicatorFilter}`)
+    if (productFilter   !== 'All')  filterBits.push(`Product: ${productFilter}`)
+    if (needsInfoOnly)              filterBits.push('Needs Info only')
+    const filtersSummary = filterBits.length > 0 ? filterBits.join(' · ') : 'None'
+
+    setActiveReport(buildSprayCompliancePacket(visible, {
+      title:      'Spray Compliance Packet',
+      dateRange,
+      courseName: activeCourse?.name ?? activeCourse?.shortName ?? null,
+      filtersSummary,
+    }))
+  }
+
   return (
     <div className={styles.tabContent}>
       <WorkspaceSection
@@ -366,6 +403,19 @@ export default function SprayRecords() {
               Clear all
             </button>
           )}
+          {/* Phase S.5c.2 — Multi-record compliance packet PDF. Always
+              renders; refuses to generate when visible is empty (toasts
+              instead). Honors every active filter via the `visible`
+              record set. */}
+          <button
+            type="button"
+            className={styles.exportPacketBtn}
+            onClick={handleExportCompliancePacket}
+            aria-label="Export filtered records as compliance packet PDF"
+            title="Export the currently filtered records as a printable compliance packet."
+          >
+            Export Compliance Packet
+          </button>
         </div>
       </div>
 

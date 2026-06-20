@@ -220,6 +220,190 @@ export function buildSpraySummaryReport(applications, options = {}) {
   })
 }
 
+// ── Phase S.5c.2 — Spray Compliance Packet ────────────────────────────────────
+//
+// Multi-record compliance packet for inspections / month-end records.
+// Distinct from buildSpraySummaryReport (the short 5-column "what got
+// sprayed when?" overview): this packet renders a cover section with
+// rollup counts + a dedicated FIELDS section per record so each
+// application's full snapshot is in one printable place.
+//
+// Snapshot integrity: every per-product cell reads ONLY the stored
+// snapshot fields on the record — never re-resolves against the
+// current product_catalog. EPA #, active ingredients, cost values
+// are whatever was frozen at write time (Phase S.3). This keeps the
+// PDF audit-stable even if the catalog is corrected later.
+//
+// Pure: no fetch, no mutation, no store reads. Caller passes in the
+// already-filtered record set.
+
+function formatProductLine(p) {
+  if (!p) return ''
+  const bits = [p.name || '(unnamed)']
+  if (p.rate) bits.push(`rate ${p.rate}`)
+  if (p.quantityUsed != null) {
+    bits.push(`qty ${p.quantityUsed}${p.unit ? ` ${p.unit}` : ''}`)
+  }
+  // Snapshots — read-only display, never re-resolved.
+  if (p.epaNumberSnapshot) bits.push(`EPA ${p.epaNumberSnapshot}`)
+  if (p.activeIngredientsSnapshot) bits.push(`AI: ${p.activeIngredientsSnapshot}`)
+  if (p.totalCostSnapshot != null) {
+    bits.push(`cost $${Number(p.totalCostSnapshot).toFixed(2)}`)
+  }
+  return bits.join(' · ')
+}
+
+function formatWeatherLine(c) {
+  if (!c) return '—'
+  const bits = []
+  if (c.temp != null)         bits.push(`${c.temp}°F`)
+  if (c.humidity != null)     bits.push(`${c.humidity}% RH`)
+  if (c.windSpeedMph != null) bits.push(`wind ${c.windSpeedMph} mph`)
+  if (c.windDirection)        bits.push(`from ${c.windDirection}`)
+  if (c.soilTemp != null)     bits.push(`soil ${c.soilTemp}°F`)
+  if (c.wind)                 bits.push(`(${c.wind})`)
+  return bits.length > 0 ? bits.join(' · ') : '—'
+}
+
+// Same compliance heuristic the Records view uses, duplicated here so
+// the report is self-contained and the title-side count stays in sync
+// with what the supervisor sees in the filter pane.
+function recordNeedsInfoLocal(record) {
+  if (!record) return false
+  if (record.status !== 'completed') return false
+  if (!record.date) return true
+  if (!record.applicator || !record.applicator.trim()) return true
+  if (!Array.isArray(record.products) || record.products.length === 0) return true
+  if (!Array.isArray(record.areas)    || record.areas.length    === 0) return true
+  const c = record.conditions
+  if (!c) return true
+  const hasAnyWeather = c.temp != null || c.humidity != null || c.wind != null
+  if (!hasAnyWeather) return true
+  if (c.windSpeedMph == null) return true
+  if (!c.windDirection)        return true
+  return false
+}
+
+/**
+ * Build a date-range compliance packet PDF.
+ * @param {Object[]} records  — pre-filtered spray records (full nested shape from the store)
+ * @param {Object}   [options]
+ * @param {string}   [options.title='Spray Compliance Packet']
+ * @param {string}   [options.dateRange] — e.g. "2026-06-01 → 2026-06-30"
+ * @param {string}   [options.courseName]
+ * @param {string}   [options.filtersSummary] — e.g. "Applicator: Jose · Status: completed"
+ */
+export function buildSprayCompliancePacket(records = [], options = {}) {
+  const {
+    title         = 'Spray Compliance Packet',
+    dateRange,
+    courseName,
+    filtersSummary,
+  } = options
+
+  const safeRecords = Array.isArray(records) ? records : []
+
+  const completedCount = safeRecords.filter(r => r.status === 'completed').length
+  const needsInfoCount = safeRecords.filter(recordNeedsInfoLocal).length
+  const products       = [
+    ...new Set(safeRecords.flatMap(r => (r.products ?? []).map(p => p?.name).filter(Boolean))),
+  ]
+  const applicators    = [
+    ...new Set(safeRecords.map(r => r.applicator).filter(a => a && a.trim())),
+  ]
+
+  const sections = [
+    createSection({
+      title: 'Compliance Summary',
+      type:  SECTION_TYPE.FIELDS,
+      data: {
+        'Course':           courseName     || '—',
+        'Date Range':       dateRange      || '—',
+        'Filters Applied':  filtersSummary || 'None',
+        'Total Records':    safeRecords.length,
+        'Completed':        completedCount,
+        'Needs Info':       needsInfoCount,
+        'Products Used':    products.length    > 0 ? products.join(', ')    : '—',
+        'Applicators':      applicators.length > 0 ? applicators.join(', ') : '—',
+        'Generated':        new Date().toISOString(),
+      },
+    }),
+  ]
+
+  // Per-record sections. Each is a FIELDS section with a multi-line
+  // value for products / weather / areas so the layout reads cleanly
+  // when printed. Title includes the record date + product summary
+  // + a "needs info" tag when applicable.
+  for (const r of safeRecords) {
+    const productSummary = (r.products ?? [])
+      .map(p => p?.name)
+      .filter(Boolean)
+      .join(' + ') || '(no products)'
+
+    const needsFlag = recordNeedsInfoLocal(r) ? ' — NEEDS INFO' : ''
+    const sectionTitle = `${r.date ?? '(no date)'} · ${productSummary}${needsFlag}`
+
+    const areaList = (r.areas ?? [])
+      .map(a => `${a.name ?? '(area)'}${a.acreage != null ? ` (${a.acreage} ac)` : ''}`)
+      .join(', ') || (r.area ?? '—')
+
+    const productLines = (r.products ?? []).length > 0
+      ? r.products.map(formatProductLine).join('\n')
+      : '—'
+
+    const fields = {
+      'Date':              r.date              ?? '—',
+      'Status':            r.status            ?? '—',
+      'Applicator':        r.applicator        ?? '—',
+      'License':           r.applicatorLicense ?? '—',
+      'Target / Pest':     r.targetPest        ?? '—',
+      'Area':              areaList,
+      'Products':          productLines,
+      'Weather':           formatWeatherLine(r.conditions),
+      'Carrier Volume':    r.carrierVolume     ?? '—',
+      'Total Volume':      r.totalVolume != null ? `${r.totalVolume} gal` : '—',
+      'REI':               r.rei != null ? `${r.rei} hr` : '—',
+      'Total Cost':        r.totalCostSnapshot != null
+                            ? `$${Number(r.totalCostSnapshot).toFixed(2)}`
+                            : '—',
+      'Notes':             (r.notes ?? '').trim() || '—',
+    }
+    if (recordNeedsInfoLocal(r)) {
+      fields['Compliance Flag'] = 'Record missing required compliance information.'
+    }
+
+    sections.push(createSection({
+      title: sectionTitle,
+      type:  SECTION_TYPE.FIELDS,
+      data:  fields,
+    }))
+  }
+
+  if (safeRecords.length === 0) {
+    sections.push(createSection({
+      title: 'No records',
+      type:  SECTION_TYPE.TEXT,
+      data:  'The filter set produced no records. Adjust the filters and try again.',
+    }))
+  }
+
+  return createReport({
+    module:        REPORT_MODULE.SPRAY,
+    type:          REPORT_TYPE.SPRAY_SUMMARY,
+    title,
+    generatedBy:   'spray-module',
+    sections,
+    metadata:      {
+      dateRange:      dateRange ?? null,
+      courseName:     courseName ?? null,
+      recordCount:    safeRecords.length,
+      completedCount,
+      needsInfoCount,
+    },
+    exportFormats: STANDARD_FORMATS,
+  })
+}
+
 // ── Equipment ─────────────────────────────────────────────────────────────────
 
 /**

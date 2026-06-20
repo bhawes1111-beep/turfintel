@@ -339,7 +339,9 @@ assert(/\.advancedFilterRow\s*\{[\s\S]{0,300}flex-direction:\s*column/.test(CSS)
   'mobile .advancedFilterRow stacks vertically')
 assert(/\.advFilterField input\[type="date"\],[\s\S]{0,200}\.advFilterField select\s*\{[\s\S]{0,400}width:\s*100%/.test(CSS),
   'mobile .advFilterField inputs go full-width')
-assert(/\.advFilterClearBtn,[\s\S]{0,200}\.needsInfoToggle\s*\{[\s\S]{0,300}align-self:\s*stretch/.test(CSS),
+// Phase S.5c.2 extends this rule with .exportPacketBtn — both shapes
+// (with or without the export button in the comma list) are valid.
+assert(/\.advFilterClearBtn,[\s\S]{0,200}\.needsInfoToggle[\s\S]{0,200}\{[\s\S]{0,300}align-self:\s*stretch/.test(CSS),
   'mobile Clear / Needs-Info buttons stretch to row width')
 
 // ── DAB + kiosk untouched ───────────────────────────────────────────
