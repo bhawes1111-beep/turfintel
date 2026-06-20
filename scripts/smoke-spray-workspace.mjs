@@ -68,24 +68,17 @@ assert(/const\s+LEGACY_TABS\s*=\s*\[\s*'Workspace'/.test(SP),
 assert(/useState\(\s*['"]Workspace['"]\s*\)/.test(SP),
   "activeTab defaults to 'Workspace' (single useState, both branches land here)")
 
-// Workspace mounts in both branches with onNavigateTab={setActiveTab}.
-assert(/activeTab === 'Workspace'\s*&&\s*<SprayWorkspace onNavigateTab=\{setActiveTab\}\s*\/>/.test(SP),
-  'Crosswinds branch mounts <SprayWorkspace onNavigateTab={setActiveTab} />')
-assert(/activeTab === 'Workspace'\s*&&\s*<SprayWorkspace onNavigateTab=\{t => \{/.test(SP),
-  'legacy branch mounts <SprayWorkspace onNavigateTab={t => { … aliasing … }} />')
-
-// Legacy aliasing covers each quick-action target.
-for (const [key, label] of [
-  ['Build Spray', 'New Application'],
-  ['Records',     'Spray Records'],
-  ['Calendar',    'Spray Calendar'],
-  ['Planned Sprays',    'Spray Calendar'],
-  ['Calculator',  'Mix Calculator'],
-]) {
-  const r = new RegExp(`['"]${key}['"]:\\s*['"]${label.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}['"]`)
-  assert(r.test(SP),
-    `legacy ALIASES maps '${key}' → '${label}'`)
-}
+// Phase S.7 — Default Workspace landing is the new calendar-first
+// SprayCalendarWorkspace. The legacy SprayWorkspace component file
+// is preserved on disk (so these S.4-baseline pins below still
+// inspect its source), but it is no longer mounted by Spray.jsx.
+assert(/activeTab === 'Workspace'\s+&&\s*<SprayCalendarWorkspace\s*\/>/.test(SP),
+  'Crosswinds Workspace mounts <SprayCalendarWorkspace /> (S.7 calendar-first)')
+// Legacy branch now mounts the same calendar-first workspace (no alias
+// map needed — the new workspace embeds the builder directly).
+const workspaceMatches = SP.match(/activeTab === 'Workspace'\s+&&\s*<SprayCalendarWorkspace\s*\/>/g) ?? []
+assert(workspaceMatches.length >= 2,
+  'Both Crosswinds + legacy branches mount <SprayCalendarWorkspace /> (S.7)')
 
 // ── Existing tabs are still reachable ───────────────────────────────
 section('Existing tabs remain reachable (regression couple)')

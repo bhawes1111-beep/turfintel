@@ -112,9 +112,10 @@ assert(/moreTab === 'Planned Sprays'[\s\S]{0,200}<SprayProgramPlanner \/>/.test(
 assert(/activeTab === 'Planned Sprays'[\s\S]{0,300}<SprayProgramPlanner \/>/.test(SP),
   "Legacy 'Planned Sprays' → <SprayProgramPlanner /> (mount unchanged)")
 
-// Workspace alias key renamed in legacy branch.
-assert(/'Planned Sprays':\s*'Spray Calendar'/.test(SP),
-  "legacy ALIASES maps 'Planned Sprays' → 'Spray Calendar' (S.6b alias rename)")
+// Phase S.7 — Workspace alias map removed entirely (the new calendar-
+// first workspace embeds the builder directly so no Workspace→tab
+// navigation alias is needed). The negative pin below stays as the
+// regression guard against any "Programs" alias reintroduction.
 assert(!/'Programs':\s*'Spray Calendar'/.test(SP),
   "legacy ALIASES no longer maps 'Programs' (S.6b removed)")
 

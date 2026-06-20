@@ -4,6 +4,11 @@ import WorkspaceActions from '../../components/shared/WorkspaceActions'
 // Phase S.4 — new scheduler-style entry surface. Date-first read-only
 // workspace that routes to the existing tabs unchanged.
 import SprayWorkspace        from './tabs/SprayWorkspace'
+// Phase S.7 — Calendar-first Spray workspace. Default landing tab.
+// The legacy card-dashboard SprayWorkspace is preserved on disk for
+// the existing S.4 / S.6a / S.6b regression smokes that pin it, but
+// is no longer mounted by the visible nav.
+import SprayCalendarWorkspace from './tabs/SprayCalendarWorkspace'
 import SprayOverview         from './tabs/SprayOverview'
 import SprayCalendar         from './tabs/SprayCalendar'
 import BuildSpraySheet       from './tabs/BuildSpraySheet'
@@ -119,7 +124,10 @@ export default function Spray() {
     >
       {isCrosswinds ? (
         <>
-          {activeTab === 'Workspace'      && <SprayWorkspace onNavigateTab={setActiveTab} />}
+          {/* Phase S.7 — Default Spray landing is now the calendar-first
+              workspace. The legacy SprayWorkspace dashboard is preserved
+              on disk for smoke regression couples but no longer mounted. */}
+          {activeTab === 'Workspace'      && <SprayCalendarWorkspace />}
           {activeTab === 'Build Spray'    && <BuildSpraySheet />}
           {activeTab === 'Records'        && <SprayRecords />}
           {activeTab === 'Calendar'       && <SprayCalendar />}
@@ -163,25 +171,14 @@ export default function Spray() {
         </>
       ) : (
         <>
-          {/* Phase S.4 — Workspace targets map legacy tab labels.
-              "Build Spray" → "New Application"; "Records" → "Spray
-              Records"; "Planned Sprays" → "Spray Calendar" (legacy
-              view); "Calendar" stays "Spray Calendar"; "Calculator"
-              stays "Mix Calculator". A small label-aliasing handler
-              below normalizes the workspace's quick-action keys to
-              the actual legacy tab labels.
-              Phase S.6b — Workspace key 'Programs' renamed to
-              'Planned Sprays'; alias updated. */}
-          {activeTab === 'Workspace'             && <SprayWorkspace onNavigateTab={t => {
-            const ALIASES = {
-              'Build Spray':    'New Application',
-              'Records':        'Spray Records',
-              'Calendar':       'Spray Calendar',
-              'Planned Sprays': 'Spray Calendar',
-              'Calculator':     'Mix Calculator',
-            }
-            setActiveTab(ALIASES[t] ?? t)
-          }} />}
+          {/* Phase S.7 — Default Spray landing for legacy (non-
+              Crosswinds) courses is also the new calendar-first
+              workspace. The S.4/S.6b alias map for the old quick-
+              action navigation is no longer needed — the new
+              workspace embeds the builder directly. The legacy
+              SprayWorkspace dashboard is preserved on disk for
+              smoke regression couples but no longer mounted. */}
+          {activeTab === 'Workspace'             && <SprayCalendarWorkspace />}
           {activeTab === 'Overview'              && <SprayOverview />}
           {activeTab === 'Spray Calendar'        && <SprayCalendar />}
           {activeTab === 'New Application'       && <BuildSpraySheet />}

@@ -315,7 +315,21 @@ function stockStatus(qty, reorderLevel) {
 
 // ── Main component ──────────────────────────────────────────────────────
 
-export default function BuildSpraySheet() {
+// Phase S.7 — Optional embedded-mode props:
+//   • initialDate (ISO YYYY-MM-DD): seeds the builder's draft date.
+//     When the calendar workspace switches to a new selected date, the
+//     date-seed effect updates the live draft IF it is empty (no
+//     rows / no operator). If the draft has unsaved work the calendar
+//     workspace confirms with the user BEFORE changing initialDate,
+//     so by the time this prop changes the seed is safe.
+//   • onCommit: callback invoked after a successful commit. The
+//     embedded calendar uses it to refresh the spraysStore so the
+//     monthly grid chips reflect the new record.
+//
+// When mounted as the top-level Build Spray tab (no props), behavior
+// is byte-identical to pre-S.7: draft seeds from TODAY via
+// makeEmptyDraft(), no refresh callback fires.
+export default function BuildSpraySheet({ initialDate, onCommit } = {}) {
   // Phase S.5a.2 — Permission-aware UI. Worker is the source of
   // truth (POST /api/sprays gated by canEditSprays); this client
   // gate just hides / disables actions to avoid dead-end clicks.
@@ -392,6 +406,23 @@ export default function BuildSpraySheet() {
       return makeEmptyDraft()
     }
   })
+
+  // Phase S.7 — When embedded in the calendar workspace, an
+  // `initialDate` prop seeds the draft date. We update the live draft
+  // only if it is "empty enough" to safely replace — no products, no
+  // operator. The calendar workspace handles the unsaved-confirm prompt
+  // before changing this prop, so the seed itself is unconditional.
+  useEffect(() => {
+    if (!initialDate) return
+    setDraft(prev => {
+      if (prev?.date === initialDate) return prev
+      const isEmpty =
+        (!prev?.rows || prev.rows.length === 0) &&
+        !prev?.operator
+      if (!isEmpty) return prev
+      return { ...prev, date: initialDate }
+    })
+  }, [initialDate])
 
   // Debounced autosave. Saves the draft 600ms after the last edit.
   //
@@ -931,9 +962,18 @@ export default function BuildSpraySheet() {
 
       // 5. Reset draft.
       try { localStorage.removeItem(DRAFT_KEY) } catch { /* ignore */ }
-      setDraft(makeEmptyDraft())
+      // Phase S.7 — When embedded in the calendar workspace, keep the
+      // fresh draft's date on the calendar's selected date so the user
+      // can immediately log another spray for the same day. Outside the
+      // calendar this is just TODAY (unchanged from pre-S.7 behavior).
+      const fresh = makeEmptyDraft()
+      if (initialDate) fresh.date = initialDate
+      setDraft(fresh)
       // Phase S.5b.1 — Reset the saved indicator after commit.
       setDraftSavedAt(null)
+      // Phase S.7 — Notify the embedding workspace so it can refresh
+      // its calendar/store. No-op when used as a standalone tab.
+      onCommit?.(saved)
       toast.success(
         `Application committed${deductCount > 0 ? ` · ${deductCount} product${deductCount !== 1 ? 's' : ''} deducted from inventory` : ''}`,
       )
