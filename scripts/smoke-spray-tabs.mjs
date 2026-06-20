@@ -58,8 +58,11 @@ assert(/const\s+CROSSWINDS_TABS\s*=\s*\[\s*'Workspace'\s*,\s*'Build Spray'\s*,\s
 section('Crosswinds More inner row (exact 5 in order)')
 
 // Phase S.6b — 'Program Planner' (More inner) → 'Planned Sprays'.
-assert(/const\s+CROSSWINDS_MORE\s*=\s*\[\s*'Overview'\s*,\s*'Planned Programs'\s*,\s*'Planned Sprays'\s*,\s*'Reports'\s*,\s*'Program Intelligence'\s*\]/.test(SP),
-  "CROSSWINDS_MORE = ['Overview', 'Planned Programs', 'Planned Sprays', 'Reports', 'Program Intelligence'] (S.6b rename)")
+// Phase S.6c — 'Planned Programs' removed (legacy surface superseded
+// by 'Planned Sprays'); 'Program Intelligence' renamed to 'Spray
+// Intelligence'. No remaining user-facing 'Program' labels.
+assert(/const\s+CROSSWINDS_MORE\s*=\s*\[\s*'Overview'\s*,\s*'Planned Sprays'\s*,\s*'Reports'\s*,\s*'Spray Intelligence'\s*\]/.test(SP),
+  "CROSSWINDS_MORE = ['Overview', 'Planned Sprays', 'Reports', 'Spray Intelligence'] (S.6c removal + rename)")
 
 // ── All 10 tab component imports still present ─────────────────────────
 section('All 10 original tab component imports preserved')
@@ -89,35 +92,39 @@ assert(/activeTab === 'Planned Sprays'[\s\S]{0,40}<SprayProgramCalendar \/>/.tes
 assert(/activeTab === 'Calculator'[\s\S]{0,40}<MixCalculator \/>/.test(SP),
   "Crosswinds 'Calculator' → <MixCalculator />")
 
-// More inner row renders all 5 advanced components.
+// More inner row renders the remaining advanced components.
+// Phase S.6c — 'Planned Programs' removed; 'Program Intelligence'
+// renamed to 'Spray Intelligence'. Down from 5 → 4 inner tabs.
 assert(/moreTab === 'Overview'[\s\S]{0,40}<SprayOverview \/>/.test(SP),
   "More inner 'Overview' → <SprayOverview />")
-assert(/moreTab === 'Planned Programs'[\s\S]{0,40}<PlannedPrograms \/>/.test(SP),
-  "More inner 'Planned Programs' → <PlannedPrograms />")
 // Phase S.6b — More inner 'Program Planner' → 'Planned Sprays'.
 assert(/moreTab === 'Planned Sprays'[\s\S]{0,40}<SprayProgramPlanner \/>/.test(SP),
   "More inner 'Planned Sprays' → <SprayProgramPlanner /> (S.6b rename)")
 assert(/moreTab === 'Reports'[\s\S]{0,40}<SprayReports \/>/.test(SP),
   "More inner 'Reports' → <SprayReports />")
-assert(/moreTab === 'Program Intelligence'[\s\S]{0,40}<ProgramIntelligence \/>/.test(SP),
-  "More inner 'Program Intelligence' → <ProgramIntelligence />")
+assert(/moreTab === 'Spray Intelligence'[\s\S]{0,40}<ProgramIntelligence \/>/.test(SP),
+  "More inner 'Spray Intelligence' → <ProgramIntelligence /> (S.6c rename)")
 
-// ── Non-Crosswinds legacy branch maps all 10 originals ─────────────────
-section('Non-Crosswinds legacy mappings preserved (all 10)')
+// ── Non-Crosswinds legacy branch maps remaining surfaces ──────────────
+// Phase S.6c — 'Planned Programs' tab removed from LEGACY_TABS (legacy
+// surface superseded by 'Planned Sprays'); 'Program Intelligence'
+// renamed to 'Spray Intelligence'. Down from 10 → 9 legacy tabs.
+section('Non-Crosswinds legacy mappings preserved')
 
 const LEGACY_PAIRS = [
   ['Overview',             'SprayOverview'],
   ['Spray Calendar',       'SprayCalendar'],
   ['New Application',      'BuildSpraySheet'],
   ['Spray Records',        'SprayRecords'],
-  ['Planned Programs',     'PlannedPrograms'],
   // Phase S.6b — visible label renamed 'Program Planner' →
   // 'Planned Sprays'. Component mount unchanged.
   ['Planned Sprays',       'SprayProgramPlanner'],
   ['Program Calendar',     'SprayProgramCalendar'],
   ['Mix Calculator',       'MixCalculator'],
   ['Reports',              'SprayReports'],
-  ['Program Intelligence', 'ProgramIntelligence'],
+  // Phase S.6c — visible label renamed 'Program Intelligence' →
+  // 'Spray Intelligence'. Component mount unchanged.
+  ['Spray Intelligence',   'ProgramIntelligence'],
 ]
 // Match across the inserted multi-line comment by allowing more
 // breathing room between the activeTab check and the component mount.

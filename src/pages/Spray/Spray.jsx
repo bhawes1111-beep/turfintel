@@ -8,7 +8,12 @@ import SprayOverview         from './tabs/SprayOverview'
 import SprayCalendar         from './tabs/SprayCalendar'
 import BuildSpraySheet       from './tabs/BuildSpraySheet'
 import SprayRecords          from './tabs/SprayRecords'
-import PlannedPrograms       from './tabs/PlannedPrograms'
+// Phase S.6c — PlannedPrograms is no longer reachable from visible
+// Spray navigation (legacy surface superseded by Planned Sprays).
+// The component file is intentionally preserved on disk so the
+// legacy model remains accessible for any future deep-link / route
+// recovery, but it is not imported here.
+// import PlannedPrograms       from './tabs/PlannedPrograms'
 import MixCalculator         from './tabs/MixCalculator'
 import SprayReports          from './tabs/SprayReports'
 import ProgramIntelligence   from './tabs/ProgramIntelligence'
@@ -28,7 +33,12 @@ import styles from './Spray.module.css'
 // except for the new Workspace landing tab prepended in Phase S.4.
 // Phase S.6b — 'Program Planner' → 'Planned Sprays' for the user-
 // facing label. Internal route still mounts SprayProgramPlanner.
-const LEGACY_TABS = ['Workspace', 'Overview', 'Spray Calendar', 'New Application', 'Spray Records', 'Planned Programs', 'Planned Sprays', 'Program Calendar', 'Mix Calculator', 'Reports', 'Program Intelligence']
+// Phase S.6c — Removed 'Planned Programs' (legacy surface — the
+// S.5b.2 Planned Sprays is the single planning surface). Renamed
+// 'Program Intelligence' → 'Spray Intelligence'. Internal route
+// handlers for 'Planned Programs' are preserved for safety but the
+// tab is no longer exposed in the visible nav.
+const LEGACY_TABS = ['Workspace', 'Overview', 'Spray Calendar', 'New Application', 'Spray Records', 'Planned Sprays', 'Program Calendar', 'Mix Calculator', 'Reports', 'Spray Intelligence']
 
 // Phase 9B.1 — Crosswinds-only simplified Spray tabs. Six visible
 // items + a "More" group whose body renders a secondary pill row
@@ -44,9 +54,12 @@ const LEGACY_TABS = ['Workspace', 'Overview', 'Spray Calendar', 'New Application
 // Crosswinds tab strip. 'Program Planner' inside More → 'Planned
 // Sprays' as well. Internal routing key is the same so smoke
 // regression couples + workspace navigateTab calls keep working.
+// Phase S.6c — Removed 'Planned Programs' from CROSSWINDS_MORE (the
+// S.5b.2 Planned Sprays is the single planning surface). Renamed
+// 'Program Intelligence' → 'Spray Intelligence'.
 const CROSSWINDS_COURSE_ID = 'crossroads-gc'
 const CROSSWINDS_TABS = ['Workspace', 'Build Spray', 'Records', 'Calendar', 'Planned Sprays', 'Calculator', 'More']
-const CROSSWINDS_MORE = ['Overview', 'Planned Programs', 'Planned Sprays', 'Reports', 'Program Intelligence']
+const CROSSWINDS_MORE = ['Overview', 'Planned Sprays', 'Reports', 'Spray Intelligence']
 
 /**
  * Sprays workspace — canonical TurfIntel workspace pattern (Phase 2.2 pilot).
@@ -129,13 +142,18 @@ export default function Spray() {
                 ))}
               </div>
               {moreTab === 'Overview'             && <SprayOverview />}
-              {moreTab === 'Planned Programs'     && <PlannedPrograms />}
+              {/* Phase S.6c — 'Planned Programs' removed from CROSSWINDS_MORE
+                  (legacy surface superseded by 'Planned Sprays'). Route
+                  handler removed since the tab is no longer reachable. */}
               {/* Phase S.6b — 'Program Planner' inner-tab renamed
                   to 'Planned Sprays'. Same SprayProgramPlanner
                   component; only the label changed. */}
               {moreTab === 'Planned Sprays'       && <SprayProgramPlanner />}
               {moreTab === 'Reports'              && <SprayReports />}
-              {moreTab === 'Program Intelligence' && <ProgramIntelligence />}
+              {/* Phase S.6c — 'Program Intelligence' renamed to
+                  'Spray Intelligence'. Same ProgramIntelligence
+                  component; only the label changed. */}
+              {moreTab === 'Spray Intelligence'   && <ProgramIntelligence />}
             </div>
           )}
         </>
@@ -164,7 +182,9 @@ export default function Spray() {
           {activeTab === 'Spray Calendar'        && <SprayCalendar />}
           {activeTab === 'New Application'       && <BuildSpraySheet />}
           {activeTab === 'Spray Records'         && <SprayRecords />}
-          {activeTab === 'Planned Programs'      && <PlannedPrograms />}
+          {/* Phase S.6c — 'Planned Programs' removed from visible
+              LEGACY_TABS. Route handler removed since the tab is no
+              longer reachable from the nav. */}
           {/* Phase S.6b — LEGACY_TABS visible label renamed
               'Program Planner' → 'Planned Sprays'. SprayProgramPlanner
               component mount unchanged. */}
@@ -172,7 +192,10 @@ export default function Spray() {
           {activeTab === 'Program Calendar'      && <SprayProgramCalendar />}
           {activeTab === 'Mix Calculator'        && <MixCalculator />}
           {activeTab === 'Reports'               && <SprayReports />}
-          {activeTab === 'Program Intelligence'  && <ProgramIntelligence />}
+          {/* Phase S.6c — 'Program Intelligence' renamed to
+              'Spray Intelligence'. ProgramIntelligence component
+              mount unchanged. */}
+          {activeTab === 'Spray Intelligence'    && <ProgramIntelligence />}
         </>
       )}
     </PageShell>

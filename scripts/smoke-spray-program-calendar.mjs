@@ -381,8 +381,11 @@ console.log('— Sprays workspace registers Program Calendar tab')
   // Phase S.6b — 'Program Planner' user-facing label renamed to
   // 'Planned Sprays'; visible label updated, internal mount unchanged.
   for (const t of ['Overview', 'Spray Calendar', 'New Application', 'Spray Records',
-                   'Planned Programs', 'Planned Sprays', 'Mix Calculator',
-                   'Reports', 'Program Intelligence']) {
+                   // Phase S.6c — 'Planned Programs' removed from
+                   // visible LEGACY_TABS; 'Program Intelligence'
+                   // renamed to 'Spray Intelligence'.
+                   'Planned Sprays', 'Mix Calculator',
+                   'Reports', 'Spray Intelligence']) {
     assert(tabsMatch && new RegExp(`'${t}'`).test(tabsMatch[1]),
       `pre-existing tab '${t}' still in TABS`)
   }

@@ -176,21 +176,24 @@ export default function ProgramIntelligence() {
 
   return (
     <div className={sprayStyles.tabContent} data-print-region="program-intel">
+      {/* Phase S.6c — 'Program Intelligence' → 'Spray Intelligence' in
+          all user-facing copy. Internal `data-print-region` token + file
+          name preserved (no callers / no schema effect). */}
       <WorkspaceSection
-        title="Program Intelligence"
+        title="Spray Intelligence"
         subtitle="Seasonal chemistry analytics from logged spray applications. Read-only — no recommendations or scheduling."
       >
         {sprayLoading ? (
           <p className={styles.empty}>Loading spray history…</p>
         ) : !hasAnyRecords ? (
           <p className={styles.empty}>
-            No spray applications logged yet. Commit applications from the New Application tab to populate program analytics.
+            No spray applications logged yet. Commit applications from the New Application tab to populate spray analytics.
           </p>
         ) : (
           <>
             {/* ── Print-only header (visible only when printing) ── */}
             <header className={styles.printHeader}>
-              <h2 className={styles.printTitle}>Program Intelligence Report</h2>
+              <h2 className={styles.printTitle}>Spray Intelligence Report</h2>
               <div className={styles.printMeta}>
                 {courseName && <span>Course: <strong>{courseName}</strong></span>}
                 <span>Generated: <strong>{TODAY_ISO()}</strong></span>

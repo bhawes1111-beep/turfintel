@@ -463,9 +463,11 @@ console.log('— Sprays workspace registers Program Planner tab')
   assert(/activeTab\s*===\s*'Planned Sprays'\s*&&\s*<SprayProgramPlanner/.test(shell),
     'Planned Sprays tab body still wired to <SprayProgramPlanner /> (S.6b rename)')
 
-  // Legacy 'Planned Programs' tab is still in TABS — regression guard.
-  assert(tabsMatch && /'Planned Programs'/.test(tabsMatch[1]),
-    "legacy 'Planned Programs' tab still in TABS")
+  // Phase S.6c — Legacy 'Planned Programs' tab REMOVED from visible
+  // LEGACY_TABS (legacy surface superseded by 'Planned Sprays').
+  // Negative pin: confirm it is no longer exposed.
+  assert(tabsMatch && !/'Planned Programs'/.test(tabsMatch[1]),
+    "'Planned Programs' no longer in LEGACY_TABS (S.6c removal)")
 
   // Tab body source contracts.
   // Phase S.6b — user-facing copy renamed.
