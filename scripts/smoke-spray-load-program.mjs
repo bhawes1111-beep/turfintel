@@ -291,8 +291,9 @@ assert(/Load Program/.test(BUILD),
   'button label reads "Load Program"')
 // Disabled only while committing (NOT when empty draft — supervisor
 // might want to "start from a program" on a fresh draft).
-assert(/onClick=\{\(\) => setLoadProgramOpen\(true\)\}[\s\S]{0,400}disabled=\{committing\}/.test(BUILD),
-  'Load Program button disabled only while committing (available on empty draft)')
+// Phase S.5a.2 extended the disabled rule with `|| !canEditSprays`.
+assert(/onClick=\{\(\) => setLoadProgramOpen\(true\)\}[\s\S]{0,400}disabled=\{committing(?:\s*\|\| !canEditSprays)?\}/.test(BUILD),
+  'Load Program button disabled while committing or when !canEditSprays (still available on empty draft for authorized users)')
 
 // Modal mounts behind state.
 assert(/\{loadProgramOpen && \(\s*\n\s*<LoadProgramModal/.test(BUILD),

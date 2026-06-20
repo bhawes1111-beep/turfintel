@@ -43,6 +43,10 @@ import WorkspaceSection from '../../../components/shared/WorkspaceSection'
 import SaveAsProgramModal from './SaveAsProgramModal'
 // Phase S.5b.3 — Load a saved Spray Program into the builder draft.
 import LoadProgramModal from './LoadProgramModal'
+// Phase S.5a.2 — Permission-aware UI. Worker enforces canEditSprays
+// for any spray mutation; this hook is the UX-only client gate that
+// hides / disables actions the user can't perform.
+import { useAuth } from '../../../context/AuthContext'
 import styles from '../Spray.module.css'
 
 const TODAY    = new Date().toISOString().slice(0, 10)
@@ -312,6 +316,12 @@ function stockStatus(qty, reorderLevel) {
 // ── Main component ──────────────────────────────────────────────────────
 
 export default function BuildSpraySheet() {
+  // Phase S.5a.2 — Permission-aware UI. Worker is the source of
+  // truth (POST /api/sprays gated by canEditSprays); this client
+  // gate just hides / disables actions to avoid dead-end clicks.
+  const { can } = useAuth()
+  const canEditSprays = can('canEditSprays')
+
   const { items: inventoryProducts }    = useInventoryData()
   const { employees: crewEmployees }    = useCrewData()
   const { labels: importedLabels }      = useImportedLabels()
@@ -1391,8 +1401,9 @@ export default function BuildSpraySheet() {
               <button
                 type="button"
                 className={styles.naCommitBtn}
-                disabled={committing || enrichedRows.length === 0}
+                disabled={committing || enrichedRows.length === 0 || !canEditSprays}
                 onClick={handleCommit}
+                title={!canEditSprays ? 'Spray edit permission required' : undefined}
               >
                 {committing ? 'Committing…' : 'Commit Application'}
               </button>
@@ -1405,26 +1416,36 @@ export default function BuildSpraySheet() {
               </button>
               {/* Phase S.5b.2 — Save the current draft as a reusable
                   Spray Program (template). Does NOT commit a record,
-                  deduct inventory, or fire REI alerts. */}
+                  deduct inventory, or fire REI alerts.
+                  Phase S.5a.2 — Gated by canEditSprays. Saving a program
+                  is a write on /api/spray-programs which the worker
+                  gates by canEditSprays; mirror that here. */}
               <button
                 type="button"
                 className={styles.naSaveAsProgramBtn}
                 onClick={() => setSaveAsProgramOpen(true)}
-                disabled={committing || enrichedRows.length === 0}
-                title="Save the current draft as a reusable Spray Program template (no inventory deduction, no spray record created)"
+                disabled={committing || enrichedRows.length === 0 || !canEditSprays}
+                title={!canEditSprays
+                  ? 'Spray edit permission required'
+                  : 'Save the current draft as a reusable Spray Program template (no inventory deduction, no spray record created)'}
               >
                 Save as Program
               </button>
               {/* Phase S.5b.3 — Load a saved Spray Program into the
                   current draft. Also non-destructive — no record,
                   no inventory, no alerts. Available even on an empty
-                  draft (a fresh "start from program" gesture). */}
+                  draft (a fresh "start from program" gesture).
+                  Phase S.5a.2 — Gated by canEditSprays. Loading is a
+                  read, but it populates the draft for an eventual
+                  Commit; without edit permission, that's a dead end. */}
               <button
                 type="button"
                 className={styles.naLoadProgramBtn}
                 onClick={() => setLoadProgramOpen(true)}
-                disabled={committing}
-                title="Load a saved Spray Program into the builder (replaces or appends product rows)"
+                disabled={committing || !canEditSprays}
+                title={!canEditSprays
+                  ? 'Spray edit permission required'
+                  : 'Load a saved Spray Program into the builder (replaces or appends product rows)'}
               >
                 Load Program
               </button>

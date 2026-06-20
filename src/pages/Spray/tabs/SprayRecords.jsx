@@ -8,6 +8,11 @@ import {
 } from '../../../utils/reports/reportBuilder'
 import { useToast } from '../../../utils/feedback/toastContext'
 import { useCourse } from '../../../context/CourseContext'
+// Phase S.5a.2 — Permission-aware UI. Hide Edit affordances when the
+// viewer lacks canEditSprays. Exports + single-record Generate Report
+// remain visible — those are read-only outputs available to any
+// authenticated viewer who can reach the Records tab.
+import { useAuth } from '../../../context/AuthContext'
 import { createAttachmentRef } from '../../../utils/reports/reportSchemas'
 import { getMediaByModule, getThumbnailBlob } from '../../../utils/media/mediaStore'
 import UploadCenter from '../../../components/uploads/UploadCenter'
@@ -77,6 +82,11 @@ export default function SprayRecords() {
   const { records: SPRAY_RECORDS }      = useSpraysData()
   const { activeCourse }                = useCourse()
   const toast                           = useToast()
+  // Phase S.5a.2 — Edit affordances hide for viewers lacking the
+  // permission. Worker still rejects unauthorized PATCH (regression
+  // couple from S.5a.1).
+  const { can }                         = useAuth()
+  const canEditSprays                   = can('canEditSprays')
   const [search, setSearch]             = useState('')
   const [typeFilter, setTypeFilter]     = useState('All')
   const [statusFilter, setStatusFilter] = useState('All')
@@ -561,15 +571,20 @@ export default function SprayRecords() {
                       opens the detail modal) from firing. Worker
                       permission gate (canEditSprays) remains the
                       source of truth; an unauthorized user gets a
-                      403 on Save. */}
-                  <button
-                    type="button"
-                    className={styles.recordEditBtn}
-                    onClick={e => { e.stopPropagation(); setEditing(r) }}
-                    aria-label={`Edit spray record from ${r.date}`}
-                  >
-                    Edit
-                  </button>
+                      403 on Save.
+                      Phase S.5a.2 — Hidden entirely for viewers who
+                      lack canEditSprays. No view-only purpose for an
+                      Edit affordance. */}
+                  {canEditSprays && (
+                    <button
+                      type="button"
+                      className={styles.recordEditBtn}
+                      onClick={e => { e.stopPropagation(); setEditing(r) }}
+                      aria-label={`Edit spray record from ${r.date}`}
+                    >
+                      Edit
+                    </button>
+                  )}
                   <span className={styles.viewDetail}>View Details →</span>
                 </div>
               </button>
@@ -782,13 +797,16 @@ export default function SprayRecords() {
             <div className="opActionRow">
               {/* Phase S.5a.1 — Edit shortcut from the detail modal.
                   Routes to the same EditSprayRecordModal as the
-                  record-card Edit button. */}
-              <button
-                className="opActionBtn"
-                onClick={() => { setEditing(selected); setSelected(null) }}
-              >
-                Edit Record
-              </button>
+                  record-card Edit button.
+                  Phase S.5a.2 — Hidden for viewers without canEditSprays. */}
+              {canEditSprays && (
+                <button
+                  className="opActionBtn"
+                  onClick={() => { setEditing(selected); setSelected(null) }}
+                >
+                  Edit Record
+                </button>
+              )}
               <button
                 className="opActionBtn"
                 onClick={() => generateApplicationReport(selected)}

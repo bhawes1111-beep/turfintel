@@ -237,8 +237,9 @@ assert(/<button[\s\S]{0,400}className=\{styles\.naSaveAsProgramBtn\}[\s\S]{0,400
   'Save as Program button rendered + wires onClick')
 assert(/Save as Program/.test(BUILD),
   'button label reads "Save as Program"')
-assert(/disabled=\{committing \|\| enrichedRows\.length === 0\}/.test(BUILD),
-  'button disabled when committing or no products in draft')
+// Phase S.5a.2 extended the disabled rule with `|| !canEditSprays`.
+assert(/disabled=\{committing \|\| enrichedRows\.length === 0(?:\s*\|\| !canEditSprays)?\}/.test(BUILD),
+  'button disabled when committing or no products in draft (S.5a.2: also when !canEditSprays)')
 
 // Modal mounts behind state.
 assert(/\{saveAsProgramOpen && \(\s*\n\s*<SaveAsProgramModal[\s\S]{0,400}draft=\{draft\}[\s\S]{0,400}enrichedRows=\{enrichedRows\}/.test(BUILD),
