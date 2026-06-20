@@ -67,10 +67,11 @@ assert(/role="dialog"/.test(MODAL),
   'modal has role="dialog"')
 assert(/aria-modal="true"/.test(MODAL),
   'modal has aria-modal="true"')
-assert(/aria-label="Load saved spray program"/.test(MODAL),
-  'modal has aria-label="Load saved spray program"')
-assert(/<h2 className=\{styles\.modalTitle\}>Load Spray Program<\/h2>/.test(MODAL),
-  'modal title reads "Load Spray Program"')
+// Phase S.6b — user-facing "Spray Program" → "Planned Spray".
+assert(/aria-label="Load saved planned spray"/.test(MODAL),
+  'modal has aria-label="Load saved planned spray" (S.6b rename)')
+assert(/<h2 className=\{styles\.modalTitle\}>Load Planned Spray<\/h2>/.test(MODAL),
+  'modal title reads "Load Planned Spray" (S.6b rename)')
 assert(/does not create a record, deduct inventory, or fire alerts/i.test(MODAL),
   'modal subtitle clarifies "does not create a record, deduct inventory, or fire alerts"')
 assert(/if \(e\.key === 'Escape' && !busy\) onClose\(\)/.test(MODAL),
@@ -98,7 +99,8 @@ section('Filters + list rendering')
 
 assert(/const STATUS_OPTIONS = \['All', 'active', 'draft', 'archived'\]/.test(MODAL),
   'STATUS_OPTIONS includes All / active / draft / archived')
-assert(/aria-label="Search saved programs"/.test(MODAL),
+// Phase S.6b — "Search saved programs" → "Search saved planned sprays".
+assert(/aria-label="Search saved planned sprays"/.test(MODAL),
   'search input has aria-label')
 assert(/aria-label="Filter by status"/.test(MODAL),
   'status filter has aria-label')
@@ -138,10 +140,11 @@ for (const fragment of [
 }
 
 // Empty / loading states.
-assert(/Select a program on the left to preview its product rows\./.test(MODAL),
-  'preview empty state reads "Select a program on the left..."')
-assert(/Loading program rows…/.test(MODAL),
-  'preview loading state reads "Loading program rows…"')
+// Phase S.6b — preview copy uses "planned spray".
+assert(/Select a planned spray on the left to preview its product rows\./.test(MODAL),
+  'preview empty state reads "Select a planned spray on the left..." (S.6b rename)')
+assert(/Loading planned spray rows…/.test(MODAL),
+  'preview loading state reads "Loading planned spray rows…" (S.6b rename)')
 
 // Replace warning shows only when draftHasContent.
 assert(/draftHasContent && \(\s*\n\s*<p className=\{styles\.loadProgramReplaceWarn\}/.test(MODAL),

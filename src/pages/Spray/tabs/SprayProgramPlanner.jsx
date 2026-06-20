@@ -245,7 +245,7 @@ export default function SprayProgramPlanner() {
   async function handleArchive() {
     if (!selected) return
     const ok = typeof window !== 'undefined'
-      ? window.confirm(`Archive "${selected.name}"? Programs can be reactivated later.`)
+      ? window.confirm(`Archive "${selected.name}"? Planned sprays can be reactivated later.`)
       : true
     if (!ok) return
     try {
@@ -377,44 +377,44 @@ export default function SprayProgramPlanner() {
   return (
     <div className={styles.tabContent}>
       <WorkspaceSection
-        title="Spray Program Planner"
-        subtitle="Plan upcoming spray programs. Programs hold intent only — they do not deduct inventory or create spray records."
+        title="Planned Sprays"
+        subtitle="Plan upcoming sprays. Planned sprays hold intent only — they do not deduct inventory or create spray records."
       >
         <PlanningBoundaryNote />
 
         {error && (
           <EmptyState
-            title="Could not load spray programs."
+            title="Could not load planned sprays."
             description={error}
           />
         )}
 
         {!error && loading && programs.length === 0 && (
-          <EmptyState compact title="Loading programs…" />
+          <EmptyState compact title="Loading planned sprays…" />
         )}
 
         {!error && !loading && programs.length === 0 && !creatingProgram && (
           <EmptyState
-            title="No spray programs yet."
-            description="Create a program to plan future applications."
+            title="No planned sprays yet."
+            description="Create a planned spray to lay out future applications."
           >
             <button
               type="button"
               className={styles.btnPrimary}
               onClick={() => setCreatingProgram(true)}
             >
-              + Create program
+              + Create planned spray
             </button>
           </EmptyState>
         )}
 
         {!error && (programs.length > 0 || creatingProgram) && (
           <div className={styles.layout}>
-            {/* ── Master: program list ─────────────────────────────── */}
+            {/* ── Master: planned-spray list ───────────────────────── */}
             <div className={styles.master}>
               <div className={styles.toolbarRow}>
                 <span className={styles.countLabel}>
-                  {programs.length} program{programs.length !== 1 ? 's' : ''}
+                  {programs.length} planned spray{programs.length !== 1 ? 's' : ''}
                 </span>
                 {!creatingProgram && (
                   <button
@@ -433,7 +433,7 @@ export default function SprayProgramPlanner() {
 
               {creatingProgram && (
                 <ProgramForm
-                  title="New spray program"
+                  title="New planned spray"
                   form={programForm}
                   setForm={setProgramForm}
                   onSubmit={submitNewProgram}
@@ -485,7 +485,7 @@ export default function SprayProgramPlanner() {
               {!selected ? (
                 <EmptyState
                   compact
-                  title="Select a program"
+                  title="Select a planned spray"
                   description="Choose a program from the list to view planned items."
                 />
               ) : editingProgram ? (
@@ -539,7 +539,7 @@ export default function SprayProgramPlanner() {
                           type="button"
                           className={styles.btnDanger}
                           onClick={handleArchive}
-                          title="Programs can be reactivated later."
+                          title="Planned sprays can be reactivated later."
                         >
                           Archive
                         </button>
@@ -870,7 +870,7 @@ function ProgramForm({ title, form, setForm, onSubmit, onCancel, submitting, sub
       </p>
       <div className={styles.formRow}>
         <label className={styles.formLabel}>
-          Program name <span aria-hidden className={styles.req}>*</span>
+          Planned spray name <span aria-hidden className={styles.req}>*</span>
           <input
             type="text"
             className={styles.formInput}

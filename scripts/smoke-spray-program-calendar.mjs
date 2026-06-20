@@ -378,8 +378,10 @@ console.log('— Sprays workspace registers Program Calendar tab')
     "Program Calendar tab body wired to activeTab === 'Program Calendar'")
 
   // Pre-existing tabs still present (regression guard).
+  // Phase S.6b — 'Program Planner' user-facing label renamed to
+  // 'Planned Sprays'; visible label updated, internal mount unchanged.
   for (const t of ['Overview', 'Spray Calendar', 'New Application', 'Spray Records',
-                   'Planned Programs', 'Program Planner', 'Mix Calculator',
+                   'Planned Programs', 'Planned Sprays', 'Mix Calculator',
                    'Reports', 'Program Intelligence']) {
     assert(tabsMatch && new RegExp(`'${t}'`).test(tabsMatch[1]),
       `pre-existing tab '${t}' still in TABS`)

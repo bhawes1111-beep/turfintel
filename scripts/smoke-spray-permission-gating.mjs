@@ -117,14 +117,15 @@ assert(/title=\{!canEditSprays \? 'Spray edit permission required' : undefined\}
 assert(/<button[\s\S]{0,400}className=\{styles\.naSaveAsProgramBtn\}[\s\S]{0,400}disabled=\{committing \|\| enrichedRows\.length === 0 \|\| !canEditSprays\}/.test(BUILD),
   'Save as Program button disabled when !canEditSprays')
 // Save as Program title uses ternary to swap between permission warning and original tooltip.
-assert(/title=\{!canEditSprays\s*\n?\s*\?\s*'Spray edit permission required'\s*\n?\s*:\s*'Save the current draft as a reusable Spray Program template/.test(BUILD),
-  'Save as Program title swaps to "Spray edit permission required" when disabled')
+// Phase S.6b — tooltip user-copy now says "planned spray" not "Spray Program".
+assert(/title=\{!canEditSprays\s*\n?\s*\?\s*'Spray edit permission required'\s*\n?\s*:\s*'Save the current draft as a planned spray/.test(BUILD),
+  'Save as Planned Spray title swaps to "Spray edit permission required" when disabled (S.6b copy)')
 
 // Load Program button — disabled rule extended.
 assert(/<button[\s\S]{0,400}className=\{styles\.naLoadProgramBtn\}[\s\S]{0,400}disabled=\{committing \|\| !canEditSprays\}/.test(BUILD),
-  'Load Program button disabled when !canEditSprays (still available on empty draft for authorized users)')
-assert(/title=\{!canEditSprays\s*\n?\s*\?\s*'Spray edit permission required'\s*\n?\s*:\s*'Load a saved Spray Program into the builder/.test(BUILD),
-  'Load Program title swaps to "Spray edit permission required" when disabled')
+  'Load Planned Spray button disabled when !canEditSprays (still available on empty draft for authorized users)')
+assert(/title=\{!canEditSprays\s*\n?\s*\?\s*'Spray edit permission required'\s*\n?\s*:\s*'Load a planned spray into the builder/.test(BUILD),
+  'Load Planned Spray title swaps to "Spray edit permission required" when disabled (S.6b copy)')
 
 // Discard draft stays visible + ungated (local-state-only operation).
 assert(/className=\{styles\.naSecondaryBtn\}[\s\S]{0,200}onClick=\{clearDraft\}/.test(BUILD),
@@ -182,7 +183,8 @@ section('SprayWorkspace quick actions — kept visible (route to tabs)')
 assert(!WORKSPACE.includes('Phase S.5a.2'),
   'SprayWorkspace carries no Phase S.5a.2 edits (quick actions kept visible per spec)')
 // Smoke confirms each quick action still calls go(<tab>) — route only.
-for (const tab of ['Build Spray', 'Records', 'Programs', 'Calendar', 'Calculator']) {
+// Phase S.6b — workspace navigateTab key renamed 'Programs' → 'Planned Sprays'.
+for (const tab of ['Build Spray', 'Records', 'Planned Sprays', 'Calendar', 'Calculator']) {
   assert(new RegExp(`go\\(['"]${tab}['"]\\)`).test(WORKSPACE),
     `Workspace quick action still routes to ${tab} tab (no permission gate)`)
 }

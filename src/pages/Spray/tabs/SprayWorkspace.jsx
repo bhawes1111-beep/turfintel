@@ -201,8 +201,11 @@ export default function SprayWorkspace({ onNavigateTab }) {
         <button type="button" className={styles.actionBtn} onClick={() => go('Records')}>
           Log Application
         </button>
-        <button type="button" className={styles.actionBtn} onClick={() => go('Programs')}>
-          Spray Programs
+        {/* Phase S.6b — Renamed "Spray Programs" → "Planned Sprays".
+            navigateTab key also renamed; both branches of Spray.jsx
+            route the new key to the right component. */}
+        <button type="button" className={styles.actionBtn} onClick={() => go('Planned Sprays')}>
+          Planned Sprays
         </button>
         <button type="button" className={styles.actionBtn} onClick={() => go('Calendar')}>
           Spray Calendar

@@ -1415,11 +1415,11 @@ export default function BuildSpraySheet() {
                 Discard draft
               </button>
               {/* Phase S.5b.2 — Save the current draft as a reusable
-                  Spray Program (template). Does NOT commit a record,
+                  planned spray (template). Does NOT commit a record,
                   deduct inventory, or fire REI alerts.
-                  Phase S.5a.2 — Gated by canEditSprays. Saving a program
-                  is a write on /api/spray-programs which the worker
-                  gates by canEditSprays; mirror that here. */}
+                  Phase S.5a.2 — Gated by canEditSprays.
+                  Phase S.6b — Relabeled "Save as Program" →
+                  "Save as Planned Spray" (program internals unchanged). */}
               <button
                 type="button"
                 className={styles.naSaveAsProgramBtn}
@@ -1427,17 +1427,17 @@ export default function BuildSpraySheet() {
                 disabled={committing || enrichedRows.length === 0 || !canEditSprays}
                 title={!canEditSprays
                   ? 'Spray edit permission required'
-                  : 'Save the current draft as a reusable Spray Program template (no inventory deduction, no spray record created)'}
+                  : 'Save the current draft as a planned spray (no inventory deduction, no spray record created).'}
               >
-                Save as Program
+                Save as Planned Spray
               </button>
-              {/* Phase S.5b.3 — Load a saved Spray Program into the
-                  current draft. Also non-destructive — no record,
-                  no inventory, no alerts. Available even on an empty
-                  draft (a fresh "start from program" gesture).
-                  Phase S.5a.2 — Gated by canEditSprays. Loading is a
-                  read, but it populates the draft for an eventual
-                  Commit; without edit permission, that's a dead end. */}
+              {/* Phase S.5b.3 — Load a saved planned spray into the
+                  current draft. Non-destructive — no record, no
+                  inventory, no alerts. Available even on an empty
+                  draft.
+                  Phase S.5a.2 — Gated by canEditSprays.
+                  Phase S.6b — Relabeled "Load Program" →
+                  "Load Planned Spray". */}
               <button
                 type="button"
                 className={styles.naLoadProgramBtn}
@@ -1445,9 +1445,9 @@ export default function BuildSpraySheet() {
                 disabled={committing || !canEditSprays}
                 title={!canEditSprays
                   ? 'Spray edit permission required'
-                  : 'Load a saved Spray Program into the builder (replaces or appends product rows)'}
+                  : 'Load a planned spray into the builder (replaces or appends product rows).'}
               >
-                Load Program
+                Load Planned Spray
               </button>
               <span className={styles.naActionHint}>
                 Draft autosaves locally · committing creates a permanent record + deducts inventory

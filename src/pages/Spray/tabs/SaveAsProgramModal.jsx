@@ -75,11 +75,12 @@ export default function SaveAsProgramModal({
   async function handleSave() {
     const name = (form.name ?? '').trim()
     if (!name) {
-      toast.error('Program name is required.')
+      // Phase S.6b — "Program" → "Planned spray" in all user-facing copy.
+      toast.error('Planned spray name is required.')
       return
     }
     if (!enrichedRows || enrichedRows.length === 0) {
-      toast.info('Add at least one product before saving as a program.')
+      toast.info('Add at least one product before saving as a planned spray.')
       return
     }
     // Light date validation — both optional, but reject malformed strings.
@@ -106,7 +107,7 @@ export default function SaveAsProgramModal({
       })
 
       if (!program?.id) {
-        throw new Error('Program creation returned no id')
+        throw new Error('Planned spray creation returned no id')
       }
 
       // Step 2 — one item per builder row. Map only fields the program
@@ -141,10 +142,10 @@ export default function SaveAsProgramModal({
         createdCount += 1
       }
 
-      toast.success(`Saved "${name}" as a spray program (${createdCount} product row${createdCount !== 1 ? 's' : ''}).`)
+      toast.success(`Saved "${name}" as a planned spray (${createdCount} product row${createdCount !== 1 ? 's' : ''}).`)
       onSaved?.({ program, itemCount: createdCount })
     } catch (err) {
-      toast.error(`Save program failed: ${err.message ?? err}`)
+      toast.error(`Save planned spray failed: ${err.message ?? err}`)
     } finally {
       setBusy(false)
     }
@@ -156,7 +157,7 @@ export default function SaveAsProgramModal({
       onClick={() => { if (!busy) onClose() }}
       role="dialog"
       aria-modal="true"
-      aria-label="Save spray sheet as program"
+      aria-label="Save spray sheet as planned spray"
     >
       <div
         className={styles.modalPanel}
@@ -170,7 +171,7 @@ export default function SaveAsProgramModal({
 
         <div className={styles.modalHeader}>
           <div>
-            <h2 className={styles.modalTitle}>Save as Spray Program</h2>
+            <h2 className={styles.modalTitle}>Save as Planned Spray</h2>
             <p className={styles.modalSubtitle}>
               {totals.rowCount} product row{totals.rowCount !== 1 ? 's' : ''}
               {totals.totalCost != null && ` · est. cost $${totals.totalCost.toFixed(2)}`}
@@ -189,12 +190,12 @@ export default function SaveAsProgramModal({
         </div>
 
         <div className={styles.modalBody}>
-          {/* ── Program details ── */}
+          {/* ── Planned spray details ── */}
           <section className={styles.modalSection}>
-            <h3 className={styles.modalSectionTitle}>Program details</h3>
+            <h3 className={styles.modalSectionTitle}>Planned spray details</h3>
             <div className={styles.editFieldGrid}>
               <label className={`${styles.editField} ${styles.editFieldWide}`}>
-                <span>Program name</span>
+                <span>Planned spray name</span>
                 <input
                   type="text"
                   autoFocus
@@ -281,7 +282,7 @@ export default function SaveAsProgramModal({
               </ul>
             )}
             <p className={styles.editHint}>
-              The current draft is not modified. Saving creates a separate program record you can review or apply from the Programs tab.
+              The current draft is not modified. Saving creates a separate planned spray you can review or load later from the Planned Sprays tab.
             </p>
           </section>
         </div>
@@ -301,7 +302,7 @@ export default function SaveAsProgramModal({
             onClick={handleSave}
             disabled={busy || !form.name.trim() || !enrichedRows || enrichedRows.length === 0}
           >
-            {busy ? 'Saving…' : 'Save as Program'}
+            {busy ? 'Saving…' : 'Save as Planned Spray'}
           </button>
         </div>
       </div>

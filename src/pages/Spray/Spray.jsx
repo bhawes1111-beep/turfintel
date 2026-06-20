@@ -26,7 +26,9 @@ import styles from './Spray.module.css'
 
 // Legacy tab list — non-Crosswinds courses still use it byte-for-byte
 // except for the new Workspace landing tab prepended in Phase S.4.
-const LEGACY_TABS = ['Workspace', 'Overview', 'Spray Calendar', 'New Application', 'Spray Records', 'Planned Programs', 'Program Planner', 'Program Calendar', 'Mix Calculator', 'Reports', 'Program Intelligence']
+// Phase S.6b — 'Program Planner' → 'Planned Sprays' for the user-
+// facing label. Internal route still mounts SprayProgramPlanner.
+const LEGACY_TABS = ['Workspace', 'Overview', 'Spray Calendar', 'New Application', 'Spray Records', 'Planned Programs', 'Planned Sprays', 'Program Calendar', 'Mix Calculator', 'Reports', 'Program Intelligence']
 
 // Phase 9B.1 — Crosswinds-only simplified Spray tabs. Six visible
 // items + a "More" group whose body renders a secondary pill row
@@ -38,9 +40,13 @@ const LEGACY_TABS = ['Workspace', 'Overview', 'Spray Calendar', 'New Application
 // Phase S.4 — Workspace prepended as the new default landing tab.
 // Build / Records / Calendar / Programs / Calculator / More all
 // still mount their existing components unchanged.
+// Phase S.6b — 'Programs' → 'Planned Sprays' on the visible
+// Crosswinds tab strip. 'Program Planner' inside More → 'Planned
+// Sprays' as well. Internal routing key is the same so smoke
+// regression couples + workspace navigateTab calls keep working.
 const CROSSWINDS_COURSE_ID = 'crossroads-gc'
-const CROSSWINDS_TABS = ['Workspace', 'Build Spray', 'Records', 'Calendar', 'Programs', 'Calculator', 'More']
-const CROSSWINDS_MORE = ['Overview', 'Planned Programs', 'Program Planner', 'Reports', 'Program Intelligence']
+const CROSSWINDS_TABS = ['Workspace', 'Build Spray', 'Records', 'Calendar', 'Planned Sprays', 'Calculator', 'More']
+const CROSSWINDS_MORE = ['Overview', 'Planned Programs', 'Planned Sprays', 'Reports', 'Program Intelligence']
 
 /**
  * Sprays workspace — canonical TurfIntel workspace pattern (Phase 2.2 pilot).
@@ -64,7 +70,7 @@ export default function Spray() {
   return (
     <PageShell
       title="Sprays"
-      description="Spray applications, programs, and labels."
+      description="Spray applications, planned sprays, and labels."
       tabs={tabs}
       activeTab={activeTab}
       onTabChange={setActiveTab}
@@ -96,12 +102,15 @@ export default function Spray() {
     >
       {isCrosswinds ? (
         <>
-          {activeTab === 'Workspace'   && <SprayWorkspace onNavigateTab={setActiveTab} />}
-          {activeTab === 'Build Spray' && <BuildSpraySheet />}
-          {activeTab === 'Records'     && <SprayRecords />}
-          {activeTab === 'Calendar'    && <SprayCalendar />}
-          {activeTab === 'Programs'    && <SprayProgramCalendar />}
-          {activeTab === 'Calculator'  && <MixCalculator />}
+          {activeTab === 'Workspace'      && <SprayWorkspace onNavigateTab={setActiveTab} />}
+          {activeTab === 'Build Spray'    && <BuildSpraySheet />}
+          {activeTab === 'Records'        && <SprayRecords />}
+          {activeTab === 'Calendar'       && <SprayCalendar />}
+          {/* Phase S.6b — 'Programs' tab renamed to 'Planned Sprays'.
+              Same component (SprayProgramCalendar — read-only planned
+              spray calendar) mounts; only the label changed. */}
+          {activeTab === 'Planned Sprays' && <SprayProgramCalendar />}
+          {activeTab === 'Calculator'     && <MixCalculator />}
           {activeTab === 'More' && (
             <div className={styles.moreInner}>
               <div className={styles.moreNav} role="tablist" aria-label="Advanced spray surfaces">
@@ -121,7 +130,10 @@ export default function Spray() {
               </div>
               {moreTab === 'Overview'             && <SprayOverview />}
               {moreTab === 'Planned Programs'     && <PlannedPrograms />}
-              {moreTab === 'Program Planner'      && <SprayProgramPlanner />}
+              {/* Phase S.6b — 'Program Planner' inner-tab renamed
+                  to 'Planned Sprays'. Same SprayProgramPlanner
+                  component; only the label changed. */}
+              {moreTab === 'Planned Sprays'       && <SprayProgramPlanner />}
               {moreTab === 'Reports'              && <SprayReports />}
               {moreTab === 'Program Intelligence' && <ProgramIntelligence />}
             </div>
@@ -131,18 +143,20 @@ export default function Spray() {
         <>
           {/* Phase S.4 — Workspace targets map legacy tab labels.
               "Build Spray" → "New Application"; "Records" → "Spray
-              Records"; "Programs" → "Spray Calendar" (legacy view);
-              "Calendar" stays "Spray Calendar"; "Calculator" stays
-              "Mix Calculator". A small label-aliasing handler below
-              normalizes the workspace's quick-action keys to the
-              actual legacy tab labels. */}
+              Records"; "Planned Sprays" → "Spray Calendar" (legacy
+              view); "Calendar" stays "Spray Calendar"; "Calculator"
+              stays "Mix Calculator". A small label-aliasing handler
+              below normalizes the workspace's quick-action keys to
+              the actual legacy tab labels.
+              Phase S.6b — Workspace key 'Programs' renamed to
+              'Planned Sprays'; alias updated. */}
           {activeTab === 'Workspace'             && <SprayWorkspace onNavigateTab={t => {
             const ALIASES = {
-              'Build Spray': 'New Application',
-              'Records':     'Spray Records',
-              'Calendar':    'Spray Calendar',
-              'Programs':    'Spray Calendar',
-              'Calculator':  'Mix Calculator',
+              'Build Spray':    'New Application',
+              'Records':        'Spray Records',
+              'Calendar':       'Spray Calendar',
+              'Planned Sprays': 'Spray Calendar',
+              'Calculator':     'Mix Calculator',
             }
             setActiveTab(ALIASES[t] ?? t)
           }} />}
@@ -151,7 +165,10 @@ export default function Spray() {
           {activeTab === 'New Application'       && <BuildSpraySheet />}
           {activeTab === 'Spray Records'         && <SprayRecords />}
           {activeTab === 'Planned Programs'      && <PlannedPrograms />}
-          {activeTab === 'Program Planner'       && <SprayProgramPlanner />}
+          {/* Phase S.6b — LEGACY_TABS visible label renamed
+              'Program Planner' → 'Planned Sprays'. SprayProgramPlanner
+              component mount unchanged. */}
+          {activeTab === 'Planned Sprays'        && <SprayProgramPlanner />}
           {activeTab === 'Program Calendar'      && <SprayProgramCalendar />}
           {activeTab === 'Mix Calculator'        && <MixCalculator />}
           {activeTab === 'Reports'               && <SprayReports />}

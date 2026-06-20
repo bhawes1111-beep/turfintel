@@ -455,24 +455,27 @@ console.log('— Sprays workspace registers Program Planner tab')
     "Sprays imports the new SprayProgramPlanner tab")
   // Phase 9B.1 renamed the constant to LEGACY_TABS while preserving
   // the same 10-label payload for non-Crosswinds courses.
+  // Phase S.6b — tab visible label renamed 'Program Planner' →
+  // 'Planned Sprays'. SprayProgramPlanner component mount unchanged.
   const tabsMatch = shell.match(/const\s+(?:LEGACY_TABS|TABS)\s*=\s*\[([^\]]+)\]/)
-  assert(tabsMatch && /'Program Planner'/.test(tabsMatch[1]),
-    "'Program Planner' present in TABS")
-  assert(/activeTab\s*===\s*'Program Planner'\s*&&\s*<SprayProgramPlanner/.test(shell),
-    'Program Planner tab body wired')
+  assert(tabsMatch && /'Planned Sprays'/.test(tabsMatch[1]),
+    "'Planned Sprays' present in TABS (S.6b rename of 'Program Planner')")
+  assert(/activeTab\s*===\s*'Planned Sprays'\s*&&\s*<SprayProgramPlanner/.test(shell),
+    'Planned Sprays tab body still wired to <SprayProgramPlanner /> (S.6b rename)')
 
   // Legacy 'Planned Programs' tab is still in TABS — regression guard.
   assert(tabsMatch && /'Planned Programs'/.test(tabsMatch[1]),
     "legacy 'Planned Programs' tab still in TABS")
 
   // Tab body source contracts.
+  // Phase S.6b — user-facing copy renamed.
   const body = readFileSync('src/pages/Spray/tabs/SprayProgramPlanner.jsx', 'utf8')
-  assert(/Spray Program Planner/.test(body),
-    'tab body title "Spray Program Planner"')
-  assert(/No spray programs yet/.test(body),
-    'tab body empty-state copy "No spray programs yet."')
-  assert(/Create program/.test(body),
-    'tab body Create program CTA')
+  assert(/<WorkspaceSection\s+title="Planned Sprays"/.test(body),
+    'tab body WorkspaceSection title is "Planned Sprays" (S.6b rename)')
+  assert(/No planned sprays yet/.test(body),
+    'tab body empty-state copy "No planned sprays yet." (S.6b rename)')
+  assert(/Create planned spray/.test(body),
+    'tab body Create planned spray CTA (S.6b rename)')
   // Forbidden surfaces in the shell. Scan code-only so the
   // architectural comment that catalogs what we explicitly do NOT
   // build is not a false hit.
@@ -607,10 +610,11 @@ console.log('— SprayProgramPlanner.jsx usable UI (Phase 7F.2)')
     'remove item calls deleteSprayProgramItem(item.id)')
 
   // Empty-state copy per spec.
-  assert(/No spray programs yet/.test(src),
-    'copy: "No spray programs yet."')
-  assert(/Create a program to plan future applications/.test(src),
-    'copy: "Create a program to plan future applications"')
+  // Phase S.6b — user-facing copy renamed to "planned spray" framing.
+  assert(/No planned sprays yet/.test(src),
+    'copy: "No planned sprays yet." (S.6b rename)')
+  assert(/Create a planned spray to lay out future applications/.test(src),
+    'copy: "Create a planned spray to lay out future applications" (S.6b rename)')
   assert(/No planned items yet/.test(src),
     'copy: "No planned items yet."')
   assert(/Add the first product or application window/.test(src),

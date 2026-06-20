@@ -79,7 +79,7 @@ for (const [key, label] of [
   ['Build Spray', 'New Application'],
   ['Records',     'Spray Records'],
   ['Calendar',    'Spray Calendar'],
-  ['Programs',    'Spray Calendar'],
+  ['Planned Sprays',    'Spray Calendar'],
   ['Calculator',  'Mix Calculator'],
 ]) {
   const r = new RegExp(`['"]${key}['"]:\\s*['"]${label.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}['"]`)
@@ -91,7 +91,7 @@ for (const [key, label] of [
 section('Existing tabs remain reachable (regression couple)')
 
 for (const tab of [
-  'Build Spray', 'Records', 'Calendar', 'Programs', 'Calculator',
+  'Build Spray', 'Records', 'Calendar', 'Planned Sprays', 'Calculator',
 ]) {
   assert(SP.includes(`'${tab}'`),
     `Crosswinds tab '${tab}' still in source`)
@@ -141,7 +141,8 @@ assert(/refreshSprayPrograms\(\)/.test(WS),
 section('Quick-action buttons — route via onNavigateTab')
 
 for (const label of [
-  'Build Spray Sheet', 'Log Application', 'Spray Programs',
+  // Phase S.6b — "Spray Programs" quick-action relabeled to "Planned Sprays".
+  'Build Spray Sheet', 'Log Application', 'Planned Sprays',
   'Spray Calendar',    'Mix Calculator',
 ]) {
   assert(WS.includes(label),
@@ -149,7 +150,7 @@ for (const label of [
 }
 
 // Each button calls go('<tab key>'). Spray.jsx maps the keys.
-for (const key of ['Build Spray', 'Records', 'Programs', 'Calendar', 'Calculator']) {
+for (const key of ['Build Spray', 'Records', 'Planned Sprays', 'Calendar', 'Calculator']) {
   assert(new RegExp(`go\\(['"]${key}['"]\\)`).test(WS),
     `quick-action button calls go('${key}')`)
 }

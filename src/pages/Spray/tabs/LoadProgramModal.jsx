@@ -111,7 +111,7 @@ export default function LoadProgramModal({
   async function handleLoad(mode) {
     if (!selectedProgram) return
     if (selectedItems.length === 0) {
-      toast.info('This program has no product rows to load.')
+      toast.info('This planned spray has no product rows to load.')
       return
     }
     setBusy(true)
@@ -154,7 +154,7 @@ export default function LoadProgramModal({
       onClick={() => { if (!busy) onClose() }}
       role="dialog"
       aria-modal="true"
-      aria-label="Load saved spray program"
+      aria-label="Load saved planned spray"
     >
       <div
         className={styles.modalPanel}
@@ -168,10 +168,10 @@ export default function LoadProgramModal({
 
         <div className={styles.modalHeader}>
           <div>
-            <h2 className={styles.modalTitle}>Load Spray Program</h2>
+            <h2 className={styles.modalTitle}>Load Planned Spray</h2>
             <p className={styles.modalSubtitle}>
-              Reload a saved program into the builder. Programs are templates — loading
-              does not create a record, deduct inventory, or fire alerts.
+              Reload a saved planned spray into the builder. Planned sprays are templates —
+              loading does not create a record, deduct inventory, or fire alerts.
             </p>
           </div>
           <button
@@ -192,8 +192,8 @@ export default function LoadProgramModal({
               className={styles.loadProgramSearch}
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search programs by name or description…"
-              aria-label="Search saved programs"
+              placeholder="Search planned sprays by name or description…"
+              aria-label="Search saved planned sprays"
             />
             <select
               className={styles.loadProgramStatusFilter}
@@ -211,7 +211,7 @@ export default function LoadProgramModal({
           <div className={styles.loadProgramLayout}>
             <ul className={styles.loadProgramList}>
               {visiblePrograms.length === 0 ? (
-                <li className={styles.editEmpty}>No saved programs match the current filters.</li>
+                <li className={styles.editEmpty}>No saved planned sprays match the current filters.</li>
               ) : visiblePrograms.map(p => {
                 const isSel = p.id === selectedId
                 const rowCount = rowCountForProgram(p)
@@ -240,11 +240,11 @@ export default function LoadProgramModal({
 
             <aside className={styles.loadProgramPreview} aria-live="polite">
               {!selectedProgram ? (
-                <p className={styles.previewEmpty}>Select a program on the left to preview its product rows.</p>
+                <p className={styles.previewEmpty}>Select a planned spray on the left to preview its product rows.</p>
               ) : loadingPreview && selectedItems.length === 0 ? (
-                <p className={styles.previewEmpty}>Loading program rows…</p>
+                <p className={styles.previewEmpty}>Loading planned spray rows…</p>
               ) : selectedItems.length === 0 ? (
-                <p className={styles.previewEmpty}>This program has no product rows.</p>
+                <p className={styles.previewEmpty}>This planned spray has no product rows.</p>
               ) : (
                 <>
                   <h4 className={styles.previewTitle}>{selectedProgram.name}</h4>
@@ -299,7 +299,7 @@ export default function LoadProgramModal({
                 className={styles.modalSecondaryBtn}
                 onClick={() => handleLoad('append')}
                 disabled={busy || !selectedProgram || selectedItems.length === 0}
-                title="Add the program's rows to the current draft (keeps existing rows)"
+                title="Add the planned spray's rows to the current draft (keeps existing rows)"
               >
                 Append rows
               </button>

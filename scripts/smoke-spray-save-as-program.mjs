@@ -69,10 +69,11 @@ assert(/role="dialog"/.test(MODAL),
   'modal has role="dialog"')
 assert(/aria-modal="true"/.test(MODAL),
   'modal has aria-modal="true"')
-assert(/aria-label="Save spray sheet as program"/.test(MODAL),
-  'modal has aria-label="Save spray sheet as program"')
-assert(/<h2 className=\{styles\.modalTitle\}>Save as Spray Program<\/h2>/.test(MODAL),
-  'modal title reads "Save as Spray Program"')
+// Phase S.6b — all user-facing "Program" copy renamed to "Planned Spray".
+assert(/aria-label="Save spray sheet as planned spray"/.test(MODAL),
+  'modal has aria-label="Save spray sheet as planned spray" (S.6b rename)')
+assert(/<h2 className=\{styles\.modalTitle\}>Save as Planned Spray<\/h2>/.test(MODAL),
+  'modal title reads "Save as Planned Spray" (S.6b rename)')
 
 // Subtitle clarifies this is a template, NOT a completed record.
 assert(/does not create a spray record or deduct inventory/i.test(MODAL),
@@ -118,11 +119,13 @@ assert(saveSrc.length > 0, 'handleSave body extracted')
 // Name required.
 assert(/const name = \(form\.name \?\? ['"]['"]\)\.trim\(\)/.test(saveSrc),
   'handleSave reads + trims form.name')
-assert(/if \(!name\) \{\s*\n\s*toast\.error\(['"]Program name is required\.['"]/.test(saveSrc),
+// Phase S.6b — "Program name" → "Planned spray name".
+assert(/if \(!name\) \{[\s\S]{0,200}toast\.error\(['"]Planned spray name is required\.['"]/.test(saveSrc),
   'handleSave aborts with toast.error when name is blank')
 
 // At-least-one-product guard.
-assert(/if \(!enrichedRows \|\| enrichedRows\.length === 0\)\s*\{[\s\S]{0,400}toast\.info\(['"]Add at least one product before saving as a program\.['"]/.test(saveSrc),
+// Phase S.6b — toast copy uses "planned spray" not "program".
+assert(/if \(!enrichedRows \|\| enrichedRows\.length === 0\)\s*\{[\s\S]{0,400}toast\.info\(['"]Add at least one product before saving as a planned spray\.['"]/.test(saveSrc),
   'handleSave aborts with toast.info when enrichedRows is empty')
 
 // Date format guard — both fields validated against ^\d{4}-\d{2}-\d{2}$.
@@ -221,8 +224,9 @@ for (const snap of [
 }
 
 // Success toast names the program.
-assert(/Saved "\$\{name\}" as a spray program/.test(saveSrc),
-  'success toast names the saved program')
+// Phase S.6b — success toast renamed "spray program" → "planned spray".
+assert(/Saved "\$\{name\}" as a planned spray/.test(saveSrc),
+  'success toast names the saved planned spray (S.6b rename)')
 
 // ── BuildSpraySheet wiring ──────────────────────────────────────────
 section('BuildSpraySheet — Save as Program button + modal mount')
