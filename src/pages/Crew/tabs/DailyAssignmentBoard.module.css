@@ -1277,9 +1277,41 @@
   /* Phase 9C.9 — header action row: tighten the action buttons so
      Tasks / Translate Now / Copy Yesterday / Clear Day all fit on
      a phone-sized viewport without ugly overflow. The .dateNav rule
-     above already enables flex-wrap so wrapping is graceful. */
-  .tasksBtn { padding: 4px 9px; font-size: 11px; }
-  .dateNav { gap: 6px; row-gap: 6px; }
+     above already enables flex-wrap so wrapping is graceful.
+     Phase E.11 — bumped padding back up for comfortable touch
+     targets and stacked the .sectionHeader so the title sits on its
+     own line above the action cluster (no more "title floats left,
+     7 buttons stack right" collision). */
+  .section {
+    padding: 14px 14px;
+  }
+  .sectionHeader {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .dateNav {
+    gap: 7px;
+    row-gap: 7px;
+    width: 100%;
+  }
+  .dateNavBtn {
+    width: 34px;
+    height: 34px;
+    font-size: 16px;
+  }
+  .dateNavText {
+    font-size: 13px;
+    padding: 0 4px;
+  }
+  .todayBtn {
+    padding: 6px 11px;
+    font-size: 11px;
+  }
+  .tasksBtn {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
 }
 
 /* ── Phase 9C.2 — Crosswinds labeled "Clear" button modifier ─────────────

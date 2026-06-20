@@ -110,6 +110,19 @@
   box-shadow: none;
 }
 
+/* Phase E.11 — Bigger tap targets on phones. The default 6px×12px
+   padding gives ~28 px tall buttons which are below the comfortable
+   touch minimum; bump padding so each button sits closer to ~36 px. */
+@media (max-width: 600px) {
+  .workspaceActions {
+    gap: 8px;
+  }
+  .workspaceActionBtn {
+    padding: 9px 14px;
+    font-size: 12.5px;
+  }
+}
+
 /* ── Filter row ────────────────────────────────────────────────────────── */
 /* Horizontal filter strip — appears between section header and content. */
 

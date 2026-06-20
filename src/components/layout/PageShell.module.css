@@ -260,3 +260,61 @@
 
   .navBarButtons::-webkit-scrollbar { display: none; }
 }
+
+/* ── Phase E.11 — Mobile header stacking ────────────────────────────────
+   On narrow viewports the header row tries to fit title + description
+   on the left and actions + course badge on the right. With a long
+   description string (e.g. Operations) the two sides collide and the
+   time pill / + Task / Schedule / course pill cluster wraps awkwardly
+   on top of the description.
+
+   Fix: stack the header vertically on phones. Left block goes first
+   (title + description), then the action row flows underneath at full
+   width. The action row already has flex-wrap so secondary buttons
+   wrap onto a second line cleanly. Course badge moves to the end of
+   the actions group rather than floating outside.
+
+   Desktop ≥600px is untouched — same side-by-side layout. */
+@media (max-width: 600px) {
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 12px 14px 10px;
+  }
+
+  .headerLeft {
+    flex: 0 0 auto;
+    min-width: 0;
+  }
+
+  .description {
+    /* Shrink the long description on phones so it doesn't dominate the
+       top half of the screen before any action surfaces. Stays readable
+       but explicitly secondary. */
+    font-size: 11px;
+    line-height: 1.4;
+  }
+
+  .headerRight {
+    width: 100%;
+    align-items: center;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .actions {
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* Course badge moves into the action row rather than competing with
+     it for horizontal space. Pushes to the right end via margin-left. */
+  .courseBadge {
+    margin-left: auto;
+    font-size: 0.68rem;
+    padding: 3px 9px;
+  }
+}
