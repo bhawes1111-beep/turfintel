@@ -2246,6 +2246,161 @@ select.naInput option {
 }
 .naSaveAsProgramBtn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+/* Phase S.5b.3 — Load Program button. Sibling of Save as Program;
+   slightly muted cyan-violet so the two read as a related pair
+   (save / load) without competing. */
+.naLoadProgramBtn {
+  appearance: none;
+  background: rgba(165, 180, 252, 0.14);
+  border: 1px solid rgba(165, 180, 252, 0.45);
+  border-radius: 6px;
+  color: #c7d2fe;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: background 0.13s, border-color 0.13s, box-shadow 0.13s;
+}
+.naLoadProgramBtn:hover:not(:disabled) {
+  background: rgba(165, 180, 252, 0.24);
+  border-color: rgba(165, 180, 252, 0.65);
+  box-shadow: 0 0 10px rgba(165, 180, 252, 0.18);
+}
+.naLoadProgramBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Phase S.5b.3 — Load Program modal: list/preview side-by-side
+   layout with mobile fallback. Reuses the .editProductList /
+   .previewEmpty / .previewTitle / .previewLabel classes from S.5a.1. */
+.loadProgramFilters {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.loadProgramSearch {
+  flex: 1 1 200px;
+  min-width: 0;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(74, 158, 74, 0.3);
+  border-radius: 5px;
+  color: #d4edd4;
+  font: inherit;
+  font-size: 13px;
+  padding: 7px 10px;
+}
+.loadProgramSearch:focus { outline: none; border-color: rgba(74, 222, 128, 0.55); }
+.loadProgramStatusFilter {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(74, 158, 74, 0.3);
+  border-radius: 5px;
+  color: #d4edd4;
+  font: inherit;
+  font-size: 13px;
+  padding: 7px 10px;
+  color-scheme: dark;
+  min-width: 140px;
+}
+
+.loadProgramLayout {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(260px, 1.4fr);
+  gap: 12px;
+  min-height: 280px;
+  max-height: 480px;
+}
+
+.loadProgramList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(74, 158, 74, 0.18);
+  border-radius: 6px;
+  padding: 8px;
+}
+
+.loadProgramRow {
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(74, 158, 74, 0.18);
+  border-radius: 5px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.loadProgramRow:hover {
+  border-color: rgba(74, 222, 128, 0.4);
+  background: rgba(34, 197, 94, 0.06);
+}
+.loadProgramRow[data-selected="true"] {
+  border-color: rgba(165, 180, 252, 0.7);
+  background: rgba(165, 180, 252, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(165, 180, 252, 0.5);
+}
+.loadProgramRowName {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.loadProgramRowName strong { color: #ecfdf5; font-size: 13px; }
+.loadProgramRowStatus {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(212, 237, 212, 0.55);
+}
+.loadProgramRowNotes {
+  margin: 0;
+  font-size: 11.5px;
+  color: rgba(212, 237, 212, 0.7);
+  line-height: 1.4;
+}
+.loadProgramRowMeta {
+  margin: 0;
+  font-size: 10.5px;
+  color: rgba(212, 237, 212, 0.5);
+}
+
+.loadProgramPreview {
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(74, 158, 74, 0.18);
+  border-radius: 6px;
+  padding: 12px;
+  overflow-y: auto;
+}
+
+.loadProgramReplaceWarn {
+  margin: 10px 0 0 0;
+  padding: 8px 10px;
+  font-size: 11.5px;
+  color: #fde68a;
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.42);
+  border-radius: 5px;
+  line-height: 1.4;
+}
+.loadProgramReplaceWarn strong { color: #fef3c7; }
+
+@media (max-width: 700px) {
+  .loadProgramLayout {
+    grid-template-columns: 1fr;
+    max-height: none;
+  }
+  .loadProgramList   { max-height: 240px; }
+  .loadProgramPreview { max-height: 300px; }
+  .loadProgramFilters { flex-direction: column; }
+  .loadProgramSearch,
+  .loadProgramStatusFilter { width: 100%; min-width: 0; }
+}
+
 /* Phase S.5b.1 — Subtle draft-saved indicator. Sits at the end of
    the action row alongside the autosave hint; the saved timestamp
    gets a slightly brighter color so it reads as confirmation rather

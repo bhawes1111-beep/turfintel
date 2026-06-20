@@ -41,6 +41,8 @@ import ChemicalIntelligencePanel from '../../../components/chemistry/ChemicalInt
 import WorkspaceSection from '../../../components/shared/WorkspaceSection'
 // Phase S.5b.2 — Save current draft as a reusable Spray Program.
 import SaveAsProgramModal from './SaveAsProgramModal'
+// Phase S.5b.3 — Load a saved Spray Program into the builder draft.
+import LoadProgramModal from './LoadProgramModal'
 import styles from '../Spray.module.css'
 
 const TODAY    = new Date().toISOString().slice(0, 10)
@@ -408,6 +410,45 @@ export default function BuildSpraySheet() {
   // commit/discard so the supervisor can review a draft, save it as
   // a reusable program, and still go on to commit/print/discard.
   const [saveAsProgramOpen, setSaveAsProgramOpen] = useState(false)
+  // Phase S.5b.3 — Load-Program modal toggle. Same lifecycle pattern.
+  const [loadProgramOpen, setLoadProgramOpen] = useState(false)
+
+  // Phase S.5b.3 — Apply a loaded program to the builder draft.
+  // The modal builds the rows + suggestions; this handler is the
+  // single place that touches setDraft, so the builder owns its own
+  // state lifecycle and the modal stays decoupled from the draft shape.
+  //
+  // Side-effects MUST be limited to setDraft. No createSpray, no
+  // inventory deduction, no alerts, no calendar events, no program
+  // mutation — those happen only on Commit Application.
+  function handleLoadProgramIntoDraft({
+    mode,
+    rows,
+    suggestedArea,
+    suggestedDate,
+    suggestedCarrierRate,
+    suggestedCarrierUnit,
+  }) {
+    setDraft(prev => {
+      const nextRows = mode === 'append'
+        ? [...prev.rows, ...rows]
+        : rows
+      const next = { ...prev, rows: nextRows }
+      // Fill suggestion slots only when the current builder field is
+      // blank — never clobber what the supervisor already typed.
+      if (suggestedArea && !prev.area) {
+        next.area = suggestedArea
+      }
+      if (suggestedDate && !prev.date) {
+        next.date = suggestedDate
+      }
+      if (suggestedCarrierRate && !prev.carrierRate) {
+        next.carrierRate = suggestedCarrierRate
+        if (suggestedCarrierUnit) next.carrierUnit = suggestedCarrierUnit
+      }
+      return next
+    })
+  }
 
   // ── Derived data ──────────────────────────────────────────────────────
   const productPickerOptions = useMemo(() => {
@@ -1374,6 +1415,19 @@ export default function BuildSpraySheet() {
               >
                 Save as Program
               </button>
+              {/* Phase S.5b.3 — Load a saved Spray Program into the
+                  current draft. Also non-destructive — no record,
+                  no inventory, no alerts. Available even on an empty
+                  draft (a fresh "start from program" gesture). */}
+              <button
+                type="button"
+                className={styles.naLoadProgramBtn}
+                onClick={() => setLoadProgramOpen(true)}
+                disabled={committing}
+                title="Load a saved Spray Program into the builder (replaces or appends product rows)"
+              >
+                Load Program
+              </button>
               <span className={styles.naActionHint}>
                 Draft autosaves locally · committing creates a permanent record + deducts inventory
               </span>
@@ -1489,6 +1543,17 @@ export default function BuildSpraySheet() {
             enrichedRows={enrichedRows}
             onClose={() => setSaveAsProgramOpen(false)}
             onSaved={() => setSaveAsProgramOpen(false)}
+          />
+        )}
+
+        {/* Phase S.5b.3 — Load-Program modal. Pure builder-draft
+            populate; never creates records / deducts inventory / fires
+            alerts / mutates programs. Handler decides replace-vs-append. */}
+        {loadProgramOpen && (
+          <LoadProgramModal
+            draftHasContent={draft.rows.length > 0}
+            onClose={() => setLoadProgramOpen(false)}
+            onLoad={handleLoadProgramIntoDraft}
           />
         )}
       </WorkspaceSection>
