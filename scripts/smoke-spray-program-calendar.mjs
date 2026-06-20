@@ -302,8 +302,10 @@ console.log('— SprayProgramCalendar.jsx (tab body)')
   }
 
   // Renders title + agenda + grid + unscheduled.
-  assert(/Spray Program Calendar/.test(src),
-    'tab body title "Spray Program Calendar"')
+  // Phase S.6c.1 — user-facing header renamed 'Spray Program Calendar'
+  // → 'Planned Spray Calendar'. Same component file, just label copy.
+  assert(/<WorkspaceSection\s+title="Planned Spray Calendar"/.test(src),
+    'tab body title "Planned Spray Calendar" (S.6c.1 rename)')
   // Boundary copy lines per spec.
   const srcNorm = src.replace(/\s+/g, ' ')
   for (const phrase of [
@@ -371,11 +373,13 @@ console.log('— Sprays workspace registers Program Calendar tab')
   // Phase 9B.1 renamed the constant to LEGACY_TABS while preserving
   // the same 10-label payload for non-Crosswinds courses.
   const tabsMatch = shell.match(/const\s+(?:LEGACY_TABS|TABS)\s*=\s*\[([^\]]+)\]/)
-  assert(tabsMatch && /'Program Calendar'/.test(tabsMatch[1]),
-    "'Program Calendar' present in TABS array")
+  // Phase S.6c.1 — visible label renamed 'Program Calendar' →
+  // 'Planned Spray Calendar'. Component mount unchanged.
+  assert(tabsMatch && /'Planned Spray Calendar'/.test(tabsMatch[1]),
+    "'Planned Spray Calendar' present in TABS array (S.6c.1 rename)")
 
-  assert(/activeTab\s*===\s*'Program Calendar'\s*&&\s*<SprayProgramCalendar/.test(shell),
-    "Program Calendar tab body wired to activeTab === 'Program Calendar'")
+  assert(/activeTab\s*===\s*'Planned Spray Calendar'\s*&&\s*<SprayProgramCalendar/.test(shell),
+    "Planned Spray Calendar tab body wired to activeTab === 'Planned Spray Calendar' (S.6c.1 rename)")
 
   // Pre-existing tabs still present (regression guard).
   // Phase S.6b — 'Program Planner' user-facing label renamed to

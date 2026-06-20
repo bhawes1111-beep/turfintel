@@ -38,7 +38,11 @@ import styles from './Spray.module.css'
 // 'Program Intelligence' → 'Spray Intelligence'. Internal route
 // handlers for 'Planned Programs' are preserved for safety but the
 // tab is no longer exposed in the visible nav.
-const LEGACY_TABS = ['Workspace', 'Overview', 'Spray Calendar', 'New Application', 'Spray Records', 'Planned Sprays', 'Program Calendar', 'Mix Calculator', 'Reports', 'Spray Intelligence']
+// Phase S.6c.1 — Renamed 'Program Calendar' → 'Planned Spray
+// Calendar' (truly shows planned spray windows, distinct from the
+// completed-applications 'Spray Calendar' earlier in the list).
+// Last user-facing 'Program' label in Spray nav is now gone.
+const LEGACY_TABS = ['Workspace', 'Overview', 'Spray Calendar', 'New Application', 'Spray Records', 'Planned Sprays', 'Planned Spray Calendar', 'Mix Calculator', 'Reports', 'Spray Intelligence']
 
 // Phase 9B.1 — Crosswinds-only simplified Spray tabs. Six visible
 // items + a "More" group whose body renders a secondary pill row
@@ -189,7 +193,12 @@ export default function Spray() {
               'Program Planner' → 'Planned Sprays'. SprayProgramPlanner
               component mount unchanged. */}
           {activeTab === 'Planned Sprays'        && <SprayProgramPlanner />}
-          {activeTab === 'Program Calendar'      && <SprayProgramCalendar />}
+          {/* Phase S.6c.1 — 'Program Calendar' tab visible label
+              renamed to 'Planned Spray Calendar'. Same
+              SprayProgramCalendar component mount; only the label
+              changed. Last user-facing 'Program' label removed
+              from Spray nav. */}
+          {activeTab === 'Planned Spray Calendar' && <SprayProgramCalendar />}
           {activeTab === 'Mix Calculator'        && <MixCalculator />}
           {activeTab === 'Reports'               && <SprayReports />}
           {/* Phase S.6c — 'Program Intelligence' renamed to

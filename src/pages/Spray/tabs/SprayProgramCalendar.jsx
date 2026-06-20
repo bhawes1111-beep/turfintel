@@ -262,9 +262,12 @@ export default function SprayProgramCalendar() {
 
   return (
     <div className={styles.tabContent}>
+      {/* Phase S.6c.1 — 'Spray Program Calendar' → 'Planned Spray
+          Calendar' user-facing header. 'Program Planner' tab in
+          subtitle was already renamed to 'Planned Sprays' in S.6b. */}
       <WorkspaceSection
-        title="Spray Program Calendar"
-        subtitle="Read-only visualization of planned spray windows. Items remain editable from the Program Planner tab."
+        title="Planned Spray Calendar"
+        subtitle="Read-only visualization of planned spray windows. Items remain editable from the Planned Sprays tab."
       >
         <BoundaryNote />
 

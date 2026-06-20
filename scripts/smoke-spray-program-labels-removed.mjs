@@ -100,24 +100,34 @@ assert(legacyMatch != null, 'LEGACY_TABS declared in Spray.jsx')
 
 const legacyPayload = legacyMatch ? legacyMatch[1] : ''
 // Positive pins for what remains.
+// Phase S.6c.1 — 'Program Calendar' renamed to 'Planned Spray Calendar'
+// to drop the last user-facing 'Program' label from the legacy tab strip.
 for (const expected of [
   'Workspace', 'Overview', 'Spray Calendar', 'New Application',
-  'Spray Records', 'Planned Sprays', 'Program Calendar',
+  'Spray Records', 'Planned Sprays', 'Planned Spray Calendar',
   'Mix Calculator', 'Reports', 'Spray Intelligence',
 ]) {
   assert(new RegExp(`'${expected}'`).test(legacyPayload),
     `LEGACY_TABS contains '${expected}'`)
 }
 
-// Negative pins.
+// Negative pins — no remaining "Program" labels in the visible nav.
 assert(!/'Planned Programs'/.test(legacyPayload),
   "LEGACY_TABS no longer contains 'Planned Programs' (S.6c removal)")
 assert(!/'Program Intelligence'/.test(legacyPayload),
   "LEGACY_TABS no longer contains 'Program Intelligence' (S.6c rename)")
 assert(!/'Program Planner'/.test(legacyPayload),
   "LEGACY_TABS no longer contains 'Program Planner' (already gone after S.6b)")
-// 'Program Calendar' kept — internal read-only calendar component label
-// owned by Phase 7H. Out of scope for the user-cleanup phase.
+assert(!/'Program Calendar'/.test(legacyPayload),
+  "LEGACY_TABS no longer contains 'Program Calendar' (S.6c.1 rename to 'Planned Spray Calendar')")
+
+// ── Top-level guarantee: ZERO visible "Program" labels remain ───────
+const anyTabArrays = [
+  ...SP.matchAll(/const\s+(?:CROSSWINDS_TABS|CROSSWINDS_MORE|LEGACY_TABS)\s*=\s*\[([^\]]+)\]/g),
+].map(m => m[1]).join(' ')
+const programHits = anyTabArrays.match(/'[^']*Program[^']*'/g) ?? []
+assert(programHits.length === 0,
+  `S.6c.1: ZERO visible 'Program' labels remain in tab arrays (found: ${programHits.join(', ') || 'none'})`)
 
 // ── Crosswinds primary tabs still expose Planned Sprays (S.6b couple) ─
 section('Main Crosswinds tab strip — Planned Sprays still primary')

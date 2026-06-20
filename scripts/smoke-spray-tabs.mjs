@@ -32,14 +32,19 @@ assert(/const\s+isCrosswinds\s*=\s*courseId === CROSSWINDS_COURSE_ID/.test(SP),
   'isCrosswinds boolean is derived from courseId')
 
 // ── Legacy 10-tab list preserved ────────────────────────────────────────
-section('Legacy 10-tab list preserved (non-Crosswinds)')
+// Phase S.6c.1 — legacy non-Crosswinds tab list has been progressively
+// cleaned of "Program" labels: 'Program Planner' → 'Planned Sprays'
+// (S.6b), 'Planned Programs' removed (S.6c), 'Program Intelligence' →
+// 'Spray Intelligence' (S.6c), 'Program Calendar' → 'Planned Spray
+// Calendar' (S.6c.1). Down from 10 → 9 legacy tabs.
+section('Legacy tab list preserved (non-Crosswinds)')
 
 assert(/const\s+LEGACY_TABS\s*=\s*\[/.test(SP),
   'LEGACY_TABS constant exists')
 for (const t of [
   'Overview', 'Spray Calendar', 'New Application', 'Spray Records',
-  'Planned Programs', 'Program Planner', 'Program Calendar',
-  'Mix Calculator', 'Reports', 'Program Intelligence',
+  'Planned Sprays', 'Planned Spray Calendar',
+  'Mix Calculator', 'Reports', 'Spray Intelligence',
 ]) {
   assert(new RegExp(`['"]${t.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}['"]`).test(SP),
     `legacy tab "${t}" present in source`)
@@ -119,7 +124,9 @@ const LEGACY_PAIRS = [
   // Phase S.6b — visible label renamed 'Program Planner' →
   // 'Planned Sprays'. Component mount unchanged.
   ['Planned Sprays',       'SprayProgramPlanner'],
-  ['Program Calendar',     'SprayProgramCalendar'],
+  // Phase S.6c.1 — visible label renamed 'Program Calendar' →
+  // 'Planned Spray Calendar'. Component mount unchanged.
+  ['Planned Spray Calendar', 'SprayProgramCalendar'],
   ['Mix Calculator',       'MixCalculator'],
   ['Reports',              'SprayReports'],
   // Phase S.6c — visible label renamed 'Program Intelligence' →
