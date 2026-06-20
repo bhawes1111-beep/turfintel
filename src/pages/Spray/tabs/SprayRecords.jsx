@@ -37,11 +37,47 @@ function conditionsSummary(c) {
   return parts.join(' · ')
 }
 
+// Phase S.5c.1 — "Needs Info" heuristic.
+//
+// A pure, side-effect-free predicate. Returns true when the record is
+// missing a clearly-required field for compliance reporting. This is
+// a display-only filter — it does NOT mutate the record or call any
+// patch endpoint. The list of required fields mirrors S.4 Workspace
+// `isRecordIncomplete` but extends it slightly per the S.5c.1 spec
+// (applicator + wind speed/direction). Only runs against `completed`
+// records — planned / in-progress / pending-review are by definition
+// expected to be incomplete.
+function recordNeedsInfo(record) {
+  if (!record) return false
+  if (record.status !== 'completed') return false
+  if (!record.date) return true
+  if (!record.applicator || !record.applicator.trim()) return true
+  if (!Array.isArray(record.products) || record.products.length === 0) return true
+  if (!Array.isArray(record.areas)    || record.areas.length    === 0) return true
+  const c = record.conditions
+  if (!c) return true
+  // Need at least basic weather. We treat "all three core weather
+  // fields missing" as needs-info — many states require temp / wind /
+  // humidity on the application record. Wind speed OR direction
+  // missing alone is also flagged since both are S.3 compliance.
+  const hasAnyWeather = c.temp != null || c.humidity != null || c.wind != null
+  if (!hasAnyWeather) return true
+  if (c.windSpeedMph == null) return true
+  if (!c.windDirection)        return true
+  return false
+}
+
 export default function SprayRecords() {
   const { records: SPRAY_RECORDS }      = useSpraysData()
   const [search, setSearch]             = useState('')
   const [typeFilter, setTypeFilter]     = useState('All')
   const [statusFilter, setStatusFilter] = useState('All')
+  // Phase S.5c.1 — New filters: date range, applicator, product, needs-info.
+  const [startDate, setStartDate]       = useState('')
+  const [endDate, setEndDate]           = useState('')
+  const [applicatorFilter, setApplicatorFilter] = useState('All')
+  const [productFilter, setProductFilter]       = useState('All')
+  const [needsInfoOnly, setNeedsInfoOnly]       = useState(false)
   const [selected, setSelected]         = useState(null)
   // Phase S.5a.1 — Edit target. Holds the record being edited; null
   // when the editor is closed. Independent of `selected` (the detail
@@ -113,12 +149,68 @@ export default function SprayRecords() {
     }
   }
 
+  // Phase S.5c.1 — Applicator + product option lists derived from the
+  // current record set. Empty/whitespace applicators are skipped;
+  // both lists sort alphabetically and prepend the "All ..." sentinel.
+  const applicatorOptions = useMemo(() => {
+    const set = new Set()
+    for (const r of SPRAY_RECORDS) {
+      const a = (r.applicator ?? '').trim()
+      if (a) set.add(a)
+    }
+    return ['All', ...[...set].sort((a, b) => a.localeCompare(b))]
+  }, [SPRAY_RECORDS])
+
+  const productOptions = useMemo(() => {
+    const set = new Set()
+    for (const r of SPRAY_RECORDS) {
+      for (const p of r.products ?? []) {
+        const n = (p?.name ?? '').trim()
+        if (n) set.add(n)
+      }
+    }
+    return ['All', ...[...set].sort((a, b) => a.localeCompare(b))]
+  }, [SPRAY_RECORDS])
+
+  // Phase S.5c.1 — Auto-swap when start > end to match the rest of the
+  // app's "be helpful, not punitive" date-range convention.
+  const [effStart, effEnd] = useMemo(() => {
+    if (startDate && endDate && startDate > endDate) {
+      return [endDate, startDate]
+    }
+    return [startDate, endDate]
+  }, [startDate, endDate])
+
   const visible = useMemo(() => {
+    const q = search.toLowerCase()
+    const applicatorQ = applicatorFilter.toLowerCase()
     return SPRAY_RECORDS.filter(r => {
+      // Type / status filters — unchanged from prior phase.
       const matchType = typeFilter === 'All' ||
         r.products.some(p => p.type === typeFilter)
       const matchStatus = statusFilter === 'All' || r.status === statusFilter
-      const q = search.toLowerCase()
+
+      // Date range — inclusive. ISO YYYY-MM-DD compares lexicographically
+      // so we can string-compare directly without parsing.
+      if (effStart && (!r.date || r.date < effStart)) return false
+      if (effEnd   && (!r.date || r.date > effEnd))   return false
+
+      // Applicator — case-insensitive exact match against the selected
+      // option from the derived list.
+      if (applicatorFilter !== 'All') {
+        if ((r.applicator ?? '').toLowerCase() !== applicatorQ) return false
+      }
+
+      // Product — at least one product row whose name matches the
+      // selected option.
+      if (productFilter !== 'All') {
+        const hit = (r.products ?? []).some(p => p?.name === productFilter)
+        if (!hit) return false
+      }
+
+      // Needs Info — pure heuristic, no mutation.
+      if (needsInfoOnly && !recordNeedsInfo(r)) return false
+
       const matchSearch = !q ||
         (r.area ?? '').toLowerCase().includes(q) ||
         (r.applicator ?? '').toLowerCase().includes(q) ||
@@ -126,7 +218,33 @@ export default function SprayRecords() {
         r.products.some(p => p.name.toLowerCase().includes(q))
       return matchType && matchStatus && matchSearch
     })
-  }, [search, typeFilter, statusFilter])
+  }, [
+    SPRAY_RECORDS, search, typeFilter, statusFilter,
+    effStart, effEnd, applicatorFilter, productFilter, needsInfoOnly,
+  ])
+
+  // Phase S.5c.1 — Any active filter? Drives the "(filtered)" suffix
+  // and the Clear-all affordance.
+  const anyFilterActive =
+    typeFilter !== 'All' || statusFilter !== 'All' || !!search ||
+    !!startDate || !!endDate ||
+    applicatorFilter !== 'All' || productFilter !== 'All' ||
+    needsInfoOnly
+
+  function clearDates() {
+    setStartDate('')
+    setEndDate('')
+  }
+  function clearAllFilters() {
+    setSearch('')
+    setTypeFilter('All')
+    setStatusFilter('All')
+    setStartDate('')
+    setEndDate('')
+    setApplicatorFilter('All')
+    setProductFilter('All')
+    setNeedsInfoOnly(false)
+  }
 
   return (
     <div className={styles.tabContent}>
@@ -172,12 +290,89 @@ export default function SprayRecords() {
             )
           })}
         </div>
+
+        {/* Phase S.5c.1 — Date range + applicator + product + needs-info.
+            Each control is its own field-group so the row wraps cleanly
+            on phones. Date inputs are native <input type="date">. */}
+        <div className={styles.advancedFilterRow}>
+          <label className={styles.advFilterField}>
+            <span>From</span>
+            <input
+              type="date"
+              value={startDate}
+              onChange={e => setStartDate(e.target.value)}
+              aria-label="Filter records on or after date"
+            />
+          </label>
+          <label className={styles.advFilterField}>
+            <span>To</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={e => setEndDate(e.target.value)}
+              aria-label="Filter records on or before date"
+            />
+          </label>
+          {(startDate || endDate) && (
+            <button
+              type="button"
+              className={styles.advFilterClearBtn}
+              onClick={clearDates}
+              aria-label="Clear date range"
+            >
+              Clear dates
+            </button>
+          )}
+          <label className={styles.advFilterField}>
+            <span>Applicator</span>
+            <select
+              value={applicatorFilter}
+              onChange={e => setApplicatorFilter(e.target.value)}
+              aria-label="Filter by applicator"
+            >
+              {applicatorOptions.map(opt => (
+                <option key={opt} value={opt}>{opt === 'All' ? 'All applicators' : opt}</option>
+              ))}
+            </select>
+          </label>
+          <label className={styles.advFilterField}>
+            <span>Product</span>
+            <select
+              value={productFilter}
+              onChange={e => setProductFilter(e.target.value)}
+              aria-label="Filter by product"
+            >
+              {productOptions.map(opt => (
+                <option key={opt} value={opt}>{opt === 'All' ? 'All products' : opt}</option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            className={`${styles.filterBtn} ${needsInfoOnly ? styles.filterBtnActive : ''} ${styles.needsInfoToggle}`}
+            onClick={() => setNeedsInfoOnly(v => !v)}
+            aria-pressed={needsInfoOnly}
+            title="Show only completed records that are missing required compliance information."
+          >
+            Needs Info
+          </button>
+          {anyFilterActive && (
+            <button
+              type="button"
+              className={styles.advFilterClearBtn}
+              onClick={clearAllFilters}
+              aria-label="Clear all filters"
+            >
+              Clear all
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ── Record count ── */}
       <p className={styles.recordCount}>
         {visible.length} record{visible.length !== 1 ? 's' : ''}
-        {(typeFilter !== 'All' || statusFilter !== 'All' || search) ? ' (filtered)' : ''}
+        {anyFilterActive ? ' (filtered)' : ''}
       </p>
 
       {/* ── List ── */}
