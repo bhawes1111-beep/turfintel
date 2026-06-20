@@ -1,0 +1,337 @@
+/* Phase S.4 — Spray Workspace entry surface. Patterned after the
+   crew Annual Schedule Calendar (E.5–E.11) layout. */
+
+.workspace {
+  background: linear-gradient(160deg, var(--color-card) 0%, var(--color-bg) 100%);
+  border: 1px solid rgba(74, 158, 74, 0.22);
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 18px;
+}
+
+/* ── Header ──────────────────────────────────────────────────────── */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.headerTitle {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.title {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(74, 222, 128, 0.85);
+  margin: 0;
+}
+
+.hint {
+  font-size: 11.5px;
+  color: rgba(212, 237, 212, 0.55);
+  margin: 0;
+  max-width: 620px;
+  line-height: 1.45;
+}
+
+/* ── Date navigator ─────────────────────────────────────────────── */
+.dateNav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.navBtn {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(74, 158, 74, 0.14);
+  border: 1px solid rgba(74, 158, 74, 0.32);
+  border-radius: 5px;
+  color: #4ade80;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.navBtn:hover { background: rgba(74, 158, 74, 0.26); }
+
+.dateLabelWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px;
+}
+
+.dateLabel {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 14px;
+  color: #ecfdf5;
+  letter-spacing: 0.02em;
+}
+
+.dateBadge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 9px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.dateBadge[data-tone="today"] {
+  background: rgba(56, 189, 248, 0.18);
+  border: 1px solid rgba(56, 189, 248, 0.42);
+  color: #93c5fd;
+}
+.dateBadge[data-tone="past"] {
+  background: rgba(148, 163, 184, 0.18);
+  border: 1px solid rgba(148, 163, 184, 0.42);
+  color: rgba(212, 237, 212, 0.7);
+}
+
+.jumpTo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 4px;
+  padding: 2px 8px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(74, 158, 74, 0.28);
+  border-radius: 5px;
+}
+.jumpToLabel {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(212, 237, 212, 0.55);
+}
+.jumpTo input[type="date"] {
+  background: transparent;
+  border: none;
+  color: #d4edd4;
+  font: inherit;
+  font-size: 12px;
+  padding: 2px 4px;
+  color-scheme: dark;
+}
+.jumpTo input[type="date"]:focus { outline: none; color: #ecfdf5; }
+
+.todayBtn {
+  padding: 5px 11px;
+  background: rgba(74, 158, 74, 0.1);
+  border: 1px solid rgba(74, 158, 74, 0.3);
+  border-radius: 10px;
+  color: #4ade80;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.todayBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── Quick action row ───────────────────────────────────────────── */
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.actionBtn,
+.actionBtnPrimary {
+  padding: 7px 14px;
+  background: rgba(74, 158, 74, 0.14);
+  border: 1px solid rgba(74, 158, 74, 0.32);
+  border-radius: 6px;
+  color: #4ade80;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 0.13s, border-color 0.13s, box-shadow 0.13s;
+}
+.actionBtnPrimary {
+  background: rgba(34, 197, 94, 0.24);
+  border-color: rgba(34, 197, 94, 0.55);
+  color: #bbf7d0;
+}
+.actionBtn:hover { background: rgba(74, 158, 74, 0.26); }
+.actionBtnPrimary:hover {
+  background: rgba(34, 197, 94, 0.32);
+  border-color: rgba(34, 197, 94, 0.7);
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.18);
+}
+
+/* ── Day summary chips ──────────────────────────────────────────── */
+.summaryChips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.summaryChip {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 1px solid;
+}
+.summaryChip[data-tone="planned"] {
+  background: rgba(74, 222, 128, 0.12);
+  border-color: rgba(74, 222, 128, 0.4);
+  color: #86efac;
+}
+.summaryChip[data-tone="completed"] {
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.4);
+  color: #93c5fd;
+}
+.summaryChip[data-tone="drafts"] {
+  background: rgba(251, 191, 36, 0.12);
+  border-color: rgba(251, 191, 36, 0.4);
+  color: #fbbf24;
+}
+.summaryChip[data-tone="incomplete"] {
+  background: rgba(244, 63, 94, 0.12);
+  border-color: rgba(244, 63, 94, 0.4);
+  color: #fda4af;
+}
+
+/* ── Selected-day cards ─────────────────────────────────────────── */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.card {
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(74, 158, 74, 0.18);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.card[data-tone="completed"] { border-left: 3px solid rgba(56, 189, 248, 0.55); }
+.card[data-tone="planned"]   { border-left: 3px solid rgba(74, 222, 128, 0.55); }
+.card[data-tone="drafts"]    { border-left: 3px solid rgba(251, 191, 36, 0.55); }
+.card[data-tone="incomplete"]{ border-left: 3px solid rgba(244, 63, 94, 0.55); }
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.cardTitle {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(212, 237, 212, 0.85);
+  margin: 0;
+}
+.cardCount {
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  font-weight: 700;
+  color: #bbf7d0;
+}
+
+.cardBody { font-size: 12px; color: #d4edd4; }
+
+.cardEmpty {
+  margin: 0;
+  font-style: italic;
+  color: rgba(212, 237, 212, 0.45);
+  font-size: 11.5px;
+}
+.cardHint {
+  margin: 0 0 8px 0;
+  font-size: 11px;
+  color: rgba(212, 237, 212, 0.6);
+  line-height: 1.4;
+}
+
+.cardList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cardRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.18);
+  border-radius: 5px;
+  border: 1px solid rgba(74, 158, 74, 0.1);
+}
+.rowMain { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rowMain strong { color: #ecfdf5; font-size: 12px; }
+.rowMeta { font-size: 10.5px; color: rgba(212, 237, 212, 0.55); }
+.rowSource {
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(212, 237, 212, 0.5);
+  white-space: nowrap;
+}
+.linkBtn {
+  background: transparent;
+  border: none;
+  color: #93c5fd;
+  font: inherit;
+  font-size: 10.5px;
+  cursor: pointer;
+  padding: 2px 6px;
+}
+.linkBtn:hover { color: #bfdbfe; text-decoration: underline; }
+
+.footerHint {
+  margin: 6px 0 0 0;
+  font-size: 11px;
+  color: rgba(212, 237, 212, 0.45);
+  font-style: italic;
+  line-height: 1.45;
+}
+
+/* ── Mobile (≤ 600px) — stacked header, touch-friendly buttons ── */
+@media (max-width: 600px) {
+  .workspace { padding: 14px 14px; }
+  .header { flex-direction: column; align-items: stretch; gap: 8px; }
+  .dateNav { gap: 7px; row-gap: 7px; width: 100%; }
+  .navBtn { width: 36px; height: 36px; font-size: 17px; }
+  .dateLabel { font-size: 13px; }
+  .jumpTo { margin-left: 0; }
+  .todayBtn { padding: 6px 10px; font-size: 11px; }
+  .actions { gap: 8px; }
+  .actionBtn,
+  .actionBtnPrimary { padding: 9px 14px; font-size: 12.5px; }
+  .cards { grid-template-columns: 1fr; gap: 10px; }
+  .card { padding: 12px; }
+  .cardRow { flex-wrap: wrap; row-gap: 4px; }
+}

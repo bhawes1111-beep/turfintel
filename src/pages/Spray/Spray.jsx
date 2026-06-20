@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import PageShell from '../../components/layout/PageShell'
 import WorkspaceActions from '../../components/shared/WorkspaceActions'
+// Phase S.4 — new scheduler-style entry surface. Date-first read-only
+// workspace that routes to the existing tabs unchanged.
+import SprayWorkspace        from './tabs/SprayWorkspace'
 import SprayOverview         from './tabs/SprayOverview'
 import SprayCalendar         from './tabs/SprayCalendar'
 import BuildSpraySheet       from './tabs/BuildSpraySheet'
@@ -21,8 +24,9 @@ import { useSelectedCourseId } from '../../utils/courses/courseStore'
 import workspace from '../../styles/workspace.module.css'
 import styles from './Spray.module.css'
 
-// Legacy 10-tab list — non-Crosswinds courses still use it byte-for-byte.
-const LEGACY_TABS = ['Overview', 'Spray Calendar', 'New Application', 'Spray Records', 'Planned Programs', 'Program Planner', 'Program Calendar', 'Mix Calculator', 'Reports', 'Program Intelligence']
+// Legacy tab list — non-Crosswinds courses still use it byte-for-byte
+// except for the new Workspace landing tab prepended in Phase S.4.
+const LEGACY_TABS = ['Workspace', 'Overview', 'Spray Calendar', 'New Application', 'Spray Records', 'Planned Programs', 'Program Planner', 'Program Calendar', 'Mix Calculator', 'Reports', 'Program Intelligence']
 
 // Phase 9B.1 — Crosswinds-only simplified Spray tabs. Six visible
 // items + a "More" group whose body renders a secondary pill row
@@ -30,8 +34,12 @@ const LEGACY_TABS = ['Overview', 'Spray Calendar', 'New Application', 'Spray Rec
 // More group is a synthetic tab that owns its own inner state. All
 // 10 legacy components remain mounted under either the primary
 // tabs or the More inner row.
+//
+// Phase S.4 — Workspace prepended as the new default landing tab.
+// Build / Records / Calendar / Programs / Calculator / More all
+// still mount their existing components unchanged.
 const CROSSWINDS_COURSE_ID = 'crossroads-gc'
-const CROSSWINDS_TABS = ['Build Spray', 'Records', 'Calendar', 'Programs', 'Calculator', 'More']
+const CROSSWINDS_TABS = ['Workspace', 'Build Spray', 'Records', 'Calendar', 'Programs', 'Calculator', 'More']
 const CROSSWINDS_MORE = ['Overview', 'Planned Programs', 'Program Planner', 'Reports', 'Program Intelligence']
 
 /**
@@ -43,11 +51,12 @@ export default function Spray() {
   const courseId     = useSelectedCourseId()
   const isCrosswinds = courseId === CROSSWINDS_COURSE_ID
 
-  // Phase 9B.1 — Crosswinds lands on Build Spray (the daily workhorse);
-  // every other course keeps the legacy Overview default.
-  const [activeTab, setActiveTab] = useState(() =>
-    isCrosswinds ? 'Build Spray' : 'Overview'
-  )
+  // Phase 9B.1 — Crosswinds used to land on Build Spray (the daily
+  // workhorse); every other course used to land on Overview.
+  // Phase S.4 — Both now land on the new Workspace surface. The
+  // workspace's quick-action buttons immediately route into the
+  // original tabs, so existing flows are at most one click away.
+  const [activeTab, setActiveTab] = useState('Workspace')
   const [moreTab,  setMoreTab]    = useState('Overview')
 
   const tabs = isCrosswinds ? CROSSWINDS_TABS : LEGACY_TABS
@@ -87,6 +96,7 @@ export default function Spray() {
     >
       {isCrosswinds ? (
         <>
+          {activeTab === 'Workspace'   && <SprayWorkspace onNavigateTab={setActiveTab} />}
           {activeTab === 'Build Spray' && <BuildSpraySheet />}
           {activeTab === 'Records'     && <SprayRecords />}
           {activeTab === 'Calendar'    && <SprayCalendar />}
@@ -119,6 +129,23 @@ export default function Spray() {
         </>
       ) : (
         <>
+          {/* Phase S.4 — Workspace targets map legacy tab labels.
+              "Build Spray" → "New Application"; "Records" → "Spray
+              Records"; "Programs" → "Spray Calendar" (legacy view);
+              "Calendar" stays "Spray Calendar"; "Calculator" stays
+              "Mix Calculator". A small label-aliasing handler below
+              normalizes the workspace's quick-action keys to the
+              actual legacy tab labels. */}
+          {activeTab === 'Workspace'             && <SprayWorkspace onNavigateTab={t => {
+            const ALIASES = {
+              'Build Spray': 'New Application',
+              'Records':     'Spray Records',
+              'Calendar':    'Spray Calendar',
+              'Programs':    'Spray Calendar',
+              'Calculator':  'Mix Calculator',
+            }
+            setActiveTab(ALIASES[t] ?? t)
+          }} />}
           {activeTab === 'Overview'              && <SprayOverview />}
           {activeTab === 'Spray Calendar'        && <SprayCalendar />}
           {activeTab === 'New Application'       && <BuildSpraySheet />}

@@ -48,8 +48,9 @@ for (const t of [
 // ── Crosswinds 6-tab list ───────────────────────────────────────────────
 section('Crosswinds visible tabs (exact 6 in order)')
 
-assert(/const\s+CROSSWINDS_TABS\s*=\s*\[\s*'Build Spray'\s*,\s*'Records'\s*,\s*'Calendar'\s*,\s*'Programs'\s*,\s*'Calculator'\s*,\s*'More'\s*\]/.test(SP),
-  "CROSSWINDS_TABS = ['Build Spray', 'Records', 'Calendar', 'Programs', 'Calculator', 'More']")
+// Phase S.4 — Workspace prepended as the new default landing tab.
+assert(/const\s+CROSSWINDS_TABS\s*=\s*\[\s*'Workspace'\s*,\s*'Build Spray'\s*,\s*'Records'\s*,\s*'Calendar'\s*,\s*'Programs'\s*,\s*'Calculator'\s*,\s*'More'\s*\]/.test(SP),
+  "CROSSWINDS_TABS = ['Workspace', 'Build Spray', 'Records', 'Calendar', 'Programs', 'Calculator', 'More'] (Phase S.4)")
 
 // ── Crosswinds More inner row (exact 5) ─────────────────────────────────
 section('Crosswinds More inner row (exact 5 in order)')
@@ -133,8 +134,11 @@ assert(/\[moreTab,\s*setMoreTab\]\s*=\s*useState\(/.test(SP),
 // ── Default tab initializers ────────────────────────────────────────────
 section('Default tab initializer (function-based, course-aware)')
 
-assert(/useState\(\(\)\s*=>\s*\(?[\s\S]{0,80}isCrosswinds\s*\?\s*'Build Spray'\s*:\s*'Overview'\s*\)?\s*\)/.test(SP),
-  "activeTab defaults to 'Build Spray' on Crosswinds, 'Overview' otherwise")
+// Phase S.4 — Both branches now land on the Workspace surface; the
+// workspace's quick-action buttons immediately route back into the
+// original tabs, so legacy flows are at most one click away.
+assert(/useState\(\s*['"]Workspace['"]\s*\)/.test(SP),
+  "activeTab defaults to 'Workspace' (both Crosswinds + legacy land on the new scheduler-style surface)")
 
 // ── Header button rewiring ──────────────────────────────────────────────
 section('Header button rewiring (Crosswinds vs legacy)')
