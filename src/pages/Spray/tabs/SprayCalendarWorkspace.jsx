@@ -28,7 +28,12 @@ import {
 } from '../../../utils/sprayPrograms/sprayProgramStore'
 import { recordNeedsInfo } from '../../../utils/sprays/recordNeedsInfo'
 import { useSelectedCourseId } from '../../../utils/courses/courseStore'
+import { useAuth } from '../../../context/AuthContext'
 import BuildSpraySheet from './BuildSpraySheet'
+// Phase S.7a — Reuse the existing EditSprayRecordModal (S.5a.1) so the
+// calendar workspace gets the same safe-edit semantics as Records
+// (mutable-field whitelist + snapshot exclusion + product mix read-only).
+import EditSprayRecordModal from './EditSprayRecordModal'
 import styles from './SprayCalendarWorkspace.module.css'
 
 // ── Date helpers (local-noon — no UTC drift) ──────────────────────────
@@ -121,6 +126,14 @@ export default function SprayCalendarWorkspace() {
   const [currentMonth, setCurrentMonth] = useState(() => todayIso().slice(0, 7))
   const [selectedDate, setSelectedDate] = useState(todayIso)
   const [jumpInput, setJumpInput] = useState('')
+  // Phase S.7a — Currently-editing record. Mirrors Records' pattern.
+  const [editingRecord, setEditingRecord] = useState(null)
+
+  // Phase S.7a — Permission gate. The worker is the source of truth
+  // (POST /api/sprays/:id gated by canEditSprays); this client gate
+  // just hides the Edit affordance to avoid dead-end clicks.
+  const { can } = useAuth()
+  const canEditSprays = can('canEditSprays')
 
   // Boot the stores on mount so the page is populated whether or not
   // the user clicked through Workspace earlier.
@@ -354,15 +367,53 @@ export default function SprayCalendarWorkspace() {
                   {selectedRecords.map(r => {
                     const areas = extractAreaLabels(r)
                     const ni = recordNeedsInfo(r)
+                    // Phase S.7a — Build a compact weather summary string
+                    // ("72°F · 60% RH · NE 5mph") from the record's
+                    // conditions block. Uses != null guards (S.6a) so
+                    // 0 values render correctly.
+                    const c = r.conditions ?? {}
+                    const weatherBits = [
+                      c.temp != null         ? `${c.temp}°F`                                   : null,
+                      c.humidity != null     ? `${c.humidity}% RH`                             : null,
+                      c.windDirection || c.windSpeedMph != null
+                        ? `${c.windDirection ?? ''} ${c.windSpeedMph != null ? `${c.windSpeedMph}mph` : ''}`.trim()
+                        : null,
+                    ].filter(Boolean)
                     return (
                       <li key={r.id} className={styles.selectedDayRow}>
-                        <span className={styles.rowMain}>
-                          {areas.join(', ') || '—'}
-                          {r.applicator && (
-                            <span className={styles.rowMeta}> · {r.applicator}</span>
+                        <div className={styles.completedRowBody}>
+                          <span className={styles.rowMain}>
+                            {areas.join(', ') || '—'}
+                            {r.applicator && (
+                              <span className={styles.rowMeta}> · {r.applicator}</span>
+                            )}
+                          </span>
+                          {(r.startTime || r.endTime) && (
+                            <span className={styles.rowSubMeta}>
+                              {r.startTime ?? '—'}{r.endTime ? ` → ${r.endTime}` : ''}
+                            </span>
                           )}
-                        </span>
-                        {ni && <span className={styles.rowNeedsInfo}>Needs info</span>}
+                          {weatherBits.length > 0 && (
+                            <span className={styles.rowSubMeta}>{weatherBits.join(' · ')}</span>
+                          )}
+                        </div>
+                        <div className={styles.completedRowActions}>
+                          {ni && <span className={styles.rowNeedsInfo}>Needs info</span>}
+                          {/* Phase S.7a — Edit button. S.5a.2 gate:
+                              hidden entirely for users without canEditSprays
+                              (no view-only purpose; the row already shows
+                              everything visible read-only). */}
+                          {canEditSprays && (
+                            <button
+                              type="button"
+                              className={styles.editBtn}
+                              onClick={() => setEditingRecord(r)}
+                              aria-label={`Edit spray record for ${areas.join(', ') || r.date}`}
+                            >
+                              Edit
+                            </button>
+                          )}
+                        </div>
                       </li>
                     )
                   })}
@@ -408,6 +459,18 @@ export default function SprayCalendarWorkspace() {
             autosave + permission gating. */}
         <BuildSpraySheet initialDate={selectedDate} onCommit={handleEmbeddedCommit} />
       </section>
+
+      {/* Phase S.7a — Edit Spray Record modal. Reuses S.5a.1's
+          EditSprayRecordModal byte-for-byte; the modal owns its own
+          patchSpray() + refreshSpraysData() pipeline, so closing on
+          save automatically updates the calendar chips above. */}
+      {editingRecord && (
+        <EditSprayRecordModal
+          record={editingRecord}
+          onClose={() => setEditingRecord(null)}
+          onSaved={() => setEditingRecord(null)}
+        />
+      )}
     </div>
   )
 }
