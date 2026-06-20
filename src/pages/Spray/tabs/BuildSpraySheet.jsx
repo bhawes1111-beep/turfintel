@@ -229,6 +229,10 @@ function makeEmptyDraft() {
   return {
     date:           TODAY,
     startTime:      '',
+    // Phase S.5b.1 — Optional end time. Worker already supports
+    // end_time in MUTABLE_RECORD_COLS + createSpray payload (Phase
+    // S.3 baseline); the builder just wasn't capturing it.
+    endTime:        '',
     operator:       '',
     // Phase S.3 — Optional applicator pesticide license #. Prefilled
     // from the selected crew employee's profile when available; the
@@ -247,7 +251,9 @@ function makeEmptyDraft() {
     // valid; the read mapper exposes both so reports can pick whichever
     // is populated. Existing records continue to show whatever was
     // typed into the legacy `wind` field.
-    conditions: { temp: '', wind: '', windSpeedMph: '', windDirection: '', humidity: '' },
+    // Phase S.5b.1 — soilTemp added. Worker already supports soil_temp
+    // (Phase S.3 baseline); EditSprayRecordModal already exposes it.
+    conditions: { temp: '', wind: '', windSpeedMph: '', windDirection: '', humidity: '', soilTemp: '' },
     observations:   '',
     rows:           [],
   }
@@ -374,12 +380,23 @@ export default function BuildSpraySheet() {
   })
 
   // Debounced autosave. Saves the draft 600ms after the last edit.
+  //
+  // Phase S.5b.1 — Track the last successful localStorage write so
+  // the builder can show a subtle "Draft saved locally at HH:MM AM"
+  // indicator. Synchronous localStorage write means we never have an
+  // "in-flight" state — either the write happened (set timestamp) or
+  // it threw (leave the previous timestamp in place so the
+  // supervisor at least sees the prior known-good time).
   const saveTimer = useRef(null)
+  const [draftSavedAt, setDraftSavedAt] = useState(null)
   useEffect(() => {
     if (typeof localStorage === 'undefined') return
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => {
-      try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)) } catch { /* ignore */ }
+      try {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
+        setDraftSavedAt(new Date())
+      } catch { /* ignore — keep previous timestamp */ }
     }, 600)
     return () => clearTimeout(saveTimer.current)
   }, [draft])
@@ -695,6 +712,9 @@ export default function BuildSpraySheet() {
     if (!confirm('Discard the current spray application draft?')) return
     setDraft(makeEmptyDraft())
     try { localStorage.removeItem(DRAFT_KEY) } catch { /* ignore */ }
+    // Phase S.5b.1 — Reset the saved indicator; an empty draft has
+    // no prior saved state worth advertising.
+    setDraftSavedAt(null)
   }
 
   // ── Commit pipeline ──────────────────────────────────────────────────
@@ -727,6 +747,9 @@ export default function BuildSpraySheet() {
         course:          selectedCourse?.shortName ?? selectedCourse?.name ?? null,
         date:            draft.date,
         startTime:       draft.startTime,
+        // Phase S.5b.1 — endTime added to the commit payload. Worker
+        // schema already accepts end_time (S.3 baseline).
+        endTime:         draft.endTime || null,
         status:          'completed',
         conditions: {
           temp:          draft.conditions.temp     ? parseFloat(draft.conditions.temp)     : null,
@@ -739,6 +762,9 @@ export default function BuildSpraySheet() {
                           : null,
           windDirection: draft.conditions.windDirection || null,
           humidity:      draft.conditions.humidity ? parseFloat(draft.conditions.humidity) : null,
+          // Phase S.5b.1 — soilTemp added. Worker already maps
+          // conditions.soilTemp → soil_temp column.
+          soilTemp:      draft.conditions.soilTemp ? parseFloat(draft.conditions.soilTemp) : null,
         },
         rei:           summary.maxRei,
         // Structured carrier summary so SprayRecords can show the rate
@@ -849,6 +875,8 @@ export default function BuildSpraySheet() {
       // 5. Reset draft.
       try { localStorage.removeItem(DRAFT_KEY) } catch { /* ignore */ }
       setDraft(makeEmptyDraft())
+      // Phase S.5b.1 — Reset the saved indicator after commit.
+      setDraftSavedAt(null)
       toast.success(
         `Application committed${deductCount > 0 ? ` · ${deductCount} product${deductCount !== 1 ? 's' : ''} deducted from inventory` : ''}`,
       )
@@ -894,12 +922,25 @@ export default function BuildSpraySheet() {
                 />
               </Field>
 
-              <Field label="Time of application">
+              <Field label="Start time">
                 <input
                   type="time"
                   className={styles.naInput}
                   value={draft.startTime}
                   onChange={e => patchDraft({ startTime: e.target.value })}
+                />
+              </Field>
+
+              {/* Phase S.5b.1 — End time. Worker has supported
+                  end_time since the S.3 baseline; the builder simply
+                  wasn't capturing it. Optional — leave blank if
+                  unknown. */}
+              <Field label="End time">
+                <input
+                  type="time"
+                  className={styles.naInput}
+                  value={draft.endTime}
+                  onChange={e => patchDraft({ endTime: e.target.value })}
                 />
               </Field>
 
@@ -1220,20 +1261,13 @@ export default function BuildSpraySheet() {
                   placeholder="72"
                 />
               </Field>
-              <Field label="Wind">
-                <input
-                  type="text"
-                  className={styles.naInput}
-                  value={draft.conditions.wind}
-                  onChange={e => patchConditions({ wind: e.target.value })}
-                  placeholder="4–6 mph NE"
-                />
-              </Field>
-              {/* Phase S.3 — Optional structured wind speed + direction
-                  for compliance reporting. Sit alongside the legacy
-                  free-text Wind field above; either surface is valid.
-                  Most supervisors will use one OR the other — the form
-                  doesn't enforce both. */}
+              {/* Phase S.3 — Structured wind speed + direction are the
+                  primary compliance fields. The free-text "Wind /
+                  conditions notes" further below is secondary and
+                  exists for legacy back-compat + nuance ("gusty",
+                  "shifting", "calm after 8am"). Most supervisors will
+                  fill the structured pair; the notes field is
+                  optional. */}
               <Field label="Wind speed (mph)">
                 <input
                   type="number"
@@ -1262,6 +1296,33 @@ export default function BuildSpraySheet() {
                   value={draft.conditions.humidity}
                   onChange={e => patchConditions({ humidity: e.target.value })}
                   placeholder="55"
+                />
+              </Field>
+              {/* Phase S.5b.1 — Soil Temperature. Worker has supported
+                  soil_temp since the S.3 baseline. */}
+              <Field label="Soil temperature (°F)">
+                <input
+                  type="number"
+                  step="0.1"
+                  className={styles.naInput}
+                  value={draft.conditions.soilTemp}
+                  onChange={e => patchConditions({ soilTemp: e.target.value })}
+                  placeholder="68"
+                />
+              </Field>
+              {/* Phase S.5b.1 — Legacy free-text wind field, relabeled
+                  as "Wind / conditions notes" and moved to the end of
+                  the weather row so the structured pair above reads
+                  as the primary compliance entry. Stays on the same
+                  conditions.wind column so existing records render
+                  unchanged. */}
+              <Field label="Wind / conditions notes">
+                <input
+                  type="text"
+                  className={styles.naInput}
+                  value={draft.conditions.wind}
+                  onChange={e => patchConditions({ wind: e.target.value })}
+                  placeholder="gusty after 9am, partly cloudy"
                 />
               </Field>
             </div>
@@ -1297,6 +1358,14 @@ export default function BuildSpraySheet() {
               </button>
               <span className={styles.naActionHint}>
                 Draft autosaves locally · committing creates a permanent record + deducts inventory
+              </span>
+              {/* Phase S.5b.1 — Subtle draft-saved indicator. Reads
+                  the localStorage write timestamp from draftSavedAt.
+                  Synchronous write — no "saving…" spinner needed. */}
+              <span className={styles.naDraftSavedHint} aria-live="polite">
+                {draftSavedAt
+                  ? `Draft saved locally at ${draftSavedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
+                  : 'Unsaved changes'}
               </span>
             </div>
 

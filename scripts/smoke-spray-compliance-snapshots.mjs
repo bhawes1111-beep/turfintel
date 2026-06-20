@@ -219,8 +219,12 @@ assert(/conditions:\s*\{[\s\S]{0,400}windSpeedMph:\s*['"]['"][\s\S]{0,200}windDi
 // Existing wind text field preserved.
 assert(/wind:\s*['"]['"]/.test(BUILD),
   'makeEmptyDraft preserves legacy conditions.wind: ""')
-assert(/<Field label="Wind">[\s\S]{0,400}value=\{draft\.conditions\.wind\}/.test(BUILD),
-  'BuildSpraySheet preserves the existing <Field label="Wind"> free-text input')
+// Phase S.5b.1 relabeled the free-text input "Wind / conditions
+// notes" (the data column is unchanged — still conditions.wind). The
+// pin accepts either the original "Wind" label or the new "Wind /
+// conditions notes" label as long as the value binding stays the same.
+assert(/<Field label="(?:Wind|Wind \/ conditions notes)">[\s\S]{0,400}value=\{draft\.conditions\.wind\}/.test(BUILD),
+  'BuildSpraySheet preserves the free-text conditions.wind input (S.5b.1: relabeled to "Wind / conditions notes")')
 
 // New structured wind fields.
 assert(/<Field label="Wind speed \(mph\)">[\s\S]{0,400}value=\{draft\.conditions\.windSpeedMph\}/.test(BUILD),
