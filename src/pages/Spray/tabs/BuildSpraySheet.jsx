@@ -39,6 +39,8 @@ import { useSelectedCourse } from '../../../utils/courses/courseStore'
 import { analyzeSprayDraft, areaSurfaceTypeOf } from '../../../utils/chemistry'
 import ChemicalIntelligencePanel from '../../../components/chemistry/ChemicalIntelligencePanel'
 import WorkspaceSection from '../../../components/shared/WorkspaceSection'
+// Phase S.5b.2 — Save current draft as a reusable Spray Program.
+import SaveAsProgramModal from './SaveAsProgramModal'
 import styles from '../Spray.module.css'
 
 const TODAY    = new Date().toISOString().slice(0, 10)
@@ -402,6 +404,10 @@ export default function BuildSpraySheet() {
   }, [draft])
 
   const [committing, setCommitting] = useState(false)
+  // Phase S.5b.2 — Save-as-Program modal toggle. Independent of
+  // commit/discard so the supervisor can review a draft, save it as
+  // a reusable program, and still go on to commit/print/discard.
+  const [saveAsProgramOpen, setSaveAsProgramOpen] = useState(false)
 
   // ── Derived data ──────────────────────────────────────────────────────
   const productPickerOptions = useMemo(() => {
@@ -1356,6 +1362,18 @@ export default function BuildSpraySheet() {
               >
                 Discard draft
               </button>
+              {/* Phase S.5b.2 — Save the current draft as a reusable
+                  Spray Program (template). Does NOT commit a record,
+                  deduct inventory, or fire REI alerts. */}
+              <button
+                type="button"
+                className={styles.naSaveAsProgramBtn}
+                onClick={() => setSaveAsProgramOpen(true)}
+                disabled={committing || enrichedRows.length === 0}
+                title="Save the current draft as a reusable Spray Program template (no inventory deduction, no spray record created)"
+              >
+                Save as Program
+              </button>
               <span className={styles.naActionHint}>
                 Draft autosaves locally · committing creates a permanent record + deducts inventory
               </span>
@@ -1460,6 +1478,19 @@ export default function BuildSpraySheet() {
           </aside>
 
         </div>
+
+        {/* Phase S.5b.2 — Save-as-Program modal. Renders only when
+            the supervisor clicks Save as Program in the action row.
+            Modal manages its own busy state; we just need to know
+            when it's open and when it saves. */}
+        {saveAsProgramOpen && (
+          <SaveAsProgramModal
+            draft={draft}
+            enrichedRows={enrichedRows}
+            onClose={() => setSaveAsProgramOpen(false)}
+            onSaved={() => setSaveAsProgramOpen(false)}
+          />
+        )}
       </WorkspaceSection>
     </div>
   )

@@ -2221,6 +2221,31 @@ select.naInput option {
   text-align: right;
 }
 
+/* Phase S.5b.2 — Save as Program button. Sits in the builder action
+   row next to Discard draft. Cyan accent mirrors the "Save as Shift"
+   pattern in the crew scheduler; the cyan signals "save as a
+   template / plan" rather than "commit a record" (green Commit). */
+.naSaveAsProgramBtn {
+  appearance: none;
+  background: rgba(56, 189, 248, 0.18);
+  border: 1px solid rgba(56, 189, 248, 0.5);
+  border-radius: 6px;
+  color: #bae6fd;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: background 0.13s, border-color 0.13s, box-shadow 0.13s;
+}
+.naSaveAsProgramBtn:hover:not(:disabled) {
+  background: rgba(56, 189, 248, 0.28);
+  border-color: rgba(56, 189, 248, 0.7);
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.18);
+}
+.naSaveAsProgramBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
 /* Phase S.5b.1 — Subtle draft-saved indicator. Sits at the end of
    the action row alongside the autosave hint; the saved timestamp
    gets a slightly brighter color so it reads as confirmation rather
