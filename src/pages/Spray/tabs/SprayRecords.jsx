@@ -8,6 +8,7 @@ import UploadCenter from '../../../components/uploads/UploadCenter'
 import ReportPreviewModal from '../../../components/reports/ReportPreviewModal'
 import { EmptyState } from '../../../components/shared/EmptyState'
 import WorkspaceSection from '../../../components/shared/WorkspaceSection'
+import EditSprayRecordModal from './EditSprayRecordModal'
 import styles from '../Spray.module.css'
 
 const TYPE_FILTERS = ['All', 'Fungicide', 'Herbicide', 'Insecticide', 'PGR', 'Fertilizer']
@@ -42,6 +43,11 @@ export default function SprayRecords() {
   const [typeFilter, setTypeFilter]     = useState('All')
   const [statusFilter, setStatusFilter] = useState('All')
   const [selected, setSelected]         = useState(null)
+  // Phase S.5a.1 — Edit target. Holds the record being edited; null
+  // when the editor is closed. Independent of `selected` (the detail
+  // modal) so a supervisor can open the editor directly from the
+  // record card without bouncing through the details modal.
+  const [editing, setEditing]           = useState(null)
   const [activeReport,  setActiveReport]  = useState(null)
   const [reportLoading, setReportLoading] = useState(false)
   const [reportThumbs,  setReportThumbs]  = useState([])
@@ -257,6 +263,20 @@ export default function SprayRecords() {
                   {r.notes && (
                     <span className={styles.hasNotes}>Note</span>
                   )}
+                  {/* Phase S.5a.1 — Edit affordance. stopPropagation
+                      prevents the parent record card's onClick (which
+                      opens the detail modal) from firing. Worker
+                      permission gate (canEditSprays) remains the
+                      source of truth; an unauthorized user gets a
+                      403 on Save. */}
+                  <button
+                    type="button"
+                    className={styles.recordEditBtn}
+                    onClick={e => { e.stopPropagation(); setEditing(r) }}
+                    aria-label={`Edit spray record from ${r.date}`}
+                  >
+                    Edit
+                  </button>
                   <span className={styles.viewDetail}>View Details →</span>
                 </div>
               </button>
@@ -467,6 +487,15 @@ export default function SprayRecords() {
             </div>
 
             <div className="opActionRow">
+              {/* Phase S.5a.1 — Edit shortcut from the detail modal.
+                  Routes to the same EditSprayRecordModal as the
+                  record-card Edit button. */}
+              <button
+                className="opActionBtn"
+                onClick={() => { setEditing(selected); setSelected(null) }}
+              >
+                Edit Record
+              </button>
               <button
                 className="opActionBtn"
                 onClick={() => generateApplicationReport(selected)}
@@ -483,6 +512,17 @@ export default function SprayRecords() {
         report={activeReport}
         onClose={handleCloseReport}
       />
+
+      {/* Phase S.5a.1 — Edit Spray Record modal. Renders only when
+          `editing` is non-null. Save triggers a worker PATCH via the
+          existing patchSpray helper and refreshes the store. */}
+      {editing && (
+        <EditSprayRecordModal
+          record={editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => setEditing(null)}
+        />
+      )}
 
     </div>
   )
