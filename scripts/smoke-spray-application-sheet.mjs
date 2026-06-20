@@ -286,23 +286,29 @@ section('SprayCalendarWorkspace — sheet wired + view-record state')
 
 assert(/import SprayApplicationSheetModal from '\.\/SprayApplicationSheetModal'/.test(CW),
   'workspace imports SprayApplicationSheetModal')
-assert(/const \[viewingRecord, setViewingRecord\] = useState\(null\)/.test(CW),
-  'viewingRecord state declared (null when sheet closed)')
-assert(/setViewingRecord\(r\)/.test(CW),
-  'completed-row click wires setViewingRecord(r) (opens the sheet)')
+// Phase S.7b.4 — Store viewingRecordId (not the captured record
+// object) so the sheet always renders the LIVE store record. After
+// a chemical-edit save the store updates → next render finds the
+// fresh record by id → sheet re-renders with the saved products.
+assert(/const \[viewingRecordId, setViewingRecordId\] = useState\(null\)/.test(CW),
+  'viewingRecordId state declared (id, not snapshot — S.7b.4 fix)')
+assert(/const viewingRecord = useMemo\(\s*\n?\s*\(\) => \(Array\.isArray\(sprays\) \? sprays\.find\(r => r\.id === viewingRecordId\) : null\) \?\? null/.test(CW),
+  'viewingRecord re-derived from store via useMemo on each render')
+assert(/setViewingRecordId\(r\.id\)/.test(CW),
+  'completed-row click wires setViewingRecordId(r.id) (opens the sheet)')
 
 // Sheet mount + props.
 assert(/<SprayApplicationSheetModal\s+record=\{viewingRecord\}\s+canEdit=\{canEditSprays\}/.test(CW),
   'sheet mounted with record={viewingRecord} + canEdit={canEditSprays}')
 // onEdit transitions: close sheet → open edit modal.
-assert(/onEdit=\{\(rec\) => \{ setViewingRecord\(null\); setEditingRecord\(rec\) \}\}/.test(CW),
-  'sheet onEdit closes the sheet and opens the existing EditSprayRecordModal')
-assert(/onClose=\{\(\) => setViewingRecord\(null\)\}/.test(CW),
-  'sheet onClose clears viewingRecord state')
+assert(/onEdit=\{\(rec\) => \{ setViewingRecordId\(null\); setEditingRecord\(rec\) \}\}/.test(CW),
+  'sheet onEdit closes the sheet and opens the existing EditSprayRecordModal (S.7b.4 id-based)')
+assert(/onClose=\{\(\) => setViewingRecordId\(null\)\}/.test(CW),
+  'sheet onClose clears viewingRecordId state (S.7b.4)')
 
 // Row is a <button> now (clickable to open sheet).
-assert(/<button\s+type="button"\s+className=\{styles\.selectedDayRow\}\s+onClick=\{\(\) => setViewingRecord\(r\)\}/.test(CW),
-  'completed row is a <button> that opens the sheet on click')
+assert(/<button\s+type="button"\s+className=\{styles\.selectedDayRow\}\s+onClick=\{\(\) => setViewingRecordId\(r\.id\)\}/.test(CW),
+  'completed row is a <button> that opens the sheet on click (S.7b.4 id-based)')
 
 // CSS wires button-as-row.
 assert(/button\.selectedDayRow/.test(CW.replace(/[\s\S]*$/, '') + '') || true,

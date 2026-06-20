@@ -132,10 +132,20 @@ export default function SprayCalendarWorkspace() {
   const [jumpInput, setJumpInput] = useState('')
   // Phase S.7a — Currently-editing record. Mirrors Records' pattern.
   const [editingRecord, setEditingRecord] = useState(null)
-  // Phase S.7b — Currently-viewed record in the full application sheet.
+  // Phase S.7b — Currently-viewed record id in the full application sheet.
   // Distinct from editingRecord: the sheet is read-only first; an
   // explicit Edit button transitions to the existing edit modal.
-  const [viewingRecord, setViewingRecord] = useState(null)
+  //
+  // Phase S.7b.4 — Store the ID rather than the full record object so
+  // the sheet always renders the LIVE record from the store. After a
+  // chemical-edit save, patchSpray() updates the store; the next
+  // render finds the fresh record via this id lookup and the sheet
+  // re-renders with the saved products — no manual sync needed.
+  const [viewingRecordId, setViewingRecordId] = useState(null)
+  const viewingRecord = useMemo(
+    () => (Array.isArray(sprays) ? sprays.find(r => r.id === viewingRecordId) : null) ?? null,
+    [sprays, viewingRecordId],
+  )
 
   // Phase S.7a — Permission gate. The worker is the source of truth
   // (POST /api/sprays/:id gated by canEditSprays); this client gate
@@ -398,7 +408,7 @@ export default function SprayCalendarWorkspace() {
                         <button
                           type="button"
                           className={styles.selectedDayRow}
-                          onClick={() => setViewingRecord(r)}
+                          onClick={() => setViewingRecordId(r.id)}
                           aria-label={`View spray application sheet for ${areas.join(', ') || r.date}`}
                         >
                           <div className={styles.completedRowBody}>
@@ -497,8 +507,8 @@ export default function SprayCalendarWorkspace() {
         <SprayApplicationSheetModal
           record={viewingRecord}
           canEdit={canEditSprays}
-          onEdit={(rec) => { setViewingRecord(null); setEditingRecord(rec) }}
-          onClose={() => setViewingRecord(null)}
+          onEdit={(rec) => { setViewingRecordId(null); setEditingRecord(rec) }}
+          onClose={() => setViewingRecordId(null)}
         />
       )}
 

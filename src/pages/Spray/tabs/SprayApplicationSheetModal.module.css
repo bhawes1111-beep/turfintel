@@ -376,6 +376,16 @@
   display: inline-block;
 }
 
+/* Phase S.7b.4 — When a row has an inventory link but no quantity,
+   surface a separate, slightly louder warning so the user knows
+   inventory won't be touched. */
+.chemNoQuantityWarn {
+  font-size: 10.5px;
+  color: rgba(254, 215, 170, 0.95);
+  margin-top: 3px;
+  display: inline-block;
+}
+
 .chemRemoveBtn {
   background: rgba(248, 113, 113, 0.18);
   border: 1px solid rgba(248, 113, 113, 0.55);

@@ -54,6 +54,11 @@ subscribeCourseChange(() => { if (hasBooted) refreshSpraysData() })
 
 export async function patchSpray(id, updates) {
   const prev = state.records
+  // Phase S.7b.4 — Optimistic merge. For a products-change PATCH, the
+  // spread `{ ...r, ...updates }` wholesale replaces .products, which
+  // matches the server contract. Other PATCH callers (S.5a.1 edit
+  // modal, S.3 snapshot backfill) don't include `.products` so this
+  // line is also safe for application-only edits.
   const next = prev.map(r => r.id === id ? { ...r, ...updates } : r)
   setState({ records: next })
   try {
@@ -62,7 +67,18 @@ export async function patchSpray(id, updates) {
       headers: mutationHeaders(),
       body:    JSON.stringify(updates),
     })
+    // The worker returns the fully-hydrated record (rowToRecord with
+    // joined products + areas), so this single setState is enough —
+    // useSpraysData() subscribers re-render with the saved data.
     setState({ records: state.records.map(r => r.id === id ? saved : r) })
+    // Phase S.7b.4 — Belt-and-suspenders refresh when products were
+    // edited. If the worker's hydrated response ever drifts from the
+    // canonical list response (e.g. soft-delete state, snapshot
+    // backfill), refreshSpraysData re-pulls /api/sprays and rebuilds
+    // the store so the calendar/sheet always reflect persisted state.
+    if (Array.isArray(updates?.products)) {
+      refreshSpraysData().catch(() => { /* non-fatal — saved already in store */ })
+    }
     return saved
   } catch (err) {
     setState({ error: err.message })

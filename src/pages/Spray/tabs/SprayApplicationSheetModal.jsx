@@ -375,6 +375,16 @@ export default function SprayApplicationSheetModal({
                                 Not linked to inventory — record will save but no inventory deduction.
                               </span>
                             )}
+                            {/* Phase S.7b.4 — Picked an inventory item but
+                                quantity is blank or zero → no deduction will
+                                happen. Surface this explicitly so the user
+                                doesn't think saving without a quantity will
+                                still adjust inventory. */}
+                            {r.inventoryItemId && (r.quantityUsed === '' || r.quantityUsed == null || Number(r.quantityUsed) <= 0) && (
+                              <span className={styles.chemNoQuantityWarn} role="status">
+                                Quantity used is blank — inventory will not be deducted for this row.
+                              </span>
+                            )}
                           </label>
                           <label className={styles.chemEditField}>
                             <span className={styles.chemEditLabel}>Name override</span>
