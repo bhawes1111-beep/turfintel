@@ -141,21 +141,25 @@ assert(/return saved/.test(STORE),
   'patchSpray still returns the saved record so callers can chain on it')
 
 // ── FIX 3: Blank-quantity inventory-skip warning ──────────────────
-section('FIX 3: Sheet warns when row has inventory link but blank quantity')
+section('FIX 3: Sheet warns when row has inventory link but blank/invalid quantity')
 
-assert(/r\.inventoryItemId && \(r\.quantityUsed === '' \|\| r\.quantityUsed == null \|\| Number\(r\.quantityUsed\) <= 0\)/.test(SHEET),
-  'warning conditional: linked AND (blank OR null OR 0) → warn')
-assert(/Quantity used is blank — inventory will not be deducted for this row\./.test(SHEET),
-  'warning copy is specific about the consequence (no deduction)')
-assert(/chemNoQuantityWarn/.test(SHEET) && /chemNoQuantityWarn/.test(SHEET_CSS),
-  '.chemNoQuantityWarn class rendered + styled (distinct from .chemNoInventoryWarn)')
+// Phase S.7b.5 — Per-row warning markup was unified into a single
+// rowStatus()-driven render. The old chemNoQuantityWarn span is
+// kept as a CSS fallback but the render path is now the blocking
+// warn class. Specific copy is still pinned, just on the new tree.
+assert(/Enter quantity used to deduct inventory for this row/.test(SHEET),
+  'blank-quantity warning copy distinguishes from zero (S.7b.5: "Enter quantity used to deduct…")')
+assert(/Quantity used must be greater than 0 to deduct inventory/.test(SHEET),
+  'zero/negative-quantity warning copy is specific (S.7b.5: "must be greater than 0…")')
+assert(/chemBlockingWarn/.test(SHEET) && /chemBlockingWarn/.test(SHEET_CSS),
+  '.chemBlockingWarn class rendered + styled for save-blocking states')
 
-// The two warnings are mutually exclusive guards:
-//   no inventory link → "Not linked to inventory" warning fires
-//   has inventory link + blank/zero qty → "Quantity used is blank" warning fires
-// Both definitions live in the same render block.
-assert(/!r\.inventoryItemId &&[\s\S]{0,1200}r\.inventoryItemId && \(r\.quantityUsed/.test(SHEET),
-  'both warnings rendered conditionally: !inventoryItemId for missing link, inventoryItemId+blank-qty for missing qty')
+// rowStatus() helper covers all the conditional branches the old
+// inline regex used to enforce.
+assert(/function rowStatus\(r\)/.test(SHEET),
+  'rowStatus(r) helper drives every per-row warning + the save-block decision (S.7b.5)')
+assert(/kind === 'qty-blank'/.test(SHEET) && /kind === 'qty-nonpositive'/.test(SHEET),
+  'rowStatus distinguishes qty-blank vs qty-nonpositive (S.7b.5)')
 
 // ── Save handler still calls patchSpray with products payload ────
 section('Sheet save handler — unchanged payload shape (regression couple)')

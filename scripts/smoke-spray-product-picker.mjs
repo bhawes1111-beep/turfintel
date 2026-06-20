@@ -151,8 +151,10 @@ assert(/productPickerOptions\.find\(p => p\.id === e\.target\.value\)/.test(BUIL
 // ── SprayApplicationSheetModal uses the picker in chemical edit ────
 section('SprayApplicationSheetModal — picker per draft row + no-inventory warning')
 
-assert(/import SprayProductPicker, \{\s*\n?\s*mapInventoryItemToProductRow,\s*\n?\s*\} from '\.\/SprayProductPicker'/.test(SHEET),
-  'sheet imports SprayProductPicker + mapInventoryItemToProductRow')
+// Phase S.7b.5 — sheet also imports useSprayProductOptions so it can
+// look up the live on-hand quantity for each row's picked product.
+assert(/import SprayProductPicker, \{\s*\n?\s*mapInventoryItemToProductRow,\s*\n?\s*useSprayProductOptions,\s*\n?\s*\} from '\.\/SprayProductPicker'/.test(SHEET),
+  'sheet imports SprayProductPicker + mapInventoryItemToProductRow + useSprayProductOptions (S.7b.5)')
 
 // Picker rendered per draft row.
 assert(/<SprayProductPicker\s+value=\{r\.inventoryItemId \?\? ''\}/.test(SHEET),
@@ -170,9 +172,11 @@ assert(/epaNumberSnapshot:\s*null/.test(SHEET) && /activeIngredientsSnapshot: nu
 assert(/patchDraftRow\(i, \{ inventoryItemId: null, productCatalogId: null \}\)/.test(SHEET),
   'clearing the picker resets both inventoryItemId + productCatalogId')
 
-// No-inventory warning per row.
-assert(/!r\.inventoryItemId && \(\s*\n?\s*<span className=\{styles\.chemNoInventoryWarn\}/.test(SHEET),
-  'warning rendered when draft row lacks inventoryItemId')
+// No-inventory warning per row — now rendered via the rowStatus()
+// helper (S.7b.5) instead of an inline conditional, but the same
+// copy is still surfaced. .chemNoInventoryWarn class still styled.
+assert(/kind === 'no-link'/.test(SHEET),
+  'rowStatus emits kind: "no-link" when r.inventoryItemId is falsy (drives the warning)')
 assert(/Not linked to inventory — record will save but no inventory deduction/.test(SHEET),
   'warning copy matches the spec ("save but no inventory deduction")')
 assert(/\.chemNoInventoryWarn\s*\{/.test(SHEET_CSS),

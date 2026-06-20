@@ -364,6 +364,16 @@ export async function updateSpray(env, id, request) {
       if (p.rate != null && Number.isNaN(Number(p.rate))) {
         return badRequest(`Invalid rate for ${name}`)
       }
+      // Phase S.7b.5 — Inventory-linked rows must have a positive
+      // quantity. Otherwise the row would silently save without
+      // deducting (replaceSprayProducts guards on quantityUsed > 0),
+      // which violates the user's expectation that linking a product
+      // implies an inventory adjustment.
+      if (p.inventoryItemId && (p.quantityUsed == null || Number(p.quantityUsed) <= 0)) {
+        return badRequest(
+          `Inventory-linked product rows require quantityUsed greater than 0 (row: ${name})`,
+        )
+      }
     }
     productEditApplied = true
     await replaceSprayProducts(env, id, body.products)

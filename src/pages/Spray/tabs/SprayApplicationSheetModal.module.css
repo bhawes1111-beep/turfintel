@@ -378,12 +378,40 @@
 
 /* Phase S.7b.4 — When a row has an inventory link but no quantity,
    surface a separate, slightly louder warning so the user knows
-   inventory won't be touched. */
+   inventory won't be touched. (Kept as a fallback; S.7b.5 prefers
+   the blocking-warn class for save-blocking states.) */
 .chemNoQuantityWarn {
   font-size: 10.5px;
   color: rgba(254, 215, 170, 0.95);
   margin-top: 3px;
   display: inline-block;
+}
+
+/* Phase S.7b.5 — Save-blocking warning. Red bg + border so the user
+   knows clicking Save chemicals will be rejected until they fix
+   this row. */
+.chemBlockingWarn {
+  font-size: 10.5px;
+  color: rgba(254, 202, 202, 1);
+  background: rgba(220, 38, 38, 0.18);
+  border: 1px solid rgba(220, 38, 38, 0.55);
+  border-radius: 4px;
+  padding: 2px 6px;
+  margin-top: 3px;
+  display: inline-block;
+}
+
+/* Phase S.7b.5 — Calm informational status line for valid rows.
+   Shows "Will deduct N unit · X on hand" + optional warnings. */
+.chemStatusLine {
+  font-size: 10.5px;
+  color: rgba(186, 230, 253, 0.95);
+  margin-top: 3px;
+  display: inline-block;
+}
+
+.chemStatusSubWarn {
+  color: rgba(254, 215, 170, 0.95);
 }
 
 .chemRemoveBtn {

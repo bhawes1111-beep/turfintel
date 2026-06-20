@@ -36,6 +36,7 @@ import { useAuth } from '../../../context/AuthContext'
 // reverse old inventory + deduct new inventory + refresh snapshots).
 import SprayProductPicker, {
   mapInventoryItemToProductRow,
+  useSprayProductOptions,
 } from './SprayProductPicker'
 
 function fmt(v, fallback = '—') {
@@ -82,7 +83,45 @@ export default function SprayApplicationSheetModal({
   )
   const areas    = Array.isArray(record?.areas) ? record.areas : []
 
+  // Phase S.7b.5 — Live inventory lookup so each draft row can show
+  // the actual remaining stock for its picked product. Same hook the
+  // picker uses; sharing it means there's only one filtered list in
+  // memory.
+  const inventoryItems = useSprayProductOptions()
+  const inventoryById = useMemo(() => {
+    const map = new Map()
+    for (const it of inventoryItems) map.set(it.id, it)
+    return map
+  }, [inventoryItems])
+
   if (!record) return null
+
+  // Phase S.7b.5 — Per-row inventory + validation status.
+  // Returns one of:
+  //   { kind: 'no-link' }                                  — no inventoryItemId
+  //   { kind: 'qty-blank' }                                — link, blank qty
+  //   { kind: 'qty-invalid' }                              — link, NaN qty
+  //   { kind: 'qty-nonpositive' }                          — link, ≤ 0
+  //   { kind: 'ok', qty, unit, available, low, outOfStock } — link, valid
+  // The save handler uses `kind` to block submission; the row chrome
+  // uses it to pick the right inline warning + status copy.
+  function rowStatus(r) {
+    if (!r?.inventoryItemId) return { kind: 'no-link' }
+    if (r.quantityUsed === '' || r.quantityUsed == null) return { kind: 'qty-blank' }
+    const qty = Number(r.quantityUsed)
+    if (Number.isNaN(qty)) return { kind: 'qty-invalid' }
+    if (qty <= 0) return { kind: 'qty-nonpositive' }
+    const inv       = inventoryById.get(r.inventoryItemId)
+    const available = inv?.quantity ?? null
+    return {
+      kind:        'ok',
+      qty,
+      unit:        r.unit || inv?.unit || '',
+      available,
+      low:         available != null && available > 0 && available < qty,
+      outOfStock:  available != null && available <= 0,
+    }
+  }
 
   function startEditingChemicals() {
     setDraftRows(products.map(p => ({
@@ -131,17 +170,32 @@ export default function SprayApplicationSheetModal({
       toast.info?.('Completed spray must have at least one product row.')
       return
     }
+    // Phase S.7b.5 — Quantity validation for inventory-linked rows.
+    // An inventory-linked row that saves with blank, zero, negative,
+    // or non-numeric quantityUsed will silently skip inventory
+    // deduction at the worker level. Block save now so the user sees
+    // a clean error rather than a "saved" record that left inventory
+    // untouched.
     for (const r of draftRows) {
       if (!r.name || !String(r.name).trim()) {
         toast.info?.('Each product row needs a name.')
         return
       }
-      if (r.quantityUsed !== '' && r.quantityUsed != null && Number.isNaN(Number(r.quantityUsed))) {
-        toast.info?.(`Quantity for "${r.name}" is not a number.`)
-        return
-      }
       if (r.rate !== '' && r.rate != null && Number.isNaN(Number(r.rate))) {
         toast.info?.(`Rate for "${r.name}" is not a number.`)
+        return
+      }
+      const status = rowStatus(r)
+      if (status.kind === 'qty-invalid') {
+        toast.error?.(`Quantity for "${r.name}" is not a number.`)
+        return
+      }
+      if (status.kind === 'qty-blank') {
+        toast.error?.(`Enter a quantity used greater than 0 for "${r.name}" (linked to inventory).`)
+        return
+      }
+      if (status.kind === 'qty-nonpositive') {
+        toast.error?.(`Quantity used for "${r.name}" must be greater than 0 to deduct inventory.`)
         return
       }
     }
@@ -370,21 +424,58 @@ export default function SprayApplicationSheetModal({
                               }}
                               ariaLabel={`Product ${i + 1} selection`}
                             />
-                            {!r.inventoryItemId && (
-                              <span className={styles.chemNoInventoryWarn} role="status">
-                                Not linked to inventory — record will save but no inventory deduction.
-                              </span>
-                            )}
-                            {/* Phase S.7b.4 — Picked an inventory item but
-                                quantity is blank or zero → no deduction will
-                                happen. Surface this explicitly so the user
-                                doesn't think saving without a quantity will
-                                still adjust inventory. */}
-                            {r.inventoryItemId && (r.quantityUsed === '' || r.quantityUsed == null || Number(r.quantityUsed) <= 0) && (
-                              <span className={styles.chemNoQuantityWarn} role="status">
-                                Quantity used is blank — inventory will not be deducted for this row.
-                              </span>
-                            )}
+                            {/* Phase S.7b.5 — Single status line per row,
+                                driven by rowStatus(). Distinguishes blank
+                                vs zero vs valid + surfaces actual on-hand
+                                stock when a quantity is entered. */}
+                            {(() => {
+                              const s = rowStatus(r)
+                              if (s.kind === 'no-link') {
+                                return (
+                                  <span className={styles.chemNoInventoryWarn} role="status">
+                                    Not linked to inventory — record will save but no inventory deduction.
+                                  </span>
+                                )
+                              }
+                              if (s.kind === 'qty-blank') {
+                                return (
+                                  <span className={styles.chemBlockingWarn} role="status">
+                                    Enter quantity used to deduct inventory for this row.
+                                  </span>
+                                )
+                              }
+                              if (s.kind === 'qty-invalid') {
+                                return (
+                                  <span className={styles.chemBlockingWarn} role="status">
+                                    Quantity used must be a number.
+                                  </span>
+                                )
+                              }
+                              if (s.kind === 'qty-nonpositive') {
+                                return (
+                                  <span className={styles.chemBlockingWarn} role="status">
+                                    Quantity used must be greater than 0 to deduct inventory.
+                                  </span>
+                                )
+                              }
+                              // kind === 'ok'
+                              return (
+                                <span className={styles.chemStatusLine} role="status">
+                                  Will deduct {s.qty}{s.unit ? ` ${s.unit}` : ''} from inventory
+                                  {s.available != null && ` · ${s.available}${s.unit ? ` ${s.unit}` : ''} on hand`}
+                                  {s.outOfStock && (
+                                    <span className={styles.chemStatusSubWarn}>
+                                      {' · '}Selected product has 0 on hand.
+                                    </span>
+                                  )}
+                                  {!s.outOfStock && s.low && (
+                                    <span className={styles.chemStatusSubWarn}>
+                                      {' · '}Insufficient stock for full deduction.
+                                    </span>
+                                  )}
+                                </span>
+                              )
+                            })()}
                           </label>
                           <label className={styles.chemEditField}>
                             <span className={styles.chemEditLabel}>Name override</span>
