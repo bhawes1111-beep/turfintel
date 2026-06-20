@@ -25,6 +25,14 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { createSpray, useSpraysData } from '../../../utils/sprays/spraysStore'
 import { useInventoryData, recordInventoryUsage } from '../../../utils/inventory/inventoryStore'
+// Phase S.7b.3 — Shared spray product picker. BuildSpraySheet keeps
+// its rich table row (stock chips, intel, unit conversion warnings)
+// but delegates option building + selection mapping to the shared
+// helpers so the sheet editor stays in lockstep.
+import SprayProductPicker, {
+  useSprayProductOptions,
+  mapInventoryItemToProductRow,
+} from './SprayProductPicker'
 import { useImportedLabels } from '../../../utils/inventory/labelImportStore'
 import { useProductCatalog } from '../../../utils/productCatalog/productCatalogStore'
 import { resolveSprayProductIntel } from '../../../utils/productCatalog/resolveSprayProductIntel'
@@ -492,11 +500,11 @@ export default function BuildSpraySheet({ initialDate, onCommit } = {}) {
   }
 
   // ── Derived data ──────────────────────────────────────────────────────
-  const productPickerOptions = useMemo(() => {
-    return inventoryProducts
-      .filter(p => p.kind === 'product' || p.kind === 'chemical' || p.kind === 'fertilizer')
-      .sort((a, b) => a.name.localeCompare(b.name))
-  }, [inventoryProducts])
+  // Phase S.7b.3 — Shared spray product picker options. Same filter
+  // + sort the inline computation used since S.4; now it's one
+  // function so BuildSpraySheet and SprayApplicationSheetModal stay
+  // in lockstep on which inventory kinds count as spray-eligible.
+  const productPickerOptions = useSprayProductOptions()
 
   const operatorOptions = useMemo(() => {
     return (crewEmployees ?? [])
@@ -785,12 +793,11 @@ export default function BuildSpraySheet({ initialDate, onCommit } = {}) {
     }))
   }
   function pickInventoryForRow(rowId, inv) {
-    setRow(rowId, {
-      inventoryItemId: inv.id,
-      name:            inv.name,
-      type:            inv.category ?? '',
-      unit:            inv.unit ?? 'oz',
-    })
+    // Phase S.7b.3 — Delegate the {inventoryItemId, name, type, unit,
+    // productCatalogId} mapping to the shared helper so it stays in
+    // sync with the sheet editor's mapping.
+    const patch = mapInventoryItemToProductRow(inv)
+    if (patch) setRow(rowId, patch)
   }
   function onAreaChange(label) {
     const opt = areaOpts.find(a => a.label === label)

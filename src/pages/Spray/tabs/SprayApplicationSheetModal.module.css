@@ -355,7 +355,8 @@
   color: rgba(255, 255, 255, 0.45);
 }
 
-.chemEditField input {
+.chemEditField input,
+.chemEditField select {
   background: rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.18);
   color: rgba(255, 255, 255, 0.92);
@@ -363,6 +364,16 @@
   padding: 4px 8px;
   font-size: 12.5px;
   width: 100%;
+}
+
+/* Phase S.7b.3 — Inline warning when a draft row has no inventory
+   link. Surface lives inside the picker label so the visual
+   relationship is obvious. */
+.chemNoInventoryWarn {
+  font-size: 10.5px;
+  color: rgba(254, 240, 138, 0.92);
+  margin-top: 3px;
+  display: inline-block;
 }
 
 .chemRemoveBtn {

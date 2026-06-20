@@ -30,6 +30,13 @@ import { recordNeedsInfo } from '../../../utils/sprays/recordNeedsInfo'
 import { patchSpray } from '../../../utils/sprays/spraysStore'
 import { useToast } from '../../../utils/feedback/toastContext'
 import { useAuth } from '../../../context/AuthContext'
+// Phase S.7b.3 — Real product picker. Same shared component
+// BuildSpraySheet uses, so added/edited rows carry inventoryItemId
+// + productCatalogId out of the gate (S.7b.2 backend can then
+// reverse old inventory + deduct new inventory + refresh snapshots).
+import SprayProductPicker, {
+  mapInventoryItemToProductRow,
+} from './SprayProductPicker'
 
 function fmt(v, fallback = '—') {
   if (v == null) return fallback
@@ -333,12 +340,49 @@ export default function SprayApplicationSheetModal({
                       <li key={i} className={styles.chemEditRow}>
                         <div className={styles.chemEditFieldGrid}>
                           <label className={styles.chemEditField}>
-                            <span className={styles.chemEditLabel}>Name</span>
+                            <span className={styles.chemEditLabel}>Product</span>
+                            {/* Phase S.7b.3 — Shared inventory-backed
+                                picker. Selecting an item sets
+                                inventoryItemId + productCatalogId +
+                                name + type + unit in one go (via
+                                mapInventoryItemToProductRow). Manual
+                                rename available via the optional
+                                name override below. */}
+                            <SprayProductPicker
+                              value={r.inventoryItemId ?? ''}
+                              onChange={(inv) => {
+                                const patch = mapInventoryItemToProductRow(inv)
+                                if (patch) {
+                                  // Selecting a new inventory item
+                                  // resets the per-row snapshots so
+                                  // the worker re-enriches them on
+                                  // save (S.7b.2 contract).
+                                  patchDraftRow(i, {
+                                    ...patch,
+                                    epaNumberSnapshot:        null,
+                                    activeIngredientsSnapshot: null,
+                                    productCostSnapshot:      null,
+                                    productCostUnitSnapshot:  null,
+                                  })
+                                } else {
+                                  patchDraftRow(i, { inventoryItemId: null, productCatalogId: null })
+                                }
+                              }}
+                              ariaLabel={`Product ${i + 1} selection`}
+                            />
+                            {!r.inventoryItemId && (
+                              <span className={styles.chemNoInventoryWarn} role="status">
+                                Not linked to inventory — record will save but no inventory deduction.
+                              </span>
+                            )}
+                          </label>
+                          <label className={styles.chemEditField}>
+                            <span className={styles.chemEditLabel}>Name override</span>
                             <input
                               type="text"
                               value={r.name}
                               onChange={e => patchDraftRow(i, { name: e.target.value })}
-                              placeholder="Product name"
+                              placeholder="Auto-filled from picker"
                               aria-label={`Product ${i + 1} name`}
                             />
                           </label>
