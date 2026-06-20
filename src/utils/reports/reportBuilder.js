@@ -404,6 +404,240 @@ export function buildSprayCompliancePacket(records = [], options = {}) {
   })
 }
 
+// ── Phase S.5c.3 — Spray Product Usage Totals ─────────────────────────────────
+//
+// Rolls up per-product totals across a record set. Distinct from the
+// compliance packet (S.5c.2) which is record-first: this report is
+// product-first. For each product+unit pair (we never collapse rows
+// that disagree on unit — see grouping note below) we surface:
+//   • record count
+//   • total quantity
+//   • total cost (from per-product totalCostSnapshot)
+//   • first / last used date
+//   • EPA + active-ingredient snapshots (from the most-recent record
+//     that carried them — read-only display, never re-resolved)
+//   • per-record contribution detail (date / applicator / area /
+//     quantity / cost)
+//
+// Grouping rule: products are grouped by `(catalogId ?? name) + ' · ' + unit`.
+// Two records spraying the same product but reporting in different
+// units (e.g. "oz" vs "gal") render as separate rows so an auditor
+// never sees a meaningless mixed-unit sum. The cover section's "Total
+// Unique Products" still counts distinct catalogId/name (ignoring
+// unit) so the supervisor sees the natural product count.
+//
+// Pure: no fetch, no mutation, no store reads. Caller passes in the
+// already-filtered record set.
+
+function productUsageGroupKey(product) {
+  // Prefer catalogId so a renamed product still groups consistently.
+  // Fall back to name. Always append unit so disagreeing units split.
+  const id   = product?.productCatalogId ?? product?.name ?? '(unnamed)'
+  const unit = (product?.unit ?? '').trim() || '—'
+  return `${id} · ${unit}`
+}
+
+export function buildSprayProductUsageReport(records = [], options = {}) {
+  const {
+    title           = 'Product Usage Totals',
+    dateRange,
+    courseName,
+    filtersSummary,
+    includeRecordDetail = true,
+  } = options
+
+  const safeRecords = Array.isArray(records) ? records : []
+
+  // Accumulator: groupKey → {name, unit, catalogId, epa, ai, recordIds,
+  // qty, cost, firstDate, lastDate, contributions[]}.
+  const byGroup = new Map()
+  let grandCost = 0
+  let hasAnyCost = false
+
+  for (const r of safeRecords) {
+    for (const p of (r.products ?? [])) {
+      if (!p) continue
+      const key = productUsageGroupKey(p)
+      let g = byGroup.get(key)
+      if (!g) {
+        g = {
+          key,
+          name:          p.name ?? '(unnamed)',
+          unit:          (p.unit ?? '').trim() || '—',
+          catalogId:     p.productCatalogId ?? null,
+          // Snapshots — first occurrence wins. We deliberately do NOT
+          // re-resolve from the live catalog; if a later record
+          // captured a fresher snapshot, the supervisor sees both via
+          // contributions[].
+          epa:           p.epaNumberSnapshot         ?? null,
+          ai:            p.activeIngredientsSnapshot ?? null,
+          recordIds:     new Set(),
+          totalQty:      0,
+          hasQty:        false,
+          totalCost:     0,
+          hasCost:       false,
+          firstDate:     null,
+          lastDate:      null,
+          contributions: [],
+        }
+        byGroup.set(key, g)
+      }
+      // Backfill snapshots if a later record carries them.
+      if (!g.epa && p.epaNumberSnapshot)         g.epa = p.epaNumberSnapshot
+      if (!g.ai  && p.activeIngredientsSnapshot) g.ai  = p.activeIngredientsSnapshot
+
+      g.recordIds.add(r.id)
+
+      const qty = Number(p.quantityUsed)
+      if (Number.isFinite(qty) && qty > 0) {
+        g.totalQty += qty
+        g.hasQty    = true
+      }
+
+      const cost = Number(p.totalCostSnapshot)
+      if (Number.isFinite(cost) && cost >= 0) {
+        g.totalCost += cost
+        g.hasCost    = true
+        grandCost   += cost
+        hasAnyCost   = true
+      }
+
+      if (r.date) {
+        if (!g.firstDate || r.date < g.firstDate) g.firstDate = r.date
+        if (!g.lastDate  || r.date > g.lastDate)  g.lastDate  = r.date
+      }
+
+      g.contributions.push({
+        date:        r.date        ?? null,
+        applicator:  r.applicator  ?? null,
+        area:        r.area        ?? null,
+        quantity:    Number.isFinite(qty)  && qty  > 0  ? qty  : null,
+        cost:        Number.isFinite(cost) && cost >= 0 ? cost : null,
+      })
+    }
+  }
+
+  const groups = [...byGroup.values()].sort((a, b) => {
+    // Sort by total cost desc when costs exist, else by record count desc.
+    if (b.totalCost !== a.totalCost) return b.totalCost - a.totalCost
+    return b.recordIds.size - a.recordIds.size
+  })
+
+  // "Unique products" ignores unit splits — natural product count.
+  const uniqueProductIds = new Set(
+    safeRecords.flatMap(r => (r.products ?? []).map(p => p?.productCatalogId ?? p?.name).filter(Boolean)),
+  )
+
+  const sections = [
+    createSection({
+      title: 'Product Usage Summary',
+      type:  SECTION_TYPE.FIELDS,
+      data: {
+        'Course':           courseName     || '—',
+        'Date Range':       dateRange      || '—',
+        'Filters Applied':  filtersSummary || 'None',
+        'Total Records':    safeRecords.length,
+        'Unique Products':  uniqueProductIds.size,
+        'Total Cost':       hasAnyCost ? `$${grandCost.toFixed(2)}` : '—',
+        'Generated':        new Date().toISOString(),
+      },
+    }),
+  ]
+
+  if (groups.length > 0) {
+    sections.push(createSection({
+      title: 'Per-Product Totals',
+      type:  SECTION_TYPE.TABLE,
+      data: {
+        columns: [
+          'Product', 'Unit', 'Records', 'Total Qty', 'Total Cost', 'Avg / Use', 'First Used', 'Last Used',
+        ],
+        rows: groups.map(g => {
+          const uses    = g.recordIds.size
+          const avgCost = g.hasCost && uses > 0 ? g.totalCost / uses : null
+          return [
+            g.name,
+            g.unit,
+            uses,
+            g.hasQty  ? +g.totalQty.toFixed(3)             : '—',
+            g.hasCost ? `$${g.totalCost.toFixed(2)}`       : '—',
+            avgCost != null ? `$${avgCost.toFixed(2)}`     : '—',
+            g.firstDate ?? '—',
+            g.lastDate  ?? '—',
+          ]
+        }),
+      },
+    }))
+  }
+
+  // Per-product detail — snapshots + optional contributing-record list.
+  if (includeRecordDetail) {
+    for (const g of groups) {
+      const fields = {
+        'Product':            g.name,
+        'Unit':               g.unit,
+        'EPA Number':         g.epa ?? '—',
+        'Active Ingredients': g.ai  ?? '—',
+        'Records':            g.recordIds.size,
+        'Total Quantity':     g.hasQty  ? `${+g.totalQty.toFixed(3)} ${g.unit}` : '—',
+        'Total Cost':         g.hasCost ? `$${g.totalCost.toFixed(2)}` : '—',
+        'First Used':         g.firstDate ?? '—',
+        'Last Used':          g.lastDate  ?? '—',
+      }
+      sections.push(createSection({
+        title: `${g.name} (${g.unit})`,
+        type:  SECTION_TYPE.FIELDS,
+        data:  fields,
+      }))
+      // Contributing-record table — separate section so it nests cleanly.
+      if (g.contributions.length > 0) {
+        sections.push(createSection({
+          title: `${g.name} — Contributing Records`,
+          type:  SECTION_TYPE.TABLE,
+          data: {
+            columns: ['Date', 'Applicator', 'Area', `Qty (${g.unit})`, 'Cost'],
+            rows: g.contributions
+              .slice()
+              .sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''))
+              .map(c => [
+                c.date       ?? '—',
+                c.applicator ?? '—',
+                c.area       ?? '—',
+                c.quantity != null ? +c.quantity.toFixed(3) : '—',
+                c.cost     != null ? `$${c.cost.toFixed(2)}` : '—',
+              ]),
+          },
+        }))
+      }
+    }
+  }
+
+  if (groups.length === 0) {
+    sections.push(createSection({
+      title: 'No product usage',
+      type:  SECTION_TYPE.TEXT,
+      data:  'The filter set produced no records with product rows. Adjust the filters and try again.',
+    }))
+  }
+
+  return createReport({
+    module:        REPORT_MODULE.SPRAY,
+    type:          REPORT_TYPE.SPRAY_SUMMARY,
+    title,
+    generatedBy:   'spray-module',
+    sections,
+    metadata: {
+      dateRange:        dateRange ?? null,
+      courseName:       courseName ?? null,
+      recordCount:      safeRecords.length,
+      productGroupCount: groups.length,
+      uniqueProductCount: uniqueProductIds.size,
+      grandCost:        hasAnyCost ? +grandCost.toFixed(2) : null,
+    },
+    exportFormats: STANDARD_FORMATS,
+  })
+}
+
 // ── Equipment ─────────────────────────────────────────────────────────────────
 
 /**

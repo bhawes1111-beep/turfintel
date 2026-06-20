@@ -1,7 +1,11 @@
 import { useState, useMemo, useEffect } from 'react'
 import { TYPE_COLORS } from '../../../data/spray'
 import { useSpraysData } from '../../../utils/sprays/spraysStore'
-import { buildSpraySummaryReport, buildSprayCompliancePacket } from '../../../utils/reports/reportBuilder'
+import {
+  buildSpraySummaryReport,
+  buildSprayCompliancePacket,
+  buildSprayProductUsageReport,
+} from '../../../utils/reports/reportBuilder'
 import { useToast } from '../../../utils/feedback/toastContext'
 import { useCourse } from '../../../context/CourseContext'
 import { createAttachmentRef } from '../../../utils/reports/reportSchemas'
@@ -283,6 +287,38 @@ export default function SprayRecords() {
     }))
   }
 
+  // Phase S.5c.3 — Product Usage Totals report. Same filtered-set
+  // contract as the compliance packet (uses `visible`, not raw
+  // SPRAY_RECORDS) and the same empty-set guard. Reuses the cover
+  // strings (dateRange + filtersSummary) so the two PDFs read as
+  // a matched pair when stapled together.
+  function handleExportProductUsage() {
+    if (visible.length === 0) {
+      toast.info('No records match the current filters. Adjust the filters and try again.')
+      return
+    }
+    const dateRange =
+      effStart && effEnd ? `${effStart} → ${effEnd}`
+      : effStart         ? `On or after ${effStart}`
+      : effEnd           ? `On or before ${effEnd}`
+      : 'All dates'
+    const filterBits = []
+    if (search)                     filterBits.push(`Search: "${search}"`)
+    if (typeFilter      !== 'All')  filterBits.push(`Type: ${typeFilter}`)
+    if (statusFilter    !== 'All')  filterBits.push(`Status: ${statusFilter}`)
+    if (applicatorFilter !== 'All') filterBits.push(`Applicator: ${applicatorFilter}`)
+    if (productFilter   !== 'All')  filterBits.push(`Product: ${productFilter}`)
+    if (needsInfoOnly)              filterBits.push('Needs Info only')
+    const filtersSummary = filterBits.length > 0 ? filterBits.join(' · ') : 'None'
+
+    setActiveReport(buildSprayProductUsageReport(visible, {
+      title:      'Product Usage Totals',
+      dateRange,
+      courseName: activeCourse?.name ?? activeCourse?.shortName ?? null,
+      filtersSummary,
+    }))
+  }
+
   return (
     <div className={styles.tabContent}>
       <WorkspaceSection
@@ -415,6 +451,18 @@ export default function SprayRecords() {
             title="Export the currently filtered records as a printable compliance packet."
           >
             Export Compliance Packet
+          </button>
+          {/* Phase S.5c.3 — Product Usage Totals. Same filter-set
+              contract as the compliance packet; product-first rollup
+              instead of record-first. */}
+          <button
+            type="button"
+            className={styles.exportUsageBtn}
+            onClick={handleExportProductUsage}
+            aria-label="Export filtered records as product usage totals report"
+            title="Export per-product quantities + costs across the currently filtered records."
+          >
+            Export Product Usage
           </button>
         </div>
       </div>

@@ -241,7 +241,9 @@ assert(packet.metadata?.needsInfoCount === 1,
 // ── SprayRecords integration — export button + handler ─────────────
 section('SprayRecords — Export Compliance Packet button wired to filtered set')
 
-assert(/import \{ buildSpraySummaryReport, buildSprayCompliancePacket \} from '\.\.\/\.\.\/\.\.\/utils\/reports\/reportBuilder'/.test(RECORDS),
+// Phase S.5c.3 expanded this import to a multi-line destructure that
+// also pulls in buildSprayProductUsageReport. Match the substring.
+assert(/buildSpraySummaryReport[\s\S]{0,200}buildSprayCompliancePacket[\s\S]{0,300}from '\.\.\/\.\.\/\.\.\/utils\/reports\/reportBuilder'/.test(RECORDS),
   'SprayRecords imports both single + compliance-packet builders')
 assert(/import \{ useToast \} from '\.\.\/\.\.\/\.\.\/utils\/feedback\/toastContext'/.test(RECORDS),
   'SprayRecords imports useToast (for empty-set feedback)')
