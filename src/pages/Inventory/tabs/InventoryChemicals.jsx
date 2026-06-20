@@ -10,6 +10,10 @@ import {
   GroupBadge,
 } from '../../../components/shared/LabelBadges'
 import CatalogChip from '../components/CatalogChip'
+// Phase I.1 — Edit inventory quantity for chemicals (drives spray
+// editor picker stock display).
+import EditInventoryQuantityModal from '../components/EditInventoryQuantityModal'
+import { useAuth } from '../../../context/AuthContext'
 import styles from '../Inventory.module.css'
 
 const TYPES = ['All', 'Fungicide', 'Herbicide', 'Insecticide', 'PGR']
@@ -37,6 +41,10 @@ export default function InventoryChemicals({ onOpenCatalog } = {}) {
   }, [labels])
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('All')
+  // Phase I.1 — Edit quantity modal state + permission gate.
+  const [editingItem, setEditingItem] = useState(null)
+  const { can } = useAuth()
+  const canEditInventory = can('canEditInventory')
 
   const visible = useMemo(() => {
     return chemicals.filter(c => {
@@ -123,6 +131,19 @@ export default function InventoryChemicals({ onOpenCatalog } = {}) {
                   <span className={styles.cardQtyUnit}>{c.unit}</span>
                   <span className={styles.cardReorder}>· reorder at {c.reorderLevel}</span>
                 </div>
+                {/* Phase I.1 — Edit quantity button per chemical card. */}
+                {canEditInventory && (
+                  <div className={styles.cardEditBtnRow}>
+                    <button
+                      type="button"
+                      className={styles.cardEditBtn}
+                      onClick={() => setEditingItem(c)}
+                      aria-label={`Edit quantity for ${c.name}`}
+                    >
+                      Edit quantity
+                    </button>
+                  </div>
+                )}
                 {label && (
                   <>
                     {/* Phase 27C — quick safety + group badges derived from
@@ -159,6 +180,15 @@ export default function InventoryChemicals({ onOpenCatalog } = {}) {
         </div>
       )}
       </WorkspaceSection>
+
+      {/* Phase I.1 — Edit Inventory Quantity modal. */}
+      {editingItem && (
+        <EditInventoryQuantityModal
+          item={editingItem}
+          onClose={() => setEditingItem(null)}
+          onSaved={() => setEditingItem(null)}
+        />
+      )}
     </div>
   )
 }

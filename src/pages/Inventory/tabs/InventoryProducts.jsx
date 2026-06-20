@@ -13,6 +13,11 @@ import CostBasisEditor from '../components/CostBasisEditor'
 import CostBasisImportReview from '../components/CostBasisImportReview'
 // Phase 7Q (1/?) — Manual product entry form for the pilot.
 import ManualProductForm from '../components/ManualProductForm'
+// Phase I.1 — Edit inventory quantity. Wired into the product detail
+// drawer + chemical card so a superintendent can correct on-hand
+// counts without deleting / re-adding items.
+import EditInventoryQuantityModal from '../components/EditInventoryQuantityModal'
+import { useAuth } from '../../../context/AuthContext'
 import styles from '../Inventory.module.css'
 import linkStyles from '../components/CatalogLinkSection.module.css'
 
@@ -67,6 +72,10 @@ export default function InventoryProducts({
   const [catFilter, setCatFilter] = useState('All')
   const [stkFilter, setStkFilter] = useState('All')
   const [selectedId, setSelectedId] = useState(initialSelectedId)
+  // Phase I.1 — Edit quantity modal state + permission gate.
+  const [editingItem, setEditingItem] = useState(null)
+  const { can } = useAuth()
+  const canEditInventory = can('canEditInventory')
 
   // Derive selected product from live state so modal reflects current quantities
   const selected = useMemo(
@@ -294,6 +303,22 @@ export default function InventoryProducts({
 
             <SideDrawer.Body>
 
+                {/* Phase I.1 — Edit quantity affordance. Gated by
+                    canEditInventory (matches worker MUTATION_RULES rule
+                    for /api/inventory). Read-only users see no button. */}
+                {canEditInventory && (
+                  <div className={styles.ipModalEditRow}>
+                    <button
+                      type="button"
+                      className={styles.ipModalEditBtn}
+                      onClick={() => setEditingItem(selected)}
+                      aria-label={`Edit quantity for ${selected.name}`}
+                    >
+                      Edit quantity / unit
+                    </button>
+                  </div>
+                )}
+
                 {/* Product Overview */}
                 <section className={styles.ipModalSection}>
                   <h3 className={styles.ipModalSectionTitle}>Product Overview</h3>
@@ -470,6 +495,16 @@ export default function InventoryProducts({
             await setInventoryCatalogLink(selected.id, productCatalogId)
             setPickerOpen(false)
           }}
+        />
+      )}
+
+      {/* Phase I.1 — Edit Inventory Quantity modal. Same component
+          mounted by InventoryChemicals so both surfaces stay in sync. */}
+      {editingItem && (
+        <EditInventoryQuantityModal
+          item={editingItem}
+          onClose={() => setEditingItem(null)}
+          onSaved={() => setEditingItem(null)}
         />
       )}
 

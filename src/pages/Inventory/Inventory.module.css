@@ -967,3 +967,46 @@
   .moreNavBtn { font-size: 12px; padding: 5px 11px; }
   .moreNav    { gap: 5px; }
 }
+
+/* Phase I.1 — Edit inventory quantity affordance (drawer + cards). */
+.ipModalEditRow {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
+.ipModalEditBtn {
+  background: rgba(74, 222, 128, 0.18);
+  border: 1px solid rgba(74, 222, 128, 0.55);
+  color: rgba(220, 252, 231, 1);
+  border-radius: 4px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ipModalEditBtn:hover {
+  background: rgba(74, 222, 128, 0.32);
+  border-color: rgba(74, 222, 128, 0.85);
+}
+
+.cardEditBtnRow {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
+.cardEditBtn {
+  background: rgba(74, 222, 128, 0.18);
+  border: 1px solid rgba(74, 222, 128, 0.55);
+  color: rgba(220, 252, 231, 1);
+  border-radius: 4px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.cardEditBtn:hover {
+  background: rgba(74, 222, 128, 0.32);
+  border-color: rgba(74, 222, 128, 0.85);
+}
