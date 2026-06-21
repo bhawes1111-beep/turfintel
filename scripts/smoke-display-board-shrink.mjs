@@ -80,9 +80,11 @@ const scaleVarCount = (CSS.match(/var\(--board-bar-scale/g) ?? []).length
 assert(scaleVarCount >= 4,
   `CSS references var(--board-bar-scale) in at least 4 places (found ${scaleVarCount})`)
 
-// Each key target gets the scale.
-assert(/\.boardBars\s*\{[\s\S]{0,800}gap:\s*calc\(\s*18px\s*\*\s*var\(--board-bar-scale/.test(CSS),
-  '.boardBars gap uses calc(18px * var(--board-bar-scale, 1))')
+// Phase DAB.10e — gap moved from .boardBars to .boardBarsInner (the
+// inner wrapper now owns the flex column layout; outer is the
+// clipping bounds container).
+assert(/\.boardBarsInner\s*\{[\s\S]{0,800}gap:\s*calc\(\s*18px\s*\*\s*var\(--board-bar-scale/.test(CSS),
+  '.boardBarsInner gap uses calc(18px * var(--board-bar-scale, 1))')
 assert(/\.boardPersonBar\s*\{[\s\S]{0,600}padding:\s*calc\([\s\S]{0,60}var\(--board-bar-scale/.test(CSS),
   '.boardPersonBar padding uses calc(... * var(--board-bar-scale))')
 assert(/\.boardPersonName\s*\{[\s\S]{0,600}clamp\([\s\S]{0,100}calc\([\s\S]{0,60}var\(--board-bar-scale/.test(CSS),
@@ -103,9 +105,11 @@ assert(/\.boardSimple\s*\{[\s\S]{0,800}overflow:\s*hidden/.test(CSS),
 assert(/\.boardBars\s*\{[\s\S]{0,800}flex:\s*1\s+1\s+auto/.test(CSS),
   '.boardBars has flex: 1 1 auto')
 assert(/\.boardBars\s*\{[\s\S]{0,800}min-height:\s*0/.test(CSS),
-  '.boardBars has min-height: 0 (REQUIRED for overflow-y: auto to engage on flex child)')
-assert(/\.boardBars\s*\{[\s\S]{0,800}overflow-y:\s*auto/.test(CSS),
-  '.boardBars has overflow-y: auto')
+  '.boardBars has min-height: 0 (REQUIRED for flex child to shrink below content)')
+// Phase DAB.10e — overflow: hidden replaced overflow-y: auto.
+// JS-measured fit-scale on .boardBarsInner keeps content within bounds.
+assert(/\.boardBars\s*\{[\s\S]{0,800}overflow:\s*hidden/.test(CSS),
+  '.boardBars has overflow: hidden (DAB.10e — clips, no scrollbar)')
 
 assert(/\.boardDateOnly\s*\{[\s\S]{0,800}flex:\s*0\s+0\s+auto/.test(CSS),
   '.boardDateOnly has explicit flex: 0 0 auto (anchors bottom regardless of bar count)')
@@ -151,15 +155,19 @@ assert(/\.boardBars\[data-density='compact'\]/.test(CSS),
 assert(/\.boardBars\[data-density='compact'\][\s\S]{0,200}\.boardNotesText[\s\S]{0,200}-webkit-line-clamp:\s*2/.test(CSS),
   '9C.4c compact notes still clamp to 2 lines')
 
-assert(/@media\s*\(\s*min-width:\s*1100px\s*\)\s*\{[\s\S]{0,400}\.boardBars\[data-density='compact'\][\s\S]{0,300}grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/.test(CSS),
-  '9C.4c 2-column compact rule at @media (min-width: 1100px) preserved')
+// Phase DAB.10e — 2-column grid moved from .boardBars to .boardBarsInner
+// (the inner wrapper now owns layout). The compact-density selector
+// also gained a comfortable-when-fit-scaled sibling.
+assert(/@media\s*\(\s*min-width:\s*1100px\s*\)\s*\{[\s\S]{0,800}\.boardBars\[data-density='compact'\] \.boardBarsInner[\s\S]{0,400}grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/.test(CSS),
+  'DAB.10e 2-column compact rule on .boardBarsInner at @media (min-width: 1100px) preserved')
 
 // ── Phase 9C.4e — density rules must be scale-aware ────────────────────
 section('Phase 9C.4e — density overrides scale with --board-bar-scale')
 
 // Comfortable density — every surface goes through calc(* var(--board-bar-scale)).
-assert(/\.boardBars\[data-density='comfortable'\]\s*\{[\s\S]{0,200}gap:\s*calc\([\s\S]{0,40}var\(--board-bar-scale/.test(CSS),
-  "comfortable: .boardBars gap uses calc(... * var(--board-bar-scale))")
+// Phase DAB.10e — gap moved to .boardBarsInner.
+assert(/\.boardBars\[data-density='comfortable'\] \.boardBarsInner\s*\{[\s\S]{0,200}gap:\s*calc\([\s\S]{0,40}var\(--board-bar-scale/.test(CSS),
+  "comfortable: .boardBarsInner gap uses calc(... * var(--board-bar-scale))")
 assert(/\.boardBars\[data-density='comfortable'\]\s+\.boardPersonBar\s*\{[\s\S]{0,400}padding:[\s\S]{0,200}var\(--board-bar-scale/.test(CSS),
   "comfortable: .boardPersonBar padding uses var(--board-bar-scale)")
 assert(/\.boardBars\[data-density='comfortable'\]\s+\.boardPersonBar\s*\{[\s\S]{0,400}gap:\s*calc\([\s\S]{0,40}var\(--board-bar-scale/.test(CSS),
@@ -172,8 +180,9 @@ assert(/\.boardBars\[data-density='comfortable'\]\s+\.boardNotesText\s*\{[\s\S]{
   "comfortable: .boardNotesText clamp() max uses calc(... * var(--board-bar-scale))")
 
 // Compact density — same: every surface goes through calc(* var(--board-bar-scale)).
-assert(/\.boardBars\[data-density='compact'\]\s*\{[\s\S]{0,200}gap:\s*calc\([\s\S]{0,40}var\(--board-bar-scale/.test(CSS),
-  "compact: .boardBars gap uses calc(... * var(--board-bar-scale))")
+// Phase DAB.10e — gap moved to .boardBarsInner.
+assert(/\.boardBars\[data-density='compact'\] \.boardBarsInner\s*\{[\s\S]{0,200}gap:\s*calc\([\s\S]{0,40}var\(--board-bar-scale/.test(CSS),
+  "compact: .boardBarsInner gap uses calc(... * var(--board-bar-scale))")
 assert(/\.boardBars\[data-density='compact'\]\s+\.boardPersonBar\s*\{[\s\S]{0,400}padding:[\s\S]{0,200}var\(--board-bar-scale/.test(CSS),
   "compact: .boardPersonBar padding uses var(--board-bar-scale)")
 assert(/\.boardBars\[data-density='compact'\]\s+\.boardPersonBar\s*\{[\s\S]{0,400}gap:\s*calc\([\s\S]{0,40}var\(--board-bar-scale/.test(CSS),

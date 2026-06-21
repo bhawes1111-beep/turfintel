@@ -1356,9 +1356,71 @@ function BoardModeAlertMarquee({ alerts }) {
  * assignments today, the empty-state copy is centered. */
 
 function BoardModeCrewBars({ operatorCards }) {
+  // Phase DAB.10e — Measured fit-to-screen. The 9C.4c/d/e density
+  // system tightens spacing + clamps notes, but with multi-job rows +
+  // per-job notes (DAB.10b/c) some rosters still overflow the
+  // viewport. Rather than fall back to a scrollbar (the old escape
+  // valve that the screenshot showed activated), we measure the
+  // content vs container height with ResizeObserver and apply a
+  // transform: scale(--board-fit-scale) to the inner content.
+  //
+  // Hooks declared BEFORE the empty-state early return so the
+  // hook order stays stable.
+  const containerRef = useRef(null)
+  const innerRef     = useRef(null)
+  const [fitScale, setFitScale] = useState(1)
+
+  // ResizeObserver fires on viewport resize, density-bucket switch
+  // (data-density change re-flows the grid), and any DOM mutation
+  // inside the bars. We use rAF to coalesce multiple observations
+  // in the same frame so a rapid resize doesn't thrash style writes.
+  useEffect(() => {
+    if (typeof ResizeObserver === 'undefined') return
+    const container = containerRef.current
+    const inner     = innerRef.current
+    if (!container || !inner) return
+
+    let rafId = 0
+    function measure() {
+      cancelAnimationFrame(rafId)
+      rafId = requestAnimationFrame(() => {
+        const containerH = container.clientHeight
+        const containerW = container.clientWidth
+        // Measure UNSCALED content size by reading scrollHeight/
+        // scrollWidth, which are independent of the current transform.
+        // We divide by the current fitScale so the measurement always
+        // reflects the natural (scale=1) size.
+        const naturalH = inner.scrollHeight / fitScale
+        const naturalW = inner.scrollWidth  / fitScale
+        if (containerH <= 0 || naturalH <= 0) return
+        const scaleH = containerH / naturalH
+        const scaleW = containerW / naturalW
+        // Honor whichever dimension constrains more, but never
+        // upscale past 1 (we don't want to magnify a sparse roster).
+        // Floor at 0.5 — below that the kiosk text becomes unreadable
+        // on a TV; the user is better off either thinning the roster
+        // or letting the inner scroll fallback engage (rare).
+        const next = Math.max(0.5, Math.min(1, scaleH, scaleW))
+        // Skip writes when the value barely moves to avoid feedback
+        // loops where a 1px scrollHeight change triggers a re-scale.
+        if (Math.abs(next - fitScale) > 0.005) setFitScale(next)
+      })
+    }
+    // Observe both container (viewport / parent flex sizing) AND
+    // inner (DOM mutation: roster changed, ordinal labels added).
+    const ro = new ResizeObserver(measure)
+    ro.observe(container)
+    ro.observe(inner)
+    measure()
+    return () => {
+      ro.disconnect()
+      cancelAnimationFrame(rafId)
+    }
+  }, [operatorCards, fitScale])
+
   if (!operatorCards || operatorCards.length === 0) {
     return (
-      <div className={styles.boardBars}>
+      <div className={styles.boardBars} ref={containerRef}>
         <p className={styles.boardEmpty}>No assignments for today.</p>
       </div>
     )
@@ -1367,7 +1429,7 @@ function BoardModeCrewBars({ operatorCards }) {
   // operators and total assignments the board has today, then hand
   // off to CSS attribute selectors so the rest of the responsiveness
   // (text scaling, single-vs-two columns, notes line-clamp) is pure
-  // CSS. No ResizeObserver, no DOM measurement, no JS reflow loop.
+  // CSS.
   //
   //   compact     — 10+ operators OR 16+ total assignments
   //   comfortable — 6+ operators OR 10+ total assignments
@@ -1385,10 +1447,6 @@ function BoardModeCrewBars({ operatorCards }) {
   // (0.66) for the first 2 assignments — shop TVs need a tighter base
   // layout so multi-person rosters fit without scrolling — then drops
   // 2.5% per assignment thereafter, floors at 0.45.
-  //   0–2 → 0.660  ·  6 → 0.560  ·  10 → 0.460
-  //   3   → 0.635  ·  7 → 0.535  ·  11 → 0.450 (floor reached)
-  //   4   → 0.610  ·  8 → 0.510  ·  12+ → 0.450 (floor)
-  //   5   → 0.585  ·  9 → 0.485
   // The discrete 9C.4c bucket density above still controls categorical
   // decisions (notes line-clamp count, 2-column compact grid); the
   // continuous scale below tightens padding / gap / max-font caps via
@@ -1400,13 +1458,25 @@ function BoardModeCrewBars({ operatorCards }) {
   return (
     <div
       className={styles.boardBars}
+      ref={containerRef}
       data-density={density}
+      data-fit-scale={fitScale < 1 ? 'scaled' : 'natural'}
       style={{
         '--board-operator-count':   operatorCount,
         '--board-assignment-count': assignmentCount,
         '--board-bar-scale':        boardBarScale,
+        // Phase DAB.10e — Inverse-scale the inner width so the scaled
+        // content still spans the full container after transform.
+        // Without this, a 0.7 fit-scale would visually shrink the
+        // cards AND make them only 70% of the container width.
+        '--board-fit-scale':        fitScale,
+        '--board-fit-inverse':      1 / fitScale,
       }}
     >
+      <div
+        ref={innerRef}
+        className={styles.boardBarsInner}
+      >
       {operatorCards.map(op => {
         // Phase E.9 — Out-status cards: render the status word as the
         // "task" line and skip notes / Spanish / chips entirely. The
@@ -1498,6 +1568,7 @@ function BoardModeCrewBars({ operatorCards }) {
           </article>
         )
       })}
+      </div>
     </div>
   )
 }

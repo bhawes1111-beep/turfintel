@@ -64,10 +64,14 @@ section('CSS — density-aware selectors + 100dvh + 2-col @1100px')
 assert(/\.boardBars\[data-density='spacious'\]/.test(CSS) ||
        /spacious[\s\S]{0,400}— < 6 operators/.test(CSS),
   ".boardBars[data-density='spacious'] selector is documented (no-override default)")
-assert(/\.boardBars\[data-density='comfortable'\]\s*\{/.test(CSS),
-  ".boardBars[data-density='comfortable'] rule defined")
-assert(/\.boardBars\[data-density='compact'\]\s*\{/.test(CSS),
-  ".boardBars[data-density='compact'] rule defined")
+// Phase DAB.10e — Density selectors now target the inner wrapper
+// (.boardBarsInner) for gap-bearing rules since layout moved there.
+// Per-element overrides (e.g. .boardPersonName) still cascade via
+// .boardBars[...] .selector since they're descendants of the outer.
+assert(/\.boardBars\[data-density='comfortable'\]\s+\.boardBarsInner\s*\{/.test(CSS),
+  ".boardBars[data-density='comfortable'] .boardBarsInner rule defined (DAB.10e)")
+assert(/\.boardBars\[data-density='compact'\]\s+\.boardBarsInner\s*\{/.test(CSS),
+  ".boardBars[data-density='compact'] .boardBarsInner rule defined (DAB.10e)")
 
 // clamp() text scaling preserved on the base classes (regression couple).
 assert(/\.boardPersonName\s*\{[\s\S]{0,200}clamp\(/.test(CSS),
@@ -86,8 +90,9 @@ assert(/\.boardSimple\s*\{[\s\S]{0,800}(?:min-height|height):\s*100dvh/.test(CSS
 // Compact mode has tighter spacing — verify with a small 8px gap term.
 // Phase 9C.4e wrapped this in calc(8px * var(--board-bar-scale)) so the
 // gap also shrinks with assignmentCount; accept either form.
-assert(/\.boardBars\[data-density='compact'\]\s*\{[\s\S]{0,120}gap:\s*(?:8px|calc\(\s*8px\s*\*\s*var\(--board-bar-scale)/.test(CSS),
-  "compact mode tightens .boardBars gap to 8px (scaled via --board-bar-scale or fixed)")
+// Phase DAB.10e — gap lives on .boardBarsInner now.
+assert(/\.boardBars\[data-density='compact'\]\s+\.boardBarsInner\s*\{[\s\S]{0,200}gap:\s*(?:8px|calc\(\s*8px\s*\*\s*var\(--board-bar-scale)/.test(CSS),
+  "compact mode tightens .boardBarsInner gap to 8px (scaled via --board-bar-scale or fixed)")
 
 // Comfortable notes clamp to 3 lines.
 assert(/\.boardBars\[data-density='comfortable'\]\s*\.boardNotesText\s*\{[\s\S]{0,400}-webkit-line-clamp:\s*3/.test(CSS),
@@ -97,9 +102,11 @@ assert(/\.boardBars\[data-density='comfortable'\]\s*\.boardNotesText\s*\{[\s\S]{
 assert(/\.boardBars\[data-density='compact'\]\s*\.boardNotesText\s*\{[\s\S]{0,400}-webkit-line-clamp:\s*2/.test(CSS),
   "compact mode: .boardNotesText -webkit-line-clamp: 2")
 
-// Compact + ≥1100 px → 2-column grid.
-assert(/@media\s*\(\s*min-width:\s*1100px\s*\)\s*\{[\s\S]{0,400}\.boardBars\[data-density='compact'\][\s\S]{0,300}grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/.test(CSS),
-  "compact mode at @media (min-width: 1100px) uses grid-template-columns: repeat(2, minmax(0, 1fr))")
+// Compact + ≥1100 px → 2-column grid. Phase DAB.10e — grid moved
+// from .boardBars to .boardBarsInner since the inner wrapper now
+// owns the operator card layout.
+assert(/@media\s*\(\s*min-width:\s*1100px\s*\)\s*\{[\s\S]{0,800}\.boardBars\[data-density='compact'\] \.boardBarsInner[\s\S]{0,400}grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/.test(CSS),
+  "compact mode at @media (min-width: 1100px) uses grid-template-columns on .boardBarsInner")
 
 // ── Phase 9C.4b regression couples — early return + content shape ─────
 section('Phase 9C.4b regression — early return + content preserved')

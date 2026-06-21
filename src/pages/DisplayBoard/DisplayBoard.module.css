@@ -1924,21 +1924,50 @@
 }
 
 .boardBars {
-  /* Phase 9C.4d — min-height: 0 is MANDATORY for overflow-y: auto to
-     engage on a flex child; without it the bars expand the parent
-     and the inner scrollbar never activates. Continues to use
-     flex: 1 1 auto so the bars area takes whatever space remains
-     above the fixed-height footer. */
+  /* Phase 9C.4d — min-height: 0 is MANDATORY so the flex child can
+     actually shrink below the natural content height (otherwise the
+     parent grows + parent overflow rules don't engage). */
   flex: 1 1 auto;
   min-height: 0;
+  /* Phase DAB.10e — Outer container clips overflow rather than
+     scrolling. The inner wrapper (.boardBarsInner) is transform-
+     scaled by JS-measured fit logic, so any leftover content past
+     the viewport is genuinely never going to appear. Removing the
+     scrollbar removes the visual "you can scroll for more" cue —
+     consistent with the kiosk no-scroll requirement. */
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Phase DAB.10e — Inner wrapper that owns the actual flex column +
+   gap. The outer .boardBars sizes itself to the available viewport;
+   this inner element grows to its natural content height and is
+   scaled via transform: scale(--board-fit-scale) so it always fits.
+   Inverse-width compensation keeps the scaled content full-width. */
+.boardBarsInner {
   display: flex;
   flex-direction: column;
   /* Phase 9C.4d — gap tightens with assignment count via the inline
-     --board-bar-scale CSS variable set in BoardModeCrewBars. Default
-     fallback of 1 keeps the 9C.4b spacious feel for small rosters. */
+     --board-bar-scale CSS variable. Preserved from the old
+     .boardBars rule. */
   gap: calc(18px * var(--board-bar-scale, 1));
-  overflow-y: auto;
-  padding-right: 4px;   /* keep the scrollbar away from card edges */
+  /* Phase DAB.10e — transform-origin: top left so the inner shrinks
+     toward the top of the container instead of toward the center
+     (where it would leave a band of empty space at the top + bottom).
+     Width is inversely scaled so the rendered (post-transform) width
+     still matches the outer container. */
+  transform-origin: top left;
+  transform: scale(var(--board-fit-scale, 1));
+  width: calc(100% * var(--board-fit-inverse, 1));
+  /* Phase DAB.10e — When fit-scale is applied, the inner's natural
+     pre-transform height is taller than the container. Without a
+     max-height the inner element overflows the document (transform
+     doesn't affect layout flow). We clamp to the container's height
+     divided by the scale so the OUT-of-flow inner can't extend
+     beyond the visible kiosk area. */
+  max-height: calc(100% * var(--board-fit-inverse, 1));
 }
 
 .boardPersonBar {
@@ -2523,11 +2552,18 @@
     overflow: visible;
   }
   .boardBars {
-    /* Phase DAB.10d — Inner scrollbar belongs to the page on mobile.
-       Without this, .boardBars's own overflow-y: auto creates a
-       nested scroll trap inside a non-scrolling parent → cards
-       beyond the first viewport are unreachable on iOS Safari. */
-    overflow-y: visible;
+    /* Phase DAB.10d — Inner container can also expand on mobile
+       (no kiosk height constraint to clip against). */
+    overflow: visible;
+  }
+  /* Phase DAB.10e — Mobile releases the JS-driven fit-to-screen
+     transform. The inner wrapper expands naturally and the document
+     scrolls. Without this override, the transform: scale would
+     shrink the cards on a phone, which is the opposite of useful. */
+  .boardBarsInner {
+    transform: none !important;
+    width: 100% !important;
+    max-height: none !important;
   }
   .boardPersonBar { padding: 14px 16px; }
 }
@@ -2567,7 +2603,10 @@
    Clamp() floors are also lowered (vs the base 9C.4b values) so the
    clamp min doesn't latch above the scaled max once the floor is hit. */
 
-.boardBars[data-density='comfortable'] {
+/* Phase DAB.10e — Density gap now lives on .boardBarsInner since
+   the inner wrapper owns the flex column / grid layout. The outer
+   .boardBars only acts as a clipping bounds container. */
+.boardBars[data-density='comfortable'] .boardBarsInner {
   gap: calc(12px * var(--board-bar-scale, 1));
 }
 .boardBars[data-density='comfortable'] .boardPersonBar {
@@ -2590,7 +2629,8 @@
   overflow: hidden;
 }
 
-.boardBars[data-density='compact'] {
+/* Phase DAB.10e — Density gap on the inner wrapper. */
+.boardBars[data-density='compact'] .boardBarsInner {
   gap: calc(8px * var(--board-bar-scale, 1));
 }
 .boardBars[data-density='compact'] .boardPersonBar {
@@ -2642,7 +2682,14 @@
    long scroll. Below 1100px (tablets / phones) compact stays single
    column so each bar still spans the full width. */
 @media (min-width: 1100px) {
-  .boardBars[data-density='compact'] {
+  /* Phase DAB.10e — The 2-column grid lives on the INNER wrapper
+     (.boardBarsInner) now since the inner is what holds the operator
+     cards. Compact density goes 2-col at ≥1100px (existing 9C.4e
+     behavior). DAB.10e adds: when fit-scale is engaged (content
+     overflows naturally), comfortable density ALSO goes 2-col so we
+     use the available horizontal real estate before shrinking text. */
+  .boardBars[data-density='compact'] .boardBarsInner,
+  .boardBars[data-density='comfortable'][data-fit-scale='scaled'] .boardBarsInner {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     /* Phase 9C.4e — gaps scale with --board-bar-scale so the 2-column

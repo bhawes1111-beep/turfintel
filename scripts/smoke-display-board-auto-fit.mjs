@@ -76,9 +76,12 @@ assert(/height:\s+100dvh/.test(KIOSK_CSS),
 assert(/\.boardSimple\s*\{[\s\S]{0,400}overflow:\s+hidden/.test(KIOSK_CSS),
   '.boardSimple overflow: hidden still defined (kiosk page-level scroll lock)')
 
-// .boardBars own scrollbar.
-assert(/\.boardBars\s*\{[\s\S]{0,400}min-height:\s+0[\s\S]{0,400}overflow-y:\s+auto/.test(KIOSK_CSS),
-  '.boardBars flex child with min-height: 0 + overflow-y: auto (inner scroll fallback)')
+// Phase DAB.10e — .boardBars no longer uses overflow-y: auto as the
+// escape valve. It clips overflow; the inner wrapper is transform-
+// scaled by JS so the content actually fits. min-height: 0 is still
+// mandatory for the flex child to shrink below natural content height.
+assert(/\.boardBars\s*\{[\s\S]{0,800}min-height:\s+0[\s\S]{0,800}overflow:\s+hidden/.test(KIOSK_CSS),
+  '.boardBars flex child with min-height: 0 + overflow: hidden (clips, no scrollbar)')
 
 // ── FIX 1: spacious-density notes clamp ──────────────────────────
 section('FIX 1: Default 4-line notes clamp (spacious density)')
@@ -125,11 +128,16 @@ assert(/min-height:\s+100dvh/.test(mobileBlock),
 assert(/overflow:\s+visible/.test(mobileBlock),
   'mobile .boardSimple overflow: visible (lets page scroll naturally)')
 
-// Mobile breakpoint releases .boardBars inner scroll.
+// Phase DAB.10e — Mobile breakpoint releases the .boardBars clipping
+// AND the .boardBarsInner transform scale, so phones get natural
+// document scroll.
 const mobileBarsBlock = KIOSK_CSS.match(/@media \(max-width: 600px\)[\s\S]{0,2000}\.boardBars\s*\{[\s\S]{0,400}?\}/g)
-  ?.find(b => b.includes('overflow-y:\xa0visible') || b.includes('overflow-y: visible')) ?? ''
+  ?.find(b => b.includes('overflow: visible')) ?? ''
 assert(mobileBarsBlock.length > 0,
-  'mobile .boardBars override exists (releases nested scroll trap)')
+  'mobile .boardBars override releases clipping (overflow: visible)')
+// Inner wrapper transform also released on mobile.
+assert(/@media \(max-width: 600px\)[\s\S]{0,2000}\.boardBarsInner \{[\s\S]{0,300}transform:\s+none/.test(KIOSK_CSS),
+  'mobile .boardBarsInner override sets transform: none (releases fit-to-screen)')
 
 // ── FIX 3: Multi-job task block tightening ───────────────────────
 section('FIX 3: Multi-job .boardTaskBlock tightens with density')
@@ -148,8 +156,13 @@ assert(/data-density='compact'\] \.boardJobOrdinal/.test(KIOSK_CSS),
 // ── Existing 2-column compact grid (wide TV) preserved ────────────
 section('2-column compact grid preserved (wide TV)')
 
-assert(/@media \(min-width: 1100px\)[\s\S]{0,400}data-density='compact'\][\s\S]{0,200}grid-template-columns:\s+repeat\(2,/.test(KIOSK_CSS),
-  '@media (min-width: 1100px) keeps the 2-column compact grid for wide TVs')
+// Phase DAB.10e — Grid now lives on .boardBarsInner (the wrapper that
+// owns the operator card layout). The compact-density selector now
+// targets .boardBars[data-density='compact'] .boardBarsInner. Also
+// added: comfortable density goes 2-col when fit-scale is engaged
+// (DAB.10e widens-before-shrinking strategy).
+assert(/@media \(min-width: 1100px\)[\s\S]{0,800}data-density='compact'\] \.boardBarsInner[\s\S]{0,400}grid-template-columns:\s+repeat\(2,/.test(KIOSK_CSS),
+  '@media (min-width: 1100px) keeps the 2-column compact grid on .boardBarsInner for wide TVs')
 
 // ── Existing short-viewport tightening preserved ─────────────────
 section('@media (max-height: 760px) short-TV tightening preserved')

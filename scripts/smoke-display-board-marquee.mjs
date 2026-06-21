@@ -189,8 +189,11 @@ assert(/\.boardBars\s*\{[\s\S]{0,800}flex:\s*1\s+1\s+auto/.test(CSS),
   'Phase 9C.4d: .boardBars still flex: 1 1 auto')
 assert(/\.boardBars\s*\{[\s\S]{0,800}min-height:\s*0/.test(CSS),
   'Phase 9C.4d: .boardBars still min-height: 0 (engages inner scroll)')
-assert(/\.boardBars\s*\{[\s\S]{0,800}overflow-y:\s*auto/.test(CSS),
-  'Phase 9C.4d: .boardBars still overflow-y: auto')
+// Phase DAB.10e — .boardBars overflow flipped from auto → hidden;
+// JS-measured fit-scale now keeps content within bounds. The outer
+// container still clips; the scrollbar is gone.
+assert(/\.boardBars\s*\{[\s\S]{0,800}overflow:\s*hidden/.test(CSS),
+  'Phase DAB.10e: .boardBars uses overflow: hidden (clips, no scrollbar)')
 
 // ── Forbidden components inside the early-return ───────────────────────
 section('boardMode early return — forbidden components still absent')
