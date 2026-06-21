@@ -9,7 +9,7 @@
 // No new schema. Reuses the Phase 10 crew_assignment_id linkage to
 // surface chips next to the operator on the Display Board.
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, Fragment } from 'react'
 import {
   createCrewAssignment,
   deleteCrewAssignment,
@@ -69,6 +69,14 @@ import styles from './DailyAssignmentBoard.module.css'
 // DisplayBoard change.
 const CROSSWINDS_COURSE_ID = 'crossroads-gc'
 const ASSIGNMENT_STATUS_OPTIONS = ['pending', 'in-progress', 'complete', 'blocked']
+
+// Phase DAB.10b — Ordinal labels for additional jobs. Index 1 = "2nd
+// Job" (the primary/1st job in the main row gets no label to keep
+// the morning-workflow muscle memory intact). Index 4+ falls through
+// to "Job N" via the inline fallback at the call site so an
+// employee with 7 jobs still gets readable labels even though that's
+// not a normal workflow.
+const ORDINAL_LABELS = ['1st Job', '2nd Job', '3rd Job', '4th Job']
 const ASSIGNMENT_STATUS_DEFAULT = 'pending'
 
 function normalizeAssignmentStatus(raw) {
@@ -389,16 +397,64 @@ export default function DailyAssignmentBoard({
   // Index: which crew_assignment row this employee currently holds on
   // selectedDate. We only consider assignments tied to one of today's
   // events (i.e. dayEventIds), so yesterday's leftovers don't show up.
-  const assignmentByEmpId = useMemo(() => {
+  //
+  // Phase DAB.10b — Now supports multiple jobs per employee per day.
+  // assignmentsByEmpId returns an ordered array (jobOrder ASC, then
+  // startTime ASC as tiebreaker for legacy rows with all jobOrder=0).
+  // assignmentByEmpId returns the primary (jobs[0]) and keeps the
+  // existing one-task-per-employee single-row callsites byte-identical.
+  // additionalJobsByEmpId returns jobs.slice(1) for the new opt-in
+  // "+ Add Job" rendering. Single-job employees get no additional
+  // rows → no visual change to the morning workflow.
+  const assignmentsByEmpId = useMemo(() => {
     const m = new Map()
     for (const a of crewAssignments) {
       if (a.status === 'cancelled') continue
       if (!a.calendarEventId || !dayEventIds.has(a.calendarEventId)) continue
       const empKey = a.employeeId || a.employeeName
-      if (!m.has(empKey)) m.set(empKey, a)
+      if (!m.has(empKey)) m.set(empKey, [])
+      m.get(empKey).push(a)
+    }
+    // Sort each employee's jobs by jobOrder ASC. Pre-DAB.10a rows
+    // all have jobOrder = 0 → fall back to assignedAt timestamp so
+    // ordering remains stable.
+    for (const arr of m.values()) {
+      arr.sort((x, y) => {
+        const jx = x.jobOrder ?? 0
+        const jy = y.jobOrder ?? 0
+        if (jx !== jy) return jx - jy
+        return (x.assignedAt ?? '').localeCompare(y.assignedAt ?? '')
+      })
     }
     return m
   }, [crewAssignments, dayEventIds])
+
+  // Phase DAB.10b — Backward-compat single-row lookup. Returns the
+  // employee's PRIMARY (jobs[0]) so every pre-DAB.10b callsite reads
+  // the same shape it always did. Single-job employees → identical
+  // behavior. Multi-job employees → callsites that read this Map
+  // operate on the 1st Job only (which is intentional: the existing
+  // task selector / equipment picker / status dropdown all manage
+  // the primary slot, and additional jobs are managed via the new
+  // sub-rows rendered below).
+  const assignmentByEmpId = useMemo(() => {
+    const m = new Map()
+    for (const [k, arr] of assignmentsByEmpId.entries()) {
+      if (arr.length > 0) m.set(k, arr[0])
+    }
+    return m
+  }, [assignmentsByEmpId])
+
+  // Phase DAB.10b — Additional jobs per employee (everything past
+  // the primary). Empty array → render nothing. Used by the new
+  // additional-job sub-rows below each employee's primary <tr>.
+  const additionalJobsByEmpId = useMemo(() => {
+    const m = new Map()
+    for (const [k, arr] of assignmentsByEmpId.entries()) {
+      if (arr.length > 1) m.set(k, arr.slice(1))
+    }
+    return m
+  }, [assignmentsByEmpId])
 
   // Index: reservations linked to a specific crew_assignment, so the
   // row can render per-operator chips inline.
@@ -1182,6 +1238,103 @@ export default function DailyAssignmentBoard({
     }
   }
 
+  // Phase DAB.10b — Multi-job state + handlers.
+  //
+  // addingJobForEmpId: which employee currently has the "+ Add Job"
+  // task picker visible. null = no picker open. Only one picker at
+  // a time keeps the chrome simple.
+  const [addingJobForEmpId, setAddingJobForEmpId] = useState(null)
+
+  function openAddJobPicker(emp) {
+    setAddingJobForEmpId(emp.id)
+  }
+  function closeAddJobPicker() {
+    setAddingJobForEmpId(null)
+  }
+
+  // Add an additional job for an employee. Uses the existing
+  // pickOrCreateEventForTask + createCrewAssignment helpers — the
+  // DAB.10a worker accepts body.jobOrder and dedupes on the triple
+  // key. Job order = current primary + additional count (so a 2nd
+  // job goes at job_order=1, 3rd at job_order=2, etc.).
+  //
+  // Notes are seeded from the template default, matching primary-row
+  // behavior. Translation sweep fires if English notes were written.
+  async function handleAddAdditionalJob(emp, templateId) {
+    if (!templateId) {
+      closeAddJobPicker()
+      return
+    }
+    const template = activeTaskTemplates.find(t => t.id === templateId)
+    if (!template) {
+      toast.error('Add Job failed: template not found')
+      return
+    }
+    setBusyEmpId(emp.id)
+    try {
+      const event = await pickOrCreateEventForTask(template, selectedDate)
+      if (!event?.id) {
+        toast.error('Add Job failed: no event id returned')
+        return
+      }
+      // Existing jobs for this employee on selectedDate. The next
+      // job_order is the count (primary=0, 1st-additional=1, ...).
+      const existingJobs = assignmentsByEmpId.get(emp.id)
+        ?? assignmentsByEmpId.get(emp.name)
+        ?? []
+      const nextOrder = existingJobs.length
+
+      // Prevent duplicate (employee, event, jobOrder) — refuse to add
+      // a second job that points to the same event the employee is
+      // already on. The DAB.10a unique index would 409 anyway; this
+      // is just a cleaner client-side guard.
+      if (existingJobs.some(j => j.calendarEventId === event.id)) {
+        toast.info(`${emp.name} is already assigned to ${template.name}.`)
+        closeAddJobPicker()
+        return
+      }
+
+      const defaultNotes = (template.defaultNotes ?? '').trim()
+      await createCrewAssignment({
+        calendarEventId: event.id,
+        employeeId:      emp.id,
+        employeeName:    emp.name,
+        role:            emp.role ?? null,
+        status:          'assigned',
+        notes:           defaultNotes || null,
+        jobOrder:        nextOrder,
+      })
+      if (defaultNotes && canTranslate) {
+        scheduleTranslationSweep()
+      }
+      toast.success(`${emp.name} → +${template.name}`)
+      closeAddJobPicker()
+    } catch (err) {
+      toast.error(`Add Job failed: ${err.message}`)
+    } finally {
+      setBusyEmpId(null)
+    }
+  }
+
+  // Remove a single additional job. Same delete path as the primary
+  // clear — unlinks reservations + deletes the crew_assignments row.
+  // The remaining jobs keep their job_order values (gaps are fine;
+  // the array sort by jobOrder ASC still renders correctly). On next
+  // save via bulkReplaceEmployeeDay the orders will be recompacted
+  // to 0..N-1.
+  async function handleRemoveAdditionalJob(emp, assignment) {
+    setBusyEmpId(emp.id)
+    try {
+      await unlinkReservationsFor(assignment.id)
+      await deleteCrewAssignment(assignment.id)
+      toast.success(`Removed ${emp.name}'s additional job.`)
+    } catch (err) {
+      toast.error(`Remove failed: ${err.message}`)
+    } finally {
+      setBusyEmpId(null)
+    }
+  }
+
   function openEquipmentModalFor(emp) {
     const assignment = assignmentByEmpId.get(emp.id) ?? assignmentByEmpId.get(emp.name)
     if (!assignment) {
@@ -1394,6 +1547,15 @@ export default function DailyAssignmentBoard({
               const equipLabel = assignment
                 ? (linkedRes.length > 0 ? `Equipment (${linkedRes.length})` : 'Equipment')
                 : 'Pick task first'
+              // Phase DAB.10b — Additional jobs for this employee (jobs[1..N]).
+              // Empty array → no extra rows rendered. The "+ Add Job"
+              // affordance below the primary row reveals an inline task
+              // picker that creates the next ordered crew_assignments row
+              // via createCrewAssignment({ jobOrder: existing.length }).
+              const additionalJobs = additionalJobsByEmpId.get(emp.id)
+                ?? additionalJobsByEmpId.get(emp.name)
+                ?? []
+              const colSpan = isCrosswinds ? 7 : 5
               // Phase E.4 — Conflict pill copy maps the merged schedule
               // status to a short human-readable label. Renders only
               // when (a) we're not in fallback mode AND (b) the
@@ -1409,8 +1571,8 @@ export default function DailyAssignmentBoard({
                 unscheduled: 'Not scheduled today',
               })[conflictReason] : null
               return (
+                <Fragment key={emp.id}>
                 <tr
-                  key={emp.id}
                   data-busy={busyEmpId === emp.id ? 'true' : undefined}
                   data-state={rowState}
                   data-conflict={conflictLabel ? conflictReason : undefined}
@@ -1609,6 +1771,91 @@ export default function DailyAssignmentBoard({
                     </td>
                   )}
                 </tr>
+                {/* Phase DAB.10b — Additional jobs (jobs[1..N]).
+                    Each is a compact row showing the task title + a
+                    Remove button. Rendered only when populated; single-
+                    job employees see no extra rows (morning-workflow
+                    muscle memory preserved). */}
+                {additionalJobs.map((aj, idx) => {
+                  const jobLabel = ORDINAL_LABELS[idx + 1] ?? `Job ${idx + 2}`
+                  const ev       = events.find(e => e.id === aj.calendarEventId)
+                  const taskName = ev?.title ?? '(unknown task)'
+                  return (
+                    <tr
+                      key={aj.id}
+                      className={styles.dabAdditionalJobRow}
+                      data-additional-job="true"
+                    >
+                      <td className={styles.dabAdditionalJobLabel} colSpan={2}>
+                        {jobLabel}
+                      </td>
+                      <td className={styles.dabAdditionalJobTask} colSpan={colSpan - 3}>
+                        {taskName}
+                        {aj.notes && <span className={styles.dabAdditionalJobNotes}> · {aj.notes}</span>}
+                      </td>
+                      <td className={styles.dabAdditionalJobActions}>
+                        <button
+                          type="button"
+                          className={styles.dabRemoveJobBtn}
+                          onClick={() => handleRemoveAdditionalJob(emp, aj)}
+                          disabled={busyEmpId === emp.id}
+                          aria-label={`Remove ${jobLabel} for ${emp.name}`}
+                        >
+                          Remove
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
+                {/* Phase DAB.10b — "+ Add Job" row. When the picker is
+                    open for THIS employee, render an inline task select;
+                    otherwise show just the button. Hidden for employees
+                    with no primary assignment (assigning a primary is
+                    still the existing dropdown in the main row). */}
+                {assignment && (
+                  <tr className={styles.dabAddJobRow} data-add-job-row="true">
+                    <td colSpan={colSpan} className={styles.dabAddJobCell}>
+                      {addingJobForEmpId === emp.id ? (
+                        <span className={styles.dabAddJobPicker}>
+                          <span className={styles.dabAddJobLabel}>Add job:</span>
+                          <select
+                            className={styles.dabAddJobSelect}
+                            autoFocus
+                            onChange={e => handleAddAdditionalJob(emp, e.target.value)}
+                            aria-label={`Pick additional task for ${emp.name}`}
+                          >
+                            <option value="">— Pick a task —</option>
+                            {groupedActiveTaskTemplates.map(g => (
+                              <optgroup key={g.key} label={g.label}>
+                                {g.templates.map(t => (
+                                  <option key={t.id} value={t.id}>{t.name}</option>
+                                ))}
+                              </optgroup>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            className={styles.dabAddJobCancel}
+                            onClick={closeAddJobPicker}
+                          >
+                            Cancel
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          className={styles.dabAddJobBtn}
+                          onClick={() => openAddJobPicker(emp)}
+                          disabled={busyEmpId === emp.id}
+                          aria-label={`Add another job for ${emp.name}`}
+                        >
+                          + Add Job
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               )
             })}
           </tbody>

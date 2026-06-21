@@ -87,6 +87,12 @@ const SWIPE_VERTICAL_TOLERANCE_RATIO  = 1.25
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 const PRIORITY_ORDER = { high: 0, medium: 1, routine: 2, low: 3 }
+
+// Phase DAB.10b — Ordinal labels for an operator's ordered jobs on
+// the kiosk. Rendered ONLY when the operator has more than one job
+// today (single-job operators keep the existing label-free look).
+// Index 4+ falls through to "Job N" via the inline fallback.
+const BOARD_ORDINAL_LABELS = ['1st Job', '2nd Job', '3rd Job', '4th Job']
 const NOTE_PRIORITY_ORDER = {
   urgent: 0, safety: 1, weather: 2, important: 3, routine: 4,
 }
@@ -570,10 +576,22 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
         // trim so blank Spanish stays invisible.
         notesEs:   a.notesEs ?? '',
         chips:     linkedChips.length > 0 ? linkedChips : fallbackChips,
+        // Phase DAB.10b — per-employee-per-day ordinal position
+        // (0..N-1). Drives the "1st Job / 2nd Job / 3rd Job" labels
+        // + sort order below. Legacy rows have jobOrder=0; ties
+        // break by startTime ASC.
+        jobOrder:  a.jobOrder ?? 0,
       })
     }
     for (const op of byOperator.values()) {
+      // Phase DAB.10b — Primary sort is jobOrder ASC (the supervisor's
+      // explicit ordering). startTime ASC then priority break ties.
+      // Legacy rows with jobOrder=0 fall through to the existing
+      // startTime/priority sort unchanged.
       op.assignments.sort((x, y) => {
+        const jx = x.jobOrder ?? 0
+        const jy = y.jobOrder ?? 0
+        if (jx !== jy) return jx - jy
         const t = (x.startTime ?? '').localeCompare(y.startTime ?? '')
         if (t !== 0) return t
         return (PRIORITY_ORDER[x.priority] ?? 9) - (PRIORITY_ORDER[y.priority] ?? 9)
@@ -1431,6 +1449,16 @@ function BoardModeCrewBars({ operatorCards }) {
           <article key={op.key} className={styles.boardPersonBar}>
             <h2 className={styles.boardPersonName}>{op.employeeName ?? 'Unassigned'}</h2>
             {op.assignments.map((a, idx) => {
+              // Phase DAB.10b — Ordinal label rendered ONLY when this
+              // operator has multiple jobs today. Single-job operators
+              // keep the existing TV/kiosk look (no "1st Job" badge to
+              // distract from the task title). When labels appear they
+              // follow the post-sort order, so removing a middle job
+              // renumbers automatically on the next render.
+              const showOrdinal = op.assignments.length > 1
+              const jobLabel    = showOrdinal
+                ? (BOARD_ORDINAL_LABELS[idx] ?? `Job ${idx + 1}`)
+                : null
               const trimmedNotes   = (a.notes   ?? '').trim()
               // Phase 9C.5b3 — Spanish translation renders underneath the
               // English note when authored. Both lines apply the base
@@ -1449,6 +1477,9 @@ function BoardModeCrewBars({ operatorCards }) {
               const trimmedNotesEs = (a.notesEs ?? '').trim()
               return (
                 <div key={a.id ?? idx} className={styles.boardTaskBlock}>
+                  {jobLabel && (
+                    <span className={styles.boardJobOrdinal}>{jobLabel}</span>
+                  )}
                   <p className={styles.boardTaskText}>{a.title}</p>
                   {trimmedNotes.length > 0 && (
                     <p className={styles.boardNotesText}>{trimmedNotes}</p>

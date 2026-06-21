@@ -1977,6 +1977,19 @@
 }
 .boardTaskBlock:first-of-type { border-top: none; padding-top: 0; }
 
+/* Phase DAB.10b — Ordinal "1st Job / 2nd Job / 3rd Job" badge.
+   Rendered ONLY when an operator has multiple jobs (single-job
+   operators keep the existing label-free look). Sits above the
+   task title, color-coded to match the green operator accent. */
+.boardJobOrdinal {
+  font-size: clamp(11px, 1vw, calc(15px * var(--board-bar-scale, 1)));
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(74, 222, 128, 0.85);
+  margin-bottom: -2px;
+}
+
 .boardTaskText {
   margin: 0;
   /* Phase 9C.4d — clamp() max term tightens with --board-bar-scale. */

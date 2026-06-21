@@ -1337,3 +1337,131 @@
 @media (max-width: 600px) {
   .clearBtnLabeled { min-width: 56px; height: 26px; font-size: 11px; padding: 0 10px; }
 }
+
+/* Phase DAB.10b — Multi-job per employee per day. Additional job
+   sub-rows + "+ Add Job" affordance. Visually subordinate to the
+   primary row so the morning-workflow muscle memory survives. */
+
+.dabAdditionalJobRow {
+  background: rgba(255, 255, 255, 0.02);
+  border-top: 1px dashed rgba(255, 255, 255, 0.08);
+}
+
+.dabAdditionalJobRow td {
+  padding: 5px 10px;
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.dabAdditionalJobLabel {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(74, 222, 128, 0.85);
+  padding-left: 18px !important;
+}
+
+.dabAdditionalJobTask {
+  font-weight: 500;
+}
+
+.dabAdditionalJobNotes {
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: normal;
+}
+
+.dabAdditionalJobActions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.dabRemoveJobBtn {
+  background: rgba(248, 113, 113, 0.18);
+  border: 1px solid rgba(248, 113, 113, 0.55);
+  color: rgba(254, 226, 226, 1);
+  border-radius: 4px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.dabRemoveJobBtn:hover:not(:disabled) {
+  background: rgba(248, 113, 113, 0.32);
+}
+.dabRemoveJobBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dabAddJobRow {
+  background: transparent;
+}
+
+.dabAddJobCell {
+  padding: 4px 10px 8px !important;
+  border-top: none !important;
+}
+
+.dabAddJobBtn {
+  background: rgba(74, 222, 128, 0.12);
+  border: 1px dashed rgba(74, 222, 128, 0.55);
+  color: rgba(187, 247, 208, 1);
+  border-radius: 4px;
+  padding: 3px 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: 14px;
+}
+.dabAddJobBtn:hover:not(:disabled) {
+  background: rgba(74, 222, 128, 0.22);
+  border-style: solid;
+}
+.dabAddJobBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.dabAddJobPicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 14px;
+}
+
+.dabAddJobLabel {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: rgba(74, 222, 128, 0.85);
+}
+
+.dabAddJobSelect {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.92);
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 12px;
+}
+
+.dabAddJobCancel {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.85);
+  border-radius: 4px;
+  padding: 3px 10px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.dabAddJobCancel:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+/* Mobile — sub-rows stack vertically inside their cells. */
+@media (max-width: 600px) {
+  .dabAdditionalJobRow td { font-size: 11.5px; padding: 4px 8px; }
+  .dabAdditionalJobLabel { padding-left: 10px !important; }
+  .dabAddJobBtn, .dabAddJobPicker { margin-left: 8px; }
+  .dabAddJobSelect { max-width: 140px; }
+}
