@@ -163,6 +163,158 @@ function isBlankJobPayload(j) {
   return notes === '' && notesEs === '' && role === ''
 }
 
+// Phase DAB.10a.1 — Bulk-replace one employee's ordered task list
+// for a single course/date. This is the correct shape for the DAB
+// editor's morning workflow:
+//
+//   Brian Warren on 2026-06-22:
+//     1st Job — Mow Greens   (event A, job_order 0)
+//     2nd Job — Blow Paths   (event B, job_order 1)
+//     3rd Job — Help Rake    (event C, job_order 2)
+//
+// Each task is a distinct calendar_event (the existing architecture
+// — DisplayBoard already groups assignments by operator and renders
+// each as a row under that operator). What's new is that the order
+// of those rows is now the supervisor's choice via job_order, not
+// startTime/priority alone.
+//
+// Pipeline:
+//   1. Resolve all calendar_events for (course, date).
+//   2. Validate every non-blank job's calendarEventId belongs to that
+//      set (refuse cross-date / cross-course writes).
+//   3. DELETE every crew_assignments row for this employee that ties
+//      to one of those events. Other employees and other dates are
+//      untouched.
+//   4. Filter blank jobs (same isBlankJobPayload helper from DAB.10a,
+//      extended to also require calendarEventId — a job with no
+//      event can't be scheduled).
+//   5. INSERT one row per surviving job with job_order = index.
+//   6. Return hydrated rows ordered by job_order ASC.
+//
+// Sequential pattern matches replaceSprayProducts / deleteSpray:
+// mid-pipeline failure leaves the DB in a known-recoverable state
+// (some rows deleted, some not yet inserted); user retries.
+//
+// Permission: covered by the existing /api/crew-assignments rule
+// in MUTATION_RULES (crewAssignmentRule → canEditAssignments for
+// non-status-only POST/PATCH). No new permission rule.
+export async function bulkReplaceEmployeeDay(env, request) {
+  const body = await readJson(request)
+  if (!body.date) return badRequest('date is required (YYYY-MM-DD)')
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(body.date)) {
+    return badRequest('date must be YYYY-MM-DD')
+  }
+  if (!body.employeeName) return badRequest('employeeName is required')
+  if (!Array.isArray(body.jobs)) return badRequest('jobs must be an array')
+
+  const courseId = resolveCourseId(body)
+
+  // Step 1 — Resolve calendar_events for this (course, date). The
+  // spray module + DAB use spray_date and start_date respectively
+  // depending on the event type; calendar_events.start_date is the
+  // shared "owns this day" column for DAB tasks.
+  const { where: courseWhere, binds: courseBinds } = buildCourseFilter(courseId)
+  const eventsSql = `SELECT id FROM calendar_events ${courseWhere}${courseWhere ? ' AND' : 'WHERE'} start_date = ?`
+  const { results: dayEventRows } = await env.DB.prepare(eventsSql)
+    .bind(...courseBinds, body.date).all()
+  const dayEventIds = new Set(dayEventRows.map(r => r.id))
+
+  // Step 2 — Validate jobs in the payload. Each non-blank job must
+  // carry a calendarEventId that lives in dayEventIds. Reject the
+  // whole payload up-front so partial writes are impossible on bad
+  // input.
+  for (let i = 0; i < body.jobs.length; i++) {
+    const j = body.jobs[i]
+    if (j != null && typeof j !== 'object') {
+      return badRequest(`jobs[${i}] must be an object`)
+    }
+    // Skip blank-by-content jobs from validation — they'll be filtered
+    // out before insert anyway.
+    if (isBlankJobPayload(j)) continue
+    if (!j.calendarEventId) {
+      return badRequest(`jobs[${i}] requires calendarEventId (job has content but no event)`)
+    }
+    if (!dayEventIds.has(j.calendarEventId)) {
+      return badRequest(
+        `jobs[${i}].calendarEventId does not belong to ${body.date} on this course`,
+      )
+    }
+  }
+
+  // Step 3 — Filter blanks. A blank job here = blank-by-content from
+  // DAB.10a's helper. We treat "no calendarEventId" as blank too,
+  // even if some other field was filled, because there's nowhere to
+  // attach it. Defense-in-depth: the validation loop above already
+  // rejected non-blank-but-no-event payloads.
+  const populatedJobs = body.jobs.filter(j =>
+    !isBlankJobPayload(j) && j.calendarEventId
+  )
+
+  // Step 4 — Delete this employee's existing crew_assignments for any
+  // of the day's events. Scoped tightly: same employee_name, only
+  // events that belong to this course/date. Other employees on the
+  // same events are untouched. Same employee on other dates is
+  // untouched.
+  if (dayEventIds.size > 0) {
+    const placeholders = [...dayEventIds].map(() => '?').join(',')
+    await env.DB.prepare(
+      `DELETE FROM crew_assignments
+       WHERE employee_name = ?
+         AND calendar_event_id IN (${placeholders})`,
+    ).bind(body.employeeName, ...dayEventIds).run()
+  }
+
+  // Step 5 — Insert one row per surviving job, job_order = payload
+  // index (0..N-1 after blank filtering = the supervisor's chosen
+  // ordering of tasks across multiple events).
+  const insertedIds = []
+  for (let i = 0; i < populatedJobs.length; i++) {
+    const j  = populatedJobs[i]
+    const id = j.id ?? generateId('ca')
+    await env.DB.prepare(`
+      INSERT INTO crew_assignments (
+        id, calendar_event_id, employee_id, employee_name, role, status,
+        notes, notes_es, course_id, job_order
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      id,
+      j.calendarEventId,
+      body.employeeId ?? j.employeeId ?? null,
+      body.employeeName,
+      j.role    ?? body.role ?? null,
+      j.status  ?? 'assigned',
+      j.notes   ?? null,
+      j.notesEs ?? null,
+      courseId,
+      i,                                                  // job_order = ordered position across events
+    ).run()
+    insertedIds.push(id)
+  }
+
+  if (insertedIds.length === 0) {
+    return json({
+      ok:           true,
+      date:         body.date,
+      employeeName: body.employeeName,
+      rows:         [],
+    })
+  }
+
+  // Step 6 — Return hydrated rows ordered by job_order ASC so the
+  // store can rebuild its local cache without a second round-trip.
+  const placeholders = insertedIds.map(() => '?').join(',')
+  const { results } = await env.DB.prepare(
+    `SELECT * FROM crew_assignments
+     WHERE id IN (${placeholders}) ORDER BY job_order ASC`,
+  ).bind(...insertedIds).all()
+  return json({
+    ok:           true,
+    date:         body.date,
+    employeeName: body.employeeName,
+    rows:         results.map(rowToCrewAssignment),
+  })
+}
+
 // Phase DAB.10a — Bulk-replace the job list for a single (event,
 // employee). Used by the DAB editor when the supervisor saves an
 // employee's multi-job slate in one go. Sequence:

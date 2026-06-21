@@ -83,6 +83,7 @@ import {
   updateCrewAssignment,
   deleteCrewAssignment,
   bulkReplaceEmployeeJobs,                                  // Phase DAB.10a
+  bulkReplaceEmployeeDay,                                   // Phase DAB.10a.1
   listEquipmentReservations,
   getEquipmentReservation,
   createEquipmentReservation,
@@ -931,6 +932,16 @@ async function handleApi(request, env, url, ctx) {
   // MUTATION_RULES — no new permission rule needed.
   if (pathname === '/api/crew-assignments/bulk-jobs') {
     if (method === 'POST') return bulkReplaceEmployeeJobs(env, request)
+  }
+
+  // Phase DAB.10a.1 — Bulk-replace one employee's ordered task list
+  // for a single (course, date). This is the correct shape for the
+  // DAB editor's morning workflow: each task is its own calendar_event
+  // and the supervisor orders them with job_order = 0..N-1. Literal
+  // route declared BEFORE the /:id regex catch-all so the regex
+  // doesn't greedily match "bulk-employee-day" as an id.
+  if (pathname === '/api/crew-assignments/bulk-employee-day') {
+    if (method === 'POST') return bulkReplaceEmployeeDay(env, request)
   }
 
   // ── /api/crew-assignments/:id ─────────────────────────────────────────

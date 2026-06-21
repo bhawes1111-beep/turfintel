@@ -190,6 +190,87 @@ export async function bulkReplaceEmployeeJobs(payload) {
   }
 }
 
+/**
+ * Phase DAB.10a.1 — Bulk-replace one employee's ordered task list
+ * for a single (course, date). Each task is a distinct calendar
+ * event; jobOrder = the supervisor's chosen ordering across them.
+ *
+ * Payload shape:
+ *   {
+ *     date: 'YYYY-MM-DD',
+ *     employeeName: 'Brian Warren',
+ *     employeeId:   'emp-…',          // optional, default per-job
+ *     role:         'Operator',       // optional, default per-job
+ *     jobs: [
+ *       { calendarEventId, notes, notesEs, status, role },  // 1st Job
+ *       { calendarEventId, notes, notesEs, status, role },  // 2nd Job
+ *       …
+ *     ]
+ *   }
+ *
+ * Empty `jobs: []` (or all-blank-after-filter) clears every
+ * crew_assignments row this employee held against any of that day's
+ * calendar_events for the active course. Other employees and other
+ * dates are untouched.
+ *
+ * Returns { ok, date, employeeName, rows }.
+ * Local cache: drops every row for (employee, calendarEventIds we
+ * deleted) and merges the freshly-saved rows so subscribers re-render
+ * with canonical state.
+ *
+ * Defer to bulkReplaceEmployeeJobs for the per-event sub-row workflow
+ * that DAB.10a originally shipped; that endpoint is preserved
+ * untouched for future use cases.
+ */
+export async function bulkReplaceEmployeeDay(payload) {
+  try {
+    const saved = await fetchJSON(`${CREW_API}/bulk-employee-day`, {
+      method:  'POST',
+      headers: mutationHeaders(),
+      body:    JSON.stringify({ courseId: getSelectedCourseId(), ...payload }),
+    })
+    const empName       = saved.employeeName
+    const newRows       = Array.isArray(saved.rows) ? saved.rows : []
+    // Cache rebuild: drop ANY existing row for this employee that
+    // ties to one of the calendar events covered by the saved rows.
+    // We can't enumerate "this day's event ids" purely from the
+    // response (the response only includes inserted rows; a "clear
+    // all" returns []), so we fall back to refreshing on the empty
+    // case. The non-empty case can compute the affected events from
+    // the response and trim locally without a network round-trip.
+    if (newRows.length === 0) {
+      // Empty save = "clear all jobs for this employee for that
+      // date". The response can't tell us which event ids were
+      // deleted, so re-pull the canonical list. Non-fatal: optimistic
+      // setState below also clears the obvious matches.
+      setState({
+        crewAssignments: state.crewAssignments.filter(a => a.employeeName !== empName),
+      })
+      refreshAssignmentsData().catch(() => { /* non-fatal */ })
+    } else {
+      const newRowEventIds = new Set(newRows.map(r => r.calendarEventId))
+      setState({
+        crewAssignments: [
+          ...state.crewAssignments.filter(a =>
+            !(a.employeeName === empName && newRowEventIds.has(a.calendarEventId))
+          ),
+          ...newRows,
+        ],
+      })
+      // Belt-and-suspenders refresh so any rows the supervisor
+      // removed (events NOT in newRowEventIds) get pruned from the
+      // local cache on the next tick.
+      refreshAssignmentsData().catch(() => { /* non-fatal */ })
+    }
+    return saved
+  } catch (err) {
+    setState({ error: err.message })
+    // Refresh on error so the optimistic state can't drift.
+    refreshAssignmentsData()
+    throw err
+  }
+}
+
 // ── Equipment reservations — optimistic mutations ──────────────────────────
 
 /**
