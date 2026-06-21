@@ -184,9 +184,10 @@ assert(/data-density='comfortable'\]\[data-fit-scale='scaled'\] \.boardBarsInner
 // ── Mobile exception ─────────────────────────────────────────────
 section('Mobile (max-width: 600px) releases transform + clipping')
 
-const mobileBoardBarsBlock = KIOSK_CSS.match(/@media \(max-width: 600px\)[\s\S]{0,3000}\.boardBars\s*\{[\s\S]{0,400}?\}/g)
-  ?.find(b => /overflow:\s+visible/.test(b)) ?? ''
-assert(mobileBoardBarsBlock.length > 0,
+// Pin via DAB.10d comment marker on the .boardBars rule (the file
+// now has multiple .boardBars-related selectors in the mobile block
+// after DAB.10e.1's .rootBoard release).
+assert(/Phase DAB\.10d — Inner container can also expand on mobile[\s\S]{0,800}overflow:\s+visible/.test(KIOSK_CSS),
   'mobile .boardBars overflow: visible (releases clipping)')
 
 // Inner wrapper transform released.

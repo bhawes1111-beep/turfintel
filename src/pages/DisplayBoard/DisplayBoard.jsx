@@ -1374,15 +1374,35 @@ function BoardModeCrewBars({ operatorCards }) {
   // (data-density change re-flows the grid), and any DOM mutation
   // inside the bars. We use rAF to coalesce multiple observations
   // in the same frame so a rapid resize doesn't thrash style writes.
+  //
+  // Phase DAB.10e.1 — Mobile bypass. On phones we want natural
+  // document scrolling, not transform-scaled cards. matchMedia mirror
+  // of the CSS @media (max-width: 600px) breakpoint; when narrow,
+  // pin fit-scale to 1 and skip the observer measurement branch.
   useEffect(() => {
     if (typeof ResizeObserver === 'undefined') return
     const container = containerRef.current
     const inner     = innerRef.current
     if (!container || !inner) return
 
+    const mq = typeof window !== 'undefined' && window.matchMedia
+      ? window.matchMedia('(max-width: 600px)')
+      : null
+
     let rafId = 0
     function measure() {
       cancelAnimationFrame(rafId)
+      // Phase DAB.10e.1 — On mobile, force fit-scale to 1 and skip
+      // the measurement branch entirely. The CSS .boardBarsInner
+      // mobile override (transform: none !important) is what actually
+      // disables the visual transform; this just prevents React from
+      // churning state in a feedback loop (where the CSS-blocked
+      // transform makes scrollHeight measurements continuously
+      // recompute a tiny scale that doesn't apply visually).
+      if (mq && mq.matches) {
+        if (Math.abs(1 - fitScale) > 0.005) setFitScale(1)
+        return
+      }
       rafId = requestAnimationFrame(() => {
         const containerH = container.clientHeight
         const containerW = container.clientWidth
@@ -1411,10 +1431,23 @@ function BoardModeCrewBars({ operatorCards }) {
     const ro = new ResizeObserver(measure)
     ro.observe(container)
     ro.observe(inner)
+    // Phase DAB.10e.1 — Listen for breakpoint crossing so a rotation
+    // or window resize across the 600px boundary re-runs the measure
+    // logic (re-pinning to 1 on the mobile side; re-measuring on the
+    // desktop side). addEventListener is Chrome 90+; addListener is
+    // the deprecated fallback for older Safari and Chrome 79.
+    if (mq) {
+      if (mq.addEventListener) mq.addEventListener('change', measure)
+      else if (mq.addListener) mq.addListener(measure)
+    }
     measure()
     return () => {
       ro.disconnect()
       cancelAnimationFrame(rafId)
+      if (mq) {
+        if (mq.removeEventListener) mq.removeEventListener('change', measure)
+        else if (mq.removeListener) mq.removeListener(measure)
+      }
     }
   }, [operatorCards, fitScale])
 

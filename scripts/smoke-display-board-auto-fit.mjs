@@ -117,26 +117,24 @@ assert(/data-density='compact'\] \.boardNotesText[\s\S]{0,400}-webkit-line-clamp
 // ── FIX 2: Mobile exception ──────────────────────────────────────
 section('FIX 2: Mobile (max-width: 600px) releases kiosk no-scroll')
 
-// Mobile breakpoint releases the boardSimple kiosk lock.
-const mobileBlock = KIOSK_CSS.match(/@media \(max-width: 600px\)\s*\{[\s\S]{0,2000}?\.boardSimple\s*\{[\s\S]{0,800}?\}/g)
-  ?.find(b => b.includes('Phase DAB.10d')) ?? ''
-assert(mobileBlock.length > 0, 'DAB.10d mobile .boardSimple override block found')
-assert(/height:\s+auto/.test(mobileBlock),
+// Mobile breakpoint releases the boardSimple kiosk lock. Pin via
+// the comment marker that flags the .boardSimple rule we care about
+// (the file has multiple .boardSimple-like selectors in the mobile
+// breakpoint after DAB.10e.1).
+assert(/Phase DAB\.10d — Mobile exception[\s\S]{0,800}height:\s+auto/.test(KIOSK_CSS),
   'mobile .boardSimple uses height: auto (releases 100dvh lock)')
-assert(/min-height:\s+100dvh/.test(mobileBlock),
+assert(/Phase DAB\.10d — Mobile exception[\s\S]{0,800}min-height:\s+100dvh/.test(KIOSK_CSS),
   'mobile .boardSimple keeps min-height: 100dvh (looks full on first paint, scrolls thereafter)')
-assert(/overflow:\s+visible/.test(mobileBlock),
+assert(/Phase DAB\.10d — Mobile exception[\s\S]{0,800}overflow:\s+visible/.test(KIOSK_CSS),
   'mobile .boardSimple overflow: visible (lets page scroll naturally)')
 
 // Phase DAB.10e — Mobile breakpoint releases the .boardBars clipping
 // AND the .boardBarsInner transform scale, so phones get natural
-// document scroll.
-const mobileBarsBlock = KIOSK_CSS.match(/@media \(max-width: 600px\)[\s\S]{0,2000}\.boardBars\s*\{[\s\S]{0,400}?\}/g)
-  ?.find(b => b.includes('overflow: visible')) ?? ''
-assert(mobileBarsBlock.length > 0,
+// document scroll. Phase DAB.10e.1 also releases .rootBoard
+// position-fixed (the actual root cause of the mobile scroll lock).
+assert(/Phase DAB\.10d — Inner container can also expand on mobile[\s\S]{0,800}overflow:\s+visible/.test(KIOSK_CSS),
   'mobile .boardBars override releases clipping (overflow: visible)')
-// Inner wrapper transform also released on mobile.
-assert(/@media \(max-width: 600px\)[\s\S]{0,2000}\.boardBarsInner \{[\s\S]{0,300}transform:\s+none/.test(KIOSK_CSS),
+assert(/@media \(max-width: 600px\)[\s\S]{0,3000}\.boardBarsInner \{[\s\S]{0,400}transform:\s+none/.test(KIOSK_CSS),
   'mobile .boardBarsInner override sets transform: none (releases fit-to-screen)')
 
 // ── FIX 3: Multi-job task block tightening ───────────────────────

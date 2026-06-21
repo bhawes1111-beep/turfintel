@@ -2538,6 +2538,23 @@
   .boardPersonBar { padding: 16px 18px; }
 }
 @media (max-width: 600px) {
+  /* Phase DAB.10e.1 — Mobile scroll regression fix. The kiosk root
+     (.rootBoard) carries `position: fixed; inset: 0; z-index: 60`
+     from the legacy 9C base (line 35-42) — that traps the entire
+     board inside the viewport regardless of what .boardSimple does
+     below. DAB.10d / DAB.10e released .boardSimple + .boardBars +
+     .boardBarsInner but missed .rootBoard, so the document still
+     couldn't grow → mobile scroll did nothing.
+     Releasing position-fixed on the combined .rootBoard.boardSimple
+     element lets the page flow naturally; height: auto + min-height:
+     100dvh keeps it filling the viewport on first paint then growing
+     past it as the roster expands. */
+  .rootBoard.boardSimple,
+  .root.rootBoard.boardSimple {
+    position: static;
+    inset: auto;
+    z-index: auto;
+  }
   .boardSimple {
     padding: 16px;
     gap: 12px;
@@ -2553,7 +2570,15 @@
   }
   .boardBars {
     /* Phase DAB.10d — Inner container can also expand on mobile
-       (no kiosk height constraint to clip against). */
+       (no kiosk height constraint to clip against).
+       Phase DAB.10e.1 — flex: 1 1 auto would still cap height at
+       the parent's flex-distributed share; switching to flex: 0 0
+       auto + height: auto lets it grow to natural content height,
+       which then pushes .boardSimple's height up so the document
+       has something to scroll. */
+    flex: 0 0 auto;
+    height: auto;
+    min-height: 0;
     overflow: visible;
   }
   /* Phase DAB.10e — Mobile releases the JS-driven fit-to-screen
