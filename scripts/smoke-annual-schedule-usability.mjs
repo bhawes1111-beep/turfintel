@@ -56,9 +56,9 @@ section('No new D1 migration — 0054 ceiling held')
 const migrationFiles = readdirSync('worker/migrations').filter(f => f.endsWith('.sql')).sort()
 assert(migrationFiles.includes('0054_shift_templates.sql'),
   'regression: 0054_shift_templates.sql still in the ledger (Phase E.5 schema)')
-const past0054 = migrationFiles.filter(f => /^00(5[5-9]|[6-9]\d|\d{3,})/.test(f))
-assert(past0054.length === 0,
-  `no migration past 0054 (found: ${past0054.join(', ') || 'none'})`)
+const past0055 = migrationFiles.filter(f => /^00(5[6-9]|[6-9]\d|\d{3,})/.test(f))
+assert(past0055.length === 0,
+  `no migration past 0055 (found: ${past0055.join(', ') || 'none'})`)
 
 // ── AnnualScheduleCalendar still exists ──────────────────────────────
 section('AnnualScheduleCalendar still mounted + base wiring intact')

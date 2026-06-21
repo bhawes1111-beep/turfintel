@@ -304,7 +304,7 @@ section('Migrations ledger — 0051 is the new ceiling')
 const migrationFiles = readdirSync('worker/migrations').filter(f => f.endsWith('.sql')).sort()
 assert(migrationFiles.includes('0051_task_templates.sql'),
   '0051_task_templates.sql present in worker/migrations')
-const past0051 = migrationFiles.filter(f => /^00(5[5-9]|[6-9]\d|\d{3,})/.test(f))
+const past0051 = migrationFiles.filter(f => /^00(5[6-9]|[6-9]\d|\d{3,})/.test(f))
 assert(past0051.length === 0,
   `no migrations past 0054 (Phase E.5 shift_templates accepted) (found: ${past0051.join(', ') || 'none'})`)
 

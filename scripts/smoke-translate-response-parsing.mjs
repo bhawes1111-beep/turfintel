@@ -219,9 +219,9 @@ section('No D1 schema change — migrations ledger preserved')
 const migrationFiles = readdirSync('worker/migrations').filter(f => f.endsWith('.sql')).sort()
 assert(migrationFiles.includes('0050_crew_employee_translation_prefs.sql'),
   '0050_crew_employee_translation_prefs.sql still in the migration ledger')
-const newMigrations = migrationFiles.filter(f => /^00(5[5-9]|[6-9]\d|\d{3,})/.test(f))
+const newMigrations = migrationFiles.filter(f => /^00(5[6-9]|[6-9]\d|\d{3,})/.test(f))
 assert(newMigrations.length === 0,
-  `no migration past 0054 (0054_shift_templates accepted) (found: ${newMigrations.join(', ') || 'none'})`)
+  `no migration past 0055 (0054_shift_templates accepted) (found: ${newMigrations.join(', ') || 'none'})`)
 
 // ── Provider config / kiosk render unchanged ──────────────────────────
 section('Provider config + kiosk render unchanged')

@@ -55,7 +55,7 @@ assert(!/CREATE\s+(?:UNIQUE\s+)?INDEX/i.test(MIGRATION),
 // Migration is the latest one.
 const migrationFiles = readdirSync('worker/migrations').filter(f => f.endsWith('.sql')).sort()
 const highestMigration = migrationFiles[migrationFiles.length - 1]
-assert((highestMigration === '0050_crew_employee_translation_prefs.sql' || highestMigration === '0051_task_templates.sql' || highestMigration === '0052_spray_compliance_snapshots.sql' || highestMigration === '0053_employee_schedule_overrides.sql' || highestMigration === '0054_shift_templates.sql'),
+assert((highestMigration === '0050_crew_employee_translation_prefs.sql' || highestMigration === '0051_task_templates.sql' || highestMigration === '0052_spray_compliance_snapshots.sql' || highestMigration === '0053_employee_schedule_overrides.sql' || highestMigration === '0054_shift_templates.sql' || highestMigration === '0055_crew_assignments_job_order.sql'),
   `0050-0054 is the highest migration (found: ${highestMigration})`)
 
 // ── Worker rowToEmployee exposes the new fields PUBLICLY ───────────────

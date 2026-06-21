@@ -133,6 +133,63 @@ export async function deleteCrewAssignment(id) {
   }
 }
 
+/**
+ * Phase DAB.10a — Bulk-replace one (calendarEventId, employeeName)'s
+ * job list. The worker DELETEs every existing row for that pair, then
+ * INSERTs `jobs.length` new rows with job_order = index. Blank jobs
+ * (no notes / notesEs / role) are filtered server-side and not
+ * persisted, so the editor can submit padded slots without leaking
+ * empty rows into the DB.
+ *
+ * Payload shape:
+ *   {
+ *     calendarEventId: 'evt-…',
+ *     employeeId:      'emp-…',       // optional; default per-job
+ *     employeeName:    'Brian Warren',
+ *     role:            'Operator',    // optional; default per-job
+ *     jobs: [
+ *       { notes: '1st Job notes', status: 'assigned', notesEs: null },
+ *       { notes: '2nd Job notes' },
+ *       …
+ *     ]
+ *   }
+ *
+ * Empty `jobs: []` (or all-blank jobs filtered to empty) clears every
+ * crew_assignments row for that (event, employee) pair — the
+ * supervisor's explicit "remove all jobs" gesture.
+ *
+ * Returns { ok, calendarEventId, employeeName, rows }.
+ * Local cache: drops any rows for (event, employee) then merges in
+ * the freshly-saved rows so subscribers re-render with canonical
+ * state. Refreshes on error so optimistic drift can't accumulate.
+ */
+export async function bulkReplaceEmployeeJobs(payload) {
+  try {
+    const saved = await fetchJSON(`${CREW_API}/bulk-jobs`, {
+      method:  'POST',
+      headers: mutationHeaders(),
+      body:    JSON.stringify({ courseId: getSelectedCourseId(), ...payload }),
+    })
+    const eventId = saved.calendarEventId
+    const empName = saved.employeeName
+    const rows    = Array.isArray(saved.rows) ? saved.rows : []
+    setState({
+      crewAssignments: [
+        ...state.crewAssignments.filter(a =>
+          !(a.calendarEventId === eventId && a.employeeName === empName)
+        ),
+        ...rows,
+      ],
+    })
+    return saved
+  } catch (err) {
+    setState({ error: err.message })
+    // Refresh on error so the optimistic state can't drift.
+    refreshAssignmentsData()
+    throw err
+  }
+}
+
 // ── Equipment reservations — optimistic mutations ──────────────────────────
 
 /**

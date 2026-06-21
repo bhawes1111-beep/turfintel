@@ -370,9 +370,9 @@ section('Migrations ledger — 0053 ceiling')
 const migrationFiles = readdirSync('worker/migrations').filter(f => f.endsWith('.sql')).sort()
 assert(migrationFiles.includes('0053_employee_schedule_overrides.sql'),
   '0053_employee_schedule_overrides.sql present in worker/migrations')
-const past0053 = migrationFiles.filter(f => /^00(5[5-9]|[6-9]\d|\d{3,})/.test(f))
+const past0053 = migrationFiles.filter(f => /^00(5[6-9]|[6-9]\d|\d{3,})/.test(f))
 assert(past0053.length === 0,
-  `no migration past 0054 (found: ${past0053.join(', ') || 'none'})`)
+  `no migration past 0055 (found: ${past0053.join(', ') || 'none'})`)
 
 // employee_schedules migration (0024) untouched as regression couple.
 const m0024 = readFileSync('worker/migrations/0024_employee_schedules.sql', 'utf8')

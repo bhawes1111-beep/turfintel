@@ -82,6 +82,7 @@ import {
   createCrewAssignment,
   updateCrewAssignment,
   deleteCrewAssignment,
+  bulkReplaceEmployeeJobs,                                  // Phase DAB.10a
   listEquipmentReservations,
   getEquipmentReservation,
   createEquipmentReservation,
@@ -921,6 +922,15 @@ async function handleApi(request, env, url, ctx) {
   if (pathname === '/api/crew-assignments') {
     if (method === 'GET')  return listCrewAssignments(env, courseId)
     if (method === 'POST') return createCrewAssignment(env, request)
+  }
+
+  // Phase DAB.10a — Bulk-replace one (event, employee) → N ordered
+  // jobs in a single round-trip. Used by the DAB editor when the
+  // supervisor saves an employee's multi-job slate. Prefix
+  // `/api/crew-assignments` already mapped to canEditAssignments in
+  // MUTATION_RULES — no new permission rule needed.
+  if (pathname === '/api/crew-assignments/bulk-jobs') {
+    if (method === 'POST') return bulkReplaceEmployeeJobs(env, request)
   }
 
   // ── /api/crew-assignments/:id ─────────────────────────────────────────
