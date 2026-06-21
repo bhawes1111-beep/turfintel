@@ -1371,6 +1371,41 @@
   font-weight: normal;
 }
 
+/* Phase DAB.10c — Per-job notes editor inside the additional-row td.
+   Matches the primary .notesInput visual treatment so the form
+   feels consistent across the primary and additional jobs, but lives
+   in its own cell so the Remove button stays right-aligned. */
+.dabAdditionalJobNotesCell {
+  padding: 4px 8px;
+  vertical-align: middle;
+}
+
+.dabAdditionalJobNotesInput {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.92);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  width: 100%;
+  min-height: 26px;
+}
+
+.dabAdditionalJobNotesInput:focus {
+  outline: 2px solid rgba(74, 222, 128, 0.55);
+  outline-offset: 1px;
+  border-color: rgba(74, 222, 128, 0.55);
+}
+
+.dabAdditionalJobNotesInput:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dabAdditionalJobNotesInput::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
 .dabAdditionalJobActions {
   text-align: right;
   white-space: nowrap;
@@ -1464,4 +1499,9 @@
   .dabAdditionalJobLabel { padding-left: 10px !important; }
   .dabAddJobBtn, .dabAddJobPicker { margin-left: 8px; }
   .dabAddJobSelect { max-width: 140px; }
+  /* Phase DAB.10c — notes input keeps a tappable height on phones. */
+  .dabAdditionalJobNotesInput {
+    min-height: 30px;
+    font-size: 12.5px;
+  }
 }

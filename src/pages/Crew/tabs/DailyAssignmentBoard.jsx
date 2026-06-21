@@ -1789,10 +1789,39 @@ export default function DailyAssignmentBoard({
                       <td className={styles.dabAdditionalJobLabel} colSpan={2}>
                         {jobLabel}
                       </td>
-                      <td className={styles.dabAdditionalJobTask} colSpan={colSpan - 3}>
+                      <td className={styles.dabAdditionalJobTask}>
                         {taskName}
-                        {aj.notes && <span className={styles.dabAdditionalJobNotes}> · {aj.notes}</span>}
                       </td>
+                      {/* Phase DAB.10c — Per-job notes editor. Crosswinds-
+                          gated to match the primary row's notesCell. Uses
+                          the existing handleNotesChange / handleNotesBlur
+                          (already keyed by assignment.id) so editing this
+                          row's notes only PATCHes this row's crew_assignment
+                          and never touches the primary or any other
+                          additional job. Translation sweep + notes_es
+                          invalidation are inherited from the existing
+                          handler. */}
+                      {isCrosswinds && (
+                        <td className={styles.dabAdditionalJobNotesCell} colSpan={colSpan - 4}>
+                          <input
+                            type="text"
+                            className={styles.dabAdditionalJobNotesInput}
+                            placeholder="Notes…"
+                            value={notesDraft[aj.id] ?? aj.notes ?? ''}
+                            onChange={e => handleNotesChange(aj.id, e.target.value)}
+                            onBlur={() => handleNotesBlur(aj)}
+                            disabled={busyEmpId === emp.id}
+                            aria-label={`Notes for ${emp.name}'s ${jobLabel}`}
+                          />
+                        </td>
+                      )}
+                      {/* Non-Crosswinds courses don't render the Notes
+                          column on the primary row either; collapse the
+                          notes cell to a single colSpan filler so the
+                          Remove button stays right-aligned. */}
+                      {!isCrosswinds && (
+                        <td className={styles.dabAdditionalJobNotesCell} colSpan={colSpan - 4} />
+                      )}
                       <td className={styles.dabAdditionalJobActions}>
                         <button
                           type="button"
