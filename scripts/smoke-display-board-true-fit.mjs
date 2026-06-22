@@ -141,16 +141,19 @@ assert(/const scaleW = containerW \/ naturalW/.test(KIOSK),
 assert(/const idealScale = Math\.min\(1, scaleH, scaleW\)/.test(KIOSK),
   'idealScale = min(1, scaleH, scaleW) — never upscale; floor handled by waterfall')
 
-// Skip-write threshold to prevent feedback loops.
-assert(/const scaleChanged = Math\.abs\(nextScale - fitScale\) > 0\.005/.test(KIOSK),
-  'scale write guarded by 0.005 threshold (prevents observer feedback loop)')
+// Phase DAB.10f.1 — skip-write now compares to curScale (ref read).
+assert(/const scaleChanged = Math\.abs\(nextScale - curScale\) > 0\.005/.test(KIOSK),
+  'scale write guarded by 0.005 threshold against curScale ref (DAB.10f.1)')
 
-// Natural-size measurement divides by current scale (since the inner
-// is already transform-scaled).
-assert(/const naturalH = inner\.scrollHeight \/ fitScale/.test(KIOSK),
-  'naturalH = inner.scrollHeight / fitScale (compensates for active transform)')
-assert(/const naturalW = inner\.scrollWidth\s+\/ fitScale/.test(KIOSK),
-  'naturalW = inner.scrollWidth / fitScale')
+// Phase DAB.10f.1 — natural-size measurement now divides by BOTH the
+// active fit scale (transform on inner) AND the active room scale
+// (CSS padding/font growth). Without dividing by roomScale, a roomy-
+// mode measurement reports an inflated natural height and the next-
+// tick slack calc bounces between values — that was the flicker.
+assert(/const naturalH = inner\.scrollHeight \/ curScale \/ curRoom/.test(KIOSK),
+  'naturalH = scrollHeight / curScale / curRoom (compensates for active transform AND roomy CSS boost)')
+assert(/const naturalW = inner\.scrollWidth\s+\/ curScale \/ curRoom/.test(KIOSK),
+  'naturalW = scrollWidth / curScale / curRoom')
 
 // CSS variables exposed to the outer wrapper.
 assert(/'--board-fit-scale':\s+fitScale/.test(KIOSK),

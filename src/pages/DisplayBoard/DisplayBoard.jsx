@@ -1368,6 +1368,15 @@ function BoardModeCrewBars({ operatorCards }) {
   // hook order stays stable.
   const containerRef = useRef(null)
   const innerRef     = useRef(null)
+  // Phase DAB.10f.1 — Refs mirror state so the ResizeObserver effect
+  // can read latest values without depending on them. Without this,
+  // the effect dep list grows to [fitScale, fitMode, roomScale, …]
+  // and every state update tears down + recreates the observer,
+  // firing measure() again on mount — feedback loop that the user
+  // perceived as flicker.
+  const fitScaleRef  = useRef(1)
+  const fitModeRef   = useRef('natural')
+  const roomScaleRef = useRef(1)
   const [fitScale, setFitScale] = useState(1)
   // Phase DAB.10e.2 / DAB.10f — Fit mode replaces both silent-deep-
   // shrink AND silent-wasted-space behavior with a four-tier waterfall:
@@ -1390,6 +1399,12 @@ function BoardModeCrewBars({ operatorCards }) {
   // so a 5-bar roster doesn't balloon employee names into the brand
   // bar above. 1.0 means "no boost" (natural / scaled / ultra modes).
   const [roomScale, setRoomScale] = useState(1)
+
+  // Phase DAB.10f.1 — Mirror state into refs so the effect deps stay
+  // empty (no observer churn on every fit-state change).
+  fitScaleRef.current  = fitScale
+  fitModeRef.current   = fitMode
+  roomScaleRef.current = roomScale
 
   // ResizeObserver fires on viewport resize, density-bucket switch
   // (data-density change re-flows the grid), and any DOM mutation
@@ -1421,108 +1436,143 @@ function BoardModeCrewBars({ operatorCards }) {
       // transform makes scrollHeight measurements continuously
       // recompute a tiny scale that doesn't apply visually).
       if (mq && mq.matches) {
-        if (Math.abs(1 - fitScale) > 0.005) setFitScale(1)
-        // Phase DAB.10e.2 — also reset fitMode on mobile so a
-        // leftover 'ultra' from a prior desktop session doesn't
-        // keep CSS ultra rules applied on a phone (where they'd
-        // also tighten the mobile layout unnecessarily).
-        if (fitMode !== 'natural') setFitMode('natural')
-        // Phase DAB.10f — also reset roomScale on mobile so a
-        // leftover roomy boost doesn't enlarge cards on a phone.
-        if (Math.abs(1 - roomScale) > 0.01) setRoomScale(1)
+        if (Math.abs(1 - fitScaleRef.current) > 0.005)  setFitScale(1)
+        if (fitModeRef.current !== 'natural')           setFitMode('natural')
+        if (Math.abs(1 - roomScaleRef.current) > 0.01)  setRoomScale(1)
         return
       }
       rafId = requestAnimationFrame(() => {
         const containerH = container.clientHeight
         const containerW = container.clientWidth
+        // Phase DAB.10f.1 — Read current state via refs (not closure
+        // capture). The effect deps list stays [operatorCards] only,
+        // so the observer survives every state change without churn.
+        const curScale = fitScaleRef.current
+        const curMode  = fitModeRef.current
+        const curRoom  = roomScaleRef.current
         // Measure UNSCALED content size by reading scrollHeight/
-        // scrollWidth, which are independent of the current transform.
-        // We divide by the current fitScale so the measurement always
-        // reflects the natural (scale=1) size.
-        const naturalH = inner.scrollHeight / fitScale
-        const naturalW = inner.scrollWidth  / fitScale
+        // scrollWidth. We divide by current fitScale (transform-scale
+        // is applied to the inner) AND by current roomScale (CSS
+        // padding/gap/font caps are multiplied by --board-room-scale).
+        // Both adjustments are needed to recover the BASE-natural
+        // size — the natural size with no fit AND no roomy boost
+        // applied. Without dividing by roomScale, a roomy-mode
+        // measurement reports an inflated natural height and the
+        // next-tick slack calc bounces between values.
+        //
+        // Note: dividing by roomScale is approximate (roomy CSS
+        // multiplies padding/gap proportionally but clamp() font
+        // middle vw terms are unaffected). The approximation works
+        // in practice because the hysteresis buffer absorbs the
+        // small residual error.
+        const naturalH = inner.scrollHeight / curScale / curRoom
+        const naturalW = inner.scrollWidth  / curScale / curRoom
         if (containerH <= 0 || naturalH <= 0) return
         const scaleH = containerH / naturalH
         const scaleW = containerW / naturalW
-        // Honor whichever dimension constrains more, but never
-        // upscale past 1.
+        // Honor whichever dimension constrains more, but never upscale.
         const idealScale = Math.min(1, scaleH, scaleW)
-        // Phase DAB.10e.2 — Graduated fit waterfall.
-        //   READABLE_MIN_SCALE (0.78) — kiosk text stays readable
-        //     from across a maintenance shop. Below 0.78 a global
-        //     scale starts to make names + task titles too small
-        //     (a 22px name at 0.78 ≈ 17px visual, near the floor
-        //     of comfortable readability at TV distance).
-        //   EMERGENCY_MIN_SCALE (0.72) — absolute floor used only
-        //     when even ULTRA compaction (1-line notes, 3-col grid,
-        //     reduced padding) can't fit the roster. Documented as
-        //     a last resort; in practice only triggers with 14+
-        //     operators × multi-job × verbose notes on a short TV.
+        // slackRatio is the BASE slack (no roomy applied) since
+        // naturalH was divided by curRoom above.
+        const slackRatio = containerH / naturalH
+
+        // Phase DAB.10f.1 — Hysteresis thresholds. Each mode has
+        // SEPARATE enter and exit gates so a mode flip can't ping-
+        // pong on the very next measurement. The buffer between
+        // enter / exit must be wider than the layout change one
+        // mode flip causes, otherwise the next measurement re-
+        // crosses the gate.
         //
-        // Mode selection:
-        //   ideal >= 1       → 'natural'  (no transform, scale = 1)
-        //   ideal >= 0.78    → 'scaled'   (mild scale, kiosk still readable)
-        //   ideal <  0.78    → 'ultra'    (CSS tightens; scale clamped to 0.78
-        //                                  unless the post-tightening measure
-        //                                  proves we still need 0.72 floor)
+        // Roomy:   enter slack ≥ 1.20  ·  exit slack < 1.08
+        // Natural: between roomy.exit and scaled.exit (no transform)
+        // Scaled:  enter ideal < 0.96  ·  exit ideal > 1.05
+        // Ultra:   enter ideal < 0.74  ·  exit ideal > 0.86
         const READABLE_MIN_SCALE  = 0.78
         const EMERGENCY_MIN_SCALE = 0.72
-        // Phase DAB.10f — Room-scale ceiling. 1.3 = 30% growth in
-        // padding/gap/font-cap. With the existing clamp() max term
-        // (e.g. 48px name × 1.3 = 62px cap), the vw middle term still
-        // controls actual font-size on most viewports, so this caps
-        // visual growth at a sensible ceiling rather than ballooning
-        // names into the brand bar above.
-        const MAX_ROOM_SCALE      = 1.3
-        // Phase DAB.10f — slackRatio = container/natural. >1 means
-        // there's vertical headroom. We only enter roomy mode when
-        // slack is meaningful (≥ 1.05) so a near-perfect fit doesn't
-        // bounce between natural and roomy modes.
-        const ROOMY_SLACK_THRESHOLD = 1.05
-        const slackRatio = containerH / naturalH
-        let nextMode  = 'natural'
-        let nextScale = 1
-        let nextRoom  = 1
-        if (slackRatio >= ROOMY_SLACK_THRESHOLD) {
-          // Phase DAB.10f — Room to grow. Boost --board-room-scale
-          // so CSS padding/gap/font-cap calc()s enlarge cards. Cap
-          // at MAX_ROOM_SCALE so a sparse roster (3 ops, 1 task each)
-          // doesn't try to balloon to 5× the container height —
-          // larger rosters will still bump up cards by 10-25%
-          // (5-bar roster typical slack is ~1.4 → roomScale 1.3).
-          nextMode  = 'roomy'
-          nextScale = 1
-          nextRoom  = Math.min(MAX_ROOM_SCALE, slackRatio)
-        } else if (idealScale >= 1 - 0.005) {
-          nextMode  = 'natural'
-          nextScale = 1
-          nextRoom  = 1
-        } else if (idealScale >= READABLE_MIN_SCALE) {
-          nextMode  = 'scaled'
-          nextScale = idealScale
-          nextRoom  = 1
+        const MAX_ROOM_SCALE      = 1.15   // DAB.10f.1: was 1.30, lowered for stability
+        const ROOMY_ENTER  = 1.20
+        const ROOMY_EXIT   = 1.08
+        const SCALED_ENTER = 0.96  // ideal must drop below this to enter scaled
+        const SCALED_EXIT  = 1.05  // (idealScale always ≤ 1, so exit relies on hysteresis via slack)
+        const ULTRA_ENTER  = 0.74
+        const ULTRA_EXIT   = 0.86
+
+        // State machine: start from current mode, decide whether to
+        // stay or transition based on the buffered thresholds.
+        let nextMode  = curMode
+        let nextScale = curScale
+        let nextRoom  = curRoom
+
+        if (curMode === 'roomy') {
+          // Stay roomy until slack drops below the exit threshold.
+          if (slackRatio < ROOMY_EXIT) {
+            nextMode  = (idealScale < SCALED_ENTER) ? 'scaled' : 'natural'
+            nextScale = (nextMode === 'scaled') ? Math.max(READABLE_MIN_SCALE, idealScale) : 1
+            nextRoom  = 1
+          } else {
+            // Stay roomy — recompute room boost based on current slack.
+            // Cap at MAX_ROOM_SCALE. Use a damped formula so a tiny
+            // slack change doesn't translate to a visible jump.
+            nextScale = 1
+            nextRoom  = Math.min(MAX_ROOM_SCALE, 1 + (slackRatio - 1) * 0.6)
+          }
+        } else if (curMode === 'scaled') {
+          // Stay scaled unless ideal climbs above the exit threshold
+          // OR drops below ultra-enter.
+          if (idealScale < ULTRA_ENTER) {
+            nextMode  = 'ultra'
+            nextScale = READABLE_MIN_SCALE
+            nextRoom  = 1
+          } else if (idealScale > SCALED_EXIT || slackRatio > ROOMY_ENTER) {
+            // Climbed back into natural / roomy territory.
+            nextMode  = (slackRatio >= ROOMY_ENTER) ? 'roomy' : 'natural'
+            nextScale = 1
+            nextRoom  = (nextMode === 'roomy')
+              ? Math.min(MAX_ROOM_SCALE, 1 + (slackRatio - 1) * 0.6)
+              : 1
+          } else {
+            // Stay scaled, refresh scale value.
+            nextScale = Math.max(READABLE_MIN_SCALE, idealScale)
+            nextRoom  = 1
+          }
+        } else if (curMode === 'ultra') {
+          // Stay ultra unless ideal climbs well above its enter gate.
+          if (idealScale > ULTRA_EXIT) {
+            nextMode  = (idealScale < SCALED_EXIT) ? 'scaled' : 'natural'
+            nextScale = (nextMode === 'scaled') ? Math.max(READABLE_MIN_SCALE, idealScale) : 1
+            nextRoom  = 1
+          } else {
+            // Refresh ultra scale (between EMERGENCY and READABLE floors).
+            nextScale = Math.max(EMERGENCY_MIN_SCALE, Math.min(READABLE_MIN_SCALE, idealScale))
+            nextRoom  = 1
+          }
         } else {
-          // Sub-readable scale. Flip to ultra mode so CSS can compact
-          // the layout (1-line notes, 3-col grid at very wide, etc).
-          // Hold scale at READABLE_MIN_SCALE on this tick; the next
-          // ResizeObserver callback after the CSS re-flow measures
-          // the post-ultra natural height. If even ultra can't make
-          // it fit at 0.78, the subsequent measurement will compute
-          // a still-too-small idealScale and drop to EMERGENCY floor.
-          nextMode = 'ultra'
-          // If we're already in ultra and STILL can't fit at 0.78,
-          // accept the emergency floor (0.72). Otherwise hold at
-          // 0.78 to give the CSS re-flow a chance to tighten.
-          nextScale = (fitMode === 'ultra' && idealScale < READABLE_MIN_SCALE)
-            ? Math.max(EMERGENCY_MIN_SCALE, idealScale)
-            : READABLE_MIN_SCALE
-          nextRoom  = 1
+          // curMode === 'natural' — initial state.
+          if (idealScale < ULTRA_ENTER) {
+            nextMode  = 'ultra'
+            nextScale = READABLE_MIN_SCALE
+            nextRoom  = 1
+          } else if (idealScale < SCALED_ENTER) {
+            nextMode  = 'scaled'
+            nextScale = Math.max(READABLE_MIN_SCALE, idealScale)
+            nextRoom  = 1
+          } else if (slackRatio >= ROOMY_ENTER) {
+            nextMode  = 'roomy'
+            nextScale = 1
+            nextRoom  = Math.min(MAX_ROOM_SCALE, 1 + (slackRatio - 1) * 0.6)
+          } else {
+            // Stay natural.
+            nextMode  = 'natural'
+            nextScale = 1
+            nextRoom  = 1
+          }
         }
+
         // Skip writes when values barely move to avoid feedback loops
         // where a 1px scrollHeight change triggers a re-scale.
-        const scaleChanged = Math.abs(nextScale - fitScale) > 0.005
-        const modeChanged  = nextMode !== fitMode
-        const roomChanged  = Math.abs(nextRoom  - roomScale) > 0.01
+        const scaleChanged = Math.abs(nextScale - curScale) > 0.005
+        const modeChanged  = nextMode !== curMode
+        const roomChanged  = Math.abs(nextRoom  - curRoom) > 0.01
         if (scaleChanged) setFitScale(nextScale)
         if (modeChanged)  setFitMode(nextMode)
         if (roomChanged)  setRoomScale(nextRoom)
@@ -1551,7 +1601,11 @@ function BoardModeCrewBars({ operatorCards }) {
         else if (mq.removeListener) mq.removeListener(measure)
       }
     }
-  }, [operatorCards, fitScale, fitMode, roomScale])
+    // Phase DAB.10f.1 — deps deliberately exclude fitScale/fitMode/
+    // roomScale; refs are used to read latest values. Re-running the
+    // effect on each state change tore down + recreated the observer
+    // every flip, contributing to the perceived flicker.
+  }, [operatorCards])
 
   if (!operatorCards || operatorCards.length === 0) {
     return (

@@ -65,34 +65,36 @@ section('roomScale state + roomy fit mode')
 assert(/const \[roomScale, setRoomScale\] = useState\(1\)/.test(KIOSK),
   'roomScale state initialized to 1 (no boost by default)')
 
-// MAX_ROOM_SCALE + ROOMY_SLACK_THRESHOLD constants documented.
-assert(/const MAX_ROOM_SCALE\s+= 1\.3/.test(KIOSK),
-  'MAX_ROOM_SCALE = 1.3 (30% growth ceiling — keeps clamp() max sensible)')
-assert(/const ROOMY_SLACK_THRESHOLD = 1\.05/.test(KIOSK),
-  'ROOMY_SLACK_THRESHOLD = 1.05 (only enter roomy when ≥ 5% slack — avoids bouncing)')
+// Phase DAB.10f.1 — MAX_ROOM_SCALE lowered from 1.3 → 1.15 for
+// stability. ROOMY_SLACK_THRESHOLD replaced by hysteresis pair
+// (ROOMY_ENTER=1.20 / ROOMY_EXIT=1.08).
+assert(/const MAX_ROOM_SCALE\s+= 1\.15/.test(KIOSK),
+  'MAX_ROOM_SCALE = 1.15 (conservative ceiling — DAB.10f.1 stability tightening)')
+assert(/const ROOMY_ENTER\s+= 1\.20/.test(KIOSK),
+  'ROOMY_ENTER = 1.20 (enter threshold — DAB.10f.1 hysteresis)')
+assert(/const ROOMY_EXIT\s+= 1\.08/.test(KIOSK),
+  'ROOMY_EXIT = 1.08 (exit threshold — DAB.10f.1 hysteresis)')
 
 // slackRatio computed.
 assert(/const slackRatio = containerH \/ naturalH/.test(KIOSK),
   'slackRatio = containerH / naturalH (how much room is below the natural content)')
 
-// Roomy branch sits BEFORE the existing natural / scaled / ultra
-// branches (waterfall priority: roomy beats natural when slack > threshold).
-assert(/if \(slackRatio >= ROOMY_SLACK_THRESHOLD\) \{[\s\S]{0,800}nextMode\s+= 'roomy'/.test(KIOSK),
-  "roomy branch fires when slackRatio >= threshold; sets mode='roomy'")
-assert(/nextRoom\s+= Math\.min\(MAX_ROOM_SCALE, slackRatio\)/.test(KIOSK),
-  'roomScale = min(MAX_ROOM_SCALE, slackRatio) — caps growth at 1.3× even on very sparse rosters')
+// Phase DAB.10f.1 — Roomy now lives inside a state machine branch
+// (curMode === 'natural' AND slackRatio >= ROOMY_ENTER). Roomy
+// growth uses a DAMPED formula (1 + (slack-1)*0.6) rather than the
+// raw slack ratio, which is also part of the anti-flicker fix.
+assert(/if \(slackRatio >= ROOMY_ENTER\) \{[\s\S]{0,400}nextMode\s+= 'roomy'/.test(KIOSK),
+  "natural→roomy transition fires on slack >= ROOMY_ENTER (1.20)")
+assert(/Math\.min\(MAX_ROOM_SCALE, 1 \+ \(slackRatio - 1\) \* 0\.6\)/.test(KIOSK),
+  'roomScale damped: min(MAX_ROOM_SCALE, 1 + (slack-1)*0.6) — 0.6 factor flattens the growth curve')
 
-// Other branches set roomScale = 1.
-assert(/nextMode\s+= 'natural'[\s\S]{0,200}nextScale = 1[\s\S]{0,200}nextRoom\s+= 1/.test(KIOSK),
-  "natural branch sets nextRoom = 1 (no boost)")
-
-// Effect deps include roomScale (so a roomy → natural transition
-// triggered by the CSS reflow re-runs the measure).
-assert(/\}, \[operatorCards, fitScale, fitMode, roomScale\]\)/.test(KIOSK),
-  'useEffect deps include roomScale (re-measures after roomy CSS reflow)')
+// Effect deps reduced to [operatorCards] only — state values read
+// via refs to prevent observer teardown/recreate flicker loop.
+assert(/\}, \[operatorCards\]\)\s*\n/.test(KIOSK),
+  'useEffect deps reduced to [operatorCards] only (DAB.10f.1 — refs avoid teardown flicker)')
 
 // Skip-write threshold for roomScale (debounces feedback loops).
-assert(/const roomChanged\s+= Math\.abs\(nextRoom\s+- roomScale\) > 0\.01/.test(KIOSK),
+assert(/const roomChanged\s+= Math\.abs\(nextRoom\s+- curRoom\) > 0\.01/.test(KIOSK),
   'roomScale write debounced at 0.01 (prevents feedback loop)')
 assert(/if \(roomChanged\)\s+setRoomScale\(nextRoom\)/.test(KIOSK),
   'setRoomScale fires only when value changes')
@@ -140,8 +142,9 @@ assert(/clamp\(\s*28px,/.test(roomyBlock),
 // ── Mobile bypass — roomScale reset to 1 alongside fitMode ───────
 section('Mobile bypass — roomScale reset to 1')
 
-assert(/if \(mq && mq\.matches\) \{[\s\S]{0,800}if \(Math\.abs\(1 - roomScale\) > 0\.01\) setRoomScale\(1\)/.test(KIOSK),
-  'mobile branch resets roomScale to 1 (leftover desktop boost cleared on mobile)')
+// Phase DAB.10f.1 — mobile branch reads from refs.
+assert(/if \(mq && mq\.matches\) \{[\s\S]{0,800}if \(Math\.abs\(1 - roomScaleRef\.current\) > 0\.01\)\s+setRoomScale\(1\)/.test(KIOSK),
+  'mobile branch resets roomScale to 1 via roomScaleRef.current (DAB.10f.1 refs)')
 
 // CSS mobile overrides don't include roomy-specific rules — the JS
 // roomScale=1 + fitMode='natural' resets together kill the boost,

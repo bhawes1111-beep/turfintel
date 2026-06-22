@@ -78,21 +78,24 @@ assert(measureBlock.length > 0, 'rAF measurement block parsed')
 assert(!/Math\.max\(0\.5,/.test(measureBlock),
   'old 0.5 single-pass floor removed from the measurement branch (negative pin)')
 
-// Waterfall branches.
-assert(/if \(idealScale >= 1 - 0\.005\) \{[\s\S]{0,200}nextMode\s+= 'natural'[\s\S]{0,200}nextScale = 1/.test(KIOSK),
-  "branch 1: ideal >= 1 → mode='natural', scale=1")
-assert(/else if \(idealScale >= READABLE_MIN_SCALE\) \{[\s\S]{0,200}nextMode\s+= 'scaled'[\s\S]{0,200}nextScale = idealScale/.test(KIOSK),
-  "branch 2: ideal >= 0.78 → mode='scaled', scale=idealScale (clamp floors hold readability)")
+// Phase DAB.10f.1 — Waterfall replaced by hysteresis state machine
+// keyed off curMode. Each mode has separate enter/exit thresholds.
+// The 'natural' branch handles initial-mount and 'else' fallthrough.
+assert(/curMode === 'natural'/.test(KIOSK),
+  "state machine 'natural' branch present (initial mode + fallthrough)")
+assert(/nextMode\s+= 'scaled'[\s\S]{0,200}nextScale = Math\.max\(READABLE_MIN_SCALE, idealScale\)/.test(KIOSK),
+  "scaled transition clamps scale to max(READABLE_MIN_SCALE, idealScale)")
 assert(/nextMode\s+= 'ultra'/.test(KIOSK),
-  "branch 3: ideal < 0.78 → mode='ultra' (CSS tightens before deeper scaling)")
+  "'ultra' mode transition present")
 
-// Emergency floor only after CSS has tightened.
-assert(/fitMode === 'ultra' && idealScale < READABLE_MIN_SCALE[\s\S]{0,300}Math\.max\(EMERGENCY_MIN_SCALE, idealScale\)/.test(KIOSK),
-  'emergency 0.72 floor only engages on second-pass when already in ultra AND still too small')
+// Ultra scale handling — DAB.10f.1 sets it on entry to READABLE_MIN_SCALE
+// and refreshes inside the ultra branch via max(EMERGENCY, min(READABLE, ideal)).
+assert(/Math\.max\(EMERGENCY_MIN_SCALE, Math\.min\(READABLE_MIN_SCALE, idealScale\)\)/.test(KIOSK),
+  'ultra-mode scale: max(EMERGENCY_MIN_SCALE, min(READABLE_MIN_SCALE, idealScale)) — clamped between floors')
 
-// First ultra-pass holds at READABLE_MIN_SCALE so CSS re-flow can converge.
-assert(/: READABLE_MIN_SCALE/.test(KIOSK),
-  'first ultra-pass clamps to READABLE_MIN_SCALE so CSS re-flow has a chance to fit')
+// Ultra entry sets scale to READABLE_MIN_SCALE so CSS reflow has a chance.
+assert(/nextMode\s+= 'ultra'\s*\n\s*nextScale = READABLE_MIN_SCALE/.test(KIOSK),
+  'ultra ENTRY sets scale to READABLE_MIN_SCALE (CSS reflow gets a chance to fit before deeper scale)')
 
 // ── Fit mode state + data attribute ──────────────────────────────
 section('fitMode state + data-fit-mode attribute')
@@ -108,12 +111,12 @@ assert(/if \(scaleChanged\) setFitScale\(nextScale\)/.test(KIOSK),
 assert(/if \(modeChanged\)\s+setFitMode\(nextMode\)/.test(KIOSK),
   'setFitMode fires only when mode changes')
 
-// fitMode added to useEffect deps so a mode flip re-triggers measure
-// for the post-CSS-flow second pass. Phase DAB.10f also adds roomScale
-// to the deps so a roomy boost triggers a re-measure (in case the CSS
-// padding/font growth pushes natural height up enough to need scaled).
-assert(/\}, \[operatorCards, fitScale, fitMode, roomScale\]\)/.test(KIOSK),
-  'useEffect deps include fitMode + roomScale (post-flow re-measure)')
+// Phase DAB.10f.1 — useEffect deps reduced to [operatorCards] only.
+// fitScale/fitMode/roomScale are read via refs (fitScaleRef etc.) so
+// the observer doesn't tear down + recreate on every state change —
+// THAT teardown loop was the perceived flicker.
+assert(/\}, \[operatorCards\]\)/.test(KIOSK),
+  'useEffect deps = [operatorCards] only (DAB.10f.1 — anti-flicker via refs)')
 
 // ── Ultra mode CSS ───────────────────────────────────────────────
 section('Ultra-mode CSS rules')
@@ -203,13 +206,14 @@ assert(/data-fit-mode='ultra'\] \.boardNotesText[\s\S]{0,300}-webkit-line-clamp:
 // ── Mobile completely opted out ──────────────────────────────────
 section('Mobile completely opted out of fit transform + mode')
 
-// fitScale forced to 1 on mobile (DAB.10e.1 preserved).
-assert(/if \(mq && mq\.matches\) \{[\s\S]{0,400}if \(Math\.abs\(1 - fitScale\) > 0\.005\) setFitScale\(1\)/.test(KIOSK),
-  'mobile: fitScale forced to 1 (DAB.10e.1 preserved)')
+// fitScale forced to 1 on mobile (DAB.10e.1 preserved; DAB.10f.1
+// reads via fitScaleRef.current to keep effect deps minimal).
+assert(/if \(mq && mq\.matches\) \{[\s\S]{0,400}if \(Math\.abs\(1 - fitScaleRef\.current\) > 0\.005\)\s+setFitScale\(1\)/.test(KIOSK),
+  'mobile: fitScale forced to 1 via fitScaleRef.current')
 // fitMode also forced to 'natural' on mobile so leftover desktop
 // 'ultra' from a window-resize crossing doesn't keep CSS ultra
 // rules active on the phone.
-assert(/if \(mq && mq\.matches\) \{[\s\S]{0,500}if \(fitMode !== 'natural'\) setFitMode\('natural'\)/.test(KIOSK),
+assert(/if \(mq && mq\.matches\) \{[\s\S]{0,500}if \(fitModeRef\.current !== 'natural'\)\s+setFitMode\('natural'\)/.test(KIOSK),
   "mobile: fitMode forced to 'natural' (prevents leftover ultra from CSS staying active)")
 
 // CSS mobile override unchanged.
