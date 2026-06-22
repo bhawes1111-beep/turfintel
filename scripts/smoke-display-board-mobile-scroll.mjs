@@ -149,7 +149,9 @@ assert(/typeof window !== 'undefined' && window\.matchMedia/.test(KIOSK),
 // When mobile, pin fitScale to 1 + early-return before the measurement.
 assert(/if \(mq && mq\.matches\) \{[\s\S]{0,400}if \(Math\.abs\(1 - fitScale\) > 0\.005\) setFitScale\(1\)/.test(KIOSK),
   'mobile branch pins fitScale to 1 (prevents observer feedback loop with CSS !important)')
-assert(/if \(mq && mq\.matches\) \{[\s\S]{0,400}return/.test(KIOSK),
+// Phase DAB.10f — mobile block grew (also resets roomScale to 1
+// alongside fitMode='natural'); budget raised to accommodate.
+assert(/if \(mq && mq\.matches\) \{[\s\S]{0,800}return/.test(KIOSK),
   'mobile branch early-returns before the measurement work')
 
 // Breakpoint-crossing listener — rotation / window resize across

@@ -1369,16 +1369,27 @@ function BoardModeCrewBars({ operatorCards }) {
   const containerRef = useRef(null)
   const innerRef     = useRef(null)
   const [fitScale, setFitScale] = useState(1)
-  // Phase DAB.10e.2 — Fit mode replaces the silent-deep-shrink
-  // behavior with a graduated waterfall:
-  //   'natural' — content fits at scale 1; no transform engaged.
+  // Phase DAB.10e.2 / DAB.10f — Fit mode replaces both silent-deep-
+  // shrink AND silent-wasted-space behavior with a four-tier waterfall:
+  //   'roomy'   — DAB.10f: content has > 5% vertical slack at scale
+  //               1; CSS rooms-up via --board-room-scale (1.0-1.3)
+  //               so cards fill the available height. Larger padding,
+  //               gap, and clamp() max font caps. No transform.
+  //   'natural' — content fits at scale 1 within ~5% of viewport;
+  //               no transform; no room-scale boost.
   //   'scaled'  — content needs scale ≥ READABLE_MIN_SCALE (0.78);
   //               cards still readable from across a shop.
   //   'ultra'   — content would need scale < 0.78; CSS ultra rules
   //               (tighter padding, 1-line notes, 3-col grid at very
   //               wide widths) tighten the layout so the scale can
   //               settle back at or near the readable floor.
-  const [fitMode,  setFitMode]  = useState('natural')
+  const [fitMode,   setFitMode]   = useState('natural')
+  // Phase DAB.10f — Room-scale CSS variable (independent of fitScale)
+  // multiplies padding/gap/font-cap values when in 'roomy' mode so
+  // cards grow to fill the available vertical space. Capped at 1.3
+  // so a 5-bar roster doesn't balloon employee names into the brand
+  // bar above. 1.0 means "no boost" (natural / scaled / ultra modes).
+  const [roomScale, setRoomScale] = useState(1)
 
   // ResizeObserver fires on viewport resize, density-bucket switch
   // (data-density change re-flows the grid), and any DOM mutation
@@ -1416,6 +1427,9 @@ function BoardModeCrewBars({ operatorCards }) {
         // keep CSS ultra rules applied on a phone (where they'd
         // also tighten the mobile layout unnecessarily).
         if (fitMode !== 'natural') setFitMode('natural')
+        // Phase DAB.10f — also reset roomScale on mobile so a
+        // leftover roomy boost doesn't enlarge cards on a phone.
+        if (Math.abs(1 - roomScale) > 0.01) setRoomScale(1)
         return
       }
       rafId = requestAnimationFrame(() => {
@@ -1453,14 +1467,40 @@ function BoardModeCrewBars({ operatorCards }) {
         //                                  proves we still need 0.72 floor)
         const READABLE_MIN_SCALE  = 0.78
         const EMERGENCY_MIN_SCALE = 0.72
+        // Phase DAB.10f — Room-scale ceiling. 1.3 = 30% growth in
+        // padding/gap/font-cap. With the existing clamp() max term
+        // (e.g. 48px name × 1.3 = 62px cap), the vw middle term still
+        // controls actual font-size on most viewports, so this caps
+        // visual growth at a sensible ceiling rather than ballooning
+        // names into the brand bar above.
+        const MAX_ROOM_SCALE      = 1.3
+        // Phase DAB.10f — slackRatio = container/natural. >1 means
+        // there's vertical headroom. We only enter roomy mode when
+        // slack is meaningful (≥ 1.05) so a near-perfect fit doesn't
+        // bounce between natural and roomy modes.
+        const ROOMY_SLACK_THRESHOLD = 1.05
+        const slackRatio = containerH / naturalH
         let nextMode  = 'natural'
         let nextScale = 1
-        if (idealScale >= 1 - 0.005) {
+        let nextRoom  = 1
+        if (slackRatio >= ROOMY_SLACK_THRESHOLD) {
+          // Phase DAB.10f — Room to grow. Boost --board-room-scale
+          // so CSS padding/gap/font-cap calc()s enlarge cards. Cap
+          // at MAX_ROOM_SCALE so a sparse roster (3 ops, 1 task each)
+          // doesn't try to balloon to 5× the container height —
+          // larger rosters will still bump up cards by 10-25%
+          // (5-bar roster typical slack is ~1.4 → roomScale 1.3).
+          nextMode  = 'roomy'
+          nextScale = 1
+          nextRoom  = Math.min(MAX_ROOM_SCALE, slackRatio)
+        } else if (idealScale >= 1 - 0.005) {
           nextMode  = 'natural'
           nextScale = 1
+          nextRoom  = 1
         } else if (idealScale >= READABLE_MIN_SCALE) {
           nextMode  = 'scaled'
           nextScale = idealScale
+          nextRoom  = 1
         } else {
           // Sub-readable scale. Flip to ultra mode so CSS can compact
           // the layout (1-line notes, 3-col grid at very wide, etc).
@@ -1469,20 +1509,23 @@ function BoardModeCrewBars({ operatorCards }) {
           // the post-ultra natural height. If even ultra can't make
           // it fit at 0.78, the subsequent measurement will compute
           // a still-too-small idealScale and drop to EMERGENCY floor.
-          nextMode  = 'ultra'
+          nextMode = 'ultra'
           // If we're already in ultra and STILL can't fit at 0.78,
           // accept the emergency floor (0.72). Otherwise hold at
           // 0.78 to give the CSS re-flow a chance to tighten.
           nextScale = (fitMode === 'ultra' && idealScale < READABLE_MIN_SCALE)
             ? Math.max(EMERGENCY_MIN_SCALE, idealScale)
             : READABLE_MIN_SCALE
+          nextRoom  = 1
         }
-        // Skip writes when both values barely move to avoid feedback
-        // loops where a 1px scrollHeight change triggers a re-scale.
+        // Skip writes when values barely move to avoid feedback loops
+        // where a 1px scrollHeight change triggers a re-scale.
         const scaleChanged = Math.abs(nextScale - fitScale) > 0.005
         const modeChanged  = nextMode !== fitMode
+        const roomChanged  = Math.abs(nextRoom  - roomScale) > 0.01
         if (scaleChanged) setFitScale(nextScale)
         if (modeChanged)  setFitMode(nextMode)
+        if (roomChanged)  setRoomScale(nextRoom)
       })
     }
     // Observe both container (viewport / parent flex sizing) AND
@@ -1508,7 +1551,7 @@ function BoardModeCrewBars({ operatorCards }) {
         else if (mq.removeListener) mq.removeListener(measure)
       }
     }
-  }, [operatorCards, fitScale, fitMode])
+  }, [operatorCards, fitScale, fitMode, roomScale])
 
   if (!operatorCards || operatorCards.length === 0) {
     return (
@@ -1564,6 +1607,11 @@ function BoardModeCrewBars({ operatorCards }) {
         // cards AND make them only 70% of the container width.
         '--board-fit-scale':        fitScale,
         '--board-fit-inverse':      1 / fitScale,
+        // Phase DAB.10f — Room-scale boost for roomy mode. Multiplied
+        // alongside --board-bar-scale in calc() expressions on
+        // padding / gap / clamp() max font caps. 1.0 in non-roomy
+        // modes (no boost).
+        '--board-room-scale':       roomScale,
       }}
     >
       <div

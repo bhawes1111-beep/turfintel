@@ -2789,6 +2789,73 @@
   }
 }
 
+/* ── Phase DAB.10f — Roomy fit mode (fill empty space) ────────────────
+   When the JS ResizeObserver determines that the natural content
+   height leaves ≥ 5% slack below it, BoardModeCrewBars sets
+   data-fit-mode="roomy" and writes --board-room-scale (1.0 → 1.3)
+   inline. These rules re-declare the key calc() expressions from
+   the base / density / DAB.10d blocks but multiplied by
+   var(--board-room-scale, 1) so cards grow proportionally to fill
+   the available vertical space.
+
+   Roomy mode DOES NOT:
+   - Apply any CSS transform (text stays crisp; no blurry upscale).
+   - Override font-size MIN terms (clamp() min still 28px name etc.).
+   - Override font-size middle (vw) term — viewport width still
+     drives baseline size; roomy only lifts the max ceiling.
+   - Activate at any width where data-fit-mode ≠ 'roomy' (i.e. when
+     content already fits naturally, or when scaled / ultra are
+     active — those modes wanted MORE compaction, not less).
+   - Activate on mobile (mobile branch in JS pins roomScale = 1).
+
+   The visible effect: 5-bar sparse roster grows from ~480px tall
+   to ~620px (1.3× boost) — cards visibly larger, breathing room
+   feels intentional, no giant empty band at the bottom of the TV. */
+
+.boardBars[data-fit-mode='roomy'] .boardBarsInner {
+  gap: calc(18px * var(--board-bar-scale, 1) * var(--board-room-scale, 1));
+}
+.boardBars[data-fit-mode='roomy'] .boardPersonBar {
+  padding:
+    calc(20px * var(--board-bar-scale, 1) * var(--board-room-scale, 1))
+    calc(26px * var(--board-bar-scale, 1) * var(--board-room-scale, 1));
+  gap: calc(10px * var(--board-bar-scale, 1) * var(--board-room-scale, 1));
+}
+.boardBars[data-fit-mode='roomy'] .boardTaskBlock {
+  padding:
+    calc(6px * var(--board-room-scale, 1)) 0
+    calc(8px * var(--board-room-scale, 1));
+  gap: calc(4px * var(--board-room-scale, 1));
+}
+.boardBars[data-fit-mode='roomy'] .boardPersonName {
+  font-size: clamp(
+    28px,
+    3.2vw,
+    calc(48px * var(--board-bar-scale, 1) * var(--board-room-scale, 1))
+  );
+}
+.boardBars[data-fit-mode='roomy'] .boardTaskText {
+  font-size: clamp(
+    18px,
+    2.4vw,
+    calc(36px * var(--board-bar-scale, 1) * var(--board-room-scale, 1))
+  );
+}
+.boardBars[data-fit-mode='roomy'] .boardNotesText {
+  font-size: clamp(
+    16px,
+    1.6vw,
+    calc(26px * var(--board-bar-scale, 1) * var(--board-room-scale, 1))
+  );
+}
+.boardBars[data-fit-mode='roomy'] .boardJobOrdinal {
+  font-size: clamp(
+    13px,
+    1.1vw,
+    calc(15px * var(--board-bar-scale, 1) * var(--board-room-scale, 1))
+  );
+}
+
 /* ── Phase 9C.4d — Short-viewport safe-area tightening ──────────────────
    720p TVs (landscape, ~720px effective render height after chrome)
    and landscape tablets force tighter density regardless of how many

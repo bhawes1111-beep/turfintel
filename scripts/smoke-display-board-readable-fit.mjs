@@ -70,8 +70,10 @@ assert(/const READABLE_MIN_SCALE\s+= 0\.78/.test(KIOSK),
 assert(/const EMERGENCY_MIN_SCALE = 0\.72/.test(KIOSK),
   'EMERGENCY_MIN_SCALE constant = 0.72 (absolute floor, documented as last resort)')
 
-// Old 0.5 floor must be gone from the measurement branch.
-const measureBlock = KIOSK.match(/rafId = requestAnimationFrame\(\(\) => \{([\s\S]{0,5000}?)\n\s{6}\}\)/)?.[1] ?? ''
+// Old 0.5 floor must be gone from the measurement branch. Block
+// expanded again in DAB.10f to handle the roomy waterfall branch +
+// roomScale state, so the parse budget is raised accordingly.
+const measureBlock = KIOSK.match(/rafId = requestAnimationFrame\(\(\) => \{([\s\S]{0,8000}?)\n\s{6}\}\)/)?.[1] ?? ''
 assert(measureBlock.length > 0, 'rAF measurement block parsed')
 assert(!/Math\.max\(0\.5,/.test(measureBlock),
   'old 0.5 single-pass floor removed from the measurement branch (negative pin)')
@@ -107,9 +109,11 @@ assert(/if \(modeChanged\)\s+setFitMode\(nextMode\)/.test(KIOSK),
   'setFitMode fires only when mode changes')
 
 // fitMode added to useEffect deps so a mode flip re-triggers measure
-// for the post-CSS-flow second pass.
-assert(/\}, \[operatorCards, fitScale, fitMode\]\)/.test(KIOSK),
-  'useEffect deps include fitMode (post-flow re-measure)')
+// for the post-CSS-flow second pass. Phase DAB.10f also adds roomScale
+// to the deps so a roomy boost triggers a re-measure (in case the CSS
+// padding/font growth pushes natural height up enough to need scaled).
+assert(/\}, \[operatorCards, fitScale, fitMode, roomScale\]\)/.test(KIOSK),
+  'useEffect deps include fitMode + roomScale (post-flow re-measure)')
 
 // ── Ultra mode CSS ───────────────────────────────────────────────
 section('Ultra-mode CSS rules')
@@ -137,7 +141,10 @@ assert(!/\.boardBars\[data-fit-mode='ultra'\] \.boardPersonName\s*\{/.test(KIOSK
 assert(!/\.boardBars\[data-fit-mode='ultra'\] \.boardTaskText\s*\{/.test(KIOSK_CSS),
   'ultra does NOT override .boardTaskText (density floor 15px+ holds)')
 // Ultra also does NOT use display: none anywhere.
-const ultraSection = KIOSK_CSS.match(/Phase DAB\.10e\.2 — Ultra-compact fit mode[\s\S]{0,4000}\/\* ── Phase 9C\.4d — Short-viewport/)?.[0] ?? ''
+// Phase DAB.10f — boundary used to be 9C.4d short-viewport block,
+// but DAB.10f's roomy block now sits between ultra and 9C.4d. Pin
+// to the new DAB.10f boundary marker instead.
+const ultraSection = KIOSK_CSS.match(/Phase DAB\.10e\.2 — Ultra-compact fit mode[\s\S]{0,4000}\/\* ── Phase DAB\.10f — Roomy fit mode/)?.[0] ?? ''
 assert(ultraSection.length > 0, 'ultra-mode CSS section parsed')
 assert(!/display:\s+none/.test(ultraSection),
   'ultra-mode CSS does NOT use display: none (no hidden employees / tasks / labels)')
