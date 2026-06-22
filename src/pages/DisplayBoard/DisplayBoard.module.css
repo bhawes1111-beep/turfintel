@@ -2724,6 +2724,71 @@
   }
 }
 
+/* ── Phase DAB.10e.2 — Ultra-compact fit mode ─────────────────────────
+   When the JS ResizeObserver in BoardModeCrewBars determines that
+   even at READABLE_MIN_SCALE (0.78) the roster won't fit, it sets
+   data-fit-mode="ultra" on .boardBars. CSS then tightens the layout
+   so the scale can settle back near the readable floor instead of
+   shrinking text to unreadable size.
+
+   Ultra rules:
+   - 2-col grid at narrower widths (≥900px instead of 1100px)
+   - 3-col grid at very wide widths (≥1600px)
+   - notes clamp to 1 line (was 2-4 lines depending on density)
+   - tighter card padding and gaps
+   - smaller, inline-feeling ordinal labels
+   - tighter task-block padding/gap
+
+   Ultra DOES NOT:
+   - shrink names below their density floor (compact = 18px floor)
+   - shrink task titles below their density floor (compact = 15px floor)
+   - hide employees or tasks
+   - hide ordinal labels entirely
+   These typography floors keep the TV-distance readability promise. */
+
+.boardBars[data-fit-mode='ultra'] .boardBarsInner {
+  gap: calc(6px * var(--board-bar-scale, 1));
+}
+.boardBars[data-fit-mode='ultra'] .boardPersonBar {
+  padding: calc(8px * var(--board-bar-scale, 1)) calc(12px * var(--board-bar-scale, 1));
+  gap: calc(4px * var(--board-bar-scale, 1));
+}
+.boardBars[data-fit-mode='ultra'] .boardTaskBlock {
+  padding: calc(2px * var(--board-bar-scale, 1)) 0 calc(3px * var(--board-bar-scale, 1));
+  gap: calc(1px * var(--board-bar-scale, 1));
+}
+.boardBars[data-fit-mode='ultra'] .boardNotesText {
+  /* Ultra: 1-line notes (was 2 at compact, 3 at comfortable, 4 default). */
+  -webkit-line-clamp: 1;
+  /* Ordinal label still visible, just tinier inline. */
+  font-size: clamp(11px, 1.1vw, calc(14px * var(--board-bar-scale, 1)));
+}
+.boardBars[data-fit-mode='ultra'] .boardJobOrdinal {
+  font-size: clamp(9px, 0.8vw, calc(11px * var(--board-bar-scale, 1)));
+  margin-bottom: -4px;
+}
+/* Ultra widens earlier — 2-col grid starts at 900px instead of 1100px.
+   This lets the board halve its vertical pressure on a typical 1080p
+   TV in landscape before relying on scale alone. */
+@media (min-width: 900px) {
+  .boardBars[data-fit-mode='ultra'] .boardBarsInner {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: calc(10px * var(--board-bar-scale, 1));
+    row-gap: calc(6px * var(--board-bar-scale, 1));
+  }
+}
+/* 3-col grid at very wide widths (≥1600px). Triggers only in ultra
+   mode AND requires a wide kiosk display — typical for the big shop
+   TVs that drive these boards. Cards must stay readable: at 1600px /
+   3 columns the each card has ~530px of width, plenty for a typical
+   employee name + task chips. */
+@media (min-width: 1600px) {
+  .boardBars[data-fit-mode='ultra'] .boardBarsInner {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 /* ── Phase 9C.4d — Short-viewport safe-area tightening ──────────────────
    720p TVs (landscape, ~720px effective render height after chrome)
    and landscape tablets force tighter density regardless of how many

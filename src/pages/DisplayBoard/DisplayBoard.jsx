@@ -1369,6 +1369,16 @@ function BoardModeCrewBars({ operatorCards }) {
   const containerRef = useRef(null)
   const innerRef     = useRef(null)
   const [fitScale, setFitScale] = useState(1)
+  // Phase DAB.10e.2 — Fit mode replaces the silent-deep-shrink
+  // behavior with a graduated waterfall:
+  //   'natural' — content fits at scale 1; no transform engaged.
+  //   'scaled'  — content needs scale ≥ READABLE_MIN_SCALE (0.78);
+  //               cards still readable from across a shop.
+  //   'ultra'   — content would need scale < 0.78; CSS ultra rules
+  //               (tighter padding, 1-line notes, 3-col grid at very
+  //               wide widths) tighten the layout so the scale can
+  //               settle back at or near the readable floor.
+  const [fitMode,  setFitMode]  = useState('natural')
 
   // ResizeObserver fires on viewport resize, density-bucket switch
   // (data-density change re-flows the grid), and any DOM mutation
@@ -1401,6 +1411,11 @@ function BoardModeCrewBars({ operatorCards }) {
       // recompute a tiny scale that doesn't apply visually).
       if (mq && mq.matches) {
         if (Math.abs(1 - fitScale) > 0.005) setFitScale(1)
+        // Phase DAB.10e.2 — also reset fitMode on mobile so a
+        // leftover 'ultra' from a prior desktop session doesn't
+        // keep CSS ultra rules applied on a phone (where they'd
+        // also tighten the mobile layout unnecessarily).
+        if (fitMode !== 'natural') setFitMode('natural')
         return
       }
       rafId = requestAnimationFrame(() => {
@@ -1416,14 +1431,58 @@ function BoardModeCrewBars({ operatorCards }) {
         const scaleH = containerH / naturalH
         const scaleW = containerW / naturalW
         // Honor whichever dimension constrains more, but never
-        // upscale past 1 (we don't want to magnify a sparse roster).
-        // Floor at 0.5 — below that the kiosk text becomes unreadable
-        // on a TV; the user is better off either thinning the roster
-        // or letting the inner scroll fallback engage (rare).
-        const next = Math.max(0.5, Math.min(1, scaleH, scaleW))
-        // Skip writes when the value barely moves to avoid feedback
+        // upscale past 1.
+        const idealScale = Math.min(1, scaleH, scaleW)
+        // Phase DAB.10e.2 — Graduated fit waterfall.
+        //   READABLE_MIN_SCALE (0.78) — kiosk text stays readable
+        //     from across a maintenance shop. Below 0.78 a global
+        //     scale starts to make names + task titles too small
+        //     (a 22px name at 0.78 ≈ 17px visual, near the floor
+        //     of comfortable readability at TV distance).
+        //   EMERGENCY_MIN_SCALE (0.72) — absolute floor used only
+        //     when even ULTRA compaction (1-line notes, 3-col grid,
+        //     reduced padding) can't fit the roster. Documented as
+        //     a last resort; in practice only triggers with 14+
+        //     operators × multi-job × verbose notes on a short TV.
+        //
+        // Mode selection:
+        //   ideal >= 1       → 'natural'  (no transform, scale = 1)
+        //   ideal >= 0.78    → 'scaled'   (mild scale, kiosk still readable)
+        //   ideal <  0.78    → 'ultra'    (CSS tightens; scale clamped to 0.78
+        //                                  unless the post-tightening measure
+        //                                  proves we still need 0.72 floor)
+        const READABLE_MIN_SCALE  = 0.78
+        const EMERGENCY_MIN_SCALE = 0.72
+        let nextMode  = 'natural'
+        let nextScale = 1
+        if (idealScale >= 1 - 0.005) {
+          nextMode  = 'natural'
+          nextScale = 1
+        } else if (idealScale >= READABLE_MIN_SCALE) {
+          nextMode  = 'scaled'
+          nextScale = idealScale
+        } else {
+          // Sub-readable scale. Flip to ultra mode so CSS can compact
+          // the layout (1-line notes, 3-col grid at very wide, etc).
+          // Hold scale at READABLE_MIN_SCALE on this tick; the next
+          // ResizeObserver callback after the CSS re-flow measures
+          // the post-ultra natural height. If even ultra can't make
+          // it fit at 0.78, the subsequent measurement will compute
+          // a still-too-small idealScale and drop to EMERGENCY floor.
+          nextMode  = 'ultra'
+          // If we're already in ultra and STILL can't fit at 0.78,
+          // accept the emergency floor (0.72). Otherwise hold at
+          // 0.78 to give the CSS re-flow a chance to tighten.
+          nextScale = (fitMode === 'ultra' && idealScale < READABLE_MIN_SCALE)
+            ? Math.max(EMERGENCY_MIN_SCALE, idealScale)
+            : READABLE_MIN_SCALE
+        }
+        // Skip writes when both values barely move to avoid feedback
         // loops where a 1px scrollHeight change triggers a re-scale.
-        if (Math.abs(next - fitScale) > 0.005) setFitScale(next)
+        const scaleChanged = Math.abs(nextScale - fitScale) > 0.005
+        const modeChanged  = nextMode !== fitMode
+        if (scaleChanged) setFitScale(nextScale)
+        if (modeChanged)  setFitMode(nextMode)
       })
     }
     // Observe both container (viewport / parent flex sizing) AND
@@ -1449,7 +1508,7 @@ function BoardModeCrewBars({ operatorCards }) {
         else if (mq.removeListener) mq.removeListener(measure)
       }
     }
-  }, [operatorCards, fitScale])
+  }, [operatorCards, fitScale, fitMode])
 
   if (!operatorCards || operatorCards.length === 0) {
     return (
@@ -1494,6 +1553,7 @@ function BoardModeCrewBars({ operatorCards }) {
       ref={containerRef}
       data-density={density}
       data-fit-scale={fitScale < 1 ? 'scaled' : 'natural'}
+      data-fit-mode={fitMode}
       style={{
         '--board-operator-count':   operatorCount,
         '--board-assignment-count': assignmentCount,

@@ -135,12 +135,15 @@ assert(/const scaleH = containerH \/ naturalH/.test(KIOSK),
   'scaleH = containerH / naturalH')
 assert(/const scaleW = containerW \/ naturalW/.test(KIOSK),
   'scaleW = containerW / naturalW')
-assert(/Math\.max\(0\.5, Math\.min\(1, scaleH, scaleW\)\)/.test(KIOSK),
-  'fitScale = max(0.5, min(1, scaleH, scaleW)) — never upscale, never below 0.5')
+// Phase DAB.10e.2 — Single-pass `Math.max(0.5, ...)` replaced by a
+// graduated waterfall: idealScale = min(1, scaleH, scaleW); then
+// natural / scaled (≥ READABLE_MIN_SCALE) / ultra branches.
+assert(/const idealScale = Math\.min\(1, scaleH, scaleW\)/.test(KIOSK),
+  'idealScale = min(1, scaleH, scaleW) — never upscale; floor handled by waterfall')
 
 // Skip-write threshold to prevent feedback loops.
-assert(/if \(Math\.abs\(next - fitScale\) > 0\.005\) setFitScale\(next\)/.test(KIOSK),
-  'fitScale write guarded by 0.005 threshold (prevents observer feedback loop)')
+assert(/const scaleChanged = Math\.abs\(nextScale - fitScale\) > 0\.005/.test(KIOSK),
+  'scale write guarded by 0.005 threshold (prevents observer feedback loop)')
 
 // Natural-size measurement divides by current scale (since the inner
 // is already transform-scaled).
