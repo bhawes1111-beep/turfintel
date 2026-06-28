@@ -19,7 +19,7 @@
 //   spray_records, operations_daily_notes, operational_attachments,
 //   crew_employees (name only — no payRate / private fields).
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useCalendarData,    refreshCalendarData }    from '../../utils/calendar/calendarStore'
 import { useSpraysData,      refreshSpraysData }      from '../../utils/sprays/spraysStore'
@@ -1415,7 +1415,18 @@ function BoardModeCrewBars({ operatorCards }) {
   // document scrolling, not transform-scaled cards. matchMedia mirror
   // of the CSS @media (max-width: 600px) breakpoint; when narrow,
   // pin fit-scale to 1 and skip the observer measurement branch.
-  useEffect(() => {
+  //
+  // Phase DAB.10f.2 — useLayoutEffect (was useEffect) so the first
+  // measurement + setFitScale/setFitMode/setRoomScale runs SYNCHRONOUSLY
+  // before the browser paints. Without this, the first paint after a
+  // roster change shows unscaled "natural" content, the layout effect
+  // then runs after paint, schedules a re-render with the correct
+  // scale, and a second paint shows the scaled version. For one frame
+  // you see the LARGER unscaled tree before it flips to the smaller
+  // scaled tree — the user's "two stacked copies" symptom. Layout
+  // effects block paint until they return, so the scaled version is
+  // the first thing the user sees.
+  useLayoutEffect(() => {
     if (typeof ResizeObserver === 'undefined') return
     const container = containerRef.current
     const inner     = innerRef.current

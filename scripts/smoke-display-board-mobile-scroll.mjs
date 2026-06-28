@@ -77,7 +77,8 @@ assert(/overflow:\s+hidden/.test(baseBoardBars),
   '.boardBars base rule still overflow: hidden (DAB.10e desktop clipping preserved)')
 
 // .boardBarsInner still transforms by --board-fit-scale on desktop.
-const baseInner = KIOSK_CSS.match(/\n\.boardBarsInner \{([\s\S]{0,1200}?)\n\}/)?.[1] ?? ''
+// Phase DAB.10f.2 — block budget bumped (added overflow/will-change).
+const baseInner = KIOSK_CSS.match(/\n\.boardBarsInner \{([\s\S]{0,3000}?)\n\}/)?.[1] ?? ''
 assert(baseInner.length > 0, '.boardBarsInner base block parsed')
 assert(/transform:\s+scale\(var\(--board-fit-scale,\s*1\)\)/.test(baseInner),
   '.boardBarsInner base rule still transform: scale(var(--board-fit-scale)) (DAB.10e fit-to-screen preserved)')

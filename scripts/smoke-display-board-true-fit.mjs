@@ -81,7 +81,9 @@ section('.boardBarsInner wrapper — owns layout + transform-scale')
 assert(/\.boardBarsInner\s*\{/.test(KIOSK_CSS),
   '.boardBarsInner CSS class defined')
 
-const innerBlock = KIOSK_CSS.match(/\n\.boardBarsInner \{([\s\S]{0,1200}?)\n\}/)?.[1] ?? ''
+// Phase DAB.10f.2 — block grew (added overflow: hidden + will-change
+// + backface-visibility + DAB.10f.2 comments); budget bumped.
+const innerBlock = KIOSK_CSS.match(/\n\.boardBarsInner \{([\s\S]{0,3000}?)\n\}/)?.[1] ?? ''
 assert(innerBlock.length > 0, '.boardBarsInner base block parsed')
 
 // transform-scale + origin.
