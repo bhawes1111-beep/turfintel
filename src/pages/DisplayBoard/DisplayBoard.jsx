@@ -19,7 +19,7 @@
 //   spray_records, operations_daily_notes, operational_attachments,
 //   crew_employees (name only — no payRate / private fields).
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useCalendarData,    refreshCalendarData }    from '../../utils/calendar/calendarStore'
 import { useSpraysData,      refreshSpraysData }      from '../../utils/sprays/spraysStore'
@@ -1366,19 +1366,26 @@ function BoardModeCrewBars({ operatorCards }) {
   //
   // Hooks declared BEFORE the empty-state early return so the
   // hook order stays stable.
-  const containerRef = useRef(null)
-  const innerRef     = useRef(null)
-  // Phase DAB.10f.1 — Refs mirror state so the ResizeObserver effect
-  // can read latest values without depending on them.
-  // Phase DAB.10f.3 — fitScale state + ref REMOVED entirely. Transform-
-  // based scaling was the root cause of duplicate / ghost board paint
-  // on the Chromebit (transform creates stacking context + compositor
-  // layer; legacy Chromium pipelines can paint pre- and post-transform
-  // boxes alongside each other during state changes). All sizing now
-  // flows through real CSS — font-size clamps, padding, gap, columns —
-  // selected by fitMode + density.
-  const fitModeRef   = useRef('natural')
-  const roomScaleRef = useRef(1)
+  // Phase DAB.10g — DETERMINISTIC layout buckets. The entire
+  // ResizeObserver-on-inner-content feedback loop is gone.
+  //
+  // Why: every previous iteration of this code (DAB.10e through
+  // DAB.10f.3) tried to observe the inner content size, change
+  // layout based on the result, and then re-observe the changed
+  // layout. Even with hysteresis and refs, the loop produced
+  // visible flicker on the kiosk because the layout the observer
+  // measured was itself a function of the layout the observer
+  // chose. There is no convergence guarantee for a feedback loop
+  // whose input depends on its output.
+  //
+  // DAB.10g replaces inner observation with stable inputs:
+  //   - operatorCount + assignmentCount (from data)
+  //   - multiJobCount (from data)
+  //   - viewport width + height (from window listener, outer only)
+  //   - mobile breakpoint (from matchMedia)
+  // None of those values change when CSS changes, so the chosen
+  // mode cannot oscillate. ResizeObserver is gone entirely; no
+  // refs into the DOM are needed because no one measures the DOM.
   // Phase DAB.10e.2 / DAB.10f — Fit mode replaces both silent-deep-
   // shrink AND silent-wasted-space behavior with a four-tier waterfall:
   //   'roomy'   — DAB.10f: content has > 5% vertical slack at scale
@@ -1393,204 +1400,56 @@ function BoardModeCrewBars({ operatorCards }) {
   //               (tighter padding, 1-line notes, 3-col grid at very
   //               wide widths) tighten the layout so the scale can
   //               settle back at or near the readable floor.
-  const [fitMode,   setFitMode]   = useState('natural')
-  // Phase DAB.10f — Room-scale CSS variable (independent of fitScale)
-  // multiplies padding/gap/font-cap values when in 'roomy' mode so
-  // cards grow to fill the available vertical space. Capped at 1.3
-  // so a 5-bar roster doesn't balloon employee names into the brand
-  // bar above. 1.0 means "no boost" (natural / scaled / ultra modes).
-  const [roomScale, setRoomScale] = useState(1)
+  // Phase DAB.10g — Track viewport size + mobile breakpoint with a
+  // single window listener (debounced via rAF). No observer on the
+  // inner content; no feedback loop possible.
+  const [viewport, setViewport] = useState(() => ({
+    w: typeof window !== 'undefined' ? window.innerWidth  : 1920,
+    h: typeof window !== 'undefined' ? window.innerHeight : 1080,
+    isMobile: typeof window !== 'undefined' && window.matchMedia
+      ? window.matchMedia('(max-width: 600px)').matches
+      : false,
+  }))
 
-  // Phase DAB.10f.1 — Mirror state into refs so the effect deps stay
-  // empty (no observer churn on every fit-state change).
-  fitModeRef.current   = fitMode
-  roomScaleRef.current = roomScale
-
-  // ResizeObserver fires on viewport resize, density-bucket switch
-  // (data-density change re-flows the grid), and any DOM mutation
-  // inside the bars. We use rAF to coalesce multiple observations
-  // in the same frame so a rapid resize doesn't thrash style writes.
-  //
-  // Phase DAB.10e.1 — Mobile bypass. On phones we want natural
-  // document scrolling, not transform-scaled cards. matchMedia mirror
-  // of the CSS @media (max-width: 600px) breakpoint; when narrow,
-  // pin fit-scale to 1 and skip the observer measurement branch.
-  //
-  // Phase DAB.10f.2 — useLayoutEffect (was useEffect) so the first
-  // measurement + setFitScale/setFitMode/setRoomScale runs SYNCHRONOUSLY
-  // before the browser paints. Without this, the first paint after a
-  // roster change shows unscaled "natural" content, the layout effect
-  // then runs after paint, schedules a re-render with the correct
-  // scale, and a second paint shows the scaled version. For one frame
-  // you see the LARGER unscaled tree before it flips to the smaller
-  // scaled tree — the user's "two stacked copies" symptom. Layout
-  // effects block paint until they return, so the scaled version is
-  // the first thing the user sees.
-  useLayoutEffect(() => {
-    if (typeof ResizeObserver === 'undefined') return
-    const container = containerRef.current
-    const inner     = innerRef.current
-    if (!container || !inner) return
-
-    const mq = typeof window !== 'undefined' && window.matchMedia
-      ? window.matchMedia('(max-width: 600px)')
-      : null
-
+  // Phase DAB.10g — Window-resize listener tracks viewport size +
+  // mobile breakpoint via stable inputs. NO ResizeObserver. NO inner
+  // content observation. rAF debounces rapid resize events. Both
+  // modern + legacy MediaQueryList listener APIs wired for Chrome 79.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const mq = window.matchMedia ? window.matchMedia('(max-width: 600px)') : null
     let rafId = 0
-    function measure() {
+    function onResize() {
       cancelAnimationFrame(rafId)
-      // Phase DAB.10e.1 — On mobile, force fit-scale to 1 and skip
-      // the measurement branch entirely. The CSS .boardBarsInner
-      // mobile override (transform: none !important) is what actually
-      // disables the visual transform; this just prevents React from
-      // churning state in a feedback loop (where the CSS-blocked
-      // transform makes scrollHeight measurements continuously
-      // recompute a tiny scale that doesn't apply visually).
-      if (mq && mq.matches) {
-        // Phase DAB.10f.3 — mobile branch only needs to clear fitMode
-        // + roomScale. fitScale is pinned to 1 permanently now and
-        // there is no setFitScale; the closure removes that branch.
-        if (fitModeRef.current !== 'natural')           setFitMode('natural')
-        if (Math.abs(1 - roomScaleRef.current) > 0.01)  setRoomScale(1)
-        return
-      }
       rafId = requestAnimationFrame(() => {
-        const containerH = container.clientHeight
-        // Phase DAB.10f.3 — Mode-only measurement. No transform-scale,
-        // no inverse compensation, no idealScale. ResizeObserver now
-        // selects ONE OF:
-        //
-        //   'roomy'   — natural content is shorter than container
-        //               (slack ≥ ROOMY_ENTER). CSS roomy rules bump
-        //               padding/gap/font caps up.
-        //   'natural' — content fits comfortably (~95-105% of container).
-        //               No CSS overrides.
-        //   'compact' — content overflows mildly (height > 105% of
-        //               container). NEW in DAB.10f.3 — replaces the
-        //               old transform-scale 'scaled' tier with real
-        //               CSS tightening of padding/gap/notes-clamp.
-        //   'ultra'   — content overflows substantially (> 130% of
-        //               container). Existing CSS ultra rules: 1-line
-        //               notes, 3-col grid at very wide, tighter
-        //               padding. NO transform.
-        //
-        // The chosen mode is exposed via data-fit-mode on .boardBars;
-        // CSS attribute selectors do the visual work entirely in
-        // layout properties (no transform).
-        const curMode  = fitModeRef.current
-        const curRoom  = roomScaleRef.current
-
-        // Measure unscaled natural height. fitScale is permanently 1
-        // (no transform), but we still divide by curRoom because the
-        // roomy CSS boost inflates the rendered padding/font sizes.
-        // Without this division, a roomy-mode measurement reports an
-        // inflated natural height and slack ratios bounce.
-        const naturalH = inner.scrollHeight / curRoom
-        if (containerH <= 0 || naturalH <= 0) return
-        const slackRatio = containerH / naturalH
-
-        // Phase DAB.10f.1 hysteresis preserved — each mode has its
-        // own enter / exit gates. Phase DAB.10f.3 thresholds are
-        // SLACK-only (no idealScale needed):
-        //
-        //   slack > 1.20 → roomy
-        //   slack 1.00 → 0.90 → natural
-        //   slack < 0.95 → compact
-        //   slack < 0.74 → ultra
-        //
-        // Exit gates wider than enter gates to prevent ping-pong.
-        const MAX_ROOM_SCALE = 1.15
-        const ROOMY_ENTER    = 1.20
-        const ROOMY_EXIT     = 1.08
-        const COMPACT_ENTER  = 0.95  // slack < 0.95 (i.e. content > 105% of container) → compact
-        const COMPACT_EXIT   = 1.02  // slack > 1.02 → leave compact for natural
-        const ULTRA_ENTER    = 0.74  // slack < 0.74 (content > 135% of container) → ultra
-        const ULTRA_EXIT     = 0.86
-
-        let nextMode = curMode
-        let nextRoom = curRoom
-
-        if (curMode === 'roomy') {
-          if (slackRatio < ROOMY_EXIT) {
-            nextMode = (slackRatio < COMPACT_ENTER) ? 'compact' : 'natural'
-            nextRoom = 1
-          } else {
-            nextRoom = Math.min(MAX_ROOM_SCALE, 1 + (slackRatio - 1) * 0.6)
-          }
-        } else if (curMode === 'compact') {
-          if (slackRatio < ULTRA_ENTER) {
-            nextMode = 'ultra'
-            nextRoom = 1
-          } else if (slackRatio > COMPACT_EXIT) {
-            nextMode = (slackRatio >= ROOMY_ENTER) ? 'roomy' : 'natural'
-            nextRoom = (nextMode === 'roomy')
-              ? Math.min(MAX_ROOM_SCALE, 1 + (slackRatio - 1) * 0.6)
-              : 1
-          } else {
-            nextRoom = 1
-          }
-        } else if (curMode === 'ultra') {
-          if (slackRatio > ULTRA_EXIT) {
-            nextMode = (slackRatio < COMPACT_EXIT) ? 'compact' : 'natural'
-            nextRoom = 1
-          } else {
-            nextRoom = 1
-          }
-        } else {
-          // curMode === 'natural' — initial / fallthrough.
-          if (slackRatio < ULTRA_ENTER) {
-            nextMode = 'ultra'
-            nextRoom = 1
-          } else if (slackRatio < COMPACT_ENTER) {
-            nextMode = 'compact'
-            nextRoom = 1
-          } else if (slackRatio >= ROOMY_ENTER) {
-            nextMode = 'roomy'
-            nextRoom = Math.min(MAX_ROOM_SCALE, 1 + (slackRatio - 1) * 0.6)
-          } else {
-            nextMode = 'natural'
-            nextRoom = 1
-          }
-        }
-
-        const modeChanged = nextMode !== curMode
-        const roomChanged = Math.abs(nextRoom - curRoom) > 0.01
-        if (modeChanged)  setFitMode(nextMode)
-        if (roomChanged)  setRoomScale(nextRoom)
+        setViewport(prev => {
+          const w = window.innerWidth
+          const h = window.innerHeight
+          const isMobile = mq ? mq.matches : prev.isMobile
+          if (prev.w === w && prev.h === h && prev.isMobile === isMobile) return prev
+          return { w, h, isMobile }
+        })
       })
     }
-    // Observe both container (viewport / parent flex sizing) AND
-    // inner (DOM mutation: roster changed, ordinal labels added).
-    const ro = new ResizeObserver(measure)
-    ro.observe(container)
-    ro.observe(inner)
-    // Phase DAB.10e.1 — Listen for breakpoint crossing so a rotation
-    // or window resize across the 600px boundary re-runs the measure
-    // logic (re-pinning to 1 on the mobile side; re-measuring on the
-    // desktop side). addEventListener is Chrome 90+; addListener is
-    // the deprecated fallback for older Safari and Chrome 79.
+    window.addEventListener('resize', onResize)
     if (mq) {
-      if (mq.addEventListener) mq.addEventListener('change', measure)
-      else if (mq.addListener) mq.addListener(measure)
+      if (mq.addEventListener) mq.addEventListener('change', onResize)
+      else if (mq.addListener) mq.addListener(onResize)
     }
-    measure()
+    onResize()
     return () => {
-      ro.disconnect()
+      window.removeEventListener('resize', onResize)
       cancelAnimationFrame(rafId)
       if (mq) {
-        if (mq.removeEventListener) mq.removeEventListener('change', measure)
-        else if (mq.removeListener) mq.removeListener(measure)
+        if (mq.removeEventListener) mq.removeEventListener('change', onResize)
+        else if (mq.removeListener) mq.removeListener(onResize)
       }
     }
-    // Phase DAB.10f.1 — deps deliberately exclude fitScale/fitMode/
-    // roomScale; refs are used to read latest values. Re-running the
-    // effect on each state change tore down + recreated the observer
-    // every flip, contributing to the perceived flicker.
-  }, [operatorCards])
+  }, [])
 
   if (!operatorCards || operatorCards.length === 0) {
     return (
-      <div className={styles.boardBars} ref={containerRef}>
+      <div className={styles.boardBars}>
         <p className={styles.boardEmpty}>No assignments for today.</p>
       </div>
     )
@@ -1609,48 +1468,80 @@ function BoardModeCrewBars({ operatorCards }) {
     (n, op) => n + (op.assignments?.length ?? 0),
     0,
   )
+  // Phase 9C.4c density bucket (notes line-clamp + typography floor)
+  // preserved.
   const density =
     operatorCount >= 10 || assignmentCount >= 16 ? 'compact'
     : operatorCount >= 6 || assignmentCount >= 10 ? 'comfortable'
     : 'spacious'
-  // Phase 9C.4d — Smooth per-assignment shrink. Starts at ~2/3 size
-  // (0.66) for the first 2 assignments — shop TVs need a tighter base
-  // layout so multi-person rosters fit without scrolling — then drops
-  // 2.5% per assignment thereafter, floors at 0.45.
-  // The discrete 9C.4c bucket density above still controls categorical
-  // decisions (notes line-clamp count, 2-column compact grid); the
-  // continuous scale below tightens padding / gap / max-font caps via
-  // CSS calc() so growth is smooth instead of step-changes.
   const boardBarScale = Math.max(
     0.45,
     Math.min(0.66, 0.66 - Math.max(0, assignmentCount - 2) * 0.025),
   )
+
+  // Phase DAB.10g — DETERMINISTIC fit mode + column count derived
+  // from stable inputs only (operator count, assignment count, multi-
+  // job count, viewport dims, mobile flag). No content measurement,
+  // no feedback loop. Mobile collapses to 1-col natural + scrolls.
+  const multiJobCount = operatorCards.reduce(
+    (n, op) => n + ((op.assignments?.length ?? 0) > 1 ? 1 : 0),
+    0,
+  )
+  // Score: assignments + extra-job bumps + short-viewport bump. Higher
+  // score → denser mode. Buckets chosen empirically to match the
+  // historical roomy/natural/compact/ultra cutoffs of the old observer
+  // system without needing observation.
+  const heaviness =
+    assignmentCount
+    + Math.max(0, multiJobCount - 1)        // multi-job cards take more vertical room
+    + (viewport.h < 800 ? 4 : 0)             // short TVs (1024×768, 720p landscape) → 1 tier denser
+    + (viewport.h < 600 ? 4 : 0)             // very short → another tier
+  const fitMode = viewport.isMobile
+    ? 'natural'
+    : heaviness <= 8  ? 'roomy'
+    : heaviness <= 14 ? 'natural'
+    : heaviness <= 22 ? 'compact'
+    :                   'ultra'
+
+  // Phase DAB.10g — Deterministic column count. Wider viewport + heavier
+  // roster → more columns. Mobile always 1.
+  const boardColumns = viewport.isMobile ? 1
+    : (viewport.w >= 1600 && fitMode === 'ultra')   ? 3
+    : (viewport.w >= 1100 && (fitMode === 'compact' || fitMode === 'ultra'
+                              || (density === 'comfortable' && fitMode !== 'roomy'))) ? 2
+    : 1
+
+  // Phase DAB.10g — Target card height derived from viewport, NOT
+  // from inner content measurement. Approximate the available roster
+  // area as viewport.h minus a fixed allowance for the date header +
+  // padding (~120px). Divide by row count for a stretch target. Only
+  // applied in roomy/natural modes via CSS; compact/ultra ignore it
+  // so dense rosters keep their tight layout.
+  const HEADER_AND_PADDING = 120
+  const availableRosterHeight = Math.max(0, viewport.h - HEADER_AND_PADDING)
+  const rowCount = Math.max(1, Math.ceil(operatorCount / boardColumns))
+  const targetCardHeight = Math.floor(availableRosterHeight / rowCount) - 16  // minus gap allowance
+
   return (
     <div
       className={styles.boardBars}
-      ref={containerRef}
       data-density={density}
       data-fit-mode={fitMode}
+      data-board-columns={boardColumns}
       style={{
         '--board-operator-count':   operatorCount,
         '--board-assignment-count': assignmentCount,
         '--board-bar-scale':        boardBarScale,
-        // Phase DAB.10f — Room-scale boost for roomy mode. Multiplied
-        // alongside --board-bar-scale in calc() expressions on
-        // padding / gap / clamp() max font caps. 1.0 in non-roomy
-        // modes (no boost).
-        // Phase DAB.10f.3 — --board-fit-scale and --board-fit-inverse
-        // REMOVED. Transform-based scaling caused duplicate / ghost
-        // paint on the Chromebit and Chrome 79. All sizing now flows
-        // through real CSS — fitMode flips data-fit-mode and roomScale
-        // multiplies clamp() max terms.
-        '--board-room-scale':       roomScale,
+        // Phase DAB.10g — DETERMINISTIC layout vars. No --board-room-scale
+        // because roomy boost is now applied via CSS attribute selectors
+        // directly (no continuous slack-driven multiplier needed). No
+        // observer means no feedback loop means no need for the scale to
+        // be a number.
+        '--board-columns':           boardColumns,
+        '--board-target-card-height': `${targetCardHeight}px`,
       }}
     >
-      <div
-        ref={innerRef}
-        className={styles.boardBarsInner}
-      >
+      <div className={styles.boardBarsInner}>
       {operatorCards.map(op => {
         // Phase E.9 — Out-status cards: render the status word as the
         // "task" line and skip notes / Spanish / chips entirely. The

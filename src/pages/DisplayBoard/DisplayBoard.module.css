@@ -1947,22 +1947,22 @@
    scaled via transform: scale(--board-fit-scale) so it always fits.
    Inverse-width compensation keeps the scaled content full-width. */
 .boardBarsInner {
-  display: flex;
-  flex-direction: column;
+  /* Phase DAB.10g — DETERMINISTIC layout. grid-template-columns
+     driven by --board-columns (1/2/3) set inline by JSX from stable
+     inputs (viewport.w + fit-mode + density). When --board-columns
+     is 1, this is a vertical stack identical to the old flex-column.
+     When 2 or 3, cards lay out as a multi-column grid. One rule, no
+     @media-driven flex↔grid toggle.
+     Phase DAB.10f.3 — transform / transform-origin / inverse-width /
+     max-height / overflow REMOVED. */
+  display: grid;
+  grid-template-columns: repeat(var(--board-columns, 1), minmax(0, 1fr));
   width: 100%;
   /* Phase 9C.4d — gap tightens with assignment count via the inline
-     --board-bar-scale CSS variable. Preserved from the old
-     .boardBars rule. */
+     --board-bar-scale CSS variable. Density rules below this point
+     override it. Using `gap` shorthand so the cascade works for
+     density's later `gap:` declarations. */
   gap: calc(18px * var(--board-bar-scale, 1));
-  /* Phase DAB.10f.3 — transform / transform-origin / inverse-width /
-     max-height / overflow REMOVED.
-     Transform-based scaling was the root cause of the duplicate /
-     ghost board paint on the Chromebit (transform creates a stacking
-     context + compositor layer; legacy Chromium pipelines can paint
-     pre- and post-transform boxes alongside each other during state
-     changes). All sizing now flows through real layout — font-size
-     clamps, padding, gap, columns — selected by data-fit-mode and
-     data-density attribute selectors elsewhere in this file. */
 }
 
 .boardPersonBar {
@@ -2697,32 +2697,16 @@
   margin-bottom: -4px;
 }
 
-/* Compact + wide viewport → 2-column grid so a 12-person crew on a
-   large shop TV uses both halves of the screen instead of forcing a
-   long scroll. Below 1100px (tablets / phones) compact stays single
-   column so each bar still spans the full width. */
-@media (min-width: 1100px) {
-  /* Phase DAB.10e — The 2-column grid lives on the INNER wrapper
-     (.boardBarsInner) now since the inner is what holds the operator
-     cards. Compact density goes 2-col at ≥1100px (existing 9C.4e
-     behavior). DAB.10e adds: when fit-scale is engaged (content
-     overflows naturally), comfortable density ALSO goes 2-col so we
-     use the available horizontal real estate before shrinking text. */
-  /* Phase DAB.10f.3 — data-fit-scale removed alongside transform
-     scaling; widening selectors now key off data-fit-mode instead.
-     Compact density still goes 2-col automatically; comfortable +
-     fit-mode='compact' OR 'ultra' also widens because those modes
-     mean content was overflowing single-column. */
-  .boardBars[data-density='compact'] .boardBarsInner,
-  .boardBars[data-density='comfortable'][data-fit-mode='compact'] .boardBarsInner,
-  .boardBars[data-density='comfortable'][data-fit-mode='ultra']   .boardBarsInner {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    /* Phase 9C.4e — gaps scale with --board-bar-scale so the 2-column
-       compact grid does not visually re-pad the cards. */
-    column-gap: calc(14px * var(--board-bar-scale, 1));
-    row-gap: calc(10px * var(--board-bar-scale, 1));
-  }
+/* Phase DAB.10g — Target card height stretch. In roomy + natural
+   modes the JSX writes --board-target-card-height (px) computed from
+   viewport.h / rowCount. .boardPersonBar uses it as a min-height so
+   cards stretch to fill the available vertical real estate without
+   needing to observe their own size. Compact + ultra modes ignore
+   this because their content is dense enough that natural sizing
+   already fills the space. */
+.boardBars[data-fit-mode='roomy']    .boardPersonBar,
+.boardBars[data-fit-mode='natural']  .boardPersonBar {
+  min-height: var(--board-target-card-height, auto);
 }
 
 /* ── Phase DAB.10f.3 — Compact fit mode (no transform) ──────────────
@@ -2855,48 +2839,37 @@
    to ~620px (1.3× boost) — cards visibly larger, breathing room
    feels intentional, no giant empty band at the bottom of the TV. */
 
+/* Phase DAB.10g — roomy mode uses fixed +20% boost on clamp() max
+   values + slightly larger padding/gap. No --board-room-scale (that
+   variable was driven by a continuous slack measurement; DAB.10g
+   replaced the slack feedback loop with stable deterministic mode
+   selection). Card vertical filling is now handled by
+   --board-target-card-height applied as min-height to .boardPersonBar
+   in roomy + natural modes (declared earlier in this file). */
 .boardBars[data-fit-mode='roomy'] .boardBarsInner {
-  gap: calc(18px * var(--board-bar-scale, 1) * var(--board-room-scale, 1));
+  gap: calc(22px * var(--board-bar-scale, 1));
 }
 .boardBars[data-fit-mode='roomy'] .boardPersonBar {
   padding:
-    calc(20px * var(--board-bar-scale, 1) * var(--board-room-scale, 1))
-    calc(26px * var(--board-bar-scale, 1) * var(--board-room-scale, 1));
-  gap: calc(10px * var(--board-bar-scale, 1) * var(--board-room-scale, 1));
+    calc(24px * var(--board-bar-scale, 1))
+    calc(32px * var(--board-bar-scale, 1));
+  gap: calc(12px * var(--board-bar-scale, 1));
 }
 .boardBars[data-fit-mode='roomy'] .boardTaskBlock {
-  padding:
-    calc(6px * var(--board-room-scale, 1)) 0
-    calc(8px * var(--board-room-scale, 1));
-  gap: calc(4px * var(--board-room-scale, 1));
+  padding: 8px 0 10px;
+  gap: 6px;
 }
 .boardBars[data-fit-mode='roomy'] .boardPersonName {
-  font-size: clamp(
-    28px,
-    3.2vw,
-    calc(48px * var(--board-bar-scale, 1) * var(--board-room-scale, 1))
-  );
+  font-size: clamp(32px, 3.6vw, calc(58px * var(--board-bar-scale, 1)));
 }
 .boardBars[data-fit-mode='roomy'] .boardTaskText {
-  font-size: clamp(
-    18px,
-    2.4vw,
-    calc(36px * var(--board-bar-scale, 1) * var(--board-room-scale, 1))
-  );
+  font-size: clamp(22px, 2.6vw, calc(42px * var(--board-bar-scale, 1)));
 }
 .boardBars[data-fit-mode='roomy'] .boardNotesText {
-  font-size: clamp(
-    16px,
-    1.6vw,
-    calc(26px * var(--board-bar-scale, 1) * var(--board-room-scale, 1))
-  );
+  font-size: clamp(18px, 1.8vw, calc(30px * var(--board-bar-scale, 1)));
 }
 .boardBars[data-fit-mode='roomy'] .boardJobOrdinal {
-  font-size: clamp(
-    13px,
-    1.1vw,
-    calc(15px * var(--board-bar-scale, 1) * var(--board-room-scale, 1))
-  );
+  font-size: clamp(14px, 1.2vw, calc(18px * var(--board-bar-scale, 1)));
 }
 
 /* ── Phase 9C.4d — Short-viewport safe-area tightening ──────────────────

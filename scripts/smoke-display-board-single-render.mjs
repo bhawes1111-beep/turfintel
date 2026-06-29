@@ -122,21 +122,27 @@ const hasOverflowDecl = /^\s*overflow:\s+hidden\s*;/m.test(innerBlock)
 assert(!hasOverflowDecl,
   '.boardBarsInner does NOT declare overflow: hidden (DAB.10f.3 — no transform means no need for inner clip)')
 
-// ── useLayoutEffect retained ─────────────────────────────────────
-section('useLayoutEffect retained (DAB.10f.2 first revision fix)')
+// ── DAB.10g: useLayoutEffect REMOVED with the observer ──────────
+section('DAB.10g: useLayoutEffect + ResizeObserver REMOVED entirely')
 
-assert(/import \{ useEffect, useLayoutEffect, useMemo, useRef, useState \} from 'react'/.test(KIOSK),
-  'useLayoutEffect import retained')
-assert(/useLayoutEffect\(\(\) => \{[\s\S]{0,800}if \(typeof ResizeObserver === 'undefined'\) return/.test(KIOSK),
-  'observer setup still wrapped in useLayoutEffect (paint-blocking measurement)')
+assert(!/useLayoutEffect/.test(KIOSK),
+  'useLayoutEffect REMOVED (DAB.10g — no inner observation, no need for paint-blocking effect)')
+assert(!/new ResizeObserver/.test(KIOSK),
+  'ResizeObserver REMOVED (DAB.10g — replaced with deterministic window-resize listener)')
 
-// ── Fit infrastructure preserved (mode-only, no transform) ───────
-section('Fit infrastructure preserved — mode-only, no transform')
+// ── DAB.10g fit infrastructure — deterministic, no refs ──────────
+section('DAB.10g fit infrastructure — deterministic mode selection')
 
-assert(/const fitModeRef\s+= useRef\('natural'\)/.test(KIOSK),
-  'fitModeRef preserved (used by ResizeObserver to select mode)')
-assert(/const ROOMY_ENTER\s+= 1\.20/.test(KIOSK),
-  'ROOMY_ENTER hysteresis preserved (DAB.10f.1)')
+assert(!/fitModeRef/.test(KIOSK),
+  'fitModeRef REMOVED (DAB.10g — no need to mirror state since no observer reads it)')
+assert(!/ROOMY_ENTER/.test(KIOSK),
+  'ROOMY_ENTER hysteresis constant REMOVED (DAB.10g — buckets pick mode, not slack)')
+assert(/data-board-columns=\{boardColumns\}/.test(KIOSK),
+  'data-board-columns attribute set on .boardBars (DAB.10g deterministic columns)')
+assert(/'--board-columns':\s+boardColumns/.test(KIOSK),
+  '--board-columns CSS variable set inline (DAB.10g)')
+assert(/'--board-target-card-height':/.test(KIOSK),
+  '--board-target-card-height CSS variable set inline (DAB.10g)')
 // Phase DAB.10f.3 — transform / inverse-width / max-height REMOVED.
 // Negative pins ensure they don't sneak back in.
 assert(!/transform:\s+scale\(/.test(innerBlock),
@@ -169,8 +175,13 @@ assert(/@media \(max-width: 600px\)[\s\S]{0,3000}\.boardBarsInner \{[\s\S]{0,400
 // ── Chrome 79 / Chromebit compatibility ──────────────────────────
 section('Chrome 79 compatibility preserved')
 
-assert(/if \(typeof ResizeObserver === 'undefined'\) return/.test(KIOSK),
-  'graceful no-op for missing ResizeObserver preserved')
+// Phase DAB.10g — ResizeObserver API USE removed (mentions in
+// historical comments don't count). Negative pin against `new
+// ResizeObserver(` and `typeof ResizeObserver`.
+assert(!/new ResizeObserver\(/.test(KIOSK),
+  'no `new ResizeObserver(...)` constructor call in DisplayBoard.jsx (DAB.10g)')
+assert(!/typeof ResizeObserver/.test(KIOSK),
+  'no `typeof ResizeObserver` defensive guard (no observer codepath at all — DAB.10g)')
 assert(!/^\s*line-clamp:/m.test(KIOSK_CSS),
   'no unprefixed line-clamp (Chrome 79 uses -webkit-line-clamp)')
 

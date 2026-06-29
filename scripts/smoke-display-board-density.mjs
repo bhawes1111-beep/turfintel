@@ -102,11 +102,11 @@ assert(/\.boardBars\[data-density='comfortable'\]\s*\.boardNotesText\s*\{[\s\S]{
 assert(/\.boardBars\[data-density='compact'\]\s*\.boardNotesText\s*\{[\s\S]{0,400}-webkit-line-clamp:\s*2/.test(CSS),
   "compact mode: .boardNotesText -webkit-line-clamp: 2")
 
-// Compact + ≥1100 px → 2-column grid. Phase DAB.10e — grid moved
-// from .boardBars to .boardBarsInner since the inner wrapper now
-// owns the operator card layout.
-assert(/@media\s*\(\s*min-width:\s*1100px\s*\)\s*\{[\s\S]{0,800}\.boardBars\[data-density='compact'\] \.boardBarsInner[\s\S]{0,400}grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/.test(CSS),
-  "compact mode at @media (min-width: 1100px) uses grid-template-columns on .boardBarsInner")
+// Phase DAB.10g — @media-driven 2-col rule replaced with --board-
+// columns CSS variable on .boardBarsInner. JSX picks the column count
+// from stable inputs.
+assert(/\.boardBarsInner\s*\{[\s\S]{0,1000}grid-template-columns:\s*repeat\(var\(--board-columns,\s*1\), minmax\(0,\s*1fr\)\)/.test(CSS),
+  ".boardBarsInner uses grid-template-columns: repeat(var(--board-columns), …) — DAB.10g")
 
 // ── Phase 9C.4b regression couples — early return + content shape ─────
 section('Phase 9C.4b regression — early return + content preserved')

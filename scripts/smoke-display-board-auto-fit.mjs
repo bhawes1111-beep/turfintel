@@ -159,8 +159,11 @@ section('2-column compact grid preserved (wide TV)')
 // targets .boardBars[data-density='compact'] .boardBarsInner. Also
 // added: comfortable density goes 2-col when fit-scale is engaged
 // (DAB.10e widens-before-shrinking strategy).
-assert(/@media \(min-width: 1100px\)[\s\S]{0,800}data-density='compact'\] \.boardBarsInner[\s\S]{0,400}grid-template-columns:\s+repeat\(2,/.test(KIOSK_CSS),
-  '@media (min-width: 1100px) keeps the 2-column compact grid on .boardBarsInner for wide TVs')
+// Phase DAB.10g — @media-driven 2-col grid replaced with --board-columns
+// inline variable on .boardBarsInner. Column count is now picked by
+// JSX from stable inputs (viewport.w + fit-mode + density).
+assert(/\.boardBarsInner\s*\{[\s\S]{0,1000}grid-template-columns:\s+repeat\(var\(--board-columns,\s*1\), minmax\(0, 1fr\)\)/.test(KIOSK_CSS),
+  '.boardBarsInner uses grid-template-columns: repeat(var(--board-columns, 1), …) — DAB.10g deterministic columns')
 
 // ── Existing short-viewport tightening preserved ─────────────────
 section('@media (max-height: 760px) short-TV tightening preserved')
