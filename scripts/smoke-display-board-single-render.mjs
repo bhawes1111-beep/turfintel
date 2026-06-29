@@ -114,9 +114,13 @@ const hasBackfaceDecl = /^\s*backface-visibility:[^;]+;/m.test(innerBlock)
 assert(!hasBackfaceDecl,
   '.boardBarsInner does NOT declare backface-visibility (removed alongside will-change)')
 
-// overflow: hidden retained (still defense-in-depth).
-assert(/^\s*overflow:\s+hidden\s*;/m.test(innerBlock),
-  '.boardBarsInner retains overflow: hidden (defense-in-depth clip)')
+// Phase DAB.10f.3 — overflow: hidden also REMOVED from .boardBarsInner.
+// The outer .boardBars { overflow: hidden } is now the only clip layer.
+// Inner element no longer needs its own clip because there is no
+// transform-based scaling that could overflow its bounds.
+const hasOverflowDecl = /^\s*overflow:\s+hidden\s*;/m.test(innerBlock)
+assert(!hasOverflowDecl,
+  '.boardBarsInner does NOT declare overflow: hidden (DAB.10f.3 — no transform means no need for inner clip)')
 
 // ── useLayoutEffect retained ─────────────────────────────────────
 section('useLayoutEffect retained (DAB.10f.2 first revision fix)')
@@ -126,19 +130,21 @@ assert(/import \{ useEffect, useLayoutEffect, useMemo, useRef, useState \} from 
 assert(/useLayoutEffect\(\(\) => \{[\s\S]{0,800}if \(typeof ResizeObserver === 'undefined'\) return/.test(KIOSK),
   'observer setup still wrapped in useLayoutEffect (paint-blocking measurement)')
 
-// ── Fit infrastructure preserved (DAB.10e/f/f.1) ─────────────────
-section('Fit infrastructure preserved')
+// ── Fit infrastructure preserved (mode-only, no transform) ───────
+section('Fit infrastructure preserved — mode-only, no transform')
 
-assert(/const fitScaleRef\s+= useRef\(1\)/.test(KIOSK),
-  'fitScaleRef preserved (DAB.10f.1)')
+assert(/const fitModeRef\s+= useRef\('natural'\)/.test(KIOSK),
+  'fitModeRef preserved (used by ResizeObserver to select mode)')
 assert(/const ROOMY_ENTER\s+= 1\.20/.test(KIOSK),
   'ROOMY_ENTER hysteresis preserved (DAB.10f.1)')
-assert(/transform:\s+scale\(var\(--board-fit-scale,\s*1\)\)/.test(innerBlock),
-  '.boardBarsInner transform: scale preserved (DAB.10e)')
-assert(/width:\s+calc\(100% \* var\(--board-fit-inverse,\s*1\)\)/.test(innerBlock),
-  '.boardBarsInner inverse-width preserved (DAB.10e)')
-assert(/max-height:\s+calc\(100% \* var\(--board-fit-inverse,\s*1\)\)/.test(innerBlock),
-  '.boardBarsInner max-height inverse preserved (DAB.10e)')
+// Phase DAB.10f.3 — transform / inverse-width / max-height REMOVED.
+// Negative pins ensure they don't sneak back in.
+assert(!/transform:\s+scale\(/.test(innerBlock),
+  '.boardBarsInner does NOT use transform: scale (DAB.10f.3 removed)')
+assert(!/var\(--board-fit-inverse/.test(innerBlock),
+  '.boardBarsInner does NOT use --board-fit-inverse (DAB.10f.3 removed)')
+assert(!/max-height:\s+calc\(100% \* var\(--board-fit-inverse/.test(innerBlock),
+  '.boardBarsInner does NOT use max-height: calc(100% * var(--board-fit-inverse)) (DAB.10f.3 removed)')
 
 // Multi-job + per-job notes regression couples.
 assert(/const showOrdinal = op\.assignments\.length > 1/.test(KIOSK),

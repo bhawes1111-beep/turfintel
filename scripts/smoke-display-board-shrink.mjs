@@ -195,9 +195,12 @@ assert(/\.boardBars\[data-density='compact'\]\s+\.boardNotesText\s*\{[\s\S]{0,20
   "compact: .boardNotesText clamp() max uses calc(... * var(--board-bar-scale))")
 
 // 2-column compact grid gaps must also scale.
-assert(/@media\s*\(\s*min-width:\s*1100px\s*\)\s*\{[\s\S]{0,600}\.boardBars\[data-density='compact'\][\s\S]{0,400}column-gap:\s*calc\([\s\S]{0,40}var\(--board-bar-scale/.test(CSS),
+// Phase DAB.10f.3 — the 2-col grid rule now stacks 3 selectors
+// (compact density, comfortable+fit-mode='compact', comfortable+
+// fit-mode='ultra'). Budgets bumped to accommodate.
+assert(/@media\s*\(\s*min-width:\s*1100px\s*\)\s*\{[\s\S]{0,1500}\.boardBars\[data-density='compact'\][\s\S]{0,800}column-gap:\s*calc\([\s\S]{0,40}var\(--board-bar-scale/.test(CSS),
   "2-column compact @1100px: column-gap uses calc(... * var(--board-bar-scale))")
-assert(/@media\s*\(\s*min-width:\s*1100px\s*\)\s*\{[\s\S]{0,600}\.boardBars\[data-density='compact'\][\s\S]{0,400}row-gap:\s*calc\([\s\S]{0,40}var\(--board-bar-scale/.test(CSS),
+assert(/@media\s*\(\s*min-width:\s*1100px\s*\)\s*\{[\s\S]{0,1500}\.boardBars\[data-density='compact'\][\s\S]{0,800}row-gap:\s*calc\([\s\S]{0,40}var\(--board-bar-scale/.test(CSS),
   "2-column compact @1100px: row-gap uses calc(... * var(--board-bar-scale))")
 
 // Negative guards — the old fixed-px density shapes must be gone.

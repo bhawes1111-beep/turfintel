@@ -76,12 +76,12 @@ assert(/flex:\s+1\s+1\s+auto/.test(baseBoardBars),
 assert(/overflow:\s+hidden/.test(baseBoardBars),
   '.boardBars base rule still overflow: hidden (DAB.10e desktop clipping preserved)')
 
-// .boardBarsInner still transforms by --board-fit-scale on desktop.
-// Phase DAB.10f.2 — block budget bumped (added overflow/will-change).
+// Phase DAB.10f.3 — .boardBarsInner no longer transforms. Verify the
+// rule is now a simple flex column wrapper with no transform.
 const baseInner = KIOSK_CSS.match(/\n\.boardBarsInner \{([\s\S]{0,3000}?)\n\}/)?.[1] ?? ''
 assert(baseInner.length > 0, '.boardBarsInner base block parsed')
-assert(/transform:\s+scale\(var\(--board-fit-scale,\s*1\)\)/.test(baseInner),
-  '.boardBarsInner base rule still transform: scale(var(--board-fit-scale)) (DAB.10e fit-to-screen preserved)')
+assert(!/transform:\s+scale/.test(baseInner),
+  '.boardBarsInner does NOT use transform: scale (DAB.10f.3 removed transform-based scaling)')
 
 // ── Root cause fix: .rootBoard mobile release ────────────────────
 section('Mobile @media (max-width: 600px) releases .rootBoard position-fixed')
@@ -147,10 +147,11 @@ assert(/window\.matchMedia\('\(max-width: 600px\)'\)/.test(KIOSK),
 assert(/typeof window !== 'undefined' && window\.matchMedia/.test(KIOSK),
   'matchMedia call gated on window+matchMedia existence (SSR-safe)')
 
-// When mobile, pin fitScale to 1 + early-return before the measurement.
-// Phase DAB.10f.1 — fitScale now read via fitScaleRef.current.
-assert(/if \(mq && mq\.matches\) \{[\s\S]{0,400}if \(Math\.abs\(1 - fitScaleRef\.current\) > 0\.005\)\s+setFitScale\(1\)/.test(KIOSK),
-  'mobile branch pins fitScale to 1 (DAB.10f.1 — reads via fitScaleRef.current)')
+// Phase DAB.10f.3 — fitScale state + setFitScale REMOVED entirely.
+// Mobile branch now only resets fitMode + roomScale (fitScale is
+// always 1 because there's no transform to compensate for).
+assert(/if \(mq && mq\.matches\) \{[\s\S]{0,400}if \(fitModeRef\.current !== 'natural'\)\s+setFitMode\('natural'\)/.test(KIOSK),
+  'mobile branch resets fitMode to natural via ref (DAB.10f.3 — no setFitScale call)')
 // Phase DAB.10f — mobile block grew (also resets roomScale to 1
 // alongside fitMode='natural'); budget raised to accommodate.
 assert(/if \(mq && mq\.matches\) \{[\s\S]{0,800}return/.test(KIOSK),
@@ -198,8 +199,11 @@ assert(/const containerRef = useRef\(null\)/.test(KIOSK),
   'containerRef still declared')
 assert(/const innerRef\s+= useRef\(null\)/.test(KIOSK),
   'innerRef still declared')
-assert(/const \[fitScale, setFitScale\] = useState\(1\)/.test(KIOSK),
-  'fitScale state still declared')
+// Phase DAB.10f.3 — fitScale state REMOVED entirely. fitMode + roomScale remain.
+assert(/const \[fitMode,\s+setFitMode\]\s+= useState\('natural'\)/.test(KIOSK),
+  'fitMode state declared')
+assert(/const \[roomScale, setRoomScale\] = useState\(1\)/.test(KIOSK),
+  'roomScale state declared')
 
 // ResizeObserver still wired.
 assert(/const ro = new ResizeObserver\(measure\)/.test(KIOSK),
@@ -207,19 +211,20 @@ assert(/const ro = new ResizeObserver\(measure\)/.test(KIOSK),
 assert(/ro\.observe\(container\)\s*\n\s*ro\.observe\(inner\)/.test(KIOSK),
   'observer still observes both container + inner')
 
-// CSS variables.
-assert(/'--board-fit-scale':\s+fitScale/.test(KIOSK),
-  '--board-fit-scale CSS variable still wired')
-assert(/'--board-fit-inverse':\s+1 \/ fitScale/.test(KIOSK),
-  '--board-fit-inverse CSS variable still wired')
+// Phase DAB.10f.3 — --board-fit-scale, --board-fit-inverse, and
+// data-fit-scale all REMOVED from JSX. Negative pins.
+assert(!/'--board-fit-scale':\s+fitScale/.test(KIOSK),
+  '--board-fit-scale CSS variable REMOVED (DAB.10f.3)')
+assert(!/'--board-fit-inverse':\s+1 \/ fitScale/.test(KIOSK),
+  '--board-fit-inverse CSS variable REMOVED (DAB.10f.3)')
+assert(!/data-fit-scale=/.test(KIOSK),
+  'data-fit-scale attribute REMOVED (DAB.10f.3 — no transform scaling)')
 
-// data-fit-scale attribute.
-assert(/data-fit-scale=\{fitScale < 1 \? 'scaled' : 'natural'\}/.test(KIOSK),
-  'data-fit-scale attribute still set on .boardBars')
-
-// 2-column widening at comfortable+scaled still in CSS.
-assert(/data-density='comfortable'\]\[data-fit-scale='scaled'\] \.boardBarsInner/.test(KIOSK_CSS),
-  'comfortable+scaled 2-col widening rule still present (DAB.10e width-first strategy)')
+// Phase DAB.10f.3 — comfortable widening now keys off data-fit-mode
+// instead of data-fit-scale.
+assert(/data-density='comfortable'\]\[data-fit-mode='compact'\] \.boardBarsInner/.test(KIOSK_CSS) ||
+       /data-density='comfortable'\]\[data-fit-mode='ultra'\]\s+\.boardBarsInner/.test(KIOSK_CSS),
+  'comfortable widening rule keyed off data-fit-mode (DAB.10f.3 replacement for data-fit-scale)')
 
 // ── Cross-vertical guards ────────────────────────────────────────
 section('Cross-vertical guards — spray / inventory untouched')

@@ -1949,37 +1949,20 @@
 .boardBarsInner {
   display: flex;
   flex-direction: column;
+  width: 100%;
   /* Phase 9C.4d — gap tightens with assignment count via the inline
      --board-bar-scale CSS variable. Preserved from the old
      .boardBars rule. */
   gap: calc(18px * var(--board-bar-scale, 1));
-  /* Phase DAB.10e — transform-origin: top left so the inner shrinks
-     toward the top of the container instead of toward the center
-     (where it would leave a band of empty space at the top + bottom).
-     Width is inversely scaled so the rendered (post-transform) width
-     still matches the outer container. */
-  transform-origin: top left;
-  transform: scale(var(--board-fit-scale, 1));
-  width: calc(100% * var(--board-fit-inverse, 1));
-  /* Phase DAB.10e — When fit-scale is applied, the inner's natural
-     pre-transform height is taller than the container. Without a
-     max-height the inner element overflows the document (transform
-     doesn't affect layout flow). We clamp to the container's height
-     divided by the scale so the OUT-of-flow inner can't extend
-     beyond the visible kiosk area. */
-  max-height: calc(100% * var(--board-fit-inverse, 1));
-  /* Phase DAB.10f.2 — Defense-in-depth: clip the inner's own
-     overflow. The outer .boardBars already has overflow: hidden;
-     this adds a second clip closer to the actual content paint. */
-  overflow: hidden;
-  /* Phase DAB.10f.2 (second revision) — will-change: transform and
-     backface-visibility: hidden were tried as compositor hints, but
-     they made the symptom worse: promoting .boardBarsInner to its
-     own compositor layer meant the underlying layout box could
-     repaint alongside the cached scaled output, producing a visible
-     "two trees" overlay during state changes. Removed. The browser's
-     default paint strategy paints transform-scaled content into the
-     parent's stacking context, which is what we want — one tree. */
+  /* Phase DAB.10f.3 — transform / transform-origin / inverse-width /
+     max-height / overflow REMOVED.
+     Transform-based scaling was the root cause of the duplicate /
+     ghost board paint on the Chromebit (transform creates a stacking
+     context + compositor layer; legacy Chromium pipelines can paint
+     pre- and post-transform boxes alongside each other during state
+     changes). All sizing now flows through real layout — font-size
+     clamps, padding, gap, columns — selected by data-fit-mode and
+     data-density attribute selectors elsewhere in this file. */
 }
 
 .boardPersonBar {
@@ -2725,8 +2708,14 @@
      behavior). DAB.10e adds: when fit-scale is engaged (content
      overflows naturally), comfortable density ALSO goes 2-col so we
      use the available horizontal real estate before shrinking text. */
+  /* Phase DAB.10f.3 — data-fit-scale removed alongside transform
+     scaling; widening selectors now key off data-fit-mode instead.
+     Compact density still goes 2-col automatically; comfortable +
+     fit-mode='compact' OR 'ultra' also widens because those modes
+     mean content was overflowing single-column. */
   .boardBars[data-density='compact'] .boardBarsInner,
-  .boardBars[data-density='comfortable'][data-fit-scale='scaled'] .boardBarsInner {
+  .boardBars[data-density='comfortable'][data-fit-mode='compact'] .boardBarsInner,
+  .boardBars[data-density='comfortable'][data-fit-mode='ultra']   .boardBarsInner {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     /* Phase 9C.4e — gaps scale with --board-bar-scale so the 2-column
@@ -2736,12 +2725,54 @@
   }
 }
 
+/* ── Phase DAB.10f.3 — Compact fit mode (no transform) ──────────────
+   The 'compact' fit-mode replaces the old transform-scale 'scaled'
+   tier. When content overflows the container by more than ~5%
+   (slack < COMPACT_ENTER = 0.95) but not by enough to trigger
+   ultra (slack >= ULTRA_ENTER = 0.74), CSS tightens the layout
+   using REAL properties — no transform, no stacking-context paint
+   artifacts. Sits between natural and ultra:
+   - notes clamp to 2 lines (was 3 at comfortable / 4 at spacious)
+   - per-bar padding/gap tightens ~25%
+   - task-block padding tightens
+   - person-name font cap drops ~12%
+
+   These overrides cascade on top of the density-bucket rules, so
+   the chosen typography min terms (clamp() min) are NEVER breached:
+   the kiosk text always stays readable from across the shop. */
+
+.boardBars[data-fit-mode='compact'] .boardBarsInner {
+  gap: calc(10px * var(--board-bar-scale, 1));
+}
+.boardBars[data-fit-mode='compact'] .boardPersonBar {
+  padding:
+    calc(14px * var(--board-bar-scale, 1))
+    calc(18px * var(--board-bar-scale, 1));
+  gap: calc(6px * var(--board-bar-scale, 1));
+}
+.boardBars[data-fit-mode='compact'] .boardTaskBlock {
+  padding: calc(4px * var(--board-bar-scale, 1)) 0 calc(5px * var(--board-bar-scale, 1));
+  gap: calc(2px * var(--board-bar-scale, 1));
+}
+.boardBars[data-fit-mode='compact'] .boardNotesText {
+  /* Compact: 2-line clamp (between natural 3-line and ultra 1-line). */
+  -webkit-line-clamp: 2;
+}
+.boardBars[data-fit-mode='compact'] .boardPersonName {
+  font-size: clamp(22px, 2.5vw, calc(42px * var(--board-bar-scale, 1)));
+}
+.boardBars[data-fit-mode='compact'] .boardTaskText {
+  font-size: clamp(16px, 1.9vw, calc(28px * var(--board-bar-scale, 1)));
+}
+
 /* ── Phase DAB.10e.2 — Ultra-compact fit mode ─────────────────────────
    When the JS ResizeObserver in BoardModeCrewBars determines that
-   even at READABLE_MIN_SCALE (0.78) the roster won't fit, it sets
+   even compact mode can't fit the roster, it sets
    data-fit-mode="ultra" on .boardBars. CSS then tightens the layout
-   so the scale can settle back near the readable floor instead of
-   shrinking text to unreadable size.
+   further so the natural content fits without ever needing transform
+   scaling. (DAB.10e.2 originally documented this as a transform-
+   floor — DAB.10f.3 removed all transform usage; ultra is now purely
+   a CSS density tightening.)
 
    Ultra rules:
    - 2-col grid at narrower widths (≥900px instead of 1100px)

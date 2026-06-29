@@ -164,17 +164,19 @@ assert(!/data-fit-mode='roomy'\][\s\S]{0,30}data-fit-mode='ultra'/.test(roomyBlo
 assert(!/data-fit-mode='roomy'\][\s\S]{0,30}data-fit-mode='scaled'/.test(roomyBlock),
   'roomy CSS does NOT also target scaled')
 
-// ── Existing DAB.10e.2 waterfall preserved ───────────────────────
-section('Existing DAB.10e.2 waterfall still in place')
+// ── DAB.10f.3 — transform-scaling REMOVED; mode-only waterfall ──
+section('Mode-only waterfall (DAB.10f.3)')
 
-assert(/const READABLE_MIN_SCALE\s+= 0\.78/.test(KIOSK),
-  'READABLE_MIN_SCALE = 0.78 (DAB.10e.2 floor preserved)')
-assert(/const EMERGENCY_MIN_SCALE = 0\.72/.test(KIOSK),
-  'EMERGENCY_MIN_SCALE = 0.72 (DAB.10e.2 floor preserved)')
-assert(/nextMode\s+= 'ultra'/.test(KIOSK),
+// Phase DAB.10f.3 — READABLE_MIN_SCALE / EMERGENCY_MIN_SCALE removed
+// (no transform scaling). 'scaled' tier replaced with 'compact'.
+assert(!/const READABLE_MIN_SCALE/.test(KIOSK),
+  'READABLE_MIN_SCALE constant REMOVED (DAB.10f.3 — no transform scaling)')
+assert(!/const EMERGENCY_MIN_SCALE/.test(KIOSK),
+  'EMERGENCY_MIN_SCALE constant REMOVED (DAB.10f.3)')
+assert(/nextMode = 'ultra'/.test(KIOSK),
   "'ultra' branch preserved")
-assert(/nextMode\s+= 'scaled'/.test(KIOSK),
-  "'scaled' branch preserved")
+assert(/nextMode = 'compact'/.test(KIOSK),
+  "'compact' branch present (DAB.10f.3 — replaces 'scaled')")
 
 // Ultra-mode CSS still present.
 assert(/Phase DAB\.10e\.2 — Ultra-compact fit mode/.test(KIOSK_CSS),
