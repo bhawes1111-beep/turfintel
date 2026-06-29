@@ -1969,30 +1969,17 @@
      beyond the visible kiosk area. */
   max-height: calc(100% * var(--board-fit-inverse, 1));
   /* Phase DAB.10f.2 — Defense-in-depth: clip the inner's own
-     overflow. User saw two stacked copies (one larger, one smaller)
-     after the DAB.10f roomy work; root cause appears to be that
-     during a fit-mode flip, the pre-transform content briefly
-     paints alongside the post-transform stacking context. Adding
-     overflow: hidden here means the inner element can NEVER paint
-     content outside its own (max-height-clamped) bounds, even if
-     React commits new content before the new transform value
-     applies. The outer .boardBars already has overflow: hidden;
+     overflow. The outer .boardBars already has overflow: hidden;
      this adds a second clip closer to the actual content paint. */
   overflow: hidden;
-  /* Phase DAB.10f.2 — Promote .boardBarsInner to its own compositor
-     layer so the browser paints the scaled output in a single
-     framebuffer composited atop the parent, rather than re-rendering
-     the underlying layout box on every transform change (which is
-     the most common cause of "two copies visible" during transform
-     animation/state changes). will-change is the modern hint;
-     transform: translateZ(0) used to be the workaround but is no
-     longer needed alongside an existing transform. */
-  will-change: transform;
-  /* Phase DAB.10f.2 — backface-visibility: hidden suppresses the
-     subpixel-level antialiased "ghost" that some Chromium builds
-     paint on top of a transformed element during state changes.
-     Cheap to apply; no visible effect when not flipping. */
-  backface-visibility: hidden;
+  /* Phase DAB.10f.2 (second revision) — will-change: transform and
+     backface-visibility: hidden were tried as compositor hints, but
+     they made the symptom worse: promoting .boardBarsInner to its
+     own compositor layer meant the underlying layout box could
+     repaint alongside the cached scaled output, producing a visible
+     "two trees" overlay during state changes. Removed. The browser's
+     default paint strategy paints transform-scaled content into the
+     parent's stacking context, which is what we want — one tree. */
 }
 
 .boardPersonBar {

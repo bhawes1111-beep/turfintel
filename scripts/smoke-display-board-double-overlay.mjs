@@ -96,13 +96,20 @@ assert(/Phase DAB\.10f\.2 — Defense-in-depth: clip the inner's own/.test(inner
 assert(/overflow:\s+hidden/.test(innerBlock),
   '.boardBarsInner has overflow: hidden (inner element can never paint content past its bounds)')
 
-// ── FIX 3: will-change + backface-visibility (compositor layer) ──
-section('FIX 3: will-change + backface-visibility promote inner to its own layer')
+// ── FIX 3 (revised in DAB.10f.2 second revision): compositor hints REMOVED ─
+section('FIX 3 (revised): will-change + backface-visibility REMOVED')
 
-assert(/will-change:\s+transform/.test(innerBlock),
-  '.boardBarsInner has will-change: transform (compositor layer hint)')
-assert(/backface-visibility:\s+hidden/.test(innerBlock),
-  '.boardBarsInner has backface-visibility: hidden (suppresses Chromium ghost paint)')
+// Phase DAB.10f.2 second revision — will-change: transform and
+// backface-visibility: hidden were added in the first revision as
+// compositor hints, but they MADE the duplicate-tree symptom worse
+// (promoting to a compositor layer let the underlying box repaint
+// alongside the cached scaled output). Removed. Verify they are NOT
+// present as actual declarations (must end with ; or newline; a
+// mention inside a comment block doesn't count as a declaration).
+assert(!/will-change:\s+transform\s*;/.test(innerBlock),
+  '.boardBarsInner does NOT declare will-change: transform (would force compositor layer → ghost overlay)')
+assert(!/backface-visibility:\s+hidden\s*;/.test(innerBlock),
+  '.boardBarsInner does NOT declare backface-visibility: hidden (unnecessary without will-change)')
 
 // ── DAB.10e/e.1/e.2/f/f.1 baseline preserved ─────────────────────
 section('Existing fit infrastructure preserved')
