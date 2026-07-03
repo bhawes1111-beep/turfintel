@@ -84,21 +84,29 @@ assert(/dayCrew,\s*dayEvents,\s*equipByEvent,\s*employeeNameLookup,\s*employeeBy
 // ── BoardModeCrewBars — Spanish render gated on op.showSpanishNotes ───
 section('BoardModeCrewBars — per-bar Spanish gate')
 
-// Spanish <p> render condition includes op.showSpanishNotes.
-assert(/trimmedNotesEs\.length > 0\s*&&\s*op\.showSpanishNotes\s*&&\s*\(\s*\n?\s*<p/.test(DB),
-  'Spanish <p> renders only when trimmedNotesEs.length > 0 && op.showSpanishNotes')
+// Phase DAB.10i — dual-render replaced with select-one: when
+// op.showSpanishNotes is true the block shows Spanish (with English
+// fallback if Spanish is blank), otherwise English. Only ONE <p>
+// is emitted per assignment.
+assert(/const displayNotes\s+= op\.showSpanishNotes\s*\n\s*\?\s*\(trimmedNotesEs \|\| trimmedNotes\)\s*\n\s*:\s*trimmedNotes/.test(DB),
+  'displayNotes = showSpanishNotes ? (notesEs || notes) : notes — auto-translate ON picks translation with English fallback')
 
-// English render is unchanged (regression couple from 9C.5b3 + 9C.4b).
-assert(/trimmedNotes\.length > 0 &&\s*\(\s*<p className=\{styles\.boardNotesText\}>\{trimmedNotes\}<\/p>/.test(DB),
-  'English <p> render preserved (no employee gating on English)')
+// displayLangEs governs the class + lang attribute — only true when
+// showSpanishNotes AND the Spanish value is non-blank. That means an
+// employee with auto-translate on whose notesEs hasn't populated yet
+// renders in English (correct language attribution).
+assert(/const displayLangEs\s+= op\.showSpanishNotes && trimmedNotesEs\.length > 0/.test(DB),
+  'displayLangEs = showSpanishNotes && notesEs present — English fallback correctly labels the actual language')
 
-// Spanish <p> retains both classes from 9C.5b3.
-assert(/className=\{`\$\{styles\.boardNotesText\}\s+\$\{styles\.boardNotesTextEs\}`\}/.test(DB),
-  'Spanish <p> still uses both boardNotesText + boardNotesTextEs classes')
+// Single <p> with conditional className + lang.
+assert(/className=\{displayLangEs\s*\n?\s*\?\s*`\$\{styles\.boardNotesText\}\s+\$\{styles\.boardNotesTextEs\}`/.test(DB),
+  'single <p>: className conditionally adds boardNotesTextEs when displayLangEs')
+assert(/lang=\{displayLangEs\s*\?\s*'es'\s*:\s*undefined\}/.test(DB),
+  "single <p>: lang={displayLangEs ? 'es' : undefined}")
 
-// Spanish <p> still has lang="es".
-assert(/<p\s*\n?\s*className=\{`\$\{styles\.boardNotesText\}\s+\$\{styles\.boardNotesTextEs\}`\}\s*\n?\s*lang="es"/.test(DB),
-  'Spanish <p> still carries lang="es"')
+// English base value still computed + used in the fallback path.
+assert(/const\s+trimmedNotes\s*=\s*\(a\.notes\s*\?\?\s*''\)\.trim\(\)/.test(DB),
+  'trimmedNotes computed per assignment (English base + used in fallback)')
 
 // ── boardNeedsSpanish — board-wide marquee gate ───────────────────────
 section('boardNeedsSpanish — kiosk marquee gate')

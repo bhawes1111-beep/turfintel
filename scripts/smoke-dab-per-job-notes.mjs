@@ -176,10 +176,13 @@ const aNotesRefs = (KIOSK.match(/a\.notes/g) ?? []).length
 assert(aNotesRefs >= 3,
   `kiosk reads a.notes in ≥3 places (operatorCards push + render gate + render text; found ${aNotesRefs})`)
 
-// Each assignment renders ITS OWN notes inside its task block —
-// confirmed by reading the BoardModeCrewBars render at DisplayBoard:1465.
-assert(/\{trimmedNotes\.length > 0 && \(\s*\n\s*<p className=\{styles\.boardNotesText\}>\{trimmedNotes\}<\/p>/.test(KIOSK),
-  'kiosk renders trimmedNotes inside each task block (per-job notes ✓)')
+// Phase DAB.10i — dual-render replaced with select-one via
+// displayNotes. Verify each assignment still gets its OWN note
+// value via a.notes / a.notesEs (no cross-assignment leak).
+assert(/const displayNotes\s+= op\.showSpanishNotes\s*\n\s*\?\s*\(trimmedNotesEs \|\| trimmedNotes\)\s*\n\s*:\s*trimmedNotes/.test(KIOSK),
+  'each task block computes displayNotes from ITS a.notes / a.notesEs (per-job notes preserved)')
+assert(/displayNotes\.length > 0 && \(\s*\n\s*<p/.test(KIOSK),
+  'kiosk renders displayNotes inside each task block (only when non-blank)')
 
 // ── Copy From Date preserves per-job notes ────────────────────────
 section('Copy From Date — preserves per-job notes (cloning existing rows)')

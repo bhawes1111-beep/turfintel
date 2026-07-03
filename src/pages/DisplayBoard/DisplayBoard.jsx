@@ -1594,37 +1594,42 @@ function BoardModeCrewBars({ operatorCards }) {
               const jobLabel    = showOrdinal
                 ? (BOARD_ORDINAL_LABELS[idx] ?? `Job ${idx + 1}`)
                 : null
-              const trimmedNotes   = (a.notes   ?? '').trim()
-              // Phase 9C.5b3 — Spanish translation renders underneath the
-              // English note when authored. Both lines apply the base
-              // .boardNotesText class so the 9C.4c/9C.4d/9C.4e density +
-              // scale rules continue to drive line-clamp, font-size, and
-              // per-assignment shrink automatically. The .boardNotesTextEs
-              // override only adds visual differentiation (italic, mint
-              // tint) so the bilingual nature is glanceable on a TV.
+              // Phase DAB.10i — Employee auto-translate note selection.
+              // Each assignment picks ONE note to show based on the
+              // operator's translation preference (op.showSpanishNotes
+              // is computed per operator from the employee's
+              // autoTranslateBoardNotes + boardLanguage prefs — see
+              // employeeNeedsSpanish above). Behavior:
               //
-              // Phase 9C.5c4 — additionally gated on op.showSpanishNotes
-              // (computed in operatorCards from the operator's
-              // autoTranslateBoardNotes + boardLanguage prefs). Operators
-              // who don't want Spanish never see the bilingual line,
-              // even if notesEs exists in the database from a previous
-              // configuration or a different operator's translation run.
-              const trimmedNotesEs = (a.notesEs ?? '').trim()
+              //   Auto-translate ON, notesEs present  → show notesEs
+              //   Auto-translate ON, notesEs blank    → fall back to notes
+              //   Auto-translate OFF                  → show notes
+              //
+              // Fallback covers the translation-pending window (note
+              // just edited, notes_es NULL'd by the worker PATCH,
+              // sweep hasn't run yet). No empty block, no "undefined",
+              // no stale Spanish from another assignment — each block
+              // reads a.notes / a.notesEs specific to its own row.
+              const trimmedNotes    = (a.notes   ?? '').trim()
+              const trimmedNotesEs  = (a.notesEs ?? '').trim()
+              const displayNotes    = op.showSpanishNotes
+                ? (trimmedNotesEs || trimmedNotes)
+                : trimmedNotes
+              const displayLangEs   = op.showSpanishNotes && trimmedNotesEs.length > 0
               return (
                 <div key={a.id ?? idx} className={styles.boardTaskBlock}>
                   {jobLabel && (
                     <span className={styles.boardJobOrdinal}>{jobLabel}</span>
                   )}
                   <p className={styles.boardTaskText}>{a.title}</p>
-                  {trimmedNotes.length > 0 && (
-                    <p className={styles.boardNotesText}>{trimmedNotes}</p>
-                  )}
-                  {trimmedNotesEs.length > 0 && op.showSpanishNotes && (
+                  {displayNotes.length > 0 && (
                     <p
-                      className={`${styles.boardNotesText} ${styles.boardNotesTextEs}`}
-                      lang="es"
+                      className={displayLangEs
+                        ? `${styles.boardNotesText} ${styles.boardNotesTextEs}`
+                        : styles.boardNotesText}
+                      lang={displayLangEs ? 'es' : undefined}
                     >
-                      {trimmedNotesEs}
+                      {displayNotes}
                     </p>
                   )}
                 </div>

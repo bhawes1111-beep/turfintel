@@ -86,10 +86,13 @@ assert(/<p className=\{styles\.boardTaskText\}>\{a\.title\}<\/p>/.test(DB),
   '<p styles.boardTaskText>{a.title}</p> renders the task line')
 
 // Notes only render when the trimmed string is non-empty.
+// Phase DAB.10i — dual-render replaced with select-one (displayNotes),
+// but trimmedNotes is still computed as the English base + is used by
+// displayNotes fallback when auto-translate is on but Spanish is blank.
 assert(/const\s+trimmedNotes\s*=\s*\(a\.notes\s*\?\?\s*''\)\.trim\(\)/.test(DB),
   'trimmedNotes = (a.notes ?? "").trim() — gating value computed per task')
-assert(/trimmedNotes\.length > 0 &&\s*\(\s*<p className=\{styles\.boardNotesText\}>\{trimmedNotes\}<\/p>/.test(DB),
-  'notes <p> renders only when trimmedNotes.length > 0')
+assert(/displayNotes\.length > 0 &&/.test(DB),
+  'notes <p> renders only when displayNotes.length > 0 (empty original + empty translated → no block)')
 
 // ── Forbidden components inside the early-return branch ────────────────
 section('Forbidden components — must NOT appear inside the boardMode early return')
