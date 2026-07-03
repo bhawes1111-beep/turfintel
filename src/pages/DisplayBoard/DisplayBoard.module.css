@@ -1930,15 +1930,24 @@
   flex: 1 1 auto;
   min-height: 0;
   /* Phase DAB.10e — Outer container clips overflow rather than
-     scrolling. The inner wrapper (.boardBarsInner) is transform-
-     scaled by JS-measured fit logic, so any leftover content past
-     the viewport is genuinely never going to appear. Removing the
-     scrollbar removes the visual "you can scroll for more" cue —
-     consistent with the kiosk no-scroll requirement. */
+     scrolling. */
   overflow: hidden;
   display: flex;
   flex-direction: column;
   position: relative;
+  /* Phase DAB.10g.1 — Legacy display typography ratios. One shared
+     employee-name size drives job + note sizes via fixed ratios:
+       job-size  = name-size × 2/3   (0.6667)
+       note-size = name-size × 5/8   (0.625)
+     Per-mode name sizes are declared in the mode selectors below;
+     the ratios are computed here once. clamp() is used on the name
+     variable so the responsive vw middle term still adapts to
+     narrow desktop windows, but the ratio derivation happens on
+     the resolved final px value. On mobile these ratios are
+     released so mobile typography stays independently readable. */
+  --board-name-size:  clamp(28px, 3.2vw, calc(48px * var(--board-bar-scale, 1)));
+  --board-job-size:   calc(var(--board-name-size) * 0.6667);
+  --board-note-size:  calc(var(--board-name-size) * 0.625);
 }
 
 /* Phase DAB.10e — Inner wrapper that owns the actual flex column +
@@ -1980,11 +1989,10 @@
 
 .boardPersonName {
   margin: 0 0 4px 0;
-  /* Phase 9C.4d — clamp() max term tightens with --board-bar-scale,
-     so the largest possible name caps shrink as more bars need to
-     fit. The min and the vw middle term stay constant so the smallest
-     name on the smallest viewport remains readable. */
-  font-size: clamp(28px, 3.2vw, calc(48px * var(--board-bar-scale, 1)));
+  /* Phase DAB.10g.1 — Read from shared --board-name-size variable
+     declared on .boardBars. Ratios in .boardTaskText / .boardNotesText
+     derive from the same value. */
+  font-size: var(--board-name-size);
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -2016,8 +2024,8 @@
 
 .boardTaskText {
   margin: 0;
-  /* Phase 9C.4d — clamp() max term tightens with --board-bar-scale. */
-  font-size: clamp(22px, 2.4vw, calc(36px * var(--board-bar-scale, 1)));
+  /* Phase DAB.10g.1 — Derived from --board-name-size × 2/3. */
+  font-size: var(--board-job-size);
   font-weight: 600;
   color: var(--db-fg, #d4edd4);
   line-height: 1.2;
@@ -2025,8 +2033,8 @@
 
 .boardNotesText {
   margin: 0;
-  /* Phase 9C.4d — clamp() max term tightens with --board-bar-scale. */
-  font-size: clamp(18px, 1.8vw, calc(26px * var(--board-bar-scale, 1)));
+  /* Phase DAB.10g.1 — Derived from --board-name-size × 5/8. */
+  font-size: var(--board-note-size);
   font-weight: 400;
   color: rgba(212, 237, 212, 0.78);
   line-height: 1.3;
@@ -2586,6 +2594,21 @@
     max-height: none !important;
   }
   .boardPersonBar { padding: 14px 16px; }
+  /* Phase DAB.10g.1 — Mobile RELEASES the legacy typography ratios.
+     On phones the vw-driven clamps for each element are independently
+     tuned for readability (e.g. notes may be larger than 5/8 of the
+     name to remain scannable one-handed). Override the three text
+     rules with their pre-DAB.10g.1 clamp() values so the mobile
+     layout is not forced into desktop kiosk ratios. */
+  .boardPersonName {
+    font-size: clamp(20px, 5vw, 30px);
+  }
+  .boardTaskText {
+    font-size: clamp(15px, 4vw, 22px);
+  }
+  .boardNotesText {
+    font-size: clamp(14px, 3.5vw, 18px);
+  }
 }
 
 /* ── Phase 9C.4c — Auto-fit density overrides ────────────────────────────
@@ -2635,14 +2658,13 @@
     calc(22px * var(--board-bar-scale, 1));
   gap: calc(8px * var(--board-bar-scale, 1));
 }
-.boardBars[data-density='comfortable'] .boardPersonName {
-  font-size: clamp(22px, 2.6vw, calc(38px * var(--board-bar-scale, 1)));
-}
-.boardBars[data-density='comfortable'] .boardTaskText {
-  font-size: clamp(18px, 2vw, calc(30px * var(--board-bar-scale, 1)));
+/* Phase DAB.10g.1 — Legacy typography ratio: set --board-name-size
+   here; job/note sizes derive from it via the ratios declared on
+   .boardBars. */
+.boardBars[data-density='comfortable'] {
+  --board-name-size: clamp(22px, 2.6vw, calc(38px * var(--board-bar-scale, 1)));
 }
 .boardBars[data-density='comfortable'] .boardNotesText {
-  font-size: clamp(14px, 1.6vw, calc(22px * var(--board-bar-scale, 1)));
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
@@ -2659,14 +2681,11 @@
     calc(16px * var(--board-bar-scale, 1));
   gap: calc(6px * var(--board-bar-scale, 1));
 }
-.boardBars[data-density='compact'] .boardPersonName {
-  font-size: clamp(18px, 2.2vw, calc(30px * var(--board-bar-scale, 1)));
-}
-.boardBars[data-density='compact'] .boardTaskText {
-  font-size: clamp(15px, 1.7vw, calc(24px * var(--board-bar-scale, 1)));
+/* Phase DAB.10g.1 — Legacy typography ratio. */
+.boardBars[data-density='compact'] {
+  --board-name-size: clamp(18px, 2.2vw, calc(30px * var(--board-bar-scale, 1)));
 }
 .boardBars[data-density='compact'] .boardNotesText {
-  font-size: clamp(12px, 1.4vw, calc(18px * var(--board-bar-scale, 1)));
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -2742,11 +2761,10 @@
   /* Compact: 2-line clamp (between natural 3-line and ultra 1-line). */
   -webkit-line-clamp: 2;
 }
-.boardBars[data-fit-mode='compact'] .boardPersonName {
-  font-size: clamp(22px, 2.5vw, calc(42px * var(--board-bar-scale, 1)));
-}
-.boardBars[data-fit-mode='compact'] .boardTaskText {
-  font-size: clamp(16px, 1.9vw, calc(28px * var(--board-bar-scale, 1)));
+/* Phase DAB.10g.1 — Legacy typography ratio: single name-size sets
+   the whole trio via the ratios defined on .boardBars. */
+.boardBars[data-fit-mode='compact'] {
+  --board-name-size: clamp(22px, 2.5vw, calc(42px * var(--board-bar-scale, 1)));
 }
 
 /* ── Phase DAB.10e.2 — Ultra-compact fit mode ─────────────────────────
@@ -2859,14 +2877,9 @@
   padding: 8px 0 10px;
   gap: 6px;
 }
-.boardBars[data-fit-mode='roomy'] .boardPersonName {
-  font-size: clamp(32px, 3.6vw, calc(58px * var(--board-bar-scale, 1)));
-}
-.boardBars[data-fit-mode='roomy'] .boardTaskText {
-  font-size: clamp(22px, 2.6vw, calc(42px * var(--board-bar-scale, 1)));
-}
-.boardBars[data-fit-mode='roomy'] .boardNotesText {
-  font-size: clamp(18px, 1.8vw, calc(30px * var(--board-bar-scale, 1)));
+/* Phase DAB.10g.1 — Legacy typography ratio. */
+.boardBars[data-fit-mode='roomy'] {
+  --board-name-size: clamp(32px, 3.6vw, calc(58px * var(--board-bar-scale, 1)));
 }
 .boardBars[data-fit-mode='roomy'] .boardJobOrdinal {
   font-size: clamp(14px, 1.2vw, calc(18px * var(--board-bar-scale, 1)));
@@ -2891,19 +2904,13 @@
     padding: calc(10px * var(--board-bar-scale, 1)) calc(16px * var(--board-bar-scale, 1));
     gap: calc(6px * var(--board-bar-scale, 1));
   }
-  /* Phase 9C.4e — clamp() min values lowered (name 20→18, task 16→15,
-     notes 13→12) so the minimum never latches above the scaled max
-     once --board-bar-scale hits its 0.45 floor. Below the floor the
-     clamp min still owns readability; the change just removes the
-     window where the min could exceed the scaled max. */
-  .boardPersonName {
-    font-size: clamp(18px, 2.6vw, calc(28px * var(--board-bar-scale, 1)));
-  }
-  .boardTaskText {
-    font-size: clamp(15px, 1.9vw, calc(22px * var(--board-bar-scale, 1)));
+  /* Phase 9C.4e — clamp() min values lowered so the minimum never
+     latches above the scaled max once --board-bar-scale hits its
+     0.45 floor. Phase DAB.10g.1 — one name-size drives the trio. */
+  .boardBars {
+    --board-name-size: clamp(18px, 2.6vw, calc(28px * var(--board-bar-scale, 1)));
   }
   .boardNotesText {
-    font-size: clamp(12px, 1.4vw, calc(16px * var(--board-bar-scale, 1)));
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;

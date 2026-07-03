@@ -88,12 +88,17 @@ assert(/\.boardBarsInner\s*\{[\s\S]{0,1500}gap:\s*calc\(\s*18px\s*\*\s*var\(--bo
   '.boardBarsInner gap uses calc(18px * var(--board-bar-scale, 1))')
 assert(/\.boardPersonBar\s*\{[\s\S]{0,600}padding:\s*calc\([\s\S]{0,60}var\(--board-bar-scale/.test(CSS),
   '.boardPersonBar padding uses calc(... * var(--board-bar-scale))')
-assert(/\.boardPersonName\s*\{[\s\S]{0,600}clamp\([\s\S]{0,100}calc\([\s\S]{0,60}var\(--board-bar-scale/.test(CSS),
-  '.boardPersonName clamp() max uses calc(48px * var(--board-bar-scale))')
-assert(/\.boardTaskText\s*\{[\s\S]{0,400}clamp\([\s\S]{0,100}calc\([\s\S]{0,60}var\(--board-bar-scale/.test(CSS),
-  '.boardTaskText clamp() max uses calc(36px * var(--board-bar-scale))')
-assert(/\.boardNotesText\s*\{[\s\S]{0,400}clamp\([\s\S]{0,100}calc\([\s\S]{0,60}var\(--board-bar-scale/.test(CSS),
-  '.boardNotesText clamp() max uses calc(26px * var(--board-bar-scale))')
+// Phase DAB.10g.1 — Per-element clamp() replaced with a single
+// --board-name-size variable that drives the trio via ratios.
+// Verify the base --board-name-size declaration uses clamp() +
+// --board-bar-scale so the responsive vw-driven sizing is preserved.
+assert(/--board-name-size:\s+clamp\([\s\S]{0,100}calc\([\s\S]{0,60}var\(--board-bar-scale/.test(CSS),
+  '--board-name-size clamp() max uses calc(48px * var(--board-bar-scale)) [DAB.10g.1]')
+// The two derived variables use the same base scale via ratio calc().
+assert(/--board-job-size:\s+calc\(var\(--board-name-size\) \* 0\.6667\)/.test(CSS),
+  '--board-job-size = --board-name-size × 0.6667 (2/3 ratio) [DAB.10g.1]')
+assert(/--board-note-size:\s+calc\(var\(--board-name-size\) \* 0\.625\)/.test(CSS),
+  '--board-note-size = --board-name-size × 0.625 (5/8 ratio) [DAB.10g.1]')
 
 // ── Viewport-height safe-area layout fix ───────────────────────────────
 section('CSS — .boardSimple/.boardBars/.boardDateOnly safe-area layout')
@@ -130,10 +135,11 @@ assert(/\.boardSimple\s*\{[\s\S]{0,200}padding-block:\s*(?:16px|calc\(\s*16px\s*
   'short-height: .boardSimple padding-block at 16px (scaled or fixed)')
 assert(/\.boardPersonBar\s*\{[\s\S]{0,200}padding:\s*calc/.test(shortHeightBody),
   'short-height: .boardPersonBar tightens padding')
-assert(/\.boardPersonName\s*\{[\s\S]{0,200}font-size:\s*clamp\([\s\S]{0,80}28px/.test(shortHeightBody),
-  'short-height: .boardPersonName font-size clamp(min, vw, calc(28px * scale))')
-assert(/\.boardTaskText\s*\{[\s\S]{0,200}font-size:\s*clamp\([\s\S]{0,80}22px/.test(shortHeightBody),
-  'short-height: .boardTaskText font-size clamp(min, vw, calc(22px * scale))')
+// Phase DAB.10g.1 — short-height block now sets --board-name-size on
+// .boardBars and the trio derives via ratio. Verify the base name
+// declaration + trust the ratios to cover the derived values.
+assert(/\.boardBars\s*\{[\s\S]{0,200}--board-name-size:\s*clamp\([\s\S]{0,80}28px/.test(shortHeightBody),
+  'short-height: --board-name-size clamp(min, vw, calc(28px * scale)) [DAB.10g.1]')
 assert(/\.boardNotesText\s*\{[\s\S]{0,400}-webkit-line-clamp:\s*2/.test(shortHeightBody),
   'short-height: .boardNotesText clamps to 2 lines')
 assert(/\.boardDateOnly\s*\{[\s\S]{0,400}padding:\s*(?:10px|calc\(\s*10px\s*\*\s*var\(--board-bar-scale)/.test(shortHeightBody),
@@ -173,12 +179,12 @@ assert(/\.boardBars\[data-density='comfortable'\]\s+\.boardPersonBar\s*\{[\s\S]{
   "comfortable: .boardPersonBar padding uses var(--board-bar-scale)")
 assert(/\.boardBars\[data-density='comfortable'\]\s+\.boardPersonBar\s*\{[\s\S]{0,400}gap:\s*calc\([\s\S]{0,40}var\(--board-bar-scale/.test(CSS),
   "comfortable: .boardPersonBar inner gap uses var(--board-bar-scale)")
-assert(/\.boardBars\[data-density='comfortable'\]\s+\.boardPersonName\s*\{[\s\S]{0,200}clamp\([\s\S]{0,100}calc\([\s\S]{0,40}var\(--board-bar-scale/.test(CSS),
-  "comfortable: .boardPersonName clamp() max uses calc(... * var(--board-bar-scale))")
-assert(/\.boardBars\[data-density='comfortable'\]\s+\.boardTaskText\s*\{[\s\S]{0,200}clamp\([\s\S]{0,100}calc\([\s\S]{0,40}var\(--board-bar-scale/.test(CSS),
-  "comfortable: .boardTaskText clamp() max uses calc(... * var(--board-bar-scale))")
-assert(/\.boardBars\[data-density='comfortable'\]\s+\.boardNotesText\s*\{[\s\S]{0,200}clamp\([\s\S]{0,100}calc\([\s\S]{0,40}var\(--board-bar-scale/.test(CSS),
-  "comfortable: .boardNotesText clamp() max uses calc(... * var(--board-bar-scale))")
+// Phase DAB.10g.1 — density overrides now set --board-name-size on
+// the .boardBars[data-density='...'] selector; the trio derives via
+// the ratios declared on .boardBars. Verify comfortable declares
+// --board-name-size using --board-bar-scale.
+assert(/\.boardBars\[data-density='comfortable'\]\s*\{[\s\S]{0,200}--board-name-size:\s+clamp\([\s\S]{0,100}calc\([\s\S]{0,60}var\(--board-bar-scale/.test(CSS),
+  "comfortable: --board-name-size clamp() max uses calc(... * var(--board-bar-scale)) [DAB.10g.1]")
 
 // Compact density — same: every surface goes through calc(* var(--board-bar-scale)).
 // Phase DAB.10e — gap moved to .boardBarsInner.
@@ -188,12 +194,9 @@ assert(/\.boardBars\[data-density='compact'\]\s+\.boardPersonBar\s*\{[\s\S]{0,40
   "compact: .boardPersonBar padding uses var(--board-bar-scale)")
 assert(/\.boardBars\[data-density='compact'\]\s+\.boardPersonBar\s*\{[\s\S]{0,400}gap:\s*calc\([\s\S]{0,40}var\(--board-bar-scale/.test(CSS),
   "compact: .boardPersonBar inner gap uses var(--board-bar-scale)")
-assert(/\.boardBars\[data-density='compact'\]\s+\.boardPersonName\s*\{[\s\S]{0,200}clamp\([\s\S]{0,100}calc\([\s\S]{0,40}var\(--board-bar-scale/.test(CSS),
-  "compact: .boardPersonName clamp() max uses calc(... * var(--board-bar-scale))")
-assert(/\.boardBars\[data-density='compact'\]\s+\.boardTaskText\s*\{[\s\S]{0,200}clamp\([\s\S]{0,100}calc\([\s\S]{0,40}var\(--board-bar-scale/.test(CSS),
-  "compact: .boardTaskText clamp() max uses calc(... * var(--board-bar-scale))")
-assert(/\.boardBars\[data-density='compact'\]\s+\.boardNotesText\s*\{[\s\S]{0,200}clamp\([\s\S]{0,100}calc\([\s\S]{0,40}var\(--board-bar-scale/.test(CSS),
-  "compact: .boardNotesText clamp() max uses calc(... * var(--board-bar-scale))")
+// Phase DAB.10g.1 — same pattern for compact density.
+assert(/\.boardBars\[data-density='compact'\]\s*\{[\s\S]{0,200}--board-name-size:\s+clamp\([\s\S]{0,100}calc\([\s\S]{0,60}var\(--board-bar-scale/.test(CSS),
+  "compact: --board-name-size clamp() max uses calc(... * var(--board-bar-scale)) [DAB.10g.1]")
 
 // Phase DAB.10g — @media-driven 2-col grid removed; columns are now
 // JS-deterministic via --board-columns. The .boardBarsInner gap is
