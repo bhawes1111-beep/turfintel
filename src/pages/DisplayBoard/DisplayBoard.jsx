@@ -435,6 +435,35 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
     return m
   }, [employees])
 
+  // Phase DAB.10j — Normalized-name fallback lookup. Legacy crew
+  // assignments (pre-Phase 5.6b backfill) may carry an employee_name
+  // but no employee_id. Without this fallback, showSpanishNotes
+  // silently resolved to `false` for those rows regardless of the
+  // employee's autoTranslateBoardNotes preference. Key normalization
+  // matches the server's LOWER(TRIM(...)) join predicate so client +
+  // server agree on which assignments belong to which employee.
+  const normalizeEmployeeName = (name) =>
+    String(name ?? '').trim().toLowerCase().replace(/\s+/g, ' ')
+  const employeeByNormalizedName = useMemo(() => {
+    const m = new Map()
+    for (const e of employees) {
+      const norm = normalizeEmployeeName(e.name)
+      if (norm) m.set(norm, e)
+    }
+    return m
+  }, [employees])
+  // Resolver: employeeId first, normalized name as fallback. Returns
+  // null when neither locates a live employee record so callers still
+  // get a safe default (showSpanishNotes → false → English).
+  const resolveEmployee = (a) => {
+    if (a.employeeId) {
+      const byId = employeeById.get(a.employeeId)
+      if (byId) return byId
+    }
+    const norm = normalizeEmployeeName(a.employeeName)
+    return norm ? (employeeByNormalizedName.get(norm) ?? null) : null
+  }
+
   // ── Date-scoped derivations ───────────────────────────────────────────
   const dayEvents = useMemo(() => {
     return events
@@ -527,10 +556,12 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
       if (!byOperator.has(key)) {
         // Phase 9C.5c4 — Resolve the employee row (when known) so we
         // can pin showSpanishNotes ONCE when the operator card is
-        // created. Per-employee translation prefs don't change inside
-        // a single operatorCards build, so computing here keeps the
-        // hot loop below ignorant of the employees array.
-        const employee = a.employeeId ? employeeById.get(a.employeeId) : null
+        // created.
+        // Phase DAB.10j — resolveEmployee prefers a.employeeId; falls
+        // back to normalized-name match so legacy assignments without
+        // employeeId still see the employee's autoTranslateBoardNotes
+        // preference. Null when no live record matches (safe: English).
+        const employee = resolveEmployee(a)
         byOperator.set(key, {
           key,
           employeeId:        a.employeeId ?? null,
@@ -657,7 +688,8 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
     })
     return cards
   }, [
-    dayCrew, dayEvents, equipByEvent, employeeNameLookup, employeeById, employees,
+    dayCrew, dayEvents, equipByEvent, employeeNameLookup, employeeById,
+    employeeByNormalizedName, employees,
     // Phase E.4 / E.9 — re-bucket when schedules / overrides / selectedDate change
     weeklySchedules, scheduleOverrides, selectedDate,
   ])
@@ -1503,24 +1535,34 @@ function BoardModeCrewBars({ operatorCards }) {
     : heaviness <= 22 ? 'compact'
     :                   'ultra'
 
-  // Phase DAB.10g — Deterministic column count. Wider viewport + heavier
-  // roster → more columns. Mobile always 1.
+  // Phase DAB.10j — Force two-column legacy layout on desktop/kiosk.
+  // The DAB.10g rule made roomy + natural stay single-column at wide
+  // widths; the shop TVs are wide enough that a single column left
+  // huge horizontal empty gutters. New rule:
+  //
+  //   mobile                          → 1
+  //   ≥1600px AND ultra               → 3
+  //   ≥900px                          → 2   (all non-mobile widths ≥ 900px)
+  //   < 900px non-mobile              → 1
+  //
+  // The 900px threshold catches every real kiosk display (a shop TV
+  // in landscape starts at 1280×720; laptops at 1366×768) but keeps
+  // narrow tablet/portrait windows at 1 column.
   const boardColumns = viewport.isMobile ? 1
-    : (viewport.w >= 1600 && fitMode === 'ultra')   ? 3
-    : (viewport.w >= 1100 && (fitMode === 'compact' || fitMode === 'ultra'
-                              || (density === 'comfortable' && fitMode !== 'roomy'))) ? 2
+    : (viewport.w >= 1600 && fitMode === 'ultra') ? 3
+    : (viewport.w >= 900) ? 2
     : 1
 
-  // Phase DAB.10g — Target card height derived from viewport, NOT
-  // from inner content measurement. Approximate the available roster
-  // area as viewport.h minus a fixed allowance for the date header +
-  // padding (~120px). Divide by row count for a stretch target. Only
-  // applied in roomy/natural modes via CSS; compact/ultra ignore it
-  // so dense rosters keep their tight layout.
+  // Phase DAB.10j — Target card height derived from viewport with
+  // gap accounting. availableRosterHeight - totalRowGaps ensures a
+  // 2-row layout doesn't clip the last row when the outer flex gap
+  // takes ~12-18px.
   const HEADER_AND_PADDING = 120
+  const CONFIGURED_ROW_GAP = 16
   const availableRosterHeight = Math.max(0, viewport.h - HEADER_AND_PADDING)
   const rowCount = Math.max(1, Math.ceil(operatorCount / boardColumns))
-  const targetCardHeight = Math.floor(availableRosterHeight / rowCount) - 16  // minus gap allowance
+  const totalRowGaps = Math.max(0, rowCount - 1) * CONFIGURED_ROW_GAP
+  const targetCardHeight = Math.floor((availableRosterHeight - totalRowGaps) / rowCount)
 
   return (
     <div
@@ -1541,8 +1583,31 @@ function BoardModeCrewBars({ operatorCards }) {
         '--board-target-card-height': `${targetCardHeight}px`,
       }}
     >
+      {/* Phase DAB.10j — Column-major reorder. The CSS grid places
+          cards row-by-row (row-major), which would produce a reading
+          order of [1,2 | 3,4 | 5,6 | 7,8] — i.e. sequential names
+          would be side-by-side rather than stacked. For a shop TV a
+          supervisor scans one column top-to-bottom, so we reindex
+          the array into row-major placement of column-major positions:
+          [1,5,2,6,3,7,4,8] for 8 ops in 2 cols. Result on the grid:
+              Row 1: 1 5      Left col: 1  Right col: 5
+              Row 2: 2 6                 2            6
+              Row 3: 3 7                 3            7
+              Row 4: 4 8                 4            8
+          One map, one card markup path. */}
       <div className={styles.boardBarsInner}>
-      {operatorCards.map(op => {
+      {(() => {
+        if (boardColumns <= 1) return operatorCards
+        const rows = Math.ceil(operatorCards.length / boardColumns)
+        const reordered = []
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < boardColumns; c++) {
+            const srcIdx = c * rows + r
+            if (srcIdx < operatorCards.length) reordered.push(operatorCards[srcIdx])
+          }
+        }
+        return reordered
+      })().map(op => {
         // Phase E.9 — Out-status cards: render the status word as the
         // "task" line and skip notes / Spanish / chips entirely. The
         // out card is a name + a labeled status pill, nothing more.

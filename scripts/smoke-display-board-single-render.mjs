@@ -54,13 +54,17 @@ section('Structural singleton: ONE operatorCards.map inside BoardModeCrewBars')
 const boardModeFn = KIOSK.match(/function BoardModeCrewBars\([\s\S]+?\n\}\n/)?.[0] ?? ''
 assert(boardModeFn.length > 0, 'BoardModeCrewBars function body parsed')
 
-const mapCountInsideBoardMode = (boardModeFn.match(/operatorCards\.map\(/g) ?? []).length
-assert(mapCountInsideBoardMode === 1,
-  `exactly one operatorCards.map inside BoardModeCrewBars (found ${mapCountInsideBoardMode})`)
+// Phase DAB.10j — Column-major reorder runs operatorCards through an
+// IIFE that returns a reordered array, then a single .map(op => …)
+// call renders each card. Structural singleton = one .map callback
+// = one card markup path.
+const mapCallbackCount = (boardModeFn.match(/\)\.map\(op =>/g) ?? []).length
+assert(mapCallbackCount === 1,
+  `exactly one .map(op => …) card-render callback inside BoardModeCrewBars (found ${mapCallbackCount})`)
 
-// The one map must be inside .boardBarsInner, not a sibling.
-assert(/className=\{styles\.boardBarsInner\}\s*\n?\s*>\s*\n?\s*\{operatorCards\.map\(/.test(boardModeFn),
-  'operatorCards.map sits directly inside <div className={styles.boardBarsInner}>')
+// The one map lives directly inside .boardBarsInner.
+assert(/className=\{styles\.boardBarsInner\}\s*\n?\s*>[\s\S]{0,2000}\)\.map\(op =>/.test(boardModeFn),
+  '.map(op => …) call sits inside <div className={styles.boardBarsInner}>')
 
 // Negative: no second .boardBars or .boardBarsInner sibling carrying a map.
 const innerOpenCount = (boardModeFn.match(/className=\{styles\.boardBarsInner\}/g) ?? []).length

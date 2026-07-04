@@ -158,8 +158,13 @@ assert(/const boardColumns = viewport\.isMobile \? 1/.test(KIOSK),
   'mobile always 1 column')
 assert(/viewport\.w >= 1600 && fitMode === 'ultra'/.test(KIOSK),
   '≥1600px + ultra → 3 columns')
-assert(/viewport\.w >= 1100 && \(fitMode === 'compact' \|\| fitMode === 'ultra'/.test(KIOSK),
-  '≥1100px + compact/ultra (or comfortable + non-roomy) → 2 columns')
+// Phase DAB.10j — Two-column threshold lowered to 900px and applied
+// to ALL non-mobile widths (roomy + natural + compact + ultra alike).
+// The prior 1100px + mode-dependent rule left legacy shop TVs (1280–
+// 1920px) with a single column of cards + huge horizontal empty
+// gutters. New rule: mobile 1, ≥1600 ultra → 3, ≥900 → 2, else 1.
+assert(/viewport\.w >= 900\) \? 2/.test(KIOSK),
+  '≥900px non-mobile → 2 columns (DAB.10j — force two-column legacy layout)')
 
 // Exposed on .boardBars + as CSS variable on inline style.
 assert(/data-board-columns=\{boardColumns\}/.test(KIOSK),
@@ -180,8 +185,16 @@ assert(/const availableRosterHeight = Math\.max\(0, viewport\.h - HEADER_AND_PAD
   'availableRosterHeight = viewport.h - HEADER_AND_PADDING (no inner measurement)')
 assert(/const rowCount = Math\.max\(1, Math\.ceil\(operatorCount \/ boardColumns\)\)/.test(KIOSK),
   'rowCount = ceil(operatorCount / boardColumns)')
-assert(/const targetCardHeight = Math\.floor\(availableRosterHeight \/ rowCount\) - 16/.test(KIOSK),
-  'targetCardHeight = floor(availableRosterHeight / rowCount) - 16 (gap allowance)')
+// Phase DAB.10j — targetCardHeight now accounts for TOTAL row gaps
+// (rowCount - 1) × configuredGap rather than a single flat 16px
+// subtraction. On a 4-row layout with 16px gap this shifts by 48px,
+// preventing the last row from clipping under the outer overflow.
+assert(/const CONFIGURED_ROW_GAP = 16/.test(KIOSK),
+  'CONFIGURED_ROW_GAP = 16 (row-gap between .boardPersonBar rows)')
+assert(/const totalRowGaps = Math\.max\(0, rowCount - 1\) \* CONFIGURED_ROW_GAP/.test(KIOSK),
+  'totalRowGaps = (rowCount - 1) × CONFIGURED_ROW_GAP (accounts for every gap)')
+assert(/const targetCardHeight = Math\.floor\(\(availableRosterHeight - totalRowGaps\) \/ rowCount\)/.test(KIOSK),
+  'targetCardHeight = floor((availableRosterHeight - totalRowGaps) / rowCount) [DAB.10j]')
 
 // Exposed as CSS variable.
 assert(/'--board-target-card-height':\s+`\$\{targetCardHeight\}px`/.test(KIOSK),
@@ -259,8 +272,13 @@ assert(/\n\.boardBars \{[\s\S]{0,800}overflow:\s+hidden/.test(KIOSK_CSS),
 // ── Single render path preserved ─────────────────────────────────
 section('Single render path: one operatorCards.map, one .boardBarsInner')
 
-const mapCount = (boardModeFn.match(/operatorCards\.map\(/g) ?? []).length
-assert(mapCount === 1, `exactly one operatorCards.map inside BoardModeCrewBars (found ${mapCount})`)
+// Phase DAB.10j — Column-major reorder means the .map now runs on
+// a locally-computed reordered array (via IIFE) rather than directly
+// on operatorCards. But there is still exactly ONE .map callback
+// containing the card-rendering JSX — one card markup path.
+const mapCallbackCount = (boardModeFn.match(/\)\.map\(op =>/g) ?? []).length
+assert(mapCallbackCount === 1,
+  `exactly one .map(op => …) card-render callback inside BoardModeCrewBars (found ${mapCallbackCount})`)
 const innerCount = (boardModeFn.match(/className=\{styles\.boardBarsInner\}/g) ?? []).length
 assert(innerCount === 1, `exactly one .boardBarsInner JSX element (found ${innerCount})`)
 

@@ -96,8 +96,10 @@ assert(!/cards = cards\.filter\(op => \{[\s\S]{0,400}return verdict\.allowed\s*\
   'kiosk operatorCards memo NO LONGER filters via verdict.allowed (E.4 hide-behavior removed)')
 
 // Memo deps include employees so seeding re-runs when the roster changes.
-assert(/dayCrew, dayEvents, equipByEvent, employeeNameLookup, employeeById, employees,/.test(memoSrc),
-  'memo deps include `employees` so out-card seeding re-runs when the roster changes')
+// Phase DAB.10j — normalized-name lookup added; adjust regex to accept
+// the additional employeeByNormalizedName entry in the deps list.
+assert(/dayCrew, dayEvents, equipByEvent, employeeNameLookup, employeeById,\s*\n\s*employeeByNormalizedName, employees,/.test(memoSrc),
+  'memo deps include employees + employeeByNormalizedName so seeding re-runs on roster changes')
 
 // Sort: out cards land AFTER scheduled cards.
 assert(/const xOut = x\.outStatus \? 1 : 0/.test(memoSrc),

@@ -89,8 +89,18 @@ section('Employee matching prefers employeeId; name is fallback')
 // without employeeId use employeeName as the byOperator key.
 assert(/const key = a\.employeeId \?\? a\.employeeName/.test(KIOSK),
   'operatorCards keys by employeeId FIRST, employeeName as fallback')
-assert(/const employee = a\.employeeId \? employeeById\.get\(a\.employeeId\) : null/.test(KIOSK),
-  'employee record resolved via employeeById.get(a.employeeId) when employeeId present')
+// Phase DAB.10j — resolveEmployee(a) helper: employeeId FIRST, then
+// normalized-name fallback. Legacy rows without employeeId no longer
+// silently lose their autoTranslateBoardNotes preference.
+assert(/const employee = resolveEmployee\(a\)/.test(KIOSK),
+  'employee resolved via resolveEmployee(a) [DAB.10j]')
+assert(/const resolveEmployee = \(a\) => \{[\s\S]{0,500}if \(a\.employeeId\) \{[\s\S]{0,200}employeeById\.get\(a\.employeeId\)/.test(KIOSK),
+  'resolveEmployee tries employeeById.get(a.employeeId) first [DAB.10j]')
+assert(/const resolveEmployee = \(a\) => \{[\s\S]{0,600}employeeByNormalizedName\.get\(norm\)/.test(KIOSK),
+  'resolveEmployee falls back to normalized-name lookup [DAB.10j]')
+// Normalization matches the server predicate (LOWER + TRIM + collapse spaces).
+assert(/const normalizeEmployeeName = \(name\) =>\s*\n\s*String\(name \?\? ''\)\.trim\(\)\.toLowerCase\(\)\.replace\(\/\\s\+\/g, ' '\)/.test(KIOSK),
+  'normalizeEmployeeName: trim + lowercase + collapse whitespace [DAB.10j]')
 
 // showSpanishNotes computed ONCE per operator card using the helper.
 assert(/showSpanishNotes:\s+employeeNeedsSpanish\(employee\)/.test(KIOSK),
@@ -172,8 +182,12 @@ section('Translation sweep processes EVERY eligible assignment (primary + additi
 // between primary and additional job.
 assert(/SELECT a\.id, a\.notes\s*\n\s*FROM crew_assignments AS a/.test(AUTO_TRANS),
   'sweep SELECT reads crew_assignments (all rows for each employee)')
-assert(/LEFT JOIN crew_employees AS emp\s*\n\s*ON\s+emp\.id\s+= a\.employee_id\s*\n\s*OR\s+emp\.name = a\.employee_name/.test(AUTO_TRANS),
-  'sweep joins by employee_id OR employee_name (matches operatorCards resolution strategy)')
+// Phase DAB.10j — Employee-match normalization. Sweep now joins by
+// employee_id first (exact), then LOWER(TRIM()) normalized name so
+// legacy rows with 'John Smith ' or 'john smith' still match the
+// employee record.
+assert(/LEFT JOIN crew_employees AS emp\s*\n\s*ON\s+emp\.id = a\.employee_id\s*\n\s*OR\s+LOWER\(TRIM\(emp\.name\)\) = LOWER\(TRIM\(a\.employee_name\)\)/.test(AUTO_TRANS),
+  'sweep joins by employee_id OR LOWER(TRIM(name)) — DAB.10j whitespace/case tolerant')
 assert(/WHERE a\.notes IS NOT NULL[\s\S]{0,200}AND \(a\.notes_es IS NULL OR TRIM\(a\.notes_es\) = ''\)/.test(AUTO_TRANS),
   'sweep WHERE clause processes rows with English notes + missing/blank Spanish')
 assert(/AND emp\.auto_translate_board_notes = 1\s*\n\s*AND emp\.board_language = 'es'/.test(AUTO_TRANS),

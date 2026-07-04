@@ -89,12 +89,21 @@ async function sweepAssignments(env, budget) {
   // crew_employees.id. LEFT JOIN + the WHERE clause's employee status
   // checks together enforce eligibility — rows with no matching
   // employee are excluded by the `emp.status = 'active'` predicate.
+  // Phase DAB.10j — Employee-match normalization. The previous
+  //   OR emp.name = a.employee_name
+  // predicate silently missed legacy assignments where the stored
+  // employee_name had trailing whitespace, mixed case, or double
+  // spaces — none of those are visible to the supervisor but they
+  // break exact string equality in SQLite. Match on the LOWER +
+  // TRIM'd form of both sides so 'John Smith ' == 'john smith'
+  // for the join, matching how the client-side normalized-name
+  // fallback behaves. Employee ID still wins when populated.
   const { results } = await env.DB.prepare(
     `SELECT a.id, a.notes
        FROM crew_assignments AS a
        LEFT JOIN crew_employees AS emp
-         ON  emp.id   = a.employee_id
-         OR  emp.name = a.employee_name
+         ON  emp.id = a.employee_id
+         OR  LOWER(TRIM(emp.name)) = LOWER(TRIM(a.employee_name))
       WHERE a.notes IS NOT NULL
         AND TRIM(a.notes) != ''
         AND (a.notes_es IS NULL OR TRIM(a.notes_es) = '')
@@ -107,20 +116,33 @@ async function sweepAssignments(env, budget) {
   ).bind(budget).all()
 
   let translated = 0
+  let failed     = 0
   for (const row of results ?? []) {
-    const out = await translateText(env, row.notes, { from: 'en', to: 'es' })
-    if (!out) continue
-    // Race-safe UPDATE — only writes when the row STILL has no manual
-    // Spanish. A concurrent PATCH from the DAB authoring path wins.
-    const result = await env.DB.prepare(
-      `UPDATE crew_assignments
-          SET notes_es = ?, updated_at = datetime('now')
-        WHERE id = ?
-          AND (notes_es IS NULL OR TRIM(notes_es) = '')`,
-    ).bind(out, row.id).run()
-    if (result?.success && (result.meta?.changes ?? 0) > 0) translated++
+    // Phase DAB.10j — Per-row try/catch so one bad row (transient
+    // AI provider hiccup, D1 write race) doesn't abort the whole
+    // sweep. Errors are logged with row id only (no note contents)
+    // and the loop continues to the next candidate.
+    try {
+      const out = await translateText(env, row.notes, { from: 'en', to: 'es' })
+      if (!out) { failed++; continue }
+      // Race-safe UPDATE — only writes when the row STILL has no manual
+      // Spanish. A concurrent PATCH from the DAB authoring path wins.
+      const result = await env.DB.prepare(
+        `UPDATE crew_assignments
+            SET notes_es = ?, updated_at = datetime('now')
+          WHERE id = ?
+            AND (notes_es IS NULL OR TRIM(notes_es) = '')`,
+      ).bind(out, row.id).run()
+      if (result?.success && (result.meta?.changes ?? 0) > 0) translated++
+    } catch (err) {
+      failed++
+      console.warn('[TurfIntel Translate] row failed', {
+        id: row.id,
+        message: err?.message ?? String(err),
+      })
+    }
   }
-  return { scanned: results?.length ?? 0, translated }
+  return { scanned: results?.length ?? 0, translated, failed }
 }
 
 /**

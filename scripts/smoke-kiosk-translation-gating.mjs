@@ -71,9 +71,14 @@ assert(/employeeById\.get\(a\.employeeId\)/.test(DB),
 assert(/showSpanishNotes:\s*employeeNeedsSpanish\(employee\)/.test(DB),
   'operatorCards sets showSpanishNotes: employeeNeedsSpanish(employee)')
 
-// Missing employeeId defaults to null employee (helper returns false).
-assert(/const\s+employee\s*=\s*a\.employeeId\s*\?\s*employeeById\.get\(a\.employeeId\)\s*:\s*null/.test(DB),
-  'operatorCards resolves employee = a.employeeId ? employeeById.get(a.employeeId) : null (null → showSpanishNotes false)')
+// Phase DAB.10j — resolveEmployee(a) helper: employeeId first, then
+// normalized-name fallback (Map keyed by LOWER(TRIM) name). Returns
+// null when neither locates a live employee record → showSpanishNotes
+// false → safe English default.
+assert(/const employee = resolveEmployee\(a\)/.test(DB),
+  'operatorCards resolves employee via resolveEmployee(a) — id-first, normalized-name fallback [DAB.10j]')
+assert(/const resolveEmployee = \(a\) =>/.test(DB),
+  'resolveEmployee helper declared [DAB.10j]')
 
 // operatorCards useMemo includes employeeById in its dep list. Phase
 // E.4 widened the dep list with weeklySchedules + scheduleOverrides +

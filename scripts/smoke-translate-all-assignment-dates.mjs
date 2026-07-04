@@ -67,10 +67,11 @@ assert(/LEFT JOIN\s+crew_employees\s+AS\s+emp/.test(sweepSrc),
 // Join condition: prefer employee_id, fall back to employee_name.
 assert(/emp\.id\s*=\s*a\.employee_id/.test(sweepSrc),
   "join condition includes emp.id = a.employee_id (preferred linkage)")
-assert(/emp\.name\s*=\s*a\.employee_name/.test(sweepSrc),
-  "join condition includes emp.name = a.employee_name (legacy fallback)")
-assert(/emp\.id\s*=\s*a\.employee_id[\s\S]{0,80}OR[\s\S]{0,80}emp\.name\s*=\s*a\.employee_name/i.test(sweepSrc),
-  'join uses OR between emp.id and emp.name (handles legacy rows without employee_id)')
+// Phase DAB.10j — legacy name fallback now normalized (LOWER + TRIM).
+assert(/LOWER\(TRIM\(emp\.name\)\)\s*=\s*LOWER\(TRIM\(a\.employee_name\)\)/.test(sweepSrc),
+  "legacy fallback normalizes name: LOWER(TRIM(emp.name)) = LOWER(TRIM(a.employee_name)) [DAB.10j]")
+assert(/emp\.id\s*=\s*a\.employee_id[\s\S]{0,120}OR[\s\S]{0,120}LOWER\(TRIM\(emp\.name\)\)\s*=\s*LOWER\(TRIM\(a\.employee_name\)\)/i.test(sweepSrc),
+  'join uses OR between emp.id and LOWER(TRIM) name (handles legacy rows without employee_id)')
 
 // Employee predicates.
 assert(/emp\.status\s*=\s*'active'/.test(sweepSrc),
