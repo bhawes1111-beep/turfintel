@@ -47,7 +47,10 @@ const CW       = readFileSync('src/pages/Spray/tabs/SprayCalendarWorkspace.jsx',
 const CW_CSS   = readFileSync('src/pages/Spray/tabs/SprayCalendarWorkspace.module.css',  'utf8')
 const SP       = readFileSync('src/pages/Spray/Spray.jsx',                               'utf8')
 const BUILD    = readFileSync('src/pages/Spray/tabs/BuildSpraySheet.jsx',                'utf8')
-const WS       = readFileSync('src/pages/Spray/tabs/SprayWorkspace.jsx',                 'utf8')
+// Phase SPR.2 — Legacy SprayWorkspace.jsx deleted (was dead code).
+// The "no <SprayWorkspace onNavigateTab=…/> mount" pin remains valid
+// via Spray.jsx (SP) — no need to read the deleted file.
+const WS       = ''
 const SPRAYS_W = readFileSync('worker/api/sprays.js',                                    'utf8')
 const PROG_W   = readFileSync('worker/api/sprayPrograms.js',                             'utf8')
 const PC_W     = readFileSync('worker/api/productCatalog.js',                            'utf8')
@@ -97,8 +100,13 @@ assert(pcWrites.length === 0,
 // ── New component + CSS exist ───────────────────────────────────────
 section('SprayCalendarWorkspace component + CSS module exist')
 
-assert(/^export default function SprayCalendarWorkspace\(\)/m.test(CW),
-  'SprayCalendarWorkspace exports default with no required props')
+// Phase SPR.2 — SprayCalendarWorkspace now accepts an optional
+// onStartNewSpray callback; when provided (Spray.jsx path) the
+// embedded builder is replaced with a "Start New Spray" CTA. When
+// absent (direct-mount test harnesses) the S.7 embedded builder is
+// still rendered as a fallback.
+assert(/^export default function SprayCalendarWorkspace\(\{\s*onStartNewSpray\s*\}\s*=\s*\{\}\)/m.test(CW),
+  'SprayCalendarWorkspace exports default with optional { onStartNewSpray } prop [SPR.2]')
 assert(CW_CSS.length > 500, 'CSS module has substantive content')
 
 // Imports reuse existing stores + the shared Needs Info helper.
@@ -117,24 +125,27 @@ section('Spray.jsx — calendar workspace is the default landing tab')
 assert(/import SprayCalendarWorkspace from '\.\/tabs\/SprayCalendarWorkspace'/.test(SP),
   'Spray.jsx imports SprayCalendarWorkspace')
 
-// Both branches mount it.
-const sprayCalendarMounts = SP.match(/activeTab === 'Workspace'\s+&&\s*<SprayCalendarWorkspace\s*\/>/g) ?? []
-assert(sprayCalendarMounts.length >= 2,
-  `Both Crosswinds + legacy Workspace tabs mount <SprayCalendarWorkspace /> (found ${sprayCalendarMounts.length})`)
+// Phase SPR.2 — Course-specific fork removed. Single 'Today' tab
+// mounts <SprayCalendarWorkspace onStartNewSpray={goToNewApplication} />.
+const sprayCalendarMounts = SP.match(/activeTab === 'Today'[\s\S]{0,200}<SprayCalendarWorkspace\s+onStartNewSpray=\{goToNewApplication\}/g) ?? []
+assert(sprayCalendarMounts.length === 1,
+  `single 'Today' tab mounts <SprayCalendarWorkspace onStartNewSpray={goToNewApplication} /> (found ${sprayCalendarMounts.length}) [SPR.2]`)
 
 // Negative pin — the old <SprayWorkspace onNavigateTab=…/> mounts are gone.
 assert(!/<SprayWorkspace onNavigateTab=/.test(SP),
   'no remaining <SprayWorkspace onNavigateTab=…> mount sites (S.7 retired)')
 
-// Default activeTab still 'Workspace'.
-assert(/useState\(\s*['"]Workspace['"]\s*\)/.test(SP),
-  "activeTab defaults to 'Workspace' (landing on the calendar)")
+// Phase SPR.2 — Default activeTab renamed from 'Workspace' to 'Today'
+// (unified tab list). Landing behavior unchanged — Today still mounts
+// SprayCalendarWorkspace.
+assert(/resolveInitialTab\(['"]Today['"]\)/.test(SP),
+  "activeTab defaults to 'Today' (SPR.2 unified label; landing on the calendar workspace)")
 
-// Legacy SprayWorkspace component preserved on disk (no destructive removal).
-assert(WS.length > 500,
-  'legacy SprayWorkspace.jsx preserved on disk (no destructive deletion)')
-assert(/export default function SprayWorkspace/.test(WS),
-  'legacy SprayWorkspace still exports default function (file preserved)')
+// Phase SPR.2 — Legacy SprayWorkspace.jsx DELETED (dead code, superseded
+// by SprayCalendarWorkspace).
+import { existsSync } from 'fs'
+assert(!existsSync('src/pages/Spray/tabs/SprayWorkspace.jsx'),
+  'legacy SprayWorkspace.jsx removed by SPR.2 (was dead code)')
 
 // ── Header has month nav / Today / Jump ─────────────────────────────
 section('Header — month nav, Today button, Jump to date')
@@ -279,10 +290,11 @@ assert(/onCommit\?\.\(saved\)/.test(BUILD),
 // Existing standalone tab behavior preserved.
 assert(/import BuildSpraySheet\s+from\s+['"]\.\/tabs\/BuildSpraySheet['"]/.test(SP),
   'Spray.jsx still imports BuildSpraySheet (standalone tab regression couple)')
-assert(/activeTab === 'Build Spray'\s+&&\s*<BuildSpraySheet \/>/.test(SP),
-  'Crosswinds "Build Spray" tab still mounts <BuildSpraySheet /> (no props — standalone behavior)')
-assert(/activeTab === 'New Application'\s+&&\s*<BuildSpraySheet \/>/.test(SP),
-  'Legacy "New Application" tab still mounts <BuildSpraySheet /> (no props)')
+// Phase SPR.2 — Unified tab list. Only 'New Application' mounts the
+// standalone <BuildSpraySheet />. The Crosswinds-specific 'Build Spray'
+// tab is gone (was a duplicate destination).
+assert(/activeTab === 'New Application' && <BuildSpraySheet \/>/.test(SP),
+  "'New Application' tab mounts standalone <BuildSpraySheet /> [SPR.2]")
 
 // ── Workspace is read-only — no spray mutations ─────────────────────
 section('SprayCalendarWorkspace is read-only — no mutations')

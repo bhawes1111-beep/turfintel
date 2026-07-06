@@ -32,7 +32,10 @@ function assert(cond, label, ctx) {
 function section(name) { console.log(`\n— ${name} —`) }
 
 const HELPER    = readFileSync('src/utils/sprays/recordNeedsInfo.js',           'utf8')
-const WORKSPACE = readFileSync('src/pages/Spray/tabs/SprayWorkspace.jsx',       'utf8')
+// Phase SPR.2 — Legacy SprayWorkspace.jsx deleted; the recordNeedsInfo
+// consumption + dayIncomplete filtering moved to SprayCalendarWorkspace
+// (the actual landing tab). Redirect these pins to the live component.
+const WORKSPACE = readFileSync('src/pages/Spray/tabs/SprayCalendarWorkspace.jsx', 'utf8')
 const RECORDS   = readFileSync('src/pages/Spray/tabs/SprayRecords.jsx',         'utf8')
 const RB        = readFileSync('src/utils/reports/reportBuilder.js',            'utf8')
 const SPRAYS_W  = readFileSync('worker/api/sprays.js',                          'utf8')
@@ -184,9 +187,11 @@ for (const [src, label] of [
     `${label}: no .conditions.temperature (legacy buggy name)`)
 }
 
-// Workspace's filter still wires to recordNeedsInfo by name.
-assert(/dayRecords\.filter\(recordNeedsInfo\)/.test(WORKSPACE),
-  'SprayWorkspace dayIncomplete useMemo filters by recordNeedsInfo')
+// Phase SPR.2 — SprayCalendarWorkspace still wires needs-info filtering
+// through the same shared recordNeedsInfo helper (dayRecords.filter →
+// selectedRecords.filter after S.7 refactor).
+assert(/(?:dayRecords|selectedRecords|recs)\.filter\(recordNeedsInfo\)/.test(WORKSPACE),
+  'SprayCalendarWorkspace filters records by recordNeedsInfo')
 
 // Records' Needs Info toggle still wires to recordNeedsInfo by name.
 assert(/needsInfoOnly && !recordNeedsInfo\(r\)/.test(RECORDS),
@@ -328,7 +333,6 @@ for (const path of [
   'src/pages/Spray/tabs/ProgramIntelligence.jsx',
   'src/pages/Spray/tabs/SprayCalendar.jsx',
   'src/pages/Spray/tabs/SprayOverview.jsx',
-  'src/pages/Spray/tabs/PlannedPrograms.jsx',
   'src/pages/Spray/tabs/SprayReports.jsx',
   // Stores untouched.
   'src/utils/sprays/spraysStore.js',

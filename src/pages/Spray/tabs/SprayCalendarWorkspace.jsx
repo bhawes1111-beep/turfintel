@@ -122,7 +122,7 @@ function plannedItemDate(item) {
 }
 
 // ── Component ─────────────────────────────────────────────────────────
-export default function SprayCalendarWorkspace() {
+export default function SprayCalendarWorkspace({ onStartNewSpray } = {}) {
   const courseId = useSelectedCourseId()
   const { records: sprays, loading: spraysLoading } = useSpraysData()
   const { programs, itemsByProgramId } = useSprayPrograms()
@@ -483,21 +483,43 @@ export default function SprayCalendarWorkspace() {
         )}
       </section>
 
-      {/* ── Embedded Build Spray form ───────────────────────────── */}
-      <section className={styles.embeddedBuilder} aria-label="Build a spray for the selected date">
-        <header className={styles.embeddedBuilderHeader}>
-          <h3 className={styles.embeddedBuilderTitle}>Build a spray for this date</h3>
-          <p className={styles.embeddedBuilderHint}>
-            Draft date is set from the calendar selection. Commit Application saves
-            the spray and refreshes the calendar chips above.
-          </p>
-        </header>
-        {/* Phase S.7 — Reuses the existing BuildSpraySheet component.
-            New optional props: initialDate (seeds the draft date) and
-            onCommit (refresh hook). Builder still owns its own draft +
-            autosave + permission gating. */}
-        <BuildSpraySheet initialDate={selectedDate} onCommit={handleEmbeddedCommit} />
-      </section>
+      {/* ── Start-new-spray CTA ─────────────────────────────────────
+          Phase SPR.2 — When Spray.jsx passes onStartNewSpray, this
+          workspace shows a single "Start New Spray" CTA that jumps to
+          the New Application tab. The full builder mounts in exactly
+          one place (the New Application tab) — never two at once.
+          When onStartNewSpray is absent (test harnesses that mount
+          SprayCalendarWorkspace directly), fall back to the S.7
+          embedded builder pattern so existing regression couples
+          remain valid. */}
+      {onStartNewSpray ? (
+        <section className={styles.startNewSpray} aria-label="Start a new spray application">
+          <header className={styles.embeddedBuilderHeader}>
+            <h3 className={styles.embeddedBuilderTitle}>Start a spray for this date</h3>
+            <p className={styles.embeddedBuilderHint}>
+              Opens the New Application form with the calendar date pre-selected.
+            </p>
+          </header>
+          <button
+            type="button"
+            className={styles.startNewSprayBtn}
+            onClick={onStartNewSpray}
+          >
+            Start New Spray →
+          </button>
+        </section>
+      ) : (
+        <section className={styles.embeddedBuilder} aria-label="Build a spray for the selected date">
+          <header className={styles.embeddedBuilderHeader}>
+            <h3 className={styles.embeddedBuilderTitle}>Build a spray for this date</h3>
+            <p className={styles.embeddedBuilderHint}>
+              Draft date is set from the calendar selection. Commit Application saves
+              the spray and refreshes the calendar chips above.
+            </p>
+          </header>
+          <BuildSpraySheet initialDate={selectedDate} onCommit={handleEmbeddedCommit} />
+        </section>
+      )}
 
 {/* Phase S.7b — Full read-only application sheet modal. Opens on
           completed-row click. Its Edit action closes the sheet and

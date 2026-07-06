@@ -370,28 +370,24 @@ console.log('— Sprays workspace registers Program Calendar tab')
   assert(/from\s+['"]\.\/tabs\/SprayProgramCalendar['"]/.test(shell),
     'Sprays imports SprayProgramCalendar tab')
 
-  // Phase 9B.1 renamed the constant to LEGACY_TABS while preserving
-  // the same 10-label payload for non-Crosswinds courses.
-  const tabsMatch = shell.match(/const\s+(?:LEGACY_TABS|TABS)\s*=\s*\[([^\]]+)\]/)
-  // Phase S.6c.1 — visible label renamed 'Program Calendar' →
-  // 'Planned Spray Calendar'. Component mount unchanged.
-  assert(tabsMatch && /'Planned Spray Calendar'/.test(tabsMatch[1]),
-    "'Planned Spray Calendar' present in TABS array (S.6c.1 rename)")
+  // Phase SPR.2 — Unified tab constant SPRAY_TABS + SPRAY_MORE.
+  // SprayProgramCalendar is reachable via More → 'Planning Calendar'
+  // (the label collision with the Planner is gone).
+  const tabsMatch = shell.match(/export\s+const\s+SPRAY_TABS\s*=\s*\[([^\]]+)\]/)
+  const moreMatch = shell.match(/export\s+const\s+SPRAY_MORE\s*=\s*\[([^\]]+)\]/)
+  assert(tabsMatch && moreMatch, 'SPRAY_TABS + SPRAY_MORE declared')
 
-  assert(/activeTab\s*===\s*'Planned Spray Calendar'\s*&&\s*<SprayProgramCalendar/.test(shell),
-    "Planned Spray Calendar tab body wired to activeTab === 'Planned Spray Calendar' (S.6c.1 rename)")
+  assert(moreMatch && /'Planning Calendar'/.test(moreMatch[1]),
+    "'Planning Calendar' present in SPRAY_MORE (SPR.2 rename of legacy 'Planned Spray Calendar')")
 
-  // Pre-existing tabs still present (regression guard).
-  // Phase S.6b — 'Program Planner' user-facing label renamed to
-  // 'Planned Sprays'; visible label updated, internal mount unchanged.
-  for (const t of ['Overview', 'Spray Calendar', 'New Application', 'Spray Records',
-                   // Phase S.6c — 'Planned Programs' removed from
-                   // visible LEGACY_TABS; 'Program Intelligence'
-                   // renamed to 'Spray Intelligence'.
-                   'Planned Sprays', 'Mix Calculator',
-                   'Reports', 'Spray Intelligence']) {
+  assert(/moreTab\s*===\s*'Planning Calendar'\s*&&\s*<SprayProgramCalendar/.test(shell),
+    "Planning Calendar body wired to moreTab === 'Planning Calendar' → <SprayProgramCalendar /> (SPR.2)")
+
+  // Pre-existing unified tabs still present (regression guard for SPR.2).
+  for (const t of ['Today', 'New Application', 'Records', 'Planning',
+                   'Calendar', 'Calculator', 'Reports', 'More']) {
     assert(tabsMatch && new RegExp(`'${t}'`).test(tabsMatch[1]),
-      `pre-existing tab '${t}' still in TABS`)
+      `unified SPR.2 tab '${t}' present in SPRAY_TABS`)
   }
 }
 

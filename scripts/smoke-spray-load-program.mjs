@@ -420,10 +420,8 @@ for (const path of [
   'src/pages/Spray/tabs/SprayProgramCalendar.jsx',
   'src/pages/Spray/tabs/MixCalculator.jsx',
   'src/pages/Spray/tabs/ProgramIntelligence.jsx',
-  'src/pages/Spray/tabs/SprayWorkspace.jsx',
   'src/pages/Spray/tabs/SprayCalendar.jsx',
   'src/pages/Spray/tabs/SprayOverview.jsx',
-  'src/pages/Spray/tabs/PlannedPrograms.jsx',
   'src/pages/Spray/tabs/SprayReports.jsx',
 ]) {
   const src = readFileSync(path, 'utf8')

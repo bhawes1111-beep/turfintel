@@ -38,7 +38,10 @@ function stripComments(src) {
 
 const BUILD     = readFileSync('src/pages/Spray/tabs/BuildSpraySheet.jsx',         'utf8')
 const RECORDS   = readFileSync('src/pages/Spray/tabs/SprayRecords.jsx',            'utf8')
-const WORKSPACE = readFileSync('src/pages/Spray/tabs/SprayWorkspace.jsx',          'utf8')
+// Phase SPR.2 — Legacy SprayWorkspace.jsx deleted. Empty string keeps
+// the "no Phase S.5a.2 edits" negative pin trivially true (the file
+// no longer exists to receive edits).
+const WORKSPACE = ''
 const SAVE_AS   = readFileSync('src/pages/Spray/tabs/SaveAsProgramModal.jsx',      'utf8')
 const LOAD      = readFileSync('src/pages/Spray/tabs/LoadProgramModal.jsx',        'utf8')
 const EDIT      = readFileSync('src/pages/Spray/tabs/EditSprayRecordModal.jsx',    'utf8')
@@ -177,17 +180,16 @@ const reportPrelude = (() => {
 assert(!/\{canEditSprays && \(\s*\n?\s*<button[^>]*$/.test(reportPrelude.replace(/\n/g, ' ')),
   'Generate Report button is NOT immediately wrapped in {canEditSprays && (<button)}')
 
-// ── Workspace quick actions remain visible (route to tabs only) ─────
-section('SprayWorkspace quick actions — kept visible (route to tabs)')
+// ── Phase SPR.2 — Legacy SprayWorkspace deleted ─────────────────────
+section('SPR.2 — Legacy SprayWorkspace quick-action gating pins retired')
 
-assert(!WORKSPACE.includes('Phase S.5a.2'),
-  'SprayWorkspace carries no Phase S.5a.2 edits (quick actions kept visible per spec)')
-// Smoke confirms each quick action still calls go(<tab>) — route only.
-// Phase S.6b — workspace navigateTab key renamed 'Programs' → 'Planned Sprays'.
-for (const tab of ['Build Spray', 'Records', 'Planned Sprays', 'Calendar', 'Calculator']) {
-  assert(new RegExp(`go\\(['"]${tab}['"]\\)`).test(WORKSPACE),
-    `Workspace quick action still routes to ${tab} tab (no permission gate)`)
-}
+// The legacy SprayWorkspace component that these pins tested has been
+// removed. Its quick-action-routing behavior (go('Build Spray') etc.)
+// is no longer a live surface. SprayCalendarWorkspace is the current
+// landing tab; it does not expose quick-action navigation buttons —
+// the tab strip is the sole navigation primitive.
+assert(WORKSPACE === '',
+  'legacy SprayWorkspace source no longer read (deleted by SPR.2)')
 
 // ── Worker permission rules unchanged ───────────────────────────────
 section('Worker mutation rules unchanged — server remains source of truth')
@@ -287,7 +289,6 @@ for (const snap of [
 // Spray.jsx shell + workspace + modals didn't gain S.5a.2 edits.
 for (const path of [
   'src/pages/Spray/Spray.jsx',
-  'src/pages/Spray/tabs/SprayWorkspace.jsx',
   'src/pages/Spray/tabs/SaveAsProgramModal.jsx',
   'src/pages/Spray/tabs/LoadProgramModal.jsx',
   'src/pages/Spray/tabs/EditSprayRecordModal.jsx',
@@ -297,7 +298,6 @@ for (const path of [
   'src/pages/Spray/tabs/ProgramIntelligence.jsx',
   'src/pages/Spray/tabs/SprayCalendar.jsx',
   'src/pages/Spray/tabs/SprayOverview.jsx',
-  'src/pages/Spray/tabs/PlannedPrograms.jsx',
   'src/pages/Spray/tabs/SprayReports.jsx',
   // Stores untouched.
   'src/utils/sprays/spraysStore.js',

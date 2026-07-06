@@ -458,6 +458,36 @@ button.selectedDayRow:focus-visible {
   margin: 0;
 }
 
+/* Phase SPR.2 — Start-new-spray CTA replaces the embedded builder on
+   the Today workspace. Same card chrome as .embeddedBuilder so the
+   Today surface stays visually consistent. */
+.startNewSpray {
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.startNewSprayBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 22px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #0b1210;
+  background: linear-gradient(180deg, #22c55e, #16a34a);
+  border: 1px solid rgba(34, 197, 94, 0.55);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.startNewSprayBtn:hover,
+.startNewSprayBtn:focus-visible {
+  background: linear-gradient(180deg, #34d67f, #1c9d55);
+  outline: none;
+}
+
 /* ── Mobile ──────────────────────────────────────────────────────── */
 @media (max-width: 700px) {
   .workspace {

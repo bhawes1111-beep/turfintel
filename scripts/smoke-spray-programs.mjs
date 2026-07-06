@@ -453,21 +453,18 @@ console.log('— Sprays workspace registers Program Planner tab')
 
   assert(/from\s+['"]\.\/tabs\/SprayProgramPlanner['"]/.test(shell),
     "Sprays imports the new SprayProgramPlanner tab")
-  // Phase 9B.1 renamed the constant to LEGACY_TABS while preserving
-  // the same 10-label payload for non-Crosswinds courses.
-  // Phase S.6b — tab visible label renamed 'Program Planner' →
-  // 'Planned Sprays'. SprayProgramPlanner component mount unchanged.
-  const tabsMatch = shell.match(/const\s+(?:LEGACY_TABS|TABS)\s*=\s*\[([^\]]+)\]/)
-  assert(tabsMatch && /'Planned Sprays'/.test(tabsMatch[1]),
-    "'Planned Sprays' present in TABS (S.6b rename of 'Program Planner')")
-  assert(/activeTab\s*===\s*'Planned Sprays'\s*&&\s*<SprayProgramPlanner/.test(shell),
-    'Planned Sprays tab body still wired to <SprayProgramPlanner /> (S.6b rename)')
+  // Phase SPR.2 — Unified SPRAY_TABS constant. 'Planning' is the tab
+  // that mounts SprayProgramPlanner (no 'Planned Sprays' collision).
+  const tabsMatch = shell.match(/export\s+const\s+SPRAY_TABS\s*=\s*\[([^\]]+)\]/)
+  assert(tabsMatch && /'Planning'/.test(tabsMatch[1]),
+    "SPR.2: 'Planning' present in SPRAY_TABS (mounts SprayProgramPlanner)")
+  assert(/activeTab\s*===\s*'Planning'\s*&&\s*<SprayProgramPlanner/.test(shell),
+    "SPR.2: Planning tab body wired to <SprayProgramPlanner />")
 
-  // Phase S.6c — Legacy 'Planned Programs' tab REMOVED from visible
-  // LEGACY_TABS (legacy surface superseded by 'Planned Sprays').
-  // Negative pin: confirm it is no longer exposed.
+  // No 'Planned Programs' anywhere in the visible nav (was already removed
+  // by S.6c; SPR.2 preserves the negative pin).
   assert(tabsMatch && !/'Planned Programs'/.test(tabsMatch[1]),
-    "'Planned Programs' no longer in LEGACY_TABS (S.6c removal)")
+    "'Planned Programs' not in SPRAY_TABS (SPR.2 preservation of S.6c removal)")
 
   // Tab body source contracts.
   // Phase S.6b — user-facing copy renamed.

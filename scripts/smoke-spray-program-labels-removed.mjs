@@ -68,92 +68,62 @@ assert(/export async function createSpray\b/.test(SPRAYS_W),
 assert(/inventory_item_id/.test(SPRAYS_W),
   'worker createSpray still wires inventory_item_id (deduction unchanged)')
 
-// ── CROSSWINDS_MORE — Planned Programs gone, Spray Intelligence in ──
-section('CROSSWINDS_MORE — 4 inner tabs, zero "Program" labels')
+// ── Phase SPR.2 — Unified SPRAY_TABS + SPRAY_MORE (no CROSSWINDS/LEGACY fork) ─
+section('SPRAY_TABS + SPRAY_MORE — zero "Program" labels in visible nav')
 
-const moreMatch = SP.match(/const\s+CROSSWINDS_MORE\s*=\s*\[([^\]]+)\]/)
-assert(moreMatch != null, 'CROSSWINDS_MORE declared in Spray.jsx')
-
+const tabsMatch = SP.match(/export\s+const\s+SPRAY_TABS\s*=\s*\[([^\]]+)\]/)
+const moreMatch = SP.match(/export\s+const\s+SPRAY_MORE\s*=\s*\[([^\]]+)\]/)
+assert(tabsMatch != null, 'SPRAY_TABS declared in Spray.jsx')
+assert(moreMatch != null, 'SPRAY_MORE declared in Spray.jsx')
+const tabsPayload = tabsMatch ? tabsMatch[1] : ''
 const morePayload = moreMatch ? moreMatch[1] : ''
-// Positive pins.
-for (const expected of ['Overview', 'Planned Sprays', 'Reports', 'Spray Intelligence']) {
+
+// SPR.2 unified primary tabs.
+for (const expected of ['Today', 'New Application', 'Records', 'Planning',
+                        'Calendar', 'Calculator', 'Reports', 'More']) {
+  assert(new RegExp(`'${expected}'`).test(tabsPayload),
+    `SPRAY_TABS contains '${expected}'`)
+}
+
+// SPR.2 More group.
+for (const expected of ['Overview', 'Planning Calendar', 'Season Insights']) {
   assert(new RegExp(`'${expected}'`).test(morePayload),
-    `CROSSWINDS_MORE contains '${expected}'`)
-}
-// Exact 4-element shape.
-assert(/'Overview'\s*,\s*'Planned Sprays'\s*,\s*'Reports'\s*,\s*'Spray Intelligence'/.test(morePayload),
-  "CROSSWINDS_MORE is exactly ['Overview', 'Planned Sprays', 'Reports', 'Spray Intelligence']")
-
-// Negative pins.
-assert(!/'Planned Programs'/.test(morePayload),
-  "CROSSWINDS_MORE no longer contains 'Planned Programs' (S.6c removal)")
-assert(!/'Program Intelligence'/.test(morePayload),
-  "CROSSWINDS_MORE no longer contains 'Program Intelligence' (S.6c rename)")
-assert(!/'Program Planner'/.test(morePayload),
-  "CROSSWINDS_MORE no longer contains 'Program Planner' (already gone after S.6b)")
-
-// ── LEGACY_TABS — Planned Programs gone, Spray Intelligence in ──────
-section('LEGACY_TABS — zero "Program" labels in visible nav')
-
-const legacyMatch = SP.match(/const\s+LEGACY_TABS\s*=\s*\[([^\]]+)\]/)
-assert(legacyMatch != null, 'LEGACY_TABS declared in Spray.jsx')
-
-const legacyPayload = legacyMatch ? legacyMatch[1] : ''
-// Positive pins for what remains.
-// Phase S.6c.1 — 'Program Calendar' renamed to 'Planned Spray Calendar'
-// to drop the last user-facing 'Program' label from the legacy tab strip.
-for (const expected of [
-  'Workspace', 'Overview', 'Spray Calendar', 'New Application',
-  'Spray Records', 'Planned Sprays', 'Planned Spray Calendar',
-  'Mix Calculator', 'Reports', 'Spray Intelligence',
-]) {
-  assert(new RegExp(`'${expected}'`).test(legacyPayload),
-    `LEGACY_TABS contains '${expected}'`)
+    `SPRAY_MORE contains '${expected}'`)
 }
 
-// Negative pins — no remaining "Program" labels in the visible nav.
-assert(!/'Planned Programs'/.test(legacyPayload),
-  "LEGACY_TABS no longer contains 'Planned Programs' (S.6c removal)")
-assert(!/'Program Intelligence'/.test(legacyPayload),
-  "LEGACY_TABS no longer contains 'Program Intelligence' (S.6c rename)")
-assert(!/'Program Planner'/.test(legacyPayload),
-  "LEGACY_TABS no longer contains 'Program Planner' (already gone after S.6b)")
-assert(!/'Program Calendar'/.test(legacyPayload),
-  "LEGACY_TABS no longer contains 'Program Calendar' (S.6c.1 rename to 'Planned Spray Calendar')")
-
-// ── Top-level guarantee: ZERO visible "Program" labels remain ───────
-const anyTabArrays = [
-  ...SP.matchAll(/const\s+(?:CROSSWINDS_TABS|CROSSWINDS_MORE|LEGACY_TABS)\s*=\s*\[([^\]]+)\]/g),
-].map(m => m[1]).join(' ')
-const programHits = anyTabArrays.match(/'[^']*Program[^']*'/g) ?? []
+// Negative pins — no "Program" labels anywhere in the visible nav.
+const anyTabPayload = tabsPayload + ' ' + morePayload
+const programHits = anyTabPayload.match(/'[^']*Program[^']*'/g) ?? []
 assert(programHits.length === 0,
-  `S.6c.1: ZERO visible 'Program' labels remain in tab arrays (found: ${programHits.join(', ') || 'none'})`)
+  `SPR.2: ZERO 'Program' labels in tab arrays (found: ${programHits.join(', ') || 'none'})`)
 
-// ── Crosswinds primary tabs still expose Planned Sprays (S.6b couple) ─
-section('Main Crosswinds tab strip — Planned Sprays still primary')
+// No "Planned Sprays" collision (SPR.2 renamed to Planning + Planning Calendar).
+assert(!/'Planned Sprays'/.test(anyTabPayload),
+  "SPR.2: 'Planned Sprays' collision label removed from visible nav")
 
-const ctabsMatch = SP.match(/const\s+CROSSWINDS_TABS\s*=\s*\[([^\]]+)\]/)
-const ctabsPayload = ctabsMatch ? ctabsMatch[1] : ''
-assert(/'Planned Sprays'/.test(ctabsPayload),
-  "CROSSWINDS_TABS still contains 'Planned Sprays' (S.6b regression couple)")
-assert(!/'Programs'/.test(ctabsPayload),
-  "CROSSWINDS_TABS no longer contains 'Programs' (S.6b removal preserved)")
+// Negative pins — no course-conditional forks survive.
+assert(!/const\s+CROSSWINDS_TABS/.test(SP),
+  'CROSSWINDS_TABS constant REMOVED (SPR.2 unified tab list)')
+assert(!/const\s+CROSSWINDS_MORE/.test(SP),
+  'CROSSWINDS_MORE constant REMOVED (SPR.2)')
+assert(!/const\s+LEGACY_TABS/.test(SP),
+  'LEGACY_TABS constant REMOVED (SPR.2)')
+assert(!/const\s+CROSSWINDS_COURSE_ID/.test(SP),
+  'CROSSWINDS_COURSE_ID constant REMOVED (SPR.2 — no course-conditional nav)')
 
-// ── PlannedPrograms component is no longer imported / mounted ───────
-section('PlannedPrograms no longer reachable from visible Spray nav')
+// ── PlannedPrograms component deleted (was legacy dead code) ────────
+section('PlannedPrograms component removed by SPR.2')
 
-// Import is commented out — confirm no active default import remains.
+// No import remains.
 assert(!/^import\s+PlannedPrograms\s+from/m.test(SP),
   'no active "import PlannedPrograms from …" line in Spray.jsx')
-// No mount sites either.
+// No mount sites.
 assert(!/<PlannedPrograms\s*\/>/.test(SP),
   'no <PlannedPrograms /> mount site remains in Spray.jsx')
-// Component file is preserved on disk (legacy model — no data loss).
-const PLANNED_PROGRAMS_SRC = readFileSync('src/pages/Spray/tabs/PlannedPrograms.jsx', 'utf8')
-assert(PLANNED_PROGRAMS_SRC.length > 0,
-  'PlannedPrograms.jsx preserved on disk (no destructive deletion)')
-assert(/export default function PlannedPrograms/.test(PLANNED_PROGRAMS_SRC),
-  'PlannedPrograms component still exported (file preserved for future deep-link recovery)')
+// Component file deleted by SPR.2.
+import { existsSync } from 'fs'
+assert(!existsSync('src/pages/Spray/tabs/PlannedPrograms.jsx'),
+  'PlannedPrograms.jsx removed by SPR.2 (was legacy dead code)')
 
 // ── ProgramIntelligence renders "Spray Intelligence" user copy ──────
 section('ProgramIntelligence — renders "Spray Intelligence" user-facing')
@@ -182,10 +152,10 @@ assert(/data-print-region="program-intel"/.test(INTEL),
 // ── Main Spray.jsx tab → component wiring ───────────────────────────
 section('Spray.jsx — Spray Intelligence routes to ProgramIntelligence')
 
-assert(/moreTab === 'Spray Intelligence'\s*&&\s*<ProgramIntelligence \/>/.test(SP),
-  "Crosswinds More 'Spray Intelligence' → <ProgramIntelligence /> (S.6c rename, mount unchanged)")
-assert(/activeTab === 'Spray Intelligence'\s*&&\s*<ProgramIntelligence \/>/.test(SP),
-  "Legacy 'Spray Intelligence' → <ProgramIntelligence /> (S.6c rename, mount unchanged)")
+// Phase SPR.2 — 'Spray Intelligence' user-facing label renamed to
+// 'Season Insights' and moved under More. Component mount unchanged.
+assert(/moreTab === 'Season Insights'\s*&&\s*<ProgramIntelligence \/>/.test(SP),
+  "SPR.2: More 'Season Insights' → <ProgramIntelligence /> (mount unchanged)")
 
 // Old route checks are gone (negative pins).
 assert(!/moreTab === 'Program Intelligence'/.test(SP),

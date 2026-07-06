@@ -228,7 +228,7 @@ for (const path of [
   'src/pages/Spray/tabs/SprayProgramPlanner.jsx',
   'src/pages/Spray/tabs/MixCalculator.jsx',
   'src/pages/Spray/tabs/SprayOverview.jsx',
-  'src/pages/Spray/tabs/PlannedPrograms.jsx',
+  // Phase SPR.2 — 'src/pages/Spray/tabs/PlannedPrograms.jsx' removed.
   'src/pages/Spray/tabs/SprayReports.jsx',
   'src/pages/Spray/tabs/ProgramIntelligence.jsx',
   // Spray client stores.

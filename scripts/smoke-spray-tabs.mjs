@@ -1,15 +1,29 @@
-// Phase 9B.1 — Spray tab simplification smoke.
+// Phase SPR.2 — Unified Spray tab navigation smoke.
 //
 //   node scripts/smoke-spray-tabs.mjs
 //
-// Source-only checks against src/pages/Spray/Spray.jsx.
-// Crosswinds (courseId 'crossroads-gc') gets a simplified 6-tab nav
-// + a synthetic "More" tab whose body renders a secondary pill row
-// for 5 advanced surfaces. Non-Crosswinds courses keep the existing
-// 10-tab layout byte-for-byte. PageShell.jsx, every Spray tab
-// component file, App.jsx routing, and every store are untouched.
+// Replaces the pre-SPR.2 tab smoke (which pinned separate LEGACY_TABS
+// and CROSSWINDS_TABS constants + course-conditional forks). SPR.2
+// unifies to a single SPRAY_TABS + SPRAY_MORE and removes header
+// duplication.
+//
+// Pins:
+//   • SPRAY_TABS is a single unified 8-entry list.
+//   • SPRAY_MORE is a 3-entry list under the More tab.
+//   • CROSSWINDS_TABS / CROSSWINDS_MORE / LEGACY_TABS / CROSSWINDS_COURSE_ID
+//     constants are REMOVED (no course-conditional nav).
+//   • useSelectedCourseId no longer imported by Spray.jsx (no course fork).
+//   • Each tab maps to the correct destination component.
+//   • Default landing is 'Today'.
+//   • Header action buttons ('+ New Spray', 'Reports') are REMOVED —
+//     tab strip is the single navigation primitive.
+//   • Legacy activeTab keys map to new destinations via
+//     LEGACY_TAB_ALIASES (no blank pane for stale session state).
+//   • Only ONE BuildSpraySheet mount site (New Application tab).
+//   • Deleted files SprayWorkspace.jsx / PlannedPrograms.jsx are gone.
+//   • Compliance / builder / worker / calculation code not touched.
 
-import { readFileSync } from 'fs'
+import { readFileSync, readdirSync, existsSync } from 'fs'
 
 let passed = 0, failed = 0
 function assert(cond, label, ctx) {
@@ -18,192 +32,159 @@ function assert(cond, label, ctx) {
 }
 function section(name) { console.log(`\n— ${name} —`) }
 
-const SP  = readFileSync('src/pages/Spray/Spray.jsx', 'utf8')
-const CSS = readFileSync('src/pages/Spray/Spray.module.css', 'utf8')
+const SP = readFileSync('src/pages/Spray/Spray.jsx', 'utf8')
 
-// ── Crosswinds gate wiring ──────────────────────────────────────────────
-section('Phase 9B.1 — Crosswinds gate wiring')
+// ── No new migration ─────────────────────────────────────────────
+section('Frontend-only — no migration')
 
-assert(/import\s*\{\s*useSelectedCourseId\s*\}\s*from\s*['"]\.\.\/\.\.\/utils\/courses\/courseStore['"]/.test(SP),
-  'Spray.jsx imports useSelectedCourseId')
-assert(/CROSSWINDS_COURSE_ID\s*=\s*'crossroads-gc'/.test(SP),
-  "Spray.jsx declares CROSSWINDS_COURSE_ID = 'crossroads-gc'")
-assert(/const\s+isCrosswinds\s*=\s*courseId === CROSSWINDS_COURSE_ID/.test(SP),
-  'isCrosswinds boolean is derived from courseId')
+const migrationFiles = readdirSync('worker/migrations').filter(f => f.endsWith('.sql')).sort()
+assert(migrationFiles[migrationFiles.length - 1] === '0055_crew_assignments_job_order.sql',
+  '0055 still the highest migration')
 
-// ── Legacy 10-tab list preserved ────────────────────────────────────────
-// Phase S.6c.1 — legacy non-Crosswinds tab list has been progressively
-// cleaned of "Program" labels: 'Program Planner' → 'Planned Sprays'
-// (S.6b), 'Planned Programs' removed (S.6c), 'Program Intelligence' →
-// 'Spray Intelligence' (S.6c), 'Program Calendar' → 'Planned Spray
-// Calendar' (S.6c.1). Down from 10 → 9 legacy tabs.
-section('Legacy tab list preserved (non-Crosswinds)')
+// ── SPR.2 unified tab list ───────────────────────────────────────
+section('SPR.2 — one unified SPRAY_TABS + SPRAY_MORE')
 
-assert(/const\s+LEGACY_TABS\s*=\s*\[/.test(SP),
-  'LEGACY_TABS constant exists')
-for (const t of [
-  'Overview', 'Spray Calendar', 'New Application', 'Spray Records',
-  'Planned Sprays', 'Planned Spray Calendar',
-  'Mix Calculator', 'Reports', 'Spray Intelligence',
-]) {
-  assert(new RegExp(`['"]${t.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}['"]`).test(SP),
-    `legacy tab "${t}" present in source`)
+assert(/export\s+const\s+SPRAY_TABS\s*=\s*\[\s*'Today',\s*'New Application',\s*'Records',\s*'Planning',\s*'Calendar',\s*'Calculator',\s*'Reports',\s*'More',?\s*\]/.test(SP),
+  "SPRAY_TABS = ['Today', 'New Application', 'Records', 'Planning', 'Calendar', 'Calculator', 'Reports', 'More']")
+assert(/export\s+const\s+SPRAY_MORE\s*=\s*\[\s*'Overview',\s*'Planning Calendar',\s*'Season Insights',?\s*\]/.test(SP),
+  "SPRAY_MORE = ['Overview', 'Planning Calendar', 'Season Insights']")
+
+// ── Course-conditional fork REMOVED ──────────────────────────────
+section('Course-conditional fork removed')
+
+assert(!/const\s+CROSSWINDS_TABS/.test(SP),
+  'CROSSWINDS_TABS constant REMOVED')
+assert(!/const\s+CROSSWINDS_MORE/.test(SP),
+  'CROSSWINDS_MORE constant REMOVED')
+assert(!/const\s+LEGACY_TABS/.test(SP),
+  'LEGACY_TABS constant REMOVED')
+assert(!/const\s+CROSSWINDS_COURSE_ID/.test(SP),
+  'CROSSWINDS_COURSE_ID constant REMOVED (no course-conditional nav)')
+assert(!/useSelectedCourseId/.test(SP),
+  'Spray.jsx no longer imports useSelectedCourseId (unified nav)')
+assert(!/isCrosswinds/.test(SP),
+  "Spray.jsx no longer references 'isCrosswinds' anywhere")
+
+// ── Default landing = 'Today' ────────────────────────────────────
+section('Default landing = Today (mounts SprayCalendarWorkspace)')
+
+assert(/useState\(\(\) => resolveInitialTab\('Today'\)\)/.test(SP),
+  "activeTab default = resolveInitialTab('Today')")
+assert(/activeTab === 'Today'\s*&&\s*\(\s*\n\s*<SprayCalendarWorkspace onStartNewSpray=\{goToNewApplication\}\s*\/>/.test(SP),
+  "Today tab mounts <SprayCalendarWorkspace onStartNewSpray={goToNewApplication} />")
+
+// ── Every tab mapped to its correct destination ──────────────────
+section('Every tab reaches its destination component')
+
+const TAB_TO_COMPONENT = {
+  'New Application': 'BuildSpraySheet',
+  'Records':         'SprayRecords',
+  'Planning':        'SprayProgramPlanner',
+  'Calendar':        'SprayCalendar',
+  'Calculator':      'MixCalculator',
+  'Reports':         'SprayReports',
 }
-
-// ── Crosswinds 6-tab list ───────────────────────────────────────────────
-section('Crosswinds visible tabs (exact 6 in order)')
-
-// Phase S.4 — Workspace prepended as the new default landing tab.
-// Phase S.6b — 'Programs' renamed to 'Planned Sprays' on the visible
-// Crosswinds tab strip.
-assert(/const\s+CROSSWINDS_TABS\s*=\s*\[\s*'Workspace'\s*,\s*'Build Spray'\s*,\s*'Records'\s*,\s*'Calendar'\s*,\s*'Planned Sprays'\s*,\s*'Calculator'\s*,\s*'More'\s*\]/.test(SP),
-  "CROSSWINDS_TABS = ['Workspace', 'Build Spray', 'Records', 'Calendar', 'Planned Sprays', 'Calculator', 'More'] (S.6b rename)")
-
-// ── Crosswinds More inner row (exact 5) ─────────────────────────────────
-section('Crosswinds More inner row (exact 5 in order)')
-
-// Phase S.6b — 'Program Planner' (More inner) → 'Planned Sprays'.
-// Phase S.6c — 'Planned Programs' removed (legacy surface superseded
-// by 'Planned Sprays'); 'Program Intelligence' renamed to 'Spray
-// Intelligence'. No remaining user-facing 'Program' labels.
-assert(/const\s+CROSSWINDS_MORE\s*=\s*\[\s*'Overview'\s*,\s*'Planned Sprays'\s*,\s*'Reports'\s*,\s*'Spray Intelligence'\s*\]/.test(SP),
-  "CROSSWINDS_MORE = ['Overview', 'Planned Sprays', 'Reports', 'Spray Intelligence'] (S.6c removal + rename)")
-
-// ── All 10 tab component imports still present ─────────────────────────
-section('All 10 original tab component imports preserved')
-
-for (const comp of [
-  'SprayOverview', 'SprayCalendar', 'BuildSpraySheet', 'SprayRecords',
-  'PlannedPrograms', 'SprayProgramPlanner', 'SprayProgramCalendar',
-  'MixCalculator', 'SprayReports', 'ProgramIntelligence',
-]) {
-  assert(new RegExp(`import\\s+${comp}\\s+from\\s+'.\\/tabs\\/${comp}'`).test(SP),
-    `import ${comp} still present`)
-}
-
-// ── Crosswinds branch mappings ──────────────────────────────────────────
-section('Crosswinds tab → component mappings')
-
-assert(/activeTab === 'Build Spray'[\s\S]{0,40}<BuildSpraySheet \/>/.test(SP),
-  "Crosswinds 'Build Spray' → <BuildSpraySheet />")
-assert(/activeTab === 'Records'[\s\S]{0,40}<SprayRecords \/>/.test(SP),
-  "Crosswinds 'Records' → <SprayRecords />")
-assert(/activeTab === 'Calendar'[\s\S]{0,40}<SprayCalendar \/>/.test(SP),
-  "Crosswinds 'Calendar' → <SprayCalendar />")
-// Phase S.6b — 'Programs' renamed to 'Planned Sprays'. Internal
-// SprayProgramCalendar component mount unchanged.
-assert(/activeTab === 'Planned Sprays'[\s\S]{0,40}<SprayProgramCalendar \/>/.test(SP),
-  "Crosswinds 'Planned Sprays' → <SprayProgramCalendar /> (S.6b rename)")
-assert(/activeTab === 'Calculator'[\s\S]{0,40}<MixCalculator \/>/.test(SP),
-  "Crosswinds 'Calculator' → <MixCalculator />")
-
-// More inner row renders the remaining advanced components.
-// Phase S.6c — 'Planned Programs' removed; 'Program Intelligence'
-// renamed to 'Spray Intelligence'. Down from 5 → 4 inner tabs.
-assert(/moreTab === 'Overview'[\s\S]{0,40}<SprayOverview \/>/.test(SP),
-  "More inner 'Overview' → <SprayOverview />")
-// Phase S.6b — More inner 'Program Planner' → 'Planned Sprays'.
-assert(/moreTab === 'Planned Sprays'[\s\S]{0,40}<SprayProgramPlanner \/>/.test(SP),
-  "More inner 'Planned Sprays' → <SprayProgramPlanner /> (S.6b rename)")
-assert(/moreTab === 'Reports'[\s\S]{0,40}<SprayReports \/>/.test(SP),
-  "More inner 'Reports' → <SprayReports />")
-assert(/moreTab === 'Spray Intelligence'[\s\S]{0,40}<ProgramIntelligence \/>/.test(SP),
-  "More inner 'Spray Intelligence' → <ProgramIntelligence /> (S.6c rename)")
-
-// ── Non-Crosswinds legacy branch maps remaining surfaces ──────────────
-// Phase S.6c — 'Planned Programs' tab removed from LEGACY_TABS (legacy
-// surface superseded by 'Planned Sprays'); 'Program Intelligence'
-// renamed to 'Spray Intelligence'. Down from 10 → 9 legacy tabs.
-section('Non-Crosswinds legacy mappings preserved')
-
-const LEGACY_PAIRS = [
-  ['Overview',             'SprayOverview'],
-  ['Spray Calendar',       'SprayCalendar'],
-  ['New Application',      'BuildSpraySheet'],
-  ['Spray Records',        'SprayRecords'],
-  // Phase S.6b — visible label renamed 'Program Planner' →
-  // 'Planned Sprays'. Component mount unchanged.
-  ['Planned Sprays',       'SprayProgramPlanner'],
-  // Phase S.6c.1 — visible label renamed 'Program Calendar' →
-  // 'Planned Spray Calendar'. Component mount unchanged.
-  ['Planned Spray Calendar', 'SprayProgramCalendar'],
-  ['Mix Calculator',       'MixCalculator'],
-  ['Reports',              'SprayReports'],
-  // Phase S.6c — visible label renamed 'Program Intelligence' →
-  // 'Spray Intelligence'. Component mount unchanged.
-  ['Spray Intelligence',   'ProgramIntelligence'],
-]
-// Match across the inserted multi-line comment by allowing more
-// breathing room between the activeTab check and the component mount.
-for (const [label, comp] of LEGACY_PAIRS) {
-  const re = new RegExp(`activeTab === '${label.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}'[\\s\\S]{0,300}<${comp} \\/>`)
+for (const [tab, comp] of Object.entries(TAB_TO_COMPONENT)) {
+  const re = new RegExp(`activeTab === '${tab}'\\s*&&\\s*<${comp} \\/>`)
   assert(re.test(SP),
-    `legacy '${label}' → <${comp} />`)
+    `'${tab}' tab mounts <${comp} />`)
 }
 
-// ── Tab list branches on isCrosswinds ──────────────────────────────────
-section('Tab list selection branches on isCrosswinds')
-
-assert(/const\s+tabs\s*=\s*isCrosswinds \? CROSSWINDS_TABS : LEGACY_TABS/.test(SP),
-  'tabs = isCrosswinds ? CROSSWINDS_TABS : LEGACY_TABS')
-assert(/tabs=\{tabs\}/.test(SP),
-  'PageShell receives tabs={tabs}')
-
-// ── moreTab state ───────────────────────────────────────────────────────
-section('moreTab state for the More inner row')
-
-assert(/\[moreTab,\s*setMoreTab\]\s*=\s*useState\(/.test(SP),
-  '[moreTab, setMoreTab] state hook present')
-
-// ── Default tab initializers ────────────────────────────────────────────
-section('Default tab initializer (function-based, course-aware)')
-
-// Phase S.4 — Both branches now land on the Workspace surface; the
-// workspace's quick-action buttons immediately route back into the
-// original tabs, so legacy flows are at most one click away.
-assert(/useState\(\s*['"]Workspace['"]\s*\)/.test(SP),
-  "activeTab defaults to 'Workspace' (both Crosswinds + legacy land on the new scheduler-style surface)")
-
-// ── Header button rewiring ──────────────────────────────────────────────
-section('Header button rewiring (Crosswinds vs legacy)')
-
-assert(/setActiveTab\(isCrosswinds \? 'Build Spray' : 'New Application'\)/.test(SP),
-  "'+ New Spray' button: Crosswinds → 'Build Spray', legacy → 'New Application'")
-assert(/setActiveTab\('More'\)[\s\S]{0,80}setMoreTab\('Reports'\)/.test(SP),
-  "Crosswinds 'Reports' button sets activeTab='More' AND moreTab='Reports'")
-assert(/setActiveTab\('Reports'\)/.test(SP),
-  "Legacy 'Reports' button still calls setActiveTab('Reports')")
-
-// ── CSS classes for the More inner row ─────────────────────────────────
-section('CSS classes for the More inner row')
-
-for (const cls of ['moreInner', 'moreNav', 'moreNavBtn']) {
-  assert(new RegExp(`\\.${cls}\\b`).test(CSS),
-    `CSS defines .${cls}`)
-  assert(new RegExp(`styles\\.${cls}`).test(SP),
-    `Spray.jsx wires styles.${cls}`)
+// More group destinations.
+const MORE_TO_COMPONENT = {
+  'Overview':          'SprayOverview',
+  'Planning Calendar': 'SprayProgramCalendar',
+  'Season Insights':   'ProgramIntelligence',
+}
+for (const [more, comp] of Object.entries(MORE_TO_COMPONENT)) {
+  const re = new RegExp(`moreTab === '${more}'\\s*&&\\s*<${comp} \\/>`)
+  assert(re.test(SP),
+    `More → '${more}' mounts <${comp} />`)
 }
 
-// ── Cross-file guards ──────────────────────────────────────────────────
-section('Cross-file guards — PageShell + tab components + App untouched')
+// ── Header action buttons removed ────────────────────────────────
+section('Header action buttons removed (tab strip is the sole nav)')
 
-const PS = readFileSync('src/components/layout/PageShell.jsx', 'utf8')
-assert(!PS.includes('Phase 9B.1'),
-  'PageShell.jsx carries no Phase 9B.1 edits')
+// The button emitted "+ New Spray" as literal text — negative pin
+// only against JSX text (not comment mentions describing the removal).
+assert(!/>\s*\+\s*New Spray\s*</.test(SP),
+  "'+ New Spray' header button REMOVED (no JSX text)")
+assert(!/onClick=\{\(\) => setActiveTab\('Reports'\)\}/.test(SP),
+  "'Reports' header button REMOVED (accessed via tab)")
+assert(!/<WorkspaceActions>/.test(SP),
+  '<WorkspaceActions> wrapper REMOVED (no more redundant header buttons)')
+assert(!/import\s+WorkspaceActions/.test(SP),
+  'WorkspaceActions no longer imported by Spray.jsx')
 
-for (const comp of [
-  'SprayOverview', 'SprayCalendar', 'BuildSpraySheet', 'SprayRecords',
-  'PlannedPrograms', 'SprayProgramPlanner', 'SprayProgramCalendar',
-  'MixCalculator', 'SprayReports', 'ProgramIntelligence',
+// ── Legacy tab-key compatibility ─────────────────────────────────
+section('Legacy activeTab-key compatibility (stale session-state safety)')
+
+assert(/const\s+LEGACY_TAB_ALIASES\s*=\s*\{/.test(SP),
+  'LEGACY_TAB_ALIASES map declared')
+// Sample legacy keys.
+const LEGACY_KEYS_EXPECTED = [
+  ["'Workspace'",              "'Today'"],
+  ["'Build Spray'",             "'New Application'"],
+  ["'Spray Records'",           "'Records'"],
+  ["'Spray Calendar'",          "'Calendar'"],
+  ["'Planned Sprays'",          "'Planning'"],
+  ["'Planned Spray Calendar'",  "'More'"],
+  ["'Mix Calculator'",          "'Calculator'"],
+  ["'Spray Intelligence'",      "'More'"],
+]
+for (const [oldK, newK] of LEGACY_KEYS_EXPECTED) {
+  const re = new RegExp(`${oldK}[^,}]*:\\s*${newK}`)
+  assert(re.test(SP),
+    `LEGACY_TAB_ALIASES: ${oldK} → ${newK}`)
+}
+
+// Resolver.
+assert(/function resolveInitialTab\(candidate\) \{/.test(SP),
+  'resolveInitialTab(candidate) helper declared')
+assert(/if \(!candidate\) return 'Today'/.test(SP),
+  "resolveInitialTab: falsy candidate → 'Today'")
+assert(/if \(SPRAY_TABS\.includes\(candidate\)\) return candidate/.test(SP),
+  'resolveInitialTab: recognized candidate returns as-is')
+assert(/if \(LEGACY_TAB_ALIASES\[candidate\]\) return LEGACY_TAB_ALIASES\[candidate\]/.test(SP),
+  'resolveInitialTab: legacy alias mapping applied')
+assert(/return 'Today'/.test(SP),
+  "resolveInitialTab: fallback → 'Today' (unknown key)")
+
+// ── Only ONE BuildSpraySheet mount site ──────────────────────────
+section('Only one <BuildSpraySheet /> mount site (New Application only)')
+
+const buildSpraySheetMounts = (SP.match(/<BuildSpraySheet\s*\/>/g) ?? []).length
+assert(buildSpraySheetMounts === 1,
+  `exactly one <BuildSpraySheet /> in Spray.jsx (found ${buildSpraySheetMounts})`)
+
+// ── Deleted legacy files ─────────────────────────────────────────
+section('Legacy dead files deleted')
+
+assert(!existsSync('src/pages/Spray/tabs/SprayWorkspace.jsx'),
+  'SprayWorkspace.jsx removed (was dead code — superseded by SprayCalendarWorkspace)')
+assert(!existsSync('src/pages/Spray/tabs/SprayWorkspace.module.css'),
+  'SprayWorkspace.module.css removed')
+assert(!existsSync('src/pages/Spray/tabs/PlannedPrograms.jsx'),
+  'PlannedPrograms.jsx removed (was dead code — superseded by SprayProgramPlanner)')
+
+// ── Compliance / builder / worker code not touched ───────────────
+section('Cross-vertical guards — no worker/migration/compliance/calc changes')
+
+for (const path of [
+  'src/pages/Spray/tabs/BuildSpraySheet.jsx',
+  'src/pages/Spray/tabs/SprayRecords.jsx',
+  'src/pages/Spray/tabs/SprayApplicationSheetModal.jsx',
+  'src/pages/Spray/tabs/EditSprayRecordModal.jsx',
+  'src/utils/sprays/spraysStore.js',
+  'src/utils/sprayPrograms/sprayProgramStore.js',
+  'worker/api/sprays.js',
+  'worker/api/sprayPrograms.js',
+  'worker/lib/mutationPermissions.js',
 ]) {
-  const src = readFileSync(`src/pages/Spray/tabs/${comp}.jsx`, 'utf8')
-  assert(!src.includes('Phase 9B.1'),
-    `src/pages/Spray/tabs/${comp}.jsx carries no Phase 9B.1 edits`)
+  const src = readFileSync(path, 'utf8')
+  assert(!src.includes('Phase SPR.2'),
+    `${path} carries no Phase SPR.2 edits`)
 }
-
-const APP = readFileSync('src/App.jsx', 'utf8')
-assert(/path=["']spray\/\*["']/.test(APP),
-  'App.jsx still mounts <Route path="spray/*" />')
 
 // ── Summary ────────────────────────────────────────────────────────────
 console.log(`\n${failed === 0 ? '✅' : '❌'}  ${passed} passed, ${failed} failed`)
