@@ -54,17 +54,19 @@ section('Structural singleton: ONE operatorCards.map inside BoardModeCrewBars')
 const boardModeFn = KIOSK.match(/function BoardModeCrewBars\([\s\S]+?\n\}\n/)?.[0] ?? ''
 assert(boardModeFn.length > 0, 'BoardModeCrewBars function body parsed')
 
-// Phase DAB.10j — Column-major reorder runs operatorCards through an
-// IIFE that returns a reordered array, then a single .map(op => …)
-// call renders each card. Structural singleton = one .map callback
-// = one card markup path.
-const mapCallbackCount = (boardModeFn.match(/\)\.map\(op =>/g) ?? []).length
-assert(mapCallbackCount === 1,
-  `exactly one .map(op => …) card-render callback inside BoardModeCrewBars (found ${mapCallbackCount})`)
+// Phase DAB.10m — The IIFE reorder is REMOVED. Card rendering is now
+// a single reusable `renderOperatorCard(op)` function; each column's
+// operator list calls `.map(renderOperatorCard)`. Structural
+// singleton = one card markup path = one render function.
+assert(/function renderOperatorCard\(op\) \{/.test(boardModeFn),
+  'renderOperatorCard(op) function declared inside BoardModeCrewBars (one card markup path)')
+const renderCallCount = (boardModeFn.match(/\.map\(renderOperatorCard\)/g) ?? []).length
+assert(renderCallCount >= 1,
+  `at least one .map(renderOperatorCard) call renders column cards (found ${renderCallCount})`)
 
-// The one map lives directly inside .boardBarsInner.
-assert(/className=\{styles\.boardBarsInner\}\s*\n?\s*>[\s\S]{0,2000}\)\.map\(op =>/.test(boardModeFn),
-  '.map(op => …) call sits inside <div className={styles.boardBarsInner}>')
+// The columns.map(...) call sits inside .boardBarsInner.
+assert(/className=\{styles\.boardBarsInner\}\s*\n?\s*>[\s\S]{0,2000}columns\.map\(/.test(boardModeFn),
+  'columns.map() sits inside <div className={styles.boardBarsInner}>')
 
 // Negative: no second .boardBars or .boardBarsInner sibling carrying a map.
 const innerOpenCount = (boardModeFn.match(/className=\{styles\.boardBarsInner\}/g) ?? []).length
@@ -145,8 +147,10 @@ assert(/data-board-columns=\{boardColumns\}/.test(KIOSK),
   'data-board-columns attribute set on .boardBars (DAB.10g deterministic columns)')
 assert(/'--board-columns':\s+boardColumns/.test(KIOSK),
   '--board-columns CSS variable set inline (DAB.10g)')
-assert(/'--board-target-card-height':/.test(KIOSK),
-  '--board-target-card-height CSS variable set inline (DAB.10g)')
+// Phase DAB.10m — --board-target-card-height REMOVED (cards use
+// natural content height, no forced stretch).
+assert(!/'--board-target-card-height':/.test(KIOSK),
+  '--board-target-card-height inline CSS var REMOVED (DAB.10m)')
 // Phase DAB.10f.3 — transform / inverse-width / max-height REMOVED.
 // Negative pins ensure they don't sneak back in.
 assert(!/transform:\s+scale\(/.test(innerBlock),

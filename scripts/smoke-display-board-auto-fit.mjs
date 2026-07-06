@@ -162,8 +162,14 @@ section('2-column compact grid preserved (wide TV)')
 // Phase DAB.10g — @media-driven 2-col grid replaced with --board-columns
 // inline variable on .boardBarsInner. Column count is now picked by
 // JSX from stable inputs (viewport.w + fit-mode + density).
-assert(/\.boardBarsInner\s*\{[\s\S]{0,1000}grid-template-columns:\s+repeat\(var\(--board-columns,\s*1\), minmax\(0, 1fr\)\)/.test(KIOSK_CSS),
-  '.boardBarsInner uses grid-template-columns: repeat(var(--board-columns, 1), …) — DAB.10g deterministic columns')
+// Phase DAB.10m — `.boardBarsInner` is now a flex ROW of `.boardColumn`
+// stacks (independent vertical columns) rather than a CSS grid. Column
+// count is provided by JSX rendering `columns.length` children, one
+// per column. Verify the flex-row layout instead of the grid.
+assert(/\.boardBarsInner\s*\{[\s\S]{0,1000}display:\s+flex;\s*\n\s*flex-direction:\s+row/.test(KIOSK_CSS),
+  '.boardBarsInner is display: flex; flex-direction: row (DAB.10m independent columns)')
+assert(/\.boardColumn\s*\{[\s\S]{0,500}display:\s+flex;\s*\n\s*flex-direction:\s+column/.test(KIOSK_CSS),
+  '.boardColumn is display: flex; flex-direction: column (DAB.10m independent vertical stack)')
 
 // ── Existing short-viewport tightening preserved ─────────────────
 section('@media (max-height: 760px) short-TV tightening preserved')

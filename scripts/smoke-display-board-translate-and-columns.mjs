@@ -166,41 +166,46 @@ assert(/const boardColumns = viewport\.isMobile \? 1\s*\n\s*: \(viewport\.w >= 1
 assert(!/fitMode === 'compact' \|\| fitMode === 'ultra'\s*\n\s*\|\| \(density === 'comfortable'/.test(KIOSK),
   'old fit-mode-gated 2-col rule REMOVED (roomy + natural now also get 2 cols at ≥900px)')
 
-// ── FIX 5: targetCardHeight accounts for ALL row gaps ────────────
-section('FIX 5: targetCardHeight accounts for ALL row gaps')
+// ── DAB.10m: forced-height math REMOVED ──────────────────────────
+section('DAB.10m: content-sized cards — forced-height math removed')
 
-assert(/const CONFIGURED_ROW_GAP = 16/.test(KIOSK),
-  'CONFIGURED_ROW_GAP = 16 (px, matches CSS gap between .boardPersonBar rows)')
-assert(/const totalRowGaps = Math\.max\(0, rowCount - 1\) \* CONFIGURED_ROW_GAP/.test(KIOSK),
-  'totalRowGaps = (rowCount - 1) × CONFIGURED_ROW_GAP')
-assert(/const targetCardHeight = Math\.floor\(\(availableRosterHeight - totalRowGaps\) \/ rowCount\)/.test(KIOSK),
-  'targetCardHeight = floor((availableRosterHeight - totalRowGaps) / rowCount)')
+// Phase DAB.10m — DAB.10j's targetCardHeight / totalRowGaps /
+// CONFIGURED_ROW_GAP / availableRosterHeight / rowCount / HEADER_
+// AND_PADDING constants are ALL REMOVED. Cards use natural content
+// height; a short card stays short, a heavy card grows tall.
+assert(!/CONFIGURED_ROW_GAP/.test(KIOSK),
+  'CONFIGURED_ROW_GAP REMOVED (DAB.10m — no forced height)')
+assert(!/totalRowGaps/.test(KIOSK),
+  'totalRowGaps REMOVED (DAB.10m)')
+// Negative pin against actual variable declaration (not the DAB.10m
+// comment describing the prior removal).
+assert(!/const\s+targetCardHeight\s*=/.test(KIOSK),
+  'targetCardHeight declaration REMOVED (DAB.10m — cards size to content)')
+assert(!/const rowCount = Math\.max\(1, Math\.ceil\(operatorCount \/ boardColumns\)\)/.test(KIOSK),
+  'rowCount math REMOVED (DAB.10m — column stacks flow naturally)')
 
-// Negative pin — flat -16 subtraction is gone.
-assert(!/Math\.floor\(availableRosterHeight \/ rowCount\) - 16/.test(KIOSK),
-  'old flat -16 subtraction REMOVED (accounts for every gap now)')
+// ── DAB.10m: independent column stacks ────────────────────────────
+section('DAB.10m: independent column stacks (no cross-column height sync)')
 
-// rowCount still derives from operatorCount + boardColumns.
-assert(/const rowCount = Math\.max\(1, Math\.ceil\(operatorCount \/ boardColumns\)\)/.test(KIOSK),
-  'rowCount = ceil(operatorCount / boardColumns)')
+// Column-major IIFE reorder REMOVED. Column split lives in the
+// `columns` variable, populated with per-column operator arrays.
+assert(!/\{\(\(\) => \{\s*\n\s*if \(boardColumns <= 1\) return operatorCards/.test(KIOSK),
+  'IIFE reorder REMOVED (DAB.10m — columns split into independent stacks)')
 
-// ── FIX 6: Column-major card ordering ────────────────────────────
-section('FIX 6: Column-major reorder — vertical reading top-to-bottom per column')
+// Positive pin — `columns` variable is populated by slicing.
+assert(/const columns = \[\]/.test(KIOSK),
+  'columns = [] declared (DAB.10m independent stacks)')
+assert(/operatorCards\.slice\(c \* perColumn, \(c \+ 1\) \* perColumn\)/.test(KIOSK),
+  'per-column slice: operatorCards.slice(c * perColumn, (c + 1) * perColumn) — preserves vertical order [DAB.10m]')
 
-// Rendered array is computed inline via IIFE and fed to .map(op => …).
-// Verify the IIFE exists and one card-render callback follows it.
-assert(/\{\(\(\) => \{\s*\n\s*if \(boardColumns <= 1\) return operatorCards/.test(KIOSK),
-  '1-column short-circuit returns operatorCards unchanged (no reindex needed)')
-assert(/const rows = Math\.ceil\(operatorCards\.length \/ boardColumns\)/.test(KIOSK),
-  'IIFE computes rows = ceil(operatorCards.length / boardColumns)')
-assert(/const srcIdx = c \* rows \+ r/.test(KIOSK),
-  'reorder places column c row r at operatorCards[c * rows + r] — column-major → row-major grid placement')
-
-// Boardmode function has exactly one card-render .map callback.
+// Boardmode function has renderOperatorCard function + at least one
+// .map(renderOperatorCard) call. One card markup path.
 const boardModeFn = KIOSK.match(/function BoardModeCrewBars\([\s\S]+?\n\}\n/)?.[0] ?? ''
-const mapCallbackCount = (boardModeFn.match(/\)\.map\(op =>/g) ?? []).length
-assert(mapCallbackCount === 1,
-  `exactly one .map(op => …) card-render callback (one card markup path). Found ${mapCallbackCount}`)
+assert(/function renderOperatorCard\(op\) \{/.test(boardModeFn),
+  'renderOperatorCard(op) function declared (single reusable card renderer) [DAB.10m]')
+const renderCallCount = (boardModeFn.match(/\.map\(renderOperatorCard\)/g) ?? []).length
+assert(renderCallCount >= 1,
+  `.map(renderOperatorCard) called at least once (found ${renderCallCount}) — one card markup path`)
 
 // ── Preserved DAB.10l dual-render translation display ────────────
 section('DAB.10l dual English + Spanish display preserved')

@@ -102,11 +102,13 @@ assert(/\.boardBars\[data-density='comfortable'\]\s*\.boardNotesText\s*\{[\s\S]{
 assert(/\.boardBars\[data-density='compact'\]\s*\.boardNotesText\s*\{[\s\S]{0,400}-webkit-line-clamp:\s*2/.test(CSS),
   "compact mode: .boardNotesText -webkit-line-clamp: 2")
 
-// Phase DAB.10g — @media-driven 2-col rule replaced with --board-
-// columns CSS variable on .boardBarsInner. JSX picks the column count
-// from stable inputs.
-assert(/\.boardBarsInner\s*\{[\s\S]{0,1000}grid-template-columns:\s*repeat\(var\(--board-columns,\s*1\), minmax\(0,\s*1fr\)\)/.test(CSS),
-  ".boardBarsInner uses grid-template-columns: repeat(var(--board-columns), …) — DAB.10g")
+// Phase DAB.10m — `.boardBarsInner` is now a flex ROW of independent
+// `.boardColumn` stacks instead of a CSS grid. Column count comes
+// from JSX rendering `columns.length` children.
+assert(/\.boardBarsInner\s*\{[\s\S]{0,1000}display:\s*flex;\s*\n\s*flex-direction:\s*row/.test(CSS),
+  '.boardBarsInner is display: flex; flex-direction: row (DAB.10m)')
+assert(/\.boardColumn\s*\{[\s\S]{0,500}display:\s*flex;\s*\n\s*flex-direction:\s*column/.test(CSS),
+  '.boardColumn is display: flex; flex-direction: column (DAB.10m)')
 
 // ── Phase 9C.4b regression couples — early return + content shape ─────
 section('Phase 9C.4b regression — early return + content preserved')

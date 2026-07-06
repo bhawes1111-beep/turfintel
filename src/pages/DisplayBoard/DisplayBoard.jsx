@@ -1553,16 +1553,105 @@ function BoardModeCrewBars({ operatorCards }) {
     : (viewport.w >= 900) ? 2
     : 1
 
-  // Phase DAB.10j — Target card height derived from viewport with
-  // gap accounting. availableRosterHeight - totalRowGaps ensures a
-  // 2-row layout doesn't clip the last row when the outer flex gap
-  // takes ~12-18px.
-  const HEADER_AND_PADDING = 120
-  const CONFIGURED_ROW_GAP = 16
-  const availableRosterHeight = Math.max(0, viewport.h - HEADER_AND_PADDING)
-  const rowCount = Math.max(1, Math.ceil(operatorCount / boardColumns))
-  const totalRowGaps = Math.max(0, rowCount - 1) * CONFIGURED_ROW_GAP
-  const targetCardHeight = Math.floor((availableRosterHeight - totalRowGaps) / rowCount)
+  // Phase DAB.10m — Content-sized cards. The DAB.10j targetCardHeight
+  // arithmetic (viewport.h / rowCount minus gap allowance) is gone.
+  // It forced every .boardPersonBar to a uniform min-height that
+  // stretched short cards into large empty regions. Cards now use
+  // their natural content height; empty screen space below the last
+  // card is acceptable, empty space INSIDE cards is not.
+
+  // Phase DAB.10m — Split operatorCards into `boardColumns` vertical
+  // stacks, preserving reading order top-to-bottom per column. Left
+  // column takes the ceiling on odd counts (7 ops in 2 cols →
+  // [[1,2,3,4], [5,6,7]]). Each column is an independent flex
+  // container so a long card in one column cannot force the parallel
+  // card in the other column to match its height.
+  const columns = []
+  if (boardColumns <= 1) {
+    columns.push(operatorCards)
+  } else {
+    const perColumn = Math.ceil(operatorCards.length / boardColumns)
+    for (let c = 0; c < boardColumns; c++) {
+      columns.push(operatorCards.slice(c * perColumn, (c + 1) * perColumn))
+    }
+  }
+
+  // Phase DAB.10m — Single reusable card renderer. Both the out-status
+  // branch and the assigned-work branch return here; every column
+  // calls this same function to render its cards. No duplicate JSX.
+  function renderOperatorCard(op) {
+    // Phase E.9 — Out-status cards: render the status word as the
+    // "task" line and skip notes / Spanish / chips entirely.
+    if (op.outStatus) {
+      const label =
+        op.outStatus === 'vacation' ? 'Vacation'
+        : op.outStatus === 'sick'    ? 'Sick'
+        : 'Off'
+      const outClass =
+        op.outStatus === 'vacation' ? styles.crewCardOutVacation
+        : op.outStatus === 'sick'    ? styles.crewCardOutSick
+        : styles.crewCardOutOff
+      return (
+        <article
+          key={op.key}
+          className={`${styles.boardPersonBar} ${styles.crewCardOut} ${outClass}`}
+          data-out-status={op.outStatus}
+        >
+          <div className={styles.crewCardOutHeader}>
+            <h2 className={styles.boardPersonName}>{op.employeeName ?? 'Unassigned'}</h2>
+            <span
+              className={styles.crewCardOutBadge}
+              data-out-status={op.outStatus}
+            >
+              {label}
+            </span>
+          </div>
+        </article>
+      )
+    }
+    return (
+      <article key={op.key} className={styles.boardPersonBar}>
+        <h2 className={styles.boardPersonName}>{op.employeeName ?? 'Unassigned'}</h2>
+        {op.assignments.map((a, idx) => {
+          // Phase DAB.10b — Ordinal label gated on multi-job.
+          const showOrdinal = op.assignments.length > 1
+          const jobLabel    = showOrdinal
+            ? (BOARD_ORDINAL_LABELS[idx] ?? `Job ${idx + 1}`)
+            : null
+          // Phase DAB.10l — Dual English + Spanish rendering.
+          //   Auto-translate ON, notesEs present  → both languages
+          //   Auto-translate ON, notesEs blank    → English only
+          //   Auto-translate OFF                  → English only
+          // Per-assignment locals bound to `a` — 2nd Job cannot
+          // render 1st Job's translation.
+          const trimmedNotes    = (a.notes   ?? '').trim()
+          const trimmedNotesEs  = (a.notesEs ?? '').trim()
+          const showTranslation = op.showSpanishNotes && trimmedNotesEs.length > 0
+          return (
+            <div key={a.id ?? idx} className={styles.boardTaskBlock}>
+              {jobLabel && (
+                <span className={styles.boardJobOrdinal}>{jobLabel}</span>
+              )}
+              <p className={styles.boardTaskText}>{a.title}</p>
+              {trimmedNotes.length > 0 && (
+                <p className={styles.boardNotesText} lang="en">
+                  {trimmedNotes}
+                </p>
+              )}
+              {showTranslation && trimmedNotes.length > 0 && (
+                <p
+                  className={`${styles.boardNotesText} ${styles.boardNotesTextEs}`}
+                  lang="es"
+                >
+                  {trimmedNotesEs}
+                </p>
+              )}
+            </div>
+          )
+        })}
+      </article>
+    )
+  }
 
   return (
     <div
@@ -1574,134 +1663,23 @@ function BoardModeCrewBars({ operatorCards }) {
         '--board-operator-count':   operatorCount,
         '--board-assignment-count': assignmentCount,
         '--board-bar-scale':        boardBarScale,
-        // Phase DAB.10g — DETERMINISTIC layout vars. No --board-room-scale
-        // because roomy boost is now applied via CSS attribute selectors
-        // directly (no continuous slack-driven multiplier needed). No
-        // observer means no feedback loop means no need for the scale to
-        // be a number.
+        // Phase DAB.10m — --board-target-card-height REMOVED. Cards
+        // are now content-sized; the CSS min-height rule that read
+        // this variable is also gone.
         '--board-columns':           boardColumns,
-        '--board-target-card-height': `${targetCardHeight}px`,
       }}
     >
-      {/* Phase DAB.10j — Column-major reorder. The CSS grid places
-          cards row-by-row (row-major), which would produce a reading
-          order of [1,2 | 3,4 | 5,6 | 7,8] — i.e. sequential names
-          would be side-by-side rather than stacked. For a shop TV a
-          supervisor scans one column top-to-bottom, so we reindex
-          the array into row-major placement of column-major positions:
-          [1,5,2,6,3,7,4,8] for 8 ops in 2 cols. Result on the grid:
-              Row 1: 1 5      Left col: 1  Right col: 5
-              Row 2: 2 6                 2            6
-              Row 3: 3 7                 3            7
-              Row 4: 4 8                 4            8
-          One map, one card markup path. */}
+      {/* Phase DAB.10m — Independent column stacks. Each column is
+          its own flex-column so cards in one column never affect
+          heights of cards in the other column. Reading order is
+          natural (column 0 = employees 1..N/cols, column 1 =
+          employees N/cols+1..end). */}
       <div className={styles.boardBarsInner}>
-      {(() => {
-        if (boardColumns <= 1) return operatorCards
-        const rows = Math.ceil(operatorCards.length / boardColumns)
-        const reordered = []
-        for (let r = 0; r < rows; r++) {
-          for (let c = 0; c < boardColumns; c++) {
-            const srcIdx = c * rows + r
-            if (srcIdx < operatorCards.length) reordered.push(operatorCards[srcIdx])
-          }
-        }
-        return reordered
-      })().map(op => {
-        // Phase E.9 — Out-status cards: render the status word as the
-        // "task" line and skip notes / Spanish / chips entirely. The
-        // out card is a name + a labeled status pill, nothing more.
-        if (op.outStatus) {
-          const label =
-            op.outStatus === 'vacation' ? 'Vacation'
-            : op.outStatus === 'sick'    ? 'Sick'
-            : 'Off'
-          // Phase E.9b — Out cards stretch full-width like assignment
-          // bars so the board's vertical rhythm stays consistent. The
-          // name + status badge sit on a single inline header row
-          // (.crewCardOutHeader) instead of stacking. Marker classes
-          // (.crewCardOut + per-status variant) layer on top of the
-          // base .boardPersonBar so suppression rules + the muted
-          // color tints continue to apply.
-          const outClass =
-            op.outStatus === 'vacation' ? styles.crewCardOutVacation
-            : op.outStatus === 'sick'    ? styles.crewCardOutSick
-            : styles.crewCardOutOff
-          return (
-            <article
-              key={op.key}
-              className={`${styles.boardPersonBar} ${styles.crewCardOut} ${outClass}`}
-              data-out-status={op.outStatus}
-            >
-              <div className={styles.crewCardOutHeader}>
-                <h2 className={styles.boardPersonName}>{op.employeeName ?? 'Unassigned'}</h2>
-                <span
-                  className={styles.crewCardOutBadge}
-                  data-out-status={op.outStatus}
-                >
-                  {label}
-                </span>
-              </div>
-            </article>
-          )
-        }
-        return (
-          <article key={op.key} className={styles.boardPersonBar}>
-            <h2 className={styles.boardPersonName}>{op.employeeName ?? 'Unassigned'}</h2>
-            {op.assignments.map((a, idx) => {
-              // Phase DAB.10b — Ordinal label rendered ONLY when this
-              // operator has multiple jobs today. Single-job operators
-              // keep the existing TV/kiosk look (no "1st Job" badge to
-              // distract from the task title). When labels appear they
-              // follow the post-sort order, so removing a middle job
-              // renumbers automatically on the next render.
-              const showOrdinal = op.assignments.length > 1
-              const jobLabel    = showOrdinal
-                ? (BOARD_ORDINAL_LABELS[idx] ?? `Job ${idx + 1}`)
-                : null
-              // Phase DAB.10l — Dual English + Spanish rendering per
-              // assignment. Reverts DAB.10i's select-one behavior:
-              //
-              //   Auto-translate ON, notesEs present  → BOTH lines
-              //     (English first, Spanish underneath)
-              //   Auto-translate ON, notesEs blank    → English only
-              //     (translation pending; kiosk auto-adds Spanish
-              //      on next refresh after the sweep populates it)
-              //   Auto-translate OFF                  → English only
-              //     (Spanish column hidden even if notesEs exists)
-              //
-              // Per-assignment isolation: notes / notesEs / show flags
-              // are all local to this .map iteration, bound to `a` (the
-              // current assignment). 2nd Job cannot render 1st Job's
-              // translation because there is no shared state.
-              const trimmedNotes    = (a.notes   ?? '').trim()
-              const trimmedNotesEs  = (a.notesEs ?? '').trim()
-              const showTranslation = op.showSpanishNotes && trimmedNotesEs.length > 0
-              return (
-                <div key={a.id ?? idx} className={styles.boardTaskBlock}>
-                  {jobLabel && (
-                    <span className={styles.boardJobOrdinal}>{jobLabel}</span>
-                  )}
-                  <p className={styles.boardTaskText}>{a.title}</p>
-                  {trimmedNotes.length > 0 && (
-                    <p className={styles.boardNotesText} lang="en">
-                      {trimmedNotes}
-                    </p>
-                  )}
-                  {showTranslation && trimmedNotes.length > 0 && (
-                    <p
-                      className={`${styles.boardNotesText} ${styles.boardNotesTextEs}`}
-                      lang="es"
-                    >
-                      {trimmedNotesEs}
-                    </p>
-                  )}
-                </div>
-              )
-            })}
-          </article>
-        )
-      })}
+        {columns.map((colOps, colIdx) => (
+          <div key={colIdx} className={styles.boardColumn}>
+            {colOps.map(renderOperatorCard)}
+          </div>
+        ))}
       </div>
     </div>
   )

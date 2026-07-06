@@ -162,11 +162,11 @@ assert(/\.boardBars\[data-density='compact'\]/.test(CSS),
 assert(/\.boardBars\[data-density='compact'\][\s\S]{0,200}\.boardNotesText[\s\S]{0,200}-webkit-line-clamp:\s*2/.test(CSS),
   '9C.4c compact notes still clamp to 2 lines')
 
-// Phase DAB.10g — @media-driven 2-col grid REMOVED; columns are now
-// driven by --board-columns inline variable on .boardBarsInner (JSX
-// picks count from stable inputs: viewport.w + fit-mode + density).
-assert(/\.boardBarsInner\s*\{[\s\S]{0,1000}grid-template-columns:\s*repeat\(var\(--board-columns,\s*1\),\s*minmax\(0,\s*1fr\)\)/.test(CSS),
-  '.boardBarsInner uses repeat(var(--board-columns), …) — DAB.10g deterministic columns')
+// Phase DAB.10m — CSS grid REPLACED with flex-row of independent
+// `.boardColumn` stacks. Column count comes from JSX rendering
+// `columns.length` children (1/2/3 based on viewport + fit-mode).
+assert(/\.boardBarsInner\s*\{[\s\S]{0,1000}display:\s*flex;\s*\n\s*flex-direction:\s*row/.test(CSS),
+  '.boardBarsInner is flex-row of `.boardColumn` stacks (DAB.10m — replaces CSS grid)')
 
 // ── Phase 9C.4e — density rules must be scale-aware ────────────────────
 section('Phase 9C.4e — density overrides scale with --board-bar-scale')
@@ -198,14 +198,12 @@ assert(/\.boardBars\[data-density='compact'\]\s+\.boardPersonBar\s*\{[\s\S]{0,40
 assert(/\.boardBars\[data-density='compact'\]\s*\{[\s\S]{0,200}--board-name-size:\s+clamp\([\s\S]{0,100}calc\([\s\S]{0,60}var\(--board-bar-scale/.test(CSS),
   "compact: --board-name-size clamp() max uses calc(... * var(--board-bar-scale)) [DAB.10g.1]")
 
-// Phase DAB.10g — @media-driven 2-col grid removed; columns are now
-// JS-deterministic via --board-columns. The .boardBarsInner gap is
-// still scaled by --board-bar-scale via the base rule + density
-// overrides; the per-axis column-gap/row-gap split is gone (single
-// `gap:` shorthand now). These two pins are no longer applicable.
-// Replacing with positive pins on the new mechanism.
-assert(/\.boardBarsInner\s*\{[\s\S]{0,1500}grid-template-columns:\s*repeat\(var\(--board-columns,/.test(CSS),
-  ".boardBarsInner uses repeat(var(--board-columns), …) — DAB.10g deterministic columns")
+// Phase DAB.10m — Grid replaced with flex-row + `.boardColumn` stacks.
+// Vertical gap between cards lives on `.boardColumn`; horizontal gap
+// between columns lives on `.boardBarsInner`. Both still scaled by
+// --board-bar-scale so density buckets still tighten.
+assert(/\.boardColumn\s*\{[\s\S]{0,500}gap:\s*calc\(18px\s*\*\s*var\(--board-bar-scale/.test(CSS),
+  '.boardColumn vertical gap uses calc(18px * var(--board-bar-scale)) — DAB.10m')
 
 // Negative guards — the old fixed-px density shapes must be gone.
 assert(!/\.boardBars\[data-density='comfortable'\]\s*\{\s*gap:\s*12px;\s*\}/.test(CSS),

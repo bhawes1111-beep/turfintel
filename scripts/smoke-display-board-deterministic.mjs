@@ -172,41 +172,40 @@ assert(/data-board-columns=\{boardColumns\}/.test(KIOSK),
 assert(/'--board-columns':\s+boardColumns/.test(KIOSK),
   '--board-columns CSS variable set inline')
 
-// CSS rule consumes the variable.
-assert(/\.boardBarsInner\s*\{[\s\S]{0,1000}grid-template-columns:\s+repeat\(var\(--board-columns,\s+1\), minmax\(0, 1fr\)\)/.test(KIOSK_CSS),
-  '.boardBarsInner grid-template-columns uses repeat(var(--board-columns), …)')
+// Phase DAB.10m — `.boardBarsInner` is now a flex-row of independent
+// `.boardColumn` stacks. Column count comes from JSX rendering
+// `columns.length` children.
+assert(/\.boardBarsInner\s*\{[\s\S]{0,1000}display:\s+flex;\s*\n\s*flex-direction:\s+row/.test(KIOSK_CSS),
+  '.boardBarsInner is display: flex; flex-direction: row (DAB.10m independent columns)')
+assert(/\.boardColumn\s*\{[\s\S]{0,500}display:\s+flex;\s*\n\s*flex-direction:\s+column/.test(KIOSK_CSS),
+  '.boardColumn is display: flex; flex-direction: column (DAB.10m)')
 
-// ── Target card height (stretch in roomy/natural) ────────────────
-section('Target card height — derived from viewport + row count')
+// ── Content-sized cards (DAB.10m) — no forced height ─────────────
+section('Content-sized cards — no forced height / no target-card-height')
 
-assert(/const HEADER_AND_PADDING = 120/.test(KIOSK),
-  'HEADER_AND_PADDING constant documents the 120px header allowance')
-assert(/const availableRosterHeight = Math\.max\(0, viewport\.h - HEADER_AND_PADDING\)/.test(KIOSK),
-  'availableRosterHeight = viewport.h - HEADER_AND_PADDING (no inner measurement)')
-assert(/const rowCount = Math\.max\(1, Math\.ceil\(operatorCount \/ boardColumns\)\)/.test(KIOSK),
-  'rowCount = ceil(operatorCount / boardColumns)')
-// Phase DAB.10j — targetCardHeight now accounts for TOTAL row gaps
-// (rowCount - 1) × configuredGap rather than a single flat 16px
-// subtraction. On a 4-row layout with 16px gap this shifts by 48px,
-// preventing the last row from clipping under the outer overflow.
-assert(/const CONFIGURED_ROW_GAP = 16/.test(KIOSK),
-  'CONFIGURED_ROW_GAP = 16 (row-gap between .boardPersonBar rows)')
-assert(/const totalRowGaps = Math\.max\(0, rowCount - 1\) \* CONFIGURED_ROW_GAP/.test(KIOSK),
-  'totalRowGaps = (rowCount - 1) × CONFIGURED_ROW_GAP (accounts for every gap)')
-assert(/const targetCardHeight = Math\.floor\(\(availableRosterHeight - totalRowGaps\) \/ rowCount\)/.test(KIOSK),
-  'targetCardHeight = floor((availableRosterHeight - totalRowGaps) / rowCount) [DAB.10j]')
+// Phase DAB.10m — HEADER_AND_PADDING / CONFIGURED_ROW_GAP /
+// availableRosterHeight / rowCount / totalRowGaps / targetCardHeight
+// are ALL REMOVED. Cards use their natural content height; a card
+// with only a name+task stays short, a card with English+Spanish+
+// multi-job grows taller. Negative pins.
+assert(!/const HEADER_AND_PADDING/.test(KIOSK),
+  'HEADER_AND_PADDING constant REMOVED (DAB.10m — no forced card height)')
+assert(!/const CONFIGURED_ROW_GAP/.test(KIOSK),
+  'CONFIGURED_ROW_GAP constant REMOVED (DAB.10m)')
+assert(!/const availableRosterHeight/.test(KIOSK),
+  'availableRosterHeight REMOVED (DAB.10m)')
+assert(!/const rowCount/.test(KIOSK),
+  'rowCount REMOVED (DAB.10m — no row math needed for column stacks)')
+assert(!/const targetCardHeight/.test(KIOSK),
+  'targetCardHeight REMOVED (DAB.10m — cards use natural height)')
 
-// Exposed as CSS variable.
-assert(/'--board-target-card-height':\s+`\$\{targetCardHeight\}px`/.test(KIOSK),
-  '--board-target-card-height CSS variable set inline (px)')
+// --board-target-card-height inline CSS var also removed.
+assert(!/'--board-target-card-height':/.test(KIOSK),
+  '--board-target-card-height inline CSS var REMOVED (DAB.10m)')
 
-// CSS rule consumes the variable as min-height in roomy + natural modes.
-assert(/data-fit-mode='roomy'\]\s+\.boardPersonBar,\s*\n\s*\.boardBars\[data-fit-mode='natural'\]\s+\.boardPersonBar\s*\{[\s\S]{0,200}min-height:\s+var\(--board-target-card-height/.test(KIOSK_CSS),
-  '.boardPersonBar min-height: var(--board-target-card-height) in roomy + natural modes')
-
-// Compact + ultra do NOT get the stretch.
-assert(!/data-fit-mode='compact'\]\s+\.boardPersonBar\s*\{[\s\S]{0,200}min-height:\s+var\(--board-target-card-height/.test(KIOSK_CSS),
-  'compact mode does NOT use --board-target-card-height (dense rosters already fill)')
+// CSS rule that consumed the variable also removed.
+assert(!/data-fit-mode='roomy'\]\s+\.boardPersonBar,\s*\n\s*\.boardBars\[data-fit-mode='natural'\]\s+\.boardPersonBar\s*\{[\s\S]{0,200}min-height:\s+var\(--board-target-card-height/.test(KIOSK_CSS),
+  '.boardPersonBar min-height: var(--board-target-card-height) rule REMOVED (DAB.10m)')
 
 // ── No transform / no compositor hints (DAB.10f.3 preserved) ─────
 section('No transform / no compositor hints (DAB.10f.3 invariants)')
@@ -272,13 +271,16 @@ assert(/\n\.boardBars \{[\s\S]{0,800}overflow:\s+hidden/.test(KIOSK_CSS),
 // ── Single render path preserved ─────────────────────────────────
 section('Single render path: one operatorCards.map, one .boardBarsInner')
 
-// Phase DAB.10j — Column-major reorder means the .map now runs on
-// a locally-computed reordered array (via IIFE) rather than directly
-// on operatorCards. But there is still exactly ONE .map callback
-// containing the card-rendering JSX — one card markup path.
-const mapCallbackCount = (boardModeFn.match(/\)\.map\(op =>/g) ?? []).length
-assert(mapCallbackCount === 1,
-  `exactly one .map(op => …) card-render callback inside BoardModeCrewBars (found ${mapCallbackCount})`)
+// Phase DAB.10m — Card rendering is now extracted into a single
+// `renderOperatorCard(op)` function that both column stacks call
+// via `.map(renderOperatorCard)`. The IIFE reorder is gone; JSX
+// splits operatorCards into `columns` and renders one .boardColumn
+// per column. Verify the single reusable renderer.
+assert(/function renderOperatorCard\(op\) \{/.test(boardModeFn),
+  'renderOperatorCard(op) function declared inside BoardModeCrewBars (one card markup path)')
+const renderCallCount = (boardModeFn.match(/\.map\(renderOperatorCard\)/g) ?? []).length
+assert(renderCallCount >= 1,
+  `.map(renderOperatorCard) call renders each column's cards (found ${renderCallCount})`)
 const innerCount = (boardModeFn.match(/className=\{styles\.boardBarsInner\}/g) ?? []).length
 assert(innerCount === 1, `exactly one .boardBarsInner JSX element (found ${innerCount})`)
 

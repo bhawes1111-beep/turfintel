@@ -1950,28 +1950,63 @@
   --board-note-size:  calc(var(--board-name-size) * 0.625);
 }
 
-/* Phase DAB.10e — Inner wrapper that owns the actual flex column +
-   gap. The outer .boardBars sizes itself to the available viewport;
-   this inner element grows to its natural content height and is
-   scaled via transform: scale(--board-fit-scale) so it always fits.
-   Inverse-width compensation keeps the scaled content full-width. */
+/* Phase DAB.10m — Independent vertical columns. Replaces the DAB.10g
+   CSS grid layout. Grid rows stretched left and right cards to the
+   tallest card's height in each row (via default `align-items: stretch`
+   plus `min-height: var(--board-target-card-height)` on
+   `.boardPersonBar`), producing large empty regions inside short
+   cards. New layout: `.boardBarsInner` is a flex ROW of columns; each
+   `.boardColumn` is an independent flex column stack. Cards inside
+   one column cannot influence heights in the other column.
+
+   Phase DAB.10f.3 — transform / transform-origin / inverse-width /
+   max-height / overflow REMOVED (kept preserved). */
 .boardBarsInner {
-  /* Phase DAB.10g — DETERMINISTIC layout. grid-template-columns
-     driven by --board-columns (1/2/3) set inline by JSX from stable
-     inputs (viewport.w + fit-mode + density). When --board-columns
-     is 1, this is a vertical stack identical to the old flex-column.
-     When 2 or 3, cards lay out as a multi-column grid. One rule, no
-     @media-driven flex↔grid toggle.
-     Phase DAB.10f.3 — transform / transform-origin / inverse-width /
-     max-height / overflow REMOVED. */
-  display: grid;
-  grid-template-columns: repeat(var(--board-columns, 1), minmax(0, 1fr));
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
   width: 100%;
-  /* Phase 9C.4d — gap tightens with assignment count via the inline
-     --board-bar-scale CSS variable. Density rules below this point
-     override it. Using `gap` shorthand so the cascade works for
-     density's later `gap:` declarations. */
+  /* Horizontal gap between column stacks. Vertical gap between
+     cards within a column lives on `.boardColumn` below (matches
+     the DAB.10d/e density overrides that used to target
+     `.boardBarsInner`). */
+  gap: calc(14px * var(--board-bar-scale, 1));
+}
+
+/* Phase DAB.10m — Individual column stack. Each column is its own
+   flex-column; cards use natural content height. Every column takes
+   1fr of the parent's row-width so 2-col / 3-col layouts remain
+   symmetric. `min-width: 0` lets flex children shrink narrower than
+   their content when a task title would otherwise overflow. */
+.boardColumn {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  /* Phase 9C.4d — vertical gap between cards in a column tightens
+     with --board-bar-scale. Density overrides below still target
+     .boardBars[data-density='...'] .boardBarsInner for backward
+     compatibility, but the actual gap now lives here per column. */
   gap: calc(18px * var(--board-bar-scale, 1));
+}
+/* Phase DAB.10m — Preserve the DAB.10d/e density gap overrides. They
+   used to target `.boardBarsInner` (which was the flex column stack);
+   after moving column stacks to `.boardColumn`, propagate via
+   descendant selectors so per-density gap tightening still applies. */
+.boardBars[data-density='comfortable'] .boardColumn {
+  gap: calc(12px * var(--board-bar-scale, 1));
+}
+.boardBars[data-density='compact']     .boardColumn {
+  gap: calc(8px  * var(--board-bar-scale, 1));
+}
+.boardBars[data-fit-mode='compact']    .boardColumn {
+  gap: calc(10px * var(--board-bar-scale, 1));
+}
+.boardBars[data-fit-mode='ultra']      .boardColumn {
+  gap: calc(6px  * var(--board-bar-scale, 1));
+}
+.boardBars[data-fit-mode='roomy']      .boardColumn {
+  gap: calc(22px * var(--board-bar-scale, 1));
 }
 
 .boardPersonBar {
@@ -2716,17 +2751,14 @@
   margin-bottom: -4px;
 }
 
-/* Phase DAB.10g — Target card height stretch. In roomy + natural
-   modes the JSX writes --board-target-card-height (px) computed from
-   viewport.h / rowCount. .boardPersonBar uses it as a min-height so
-   cards stretch to fill the available vertical real estate without
-   needing to observe their own size. Compact + ultra modes ignore
-   this because their content is dense enough that natural sizing
-   already fills the space. */
-.boardBars[data-fit-mode='roomy']    .boardPersonBar,
-.boardBars[data-fit-mode='natural']  .boardPersonBar {
-  min-height: var(--board-target-card-height, auto);
-}
+/* Phase DAB.10m — Target card-height stretch REMOVED. The DAB.10g rule
+   below used to write `min-height: var(--board-target-card-height)`
+   on .boardPersonBar in roomy + natural modes, which produced large
+   empty regions inside short cards (a name-only card padded up to
+   fill viewport.h / rowCount px). Cards now use natural content
+   height; the parent .boardColumn is a flex stack, so rows can vary.
+   Empty screen space below the last card in a column is acceptable;
+   empty space INSIDE cards is not. */
 
 /* ── Phase DAB.10f.3 — Compact fit mode (no transform) ──────────────
    The 'compact' fit-mode replaces the old transform-scale 'scaled'
@@ -2812,27 +2844,13 @@
   font-size: clamp(9px, 0.8vw, calc(11px * var(--board-bar-scale, 1)));
   margin-bottom: -4px;
 }
-/* Ultra widens earlier — 2-col grid starts at 900px instead of 1100px.
-   This lets the board halve its vertical pressure on a typical 1080p
-   TV in landscape before relying on scale alone. */
-@media (min-width: 900px) {
-  .boardBars[data-fit-mode='ultra'] .boardBarsInner {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: calc(10px * var(--board-bar-scale, 1));
-    row-gap: calc(6px * var(--board-bar-scale, 1));
-  }
-}
-/* 3-col grid at very wide widths (≥1600px). Triggers only in ultra
-   mode AND requires a wide kiosk display — typical for the big shop
-   TVs that drive these boards. Cards must stay readable: at 1600px /
-   3 columns the each card has ~530px of width, plenty for a typical
-   employee name + task chips. */
-@media (min-width: 1600px) {
-  .boardBars[data-fit-mode='ultra'] .boardBarsInner {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
+/* Phase DAB.10m — The old @media (min-width: 900px) and
+   @media (min-width: 1600px) rules that forced `.boardBarsInner` back
+   to `display: grid` with `repeat(2, …)` / `repeat(3, …)` are
+   REMOVED. Column count is now driven entirely by the JSX `columns`
+   array (JS computes 1/2/3 from mobile + viewport.w + fitMode and
+   renders that many `.boardColumn` children). Re-imposing `display:
+   grid` here would defeat the independent-column-stack fix. */
 
 /* ── Phase DAB.10f — Roomy fit mode (fill empty space) ────────────────
    When the JS ResizeObserver determines that the natural content
