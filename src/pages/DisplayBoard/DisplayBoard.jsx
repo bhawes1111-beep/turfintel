@@ -1659,42 +1659,41 @@ function BoardModeCrewBars({ operatorCards }) {
               const jobLabel    = showOrdinal
                 ? (BOARD_ORDINAL_LABELS[idx] ?? `Job ${idx + 1}`)
                 : null
-              // Phase DAB.10i — Employee auto-translate note selection.
-              // Each assignment picks ONE note to show based on the
-              // operator's translation preference (op.showSpanishNotes
-              // is computed per operator from the employee's
-              // autoTranslateBoardNotes + boardLanguage prefs — see
-              // employeeNeedsSpanish above). Behavior:
+              // Phase DAB.10l — Dual English + Spanish rendering per
+              // assignment. Reverts DAB.10i's select-one behavior:
               //
-              //   Auto-translate ON, notesEs present  → show notesEs
-              //   Auto-translate ON, notesEs blank    → fall back to notes
-              //   Auto-translate OFF                  → show notes
+              //   Auto-translate ON, notesEs present  → BOTH lines
+              //     (English first, Spanish underneath)
+              //   Auto-translate ON, notesEs blank    → English only
+              //     (translation pending; kiosk auto-adds Spanish
+              //      on next refresh after the sweep populates it)
+              //   Auto-translate OFF                  → English only
+              //     (Spanish column hidden even if notesEs exists)
               //
-              // Fallback covers the translation-pending window (note
-              // just edited, notes_es NULL'd by the worker PATCH,
-              // sweep hasn't run yet). No empty block, no "undefined",
-              // no stale Spanish from another assignment — each block
-              // reads a.notes / a.notesEs specific to its own row.
+              // Per-assignment isolation: notes / notesEs / show flags
+              // are all local to this .map iteration, bound to `a` (the
+              // current assignment). 2nd Job cannot render 1st Job's
+              // translation because there is no shared state.
               const trimmedNotes    = (a.notes   ?? '').trim()
               const trimmedNotesEs  = (a.notesEs ?? '').trim()
-              const displayNotes    = op.showSpanishNotes
-                ? (trimmedNotesEs || trimmedNotes)
-                : trimmedNotes
-              const displayLangEs   = op.showSpanishNotes && trimmedNotesEs.length > 0
+              const showTranslation = op.showSpanishNotes && trimmedNotesEs.length > 0
               return (
                 <div key={a.id ?? idx} className={styles.boardTaskBlock}>
                   {jobLabel && (
                     <span className={styles.boardJobOrdinal}>{jobLabel}</span>
                   )}
                   <p className={styles.boardTaskText}>{a.title}</p>
-                  {displayNotes.length > 0 && (
+                  {trimmedNotes.length > 0 && (
+                    <p className={styles.boardNotesText} lang="en">
+                      {trimmedNotes}
+                    </p>
+                  )}
+                  {showTranslation && trimmedNotes.length > 0 && (
                     <p
-                      className={displayLangEs
-                        ? `${styles.boardNotesText} ${styles.boardNotesTextEs}`
-                        : styles.boardNotesText}
-                      lang={displayLangEs ? 'es' : undefined}
+                      className={`${styles.boardNotesText} ${styles.boardNotesTextEs}`}
+                      lang="es"
                     >
-                      {displayNotes}
+                      {trimmedNotesEs}
                     </p>
                   )}
                 </div>

@@ -176,13 +176,17 @@ const aNotesRefs = (KIOSK.match(/a\.notes/g) ?? []).length
 assert(aNotesRefs >= 3,
   `kiosk reads a.notes in ≥3 places (operatorCards push + render gate + render text; found ${aNotesRefs})`)
 
-// Phase DAB.10i — dual-render replaced with select-one via
-// displayNotes. Verify each assignment still gets its OWN note
-// value via a.notes / a.notesEs (no cross-assignment leak).
-assert(/const displayNotes\s+= op\.showSpanishNotes\s*\n\s*\?\s*\(trimmedNotesEs \|\| trimmedNotes\)\s*\n\s*:\s*trimmedNotes/.test(KIOSK),
-  'each task block computes displayNotes from ITS a.notes / a.notesEs (per-job notes preserved)')
-assert(/displayNotes\.length > 0 && \(\s*\n\s*<p/.test(KIOSK),
-  'kiosk renders displayNotes inside each task block (only when non-blank)')
+// Phase DAB.10l — dual-render restored. English always renders when
+// non-blank; Spanish renders BELOW only when auto-translate is on AND
+// translation is available. Each task block reads ITS OWN a.notes /
+// a.notesEs — 2nd Job's translation cannot leak into 1st Job because
+// trimmedNotes / trimmedNotesEs are local to this .map iteration.
+assert(/const\s+trimmedNotes\s*=\s*\(a\.notes\s*\?\?\s*''\)\.trim\(\)/.test(KIOSK),
+  'each task block computes trimmedNotes from ITS a.notes (per-job notes preserved)')
+assert(/const\s+trimmedNotesEs\s*=\s*\(a\.notesEs\s*\?\?\s*''\)\.trim\(\)/.test(KIOSK),
+  'each task block computes trimmedNotesEs from ITS a.notesEs (per-job translation isolated)')
+assert(/\{trimmedNotes\.length > 0 && \(\s*\n\s*<p className=\{styles\.boardNotesText\} lang="en">/.test(KIOSK),
+  'kiosk renders English inside each task block when non-blank (DAB.10l)')
 
 // ── Copy From Date preserves per-job notes ────────────────────────
 section('Copy From Date — preserves per-job notes (cloning existing rows)')

@@ -202,13 +202,18 @@ const mapCallbackCount = (boardModeFn.match(/\)\.map\(op =>/g) ?? []).length
 assert(mapCallbackCount === 1,
   `exactly one .map(op => …) card-render callback (one card markup path). Found ${mapCallbackCount}`)
 
-// ── Preserved DAB.10i translation display behavior ───────────────
-section('DAB.10i translation display behavior preserved')
+// ── Preserved DAB.10l dual-render translation display ────────────
+section('DAB.10l dual English + Spanish display preserved')
 
-assert(/const displayNotes\s+= op\.showSpanishNotes\s*\n\s*\?\s*\(trimmedNotesEs \|\| trimmedNotes\)\s*\n\s*:\s*trimmedNotes/.test(KIOSK),
-  'select-one display: showSpanishNotes ? (notesEs || notes) : notes')
-assert(/const displayLangEs\s+= op\.showSpanishNotes && trimmedNotesEs\.length > 0/.test(KIOSK),
-  'displayLangEs governs class + lang attr (correct language attribution)')
+// DAB.10i's select-one was replaced with DAB.10l's dual-render:
+// English always shows when non-blank; Spanish shows below only when
+// auto-translate is on AND translation is available.
+assert(/const showTranslation = op\.showSpanishNotes && trimmedNotesEs\.length > 0/.test(KIOSK),
+  'showTranslation gates the Spanish <p> line (DAB.10l)')
+assert(/\{trimmedNotes\.length > 0 && \(\s*\n\s*<p className=\{styles\.boardNotesText\} lang="en">/.test(KIOSK),
+  'English <p lang="en"> renders when trimmedNotes non-blank')
+assert(/\{showTranslation && trimmedNotes\.length > 0 && \(/.test(KIOSK),
+  'Spanish <p> gate requires showTranslation AND non-blank English (no orphan Spanish)')
 
 // ── Preserved DAB.10g deterministic layout ───────────────────────
 section('DAB.10g deterministic layout preserved')

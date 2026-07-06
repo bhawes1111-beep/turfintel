@@ -107,16 +107,16 @@ assert(/showSpanishNotes:\s+employeeNeedsSpanish\(employee\)/.test(KIOSK),
   'showSpanishNotes: employeeNeedsSpanish(employee) — computed at card creation')
 
 // ── Per-job language selection ───────────────────────────────────
-section('Per-job language selection')
+section('Per-job dual-render (English + Spanish underneath)')
 
-// The new displayNotes / displayLangEs pair inside the .map is what
-// drives per-assignment selection. Because they're computed inside
-// the map callback, each iteration uses THIS assignment's a.notes /
-// a.notesEs — 2nd Job can't reuse 1st Job's translation.
-assert(/const displayNotes\s+= op\.showSpanishNotes\s*\n\s*\?\s*\(trimmedNotesEs \|\| trimmedNotes\)\s*\n\s*:\s*trimmedNotes/.test(KIOSK),
-  'displayNotes = showSpanishNotes ? (notesEs || notes) : notes (translation ON → Spanish with English fallback)')
-assert(/const displayLangEs\s+= op\.showSpanishNotes && trimmedNotesEs\.length > 0/.test(KIOSK),
-  'displayLangEs true only when auto-translate enabled AND notesEs non-blank (correct language attribution)')
+// Phase DAB.10l — Select-one replaced with dual-render. English
+// always renders when non-blank; Spanish renders BELOW when
+// showTranslation is true AND English is non-blank (no orphan).
+// Because trimmedNotes/trimmedNotesEs/showTranslation are computed
+// inside the .map callback bound to `a`, each iteration uses THIS
+// assignment's values — 2nd Job cannot reuse 1st Job's translation.
+assert(/const showTranslation = op\.showSpanishNotes && trimmedNotesEs\.length > 0/.test(KIOSK),
+  'showTranslation = op.showSpanishNotes && trimmedNotesEs.length > 0 — gate for Spanish line')
 
 // Per-assignment values read from THIS row: no shared state, no
 // closure over prior iteration.
@@ -125,40 +125,42 @@ assert(/const trimmedNotes\s+= \(a\.notes\s+\?\? ''\)\.trim\(\)/.test(KIOSK),
 assert(/const trimmedNotesEs\s+= \(a\.notesEs \?\? ''\)\.trim\(\)/.test(KIOSK),
   'trimmedNotesEs reads THIS a.notesEs (per-assignment isolation)')
 
-// Whitespace-only values fall through to fallback (trim → '') then
-// || short-circuits to the English base.
-assert(/\.trim\(\)/.test(KIOSK) && /trimmedNotesEs \|\| trimmedNotes/.test(KIOSK),
-  'whitespace-only notesEs trims to "" → || falls back to trimmedNotes')
-
 // ── Translation-pending fallback ─────────────────────────────────
-section('Translation-pending fallback shows original English')
+section('Translation-pending: showTranslation false → English only')
 
 // When op.showSpanishNotes is true but a.notesEs is null / blank:
-//   trimmedNotesEs === ''  →  displayNotes = trimmedNotesEs || trimmedNotes = trimmedNotes
-//   displayLangEs = showSpanishNotes && 0 > 0 = false
-// So the <p> renders trimmedNotes with the English className / no
-// lang attribute. Verified structurally by the ternary above.
-assert(/displayNotes\.length > 0 && \(/.test(KIOSK),
-  'displayNotes.length > 0 gate — empty translation + empty original → no <p> at all')
+//   trimmedNotesEs === '' → showTranslation = true && 0 > 0 = false
+//   → English <p> renders (trimmedNotes.length > 0 branch)
+//   → Spanish <p> block skipped
+// On next refresh after the sweep populates notes_es, trimmedNotesEs
+// becomes non-blank, showTranslation flips true, Spanish <p> appears.
+assert(/\{trimmedNotes\.length > 0 && \(/.test(KIOSK),
+  'English <p> gated on trimmedNotes.length > 0 (empty original → no block)')
+assert(/\{showTranslation && trimmedNotes\.length > 0 && \(/.test(KIOSK),
+  'Spanish <p> gated on showTranslation AND trimmedNotes.length > 0 (no orphan Spanish)')
 
-// ── Single <p> per assignment (no dual render) ───────────────────
-section('Single <p> per assignment (dual bilingual render removed)')
+// ── Two <p>s per assignment when both languages present ──────────
+section('Dual render: two <p>s when Spanish available AND English present')
 
-// The old code rendered TWO <p>s per assignment when Spanish was
-// enabled + notesEs present. New code emits ONE. Count the notes-
-// rendering <p> declarations inside the taskBlock JSX; must be 1.
+// The DAB.10l block emits English then Spanish. Count the notes-
+// rendering <p> tag STARTS inside the taskBlock JSX.
 const taskBlockMatch = KIOSK.match(/<div key=\{a\.id \?\? idx\} className=\{styles\.boardTaskBlock\}>[\s\S]*?<\/div>/)
 const taskBlockSrc = taskBlockMatch ? taskBlockMatch[0] : ''
 assert(taskBlockSrc.length > 0, 'boardTaskBlock JSX slice extracted')
-const notesPCount = (taskBlockSrc.match(/<p\s*\n?\s*className=\{(?:styles\.boardNotesText|displayLangEs)/g) ?? []).length
-assert(notesPCount === 1,
-  `exactly one <p> renders notes per task block (found ${notesPCount})`)
+// Count <p> opens with boardNotesText class (English base + Spanish
+// combined class both start with `<p ` + className={... boardNotesText ...}).
+const englishPCount = (taskBlockSrc.match(/<p className=\{styles\.boardNotesText\} lang="en">/g) ?? []).length
+const spanishPCount = (taskBlockSrc.match(/<p\s*\n?\s*className=\{`\$\{styles\.boardNotesText\}\s+\$\{styles\.boardNotesTextEs\}`\}\s*\n?\s*lang="es"/g) ?? []).length
+assert(englishPCount === 1,
+  `exactly one English <p lang="en"> render (found ${englishPCount})`)
+assert(spanishPCount === 1,
+  `exactly one Spanish <p lang="es"> render (found ${spanishPCount})`)
 
-// Single <p> uses conditional className + conditional lang attribute.
-assert(/className=\{displayLangEs\s*\n?\s*\?\s*`\$\{styles\.boardNotesText\}\s+\$\{styles\.boardNotesTextEs\}`\s*\n?\s*:\s*styles\.boardNotesText\}/.test(KIOSK),
-  'single <p>: className conditional on displayLangEs (Spanish → both classes, English → base class)')
-assert(/lang=\{displayLangEs\s*\?\s*'es'\s*:\s*undefined\}/.test(KIOSK),
-  "single <p>: lang={displayLangEs ? 'es' : undefined} (accessibility for screen readers)")
+// English precedes Spanish in source (so on-screen order matches).
+const englishPos = taskBlockSrc.indexOf(`<p className={styles.boardNotesText} lang="en">`)
+const spanishPos = taskBlockSrc.search(/<p\s*\n?\s*className=\{`\$\{styles\.boardNotesText\}\s+\$\{styles\.boardNotesTextEs\}`\}\s*\n?\s*lang="es"/)
+assert(englishPos > 0 && spanishPos > englishPos,
+  'English <p> appears BEFORE Spanish <p> in the JSX (visual order)')
 
 // ── Multi-job: each block gets its OWN notes ─────────────────────
 section('Multi-job: each block computes its own displayNotes')

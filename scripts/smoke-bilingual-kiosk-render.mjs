@@ -100,34 +100,33 @@ section('BoardModeCrewBars — Spanish assignment note render')
 assert(/const\s+trimmedNotesEs\s*=\s*\(a\.notesEs\s*\?\?\s*''\)\.trim\(\)/.test(DB),
   "trimmedNotesEs = (a.notesEs ?? '').trim() — Spanish gating value computed per task")
 
-// Phase DAB.10i — Bilingual dual-render REPLACED with select-one:
-// when op.showSpanishNotes is true the block shows Spanish (with
-// English fallback if Spanish is blank), otherwise English. Only
-// ONE <p> is emitted per assignment. Verify the new selection.
-assert(/const displayNotes\s+= op\.showSpanishNotes\s*\n\s*\?\s*\(trimmedNotesEs \|\| trimmedNotes\)\s*\n\s*:\s*trimmedNotes/.test(DB),
-  'displayNotes = showSpanishNotes ? (trimmedNotesEs || trimmedNotes) : trimmedNotes — English fallback when Spanish blank')
+// Phase DAB.10l — Select-one replaced with dual-render. English
+// renders whenever notes is non-blank. Spanish renders BELOW English
+// when auto-translate is on AND notesEs is non-blank AND English is
+// non-blank (no orphan Spanish).
+assert(/const showTranslation = op\.showSpanishNotes && trimmedNotesEs\.length > 0/.test(DB),
+  'showTranslation = op.showSpanishNotes && trimmedNotesEs.length > 0 — gates the Spanish <p> [DAB.10l]')
 
-// displayLangEs = op.showSpanishNotes && trimmedNotesEs.length > 0 —
-// governs class + lang attribute. When Spanish is blank but auto-
-// translate is on, we render trimmedNotes with the English class /
-// no lang="es" (correctly reflects the actual language shown).
-assert(/const displayLangEs\s+= op\.showSpanishNotes && trimmedNotesEs\.length > 0/.test(DB),
-  'displayLangEs = showSpanishNotes && notesEs present — controls class + lang attr')
+// English <p> always renders when trimmedNotes non-blank.
+assert(/\{trimmedNotes\.length > 0 && \(\s*\n\s*<p className=\{styles\.boardNotesText\} lang="en">/.test(DB),
+  'English <p className={styles.boardNotesText} lang="en"> renders when trimmedNotes non-blank [DAB.10l]')
+assert(/lang="en">\s*\n\s*\{trimmedNotes\}\s*\n\s*<\/p>/.test(DB),
+  'English <p> body = {trimmedNotes} [DAB.10l]')
 
-// Single <p> render — conditional className + conditional lang.
-assert(/className=\{displayLangEs\s*\n?\s*\?\s*`\$\{styles\.boardNotesText\}\s+\$\{styles\.boardNotesTextEs\}`/.test(DB),
-  'single <p>: className toggles between English-only and English+Es via displayLangEs')
-assert(/lang=\{displayLangEs\s*\?\s*'es'\s*:\s*undefined\}/.test(DB),
-  "single <p>: lang={displayLangEs ? 'es' : undefined}")
-assert(/\{displayNotes\}/.test(DB),
-  'single <p> body renders {displayNotes} (selected value)')
+// Spanish <p> renders BELOW English when showTranslation is true
+// AND English is non-blank (guards against orphaned Spanish).
+assert(/\{showTranslation && trimmedNotes\.length > 0 && \(/.test(DB),
+  'Spanish <p> render gated on showTranslation AND trimmedNotes.length > 0 (no orphan translation) [DAB.10l]')
+assert(/<p\s*\n\s*className=\{`\$\{styles\.boardNotesText\}\s+\$\{styles\.boardNotesTextEs\}`\}\s*\n\s*lang="es"/.test(DB),
+  'Spanish <p> keeps both classes + lang="es" [DAB.10l]')
+assert(/lang="es"\s*\n?\s*>\s*\n?\s*\{trimmedNotesEs\}/.test(DB),
+  'Spanish <p> body = {trimmedNotesEs} [DAB.10l]')
 
-// English path preserved via displayNotes fallback (trimmedNotes still
-// computed, still used).
+// Base trimmed values.
 assert(/const\s+trimmedNotes\s*=\s*\(a\.notes\s*\?\?\s*''\)\.trim\(\)/.test(DB),
-  "trimmedNotes = (a.notes ?? '').trim() — English base value preserved")
-assert(/displayNotes\.length > 0 &&/.test(DB),
-  'displayNotes.length > 0 gate before render (no empty <p>)')
+  "trimmedNotes = (a.notes ?? '').trim() — English trimmed base value")
+assert(/const\s+trimmedNotesEs\s*=\s*\(a\.notesEs\s*\?\?\s*''\)\.trim\(\)/.test(DB),
+  "trimmedNotesEs = (a.notesEs ?? '').trim() — Spanish trimmed base value")
 
 // Spanish-only fallback path: the two gates are independent (no else),
 // so trimmedNotes empty + trimmedNotesEs non-empty renders Spanish alone.
