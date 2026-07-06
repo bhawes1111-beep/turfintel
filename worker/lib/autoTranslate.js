@@ -303,8 +303,18 @@ async function sweepAlerts(env, budget) {
  * runAutoTranslateSweep — top-level entry point invoked from the
  * scheduled() handler. Returns a summary object that the caller can
  * log; never throws.
+ *
+ * Phase DAB.10k.1 — Optional `opts.debug` flag guarantees the
+ * assignments table receives at least one budget slot even when the
+ * caller has forced TRANSLATE_MAX_PER_RUN down to 1. Without this,
+ * the 60% assignments split computed as `Math.floor(1 * 0.6) = 0`
+ * and the debug endpoint could never actually invoke translateText,
+ * so `attempts` came back empty and the diagnostic told us nothing.
+ * The flag is opt-in and only used by the manual admin endpoint;
+ * the scheduled() cron handler still uses the default budget split.
  */
-export async function runAutoTranslateSweep(env) {
+export async function runAutoTranslateSweep(env, opts = {}) {
+  const debug = Boolean(opts?.debug)
   // Phase DAB.10k — Expose the resolved AI model + a top-level trigger
   // hint (defaulting to 'cron'; the /api/admin/translate/run handler
   // overwrites it to 'manual' before returning). Assignments summary
@@ -312,6 +322,7 @@ export async function runAutoTranslateSweep(env) {
   // mode in one call.
   const summary = {
     trigger:  'cron',
+    debug,
     skipped:  false,
     reason:   null,
     provider: env?.TRANSLATE_PROVIDER ?? 'none',
@@ -346,10 +357,15 @@ export async function runAutoTranslateSweep(env) {
       : DEFAULT_MAX_PER_RUN
     summary.budget = budget
 
-    // Split the budget evenly-ish across the three tables. Assignments
-    // get the largest share since they accumulate fastest. Remaining
-    // budget is consumed in order: assignments → daily notes → alerts.
-    const asn = await sweepAssignments(env, Math.floor(budget * 0.6))
+    // Phase DAB.10k.1 — Debug mode guarantees a single assignment
+    // slot. Normal (cron / non-debug manual) runs keep the existing
+    // 60% assignments / 20% daily-notes / 20% alerts split.
+    const assignmentBudget = debug ? 1 : Math.floor(budget * 0.6)
+
+    // Split the budget across the three tables. Assignments get the
+    // largest share since they accumulate fastest. Remaining budget
+    // is consumed in order: assignments → daily notes → alerts.
+    const asn = await sweepAssignments(env, assignmentBudget)
     summary.assignments = asn
     const dailyBudget = budget - (asn.translated + asn.scanned > 0 ? asn.scanned : 0)
     const dn = await sweepDailyNotes(env, Math.max(0, Math.min(20, dailyBudget)))

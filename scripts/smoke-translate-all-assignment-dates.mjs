@@ -195,8 +195,9 @@ for (const path of [
 // ── Sweep entry point intact ──────────────────────────────────────────
 section('runAutoTranslateSweep entry point intact')
 
-assert(/export\s+async\s+function\s+runAutoTranslateSweep\(env\)/.test(AT),
-  'runAutoTranslateSweep(env) still exported')
+// Phase DAB.10k.1 — signature widened to (env, opts = {}).
+assert(/export\s+async\s+function\s+runAutoTranslateSweep\(env(?:,\s*opts\s*=\s*\{\})?\)/.test(AT),
+  'runAutoTranslateSweep(env, opts?) still exported')
 assert(/anyEmployeeNeedsTranslation\(env\)/.test(AT),
   'sweep still early-returns when no employee needs translation (cheap no-op)')
 

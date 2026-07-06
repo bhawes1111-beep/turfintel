@@ -197,8 +197,9 @@ section('worker/lib/autoTranslate.js — sweep logic unchanged')
 assert(!AT.includes('Phase 9C.5c3c'),
   'autoTranslate.js carries no Phase 9C.5c3c edits (translation logic shared, sweep unchanged)')
 
-assert(/export\s+async\s+function\s+runAutoTranslateSweep\(env\)/.test(AT),
-  'runAutoTranslateSweep still exported (regression)')
+// Phase DAB.10k.1 — signature widened to (env, opts = {}).
+assert(/export\s+async\s+function\s+runAutoTranslateSweep\(env(?:,\s*opts\s*=\s*\{\})?\)/.test(AT),
+  'runAutoTranslateSweep(env, opts?) still exported (regression)')
 // Phase 9C.7a — 9C.5c3a's calendar_events JOIN was replaced by an
 // employee-opt-in JOIN. The sweep is still defined and reachable; we
 // just check the post-9C.7a shape now.

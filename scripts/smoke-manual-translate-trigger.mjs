@@ -69,9 +69,12 @@ assert(/return json\(\{\s*error:[\s\S]{0,200}\}\,\s*403\)/.test(handlerSrc),
 // ── Handler invokes the shared sweep ───────────────────────────────────
 section('Handler invokes runAutoTranslateSweep — shared with cron')
 
-assert(/runAutoTranslateSweep\(env\)/.test(handlerSrc) ||
-       /runAutoTranslateSweep\(fakeEnv\)/.test(handlerSrc),
-  'handler calls runAutoTranslateSweep(env) (or with a kill-switched env clone for dryRun)')
+// Phase DAB.10k.1 — handler now optionally passes { debug: true } as
+// a 2nd arg on the ?debug=1 branch. Any of these shapes is acceptable.
+assert(/runAutoTranslateSweep\(env(?:,\s*\{[\s\S]*?\})?\)/.test(handlerSrc)
+    || /runAutoTranslateSweep\(fakeEnv\)/.test(handlerSrc)
+    || /runAutoTranslateSweep\(debugEnv(?:,\s*\{[\s\S]*?\})?\)/.test(handlerSrc),
+  'handler calls runAutoTranslateSweep(env|fakeEnv|debugEnv, opts?) — DAB.10k.1 widened')
 
 // ── JSON summary returned ──────────────────────────────────────────────
 section('Returned JSON summary')
@@ -226,8 +229,9 @@ assert(/function rowToEmployee\(row,\s*canViewPrivate/.test(CREW),
 assert(/autoTranslateBoardNotes:\s*row\.auto_translate_board_notes\s*===\s*1/.test(CREW),
   '9C.5c1: rowToEmployee still maps autoTranslateBoardNotes')
 
-assert(/export\s+async\s+function\s+runAutoTranslateSweep\(env\)/.test(AT),
-  '9C.5c3: runAutoTranslateSweep still exported from worker/lib/autoTranslate.js')
+// Phase DAB.10k.1 — signature widened to (env, opts = {}).
+assert(/export\s+async\s+function\s+runAutoTranslateSweep\(env(?:,\s*opts\s*=\s*\{\})?\)/.test(AT),
+  '9C.5c3: runAutoTranslateSweep still exported (DAB.10k.1 widened signature)')
 // Phase 9C.7a — sweep no longer JOINs calendar_events; employee opt-in
 // gate via crew_employees replaces date-scoping.
 assert(/LEFT JOIN\s+crew_employees\s+AS\s+emp/.test(AT),

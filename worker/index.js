@@ -443,9 +443,16 @@ async function handleApi(request, env, url, ctx) {
     // admin can see what the Workers AI runtime actually returned
     // without any source or translated text leaking into the HTTP
     // response.
+    //
+    // Phase DAB.10k.1 — Pass { debug: true } into the sweep so the
+    // 60/20/20 split gives assignments a guaranteed 1-row slot
+    // instead of Math.floor(1 * 0.6) = 0. Without this, debug mode
+    // never scanned crew_assignments and `attempts` always came back
+    // empty even when eligible rows existed.
     if (debug) {
       const debugEnv = { ...env, TRANSLATE_MAX_PER_RUN: '1' }
-      const summary  = await runAutoTranslateSweep(debugEnv)
+      const summary  = await runAutoTranslateSweep(debugEnv, { debug: true })
+      summary.trigger = 'manual'
       const attempts = getLastTranslateAttempts(debugEnv)
       return json({
         ok: true,
@@ -458,6 +465,7 @@ async function handleApi(request, env, url, ctx) {
       })
     }
     const summary = await runAutoTranslateSweep(env)
+    summary.trigger = 'manual'
     return json({ ok: true, summary })
   }
 

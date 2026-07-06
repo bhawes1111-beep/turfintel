@@ -96,8 +96,11 @@ assert(/if \(!env\?\.AI/.test(TR) || /env\.AI\s*\|\|/.test(TR) || /typeof env\.A
 section('worker/lib/autoTranslate.js — sweep + employee gate + race-safe writes')
 
 assert(AT.length > 0, 'worker/lib/autoTranslate.js exists')
-assert(/export\s+async\s+function\s+runAutoTranslateSweep\(env\)/.test(AT),
-  'exports runAutoTranslateSweep(env)')
+// Phase DAB.10k.1 — signature widened to (env, opts = {}) so the
+// admin endpoint can pass { debug: true } and guarantee an assignment
+// slot when TRANSLATE_MAX_PER_RUN=1. Cron still calls with (env) only.
+assert(/export\s+async\s+function\s+runAutoTranslateSweep\(env(?:,\s*opts\s*=\s*\{\})?\)/.test(AT),
+  'exports runAutoTranslateSweep(env, opts?)')
 
 // Employee-needs gate — sweep early-returns when nobody needs translation.
 assert(/auto_translate_board_notes\s*=\s*1/.test(AT),

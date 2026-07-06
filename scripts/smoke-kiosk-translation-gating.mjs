@@ -311,8 +311,9 @@ assert(/boardLanguage:\s*row\.board_language\s*\?\?\s*['"]en['"]/.test(CREW),
   "9C.5c1: rowToEmployee still maps boardLanguage")
 
 // 9C.5c3 + 9C.5c3a sweep.
-assert(/export\s+async\s+function\s+runAutoTranslateSweep\(env\)/.test(AT),
-  '9C.5c3: runAutoTranslateSweep still exported')
+// Phase DAB.10k.1 — signature widened to (env, opts = {}).
+assert(/export\s+async\s+function\s+runAutoTranslateSweep\(env(?:,\s*opts\s*=\s*\{\})?\)/.test(AT),
+  '9C.5c3: runAutoTranslateSweep still exported (DAB.10k.1 widened signature)')
 // Phase 9C.7a — sweep no longer JOINs calendar_events; employee opt-in
 // gate via crew_employees replaces date-scoping.
 assert(/LEFT JOIN\s+crew_employees\s+AS\s+emp/.test(AT),
