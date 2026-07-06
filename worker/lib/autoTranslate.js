@@ -117,6 +117,19 @@ async function sweepAssignments(env, budget) {
 
   let translated = 0
   let failed     = 0
+  // Phase DAB.10k — Reason-code buckets so a single debug run answers
+  // WHY the sweep isn't producing translations. Every candidate row
+  // increments exactly one of translated / reasons.*. Sum of reasons +
+  // translated === scanned (invariant). Reason names are safe to log
+  // and expose in the /api/admin/translate/run debug response — they
+  // carry no source or translated text.
+  const reasons = {
+    empty_provider_result: 0,   // translateText returned null (provider off / AI parse failed)
+    provider_error:        0,   // translateText threw (network / rate limit)
+    update_not_applied:    0,   // UPDATE succeeded but changes=0 (race with manual authoring)
+    identical_to_source:   0,   // provider returned English input unchanged (model refused)
+    write_failed:          0,   // D1 UPDATE returned success=false
+  }
   for (const row of results ?? []) {
     // Phase DAB.10j — Per-row try/catch so one bad row (transient
     // AI provider hiccup, D1 write race) doesn't abort the whole
@@ -124,7 +137,30 @@ async function sweepAssignments(env, budget) {
     // and the loop continues to the next candidate.
     try {
       const out = await translateText(env, row.notes, { from: 'en', to: 'es' })
-      if (!out) { failed++; continue }
+      if (!out) {
+        // Phase DAB.10k — treat null/blank provider result as an
+        // explicit failure bucket instead of silently continuing. This
+        // is the most common cause of a sweep that reports scanned>0
+        // + translated=0 with no other signal.
+        failed++
+        reasons.empty_provider_result++
+        continue
+      }
+      // Phase DAB.10k — validate the returned string before writing.
+      // Provider is instructed to output Spanish only; if we get the
+      // English input back verbatim (some model refusals do this), we
+      // reject it so the row stays eligible for the next sweep.
+      const outTrim = String(out).trim()
+      if (outTrim.length === 0) {
+        failed++
+        reasons.empty_provider_result++
+        continue
+      }
+      if (outTrim === String(row.notes ?? '').trim()) {
+        failed++
+        reasons.identical_to_source++
+        continue
+      }
       // Race-safe UPDATE — only writes when the row STILL has no manual
       // Spanish. A concurrent PATCH from the DAB authoring path wins.
       const result = await env.DB.prepare(
@@ -132,17 +168,33 @@ async function sweepAssignments(env, budget) {
             SET notes_es = ?, updated_at = datetime('now')
           WHERE id = ?
             AND (notes_es IS NULL OR TRIM(notes_es) = '')`,
-      ).bind(out, row.id).run()
-      if (result?.success && (result.meta?.changes ?? 0) > 0) translated++
+      ).bind(outTrim, row.id).run()
+      if (!result?.success) {
+        failed++
+        reasons.write_failed++
+        continue
+      }
+      const changes = result.meta?.changes ?? 0
+      if (changes > 0) {
+        translated++
+      } else {
+        // Row still exists (WHERE id = ? matched) but the notes_es
+        // guard rejected the write — a concurrent manual PATCH filled
+        // it. Not a failure per se; count as update_not_applied so it
+        // shows up distinctly in the debug summary.
+        failed++
+        reasons.update_not_applied++
+      }
     } catch (err) {
       failed++
+      reasons.provider_error++
       console.warn('[TurfIntel Translate] row failed', {
         id: row.id,
         message: err?.message ?? String(err),
       })
     }
   }
-  return { scanned: results?.length ?? 0, translated, failed }
+  return { scanned: results?.length ?? 0, translated, failed, reasons }
 }
 
 /**
@@ -253,12 +305,19 @@ async function sweepAlerts(env, budget) {
  * log; never throws.
  */
 export async function runAutoTranslateSweep(env) {
+  // Phase DAB.10k — Expose the resolved AI model + a top-level trigger
+  // hint (defaulting to 'cron'; the /api/admin/translate/run handler
+  // overwrites it to 'manual' before returning). Assignments summary
+  // now carries `failed` + `reasons` so `?debug=1` reveals the failure
+  // mode in one call.
   const summary = {
-    skipped: false,
-    reason:  null,
+    trigger:  'cron',
+    skipped:  false,
+    reason:   null,
     provider: env?.TRANSLATE_PROVIDER ?? 'none',
+    model:    env?.TRANSLATE_MODEL    ?? null,
     budget:   0,
-    assignments: { scanned: 0, translated: 0 },
+    assignments: { scanned: 0, translated: 0, failed: 0, reasons: {} },
     dailyNotes:  { scanned: 0, translated: 0 },
     alerts:      { scanned: 0, translated: 0 },
   }

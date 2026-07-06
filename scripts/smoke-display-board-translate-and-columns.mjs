@@ -107,16 +107,33 @@ assert(/dayCrew, dayEvents, equipByEvent, employeeNameLookup, employeeById,\s*\n
 // ── FIX 3: Per-row try/catch + failed count in sweep ─────────────
 section('FIX 3: Per-row try/catch — one failure does not abort sweep')
 
-assert(/for \(const row of results \?\? \[\]\) \{\s*\n\s*\/\/[\s\S]{0,300}try \{[\s\S]{0,800}\} catch \(err\) \{/.test(AUTO_TRANS),
+// Phase DAB.10k — per-row try/catch broadened; the block is much
+// larger now (reason-code buckets before/after translateText and
+// UPDATE), so the regex just verifies both keywords appear in the
+// loop body without pinning the specific inter-line layout.
+assert(/for \(const row of results \?\? \[\]\) \{[\s\S]{0,3000}try \{[\s\S]{0,3000}\} catch \(err\) \{/.test(AUTO_TRANS),
   'sweep per-row loop wraps translateText + UPDATE in try/catch')
 
 // Failure logged with id only (no note contents).
 assert(/console\.warn\('\[TurfIntel Translate\] row failed', \{\s*\n\s*id: row\.id/.test(AUTO_TRANS),
   'row failure logs id only (no note contents leaked)')
 
-// Returns {scanned, translated, failed} counts.
-assert(/return \{ scanned: results\?\.length \?\? 0, translated, failed \}/.test(AUTO_TRANS),
-  'sweep returns {scanned, translated, failed} counts')
+// Phase DAB.10k — Returns {scanned, translated, failed, reasons}.
+// The reasons object exposes per-bucket counts so `?debug=1` can
+// distinguish empty_provider_result vs update_not_applied vs
+// identical_to_source vs provider_error vs write_failed.
+assert(/return \{ scanned: results\?\.length \?\? 0, translated, failed, reasons \}/.test(AUTO_TRANS),
+  'sweep returns {scanned, translated, failed, reasons} — DAB.10k reason buckets')
+for (const reasonKey of [
+  'empty_provider_result',
+  'provider_error',
+  'update_not_applied',
+  'identical_to_source',
+  'write_failed',
+]) {
+  assert(new RegExp(`reasons\\.${reasonKey}(?:\\+\\+|:)`).test(AUTO_TRANS),
+    `reason bucket '${reasonKey}' initialized + incremented`)
+}
 
 // ── Scheduled handler still invokes sweep ────────────────────────
 section('Scheduled handler still invokes runAutoTranslateSweep')
