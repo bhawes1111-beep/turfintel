@@ -285,8 +285,12 @@ section('Provider / model unchanged')
 const WRANGLER = readFileSync('wrangler.jsonc', 'utf8')
 assert(/"TRANSLATE_PROVIDER"\s*:\s*"cf-ai"/.test(WRANGLER),
   'wrangler.jsonc still configures TRANSLATE_PROVIDER: "cf-ai"')
-assert(/"TRANSLATE_MODEL"\s*:\s*"@cf\/meta\/llama-3\.1-8b-instruct"/.test(WRANGLER),
-  'wrangler.jsonc still configures TRANSLATE_MODEL: "@cf/meta/llama-3.1-8b-instruct"')
+// Phase DAB.10k.2 — @cf/meta/llama-3.1-8b-instruct deprecated by
+// Cloudflare (Workers AI error 5028, confirmed via ?debug=1 attempts
+// buffer on 2026-07-06). Replaced with @cf/meta/llama-3.3-70b-
+// instruct-fp8-fast.
+assert(/"TRANSLATE_MODEL"\s*:\s*"@cf\/meta\/llama-3\.3-70b-instruct-fp8-fast"/.test(WRANGLER),
+  'wrangler.jsonc TRANSLATE_MODEL: "@cf/meta/llama-3.3-70b-instruct-fp8-fast" (DAB.10k.2)')
 
 // ── Summary ────────────────────────────────────────────────────────────
 console.log(`\n${failed === 0 ? '✅' : '❌'}  ${passed} passed, ${failed} failed`)

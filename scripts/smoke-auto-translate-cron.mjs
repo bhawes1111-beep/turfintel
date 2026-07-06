@@ -39,16 +39,19 @@ assert(/"ai"\s*:\s*\{\s*"binding"\s*:\s*"AI"\s*\}/.test(WRANGLER),
 
 assert(/"TRANSLATE_PROVIDER"\s*:\s*"cf-ai"/.test(WRANGLER),
   'wrangler.jsonc vars include TRANSLATE_PROVIDER: "cf-ai"')
-// Phase 9C.5c3e — Cloudflare deprecated @cf/meta/llama-3-8b-instruct on
-// 2026-05-30 (error 5028). The replacement is the drop-in successor
-// @cf/meta/llama-3.1-8b-instruct.
-assert(/"TRANSLATE_MODEL"\s*:\s*"@cf\/meta\/llama-3\.1-8b-instruct"/.test(WRANGLER),
-  'wrangler.jsonc vars include TRANSLATE_MODEL: "@cf/meta/llama-3.1-8b-instruct"')
-// Negative guard — the deprecated model literal must not appear as the
-// active TRANSLATE_MODEL value anywhere. (Historical comments still
-// allowed; only the JSON value is gated.)
+// Phase DAB.10k.2 — Cloudflare has deprecated the entire llama-3
+// generation (both @cf/meta/llama-3-8b-instruct on 2026-05-30 and
+// @cf/meta/llama-3.1-8b-instruct confirmed via the ?debug=1 attempts
+// buffer on 2026-07-06 with Workers AI error 5028). Active model is
+// now @cf/meta/llama-3.3-70b-instruct-fp8-fast.
+assert(/"TRANSLATE_MODEL"\s*:\s*"@cf\/meta\/llama-3\.3-70b-instruct-fp8-fast"/.test(WRANGLER),
+  'wrangler.jsonc vars include TRANSLATE_MODEL: "@cf/meta/llama-3.3-70b-instruct-fp8-fast"')
+// Negative guards — every previously-deprecated model literal must
+// not appear as the active TRANSLATE_MODEL value.
 assert(!/"TRANSLATE_MODEL"\s*:\s*"@cf\/meta\/llama-3-8b-instruct"/.test(WRANGLER),
   'wrangler.jsonc TRANSLATE_MODEL is NOT set to the deprecated @cf/meta/llama-3-8b-instruct')
+assert(!/"TRANSLATE_MODEL"\s*:\s*"@cf\/meta\/llama-3\.1-8b-instruct"/.test(WRANGLER),
+  'wrangler.jsonc TRANSLATE_MODEL is NOT set to the deprecated @cf/meta/llama-3.1-8b-instruct (DAB.10k.2)')
 assert(/"TRANSLATE_MAX_PER_RUN"\s*:\s*"\d+"/.test(WRANGLER),
   'wrangler.jsonc vars include TRANSLATE_MAX_PER_RUN: "<integer>"')
 

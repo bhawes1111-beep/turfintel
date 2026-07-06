@@ -254,8 +254,9 @@ section('Provider / model unchanged from 9C.5c3e/c3f')
 const WRANGLER = readFileSync('wrangler.jsonc', 'utf8')
 assert(/"TRANSLATE_PROVIDER"\s*:\s*"cf-ai"/.test(WRANGLER),
   'wrangler.jsonc still configures TRANSLATE_PROVIDER: "cf-ai"')
-assert(/"TRANSLATE_MODEL"\s*:\s*"@cf\/meta\/llama-3\.1-8b-instruct"/.test(WRANGLER),
-  'wrangler.jsonc still configures TRANSLATE_MODEL: "@cf/meta/llama-3.1-8b-instruct"')
+// Phase DAB.10k.2 — Model swap after llama-3.1 deprecation (5028).
+assert(/"TRANSLATE_MODEL"\s*:\s*"@cf\/meta\/llama-3\.3-70b-instruct-fp8-fast"/.test(WRANGLER),
+  'wrangler.jsonc TRANSLATE_MODEL: "@cf/meta/llama-3.3-70b-instruct-fp8-fast" (DAB.10k.2)')
 assert(/"ai"\s*:\s*\{\s*"binding"\s*:\s*"AI"\s*\}/.test(WRANGLER),
   'wrangler.jsonc still binds env.AI')
 

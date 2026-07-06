@@ -129,16 +129,20 @@ assert(/extractAiText\(response\)/.test(TR),
   'runAiCall parses the env.AI.run response via extractAiText(response)')
 
 // Both attempts use the same model env.TRANSLATE_MODEL.
-// Phase 9C.5c3e — fallback model updated after Cloudflare deprecated
-// @cf/meta/llama-3-8b-instruct on 2026-05-30 (error 5028). The
-// fallback is now its drop-in successor @cf/meta/llama-3.1-8b-instruct.
-assert(/env\.TRANSLATE_MODEL\s*\|\|\s*['"]@cf\/meta\/llama-3\.1-8b-instruct['"]/.test(TR),
-  'model resolved from env.TRANSLATE_MODEL with @cf/meta/llama-3.1-8b-instruct fallback')
+// Phase DAB.10k.2 — fallback updated again after Cloudflare deprecated
+// @cf/meta/llama-3.1-8b-instruct (Workers AI error 5028 confirmed via
+// ?debug=1 on 2026-07-06). Active fallback: @cf/meta/llama-3.3-70b-
+// instruct-fp8-fast.
+assert(/env\.TRANSLATE_MODEL\s*\|\|\s*['"]@cf\/meta\/llama-3\.3-70b-instruct-fp8-fast['"]/.test(TR),
+  'model resolved from env.TRANSLATE_MODEL with @cf/meta/llama-3.3-70b-instruct-fp8-fast fallback')
 // Negative guard — the deprecated fallback must not silently come back.
 // We only check that the deprecated literal is NOT used as a code
 // fallback (after `||`); historical comments mentioning it remain fine.
 assert(!/env\.TRANSLATE_MODEL\s*\|\|\s*['"]@cf\/meta\/llama-3-8b-instruct['"]/.test(TR),
   'translate.js fallback model is NOT the deprecated @cf/meta/llama-3-8b-instruct')
+// Phase DAB.10k.2 — also block the llama-3.1 fallback.
+assert(!/env\.TRANSLATE_MODEL\s*\|\|\s*['"]@cf\/meta\/llama-3\.1-8b-instruct['"]/.test(TR),
+  'translate.js fallback model is NOT the deprecated @cf/meta/llama-3.1-8b-instruct (DAB.10k.2)')
 
 // Source text never leaks into the attempts buffer.
 assert(!/attempts\.push\(\{[\s\S]{0,200}(sourcePrefix|trimmed|text)\s*[,}]/.test(TR),

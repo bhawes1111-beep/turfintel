@@ -251,8 +251,14 @@ export function getTranslateProvider(env) {
       }
     }
     // Phase 9C.5c3e — fallback updated from @cf/meta/llama-3-8b-instruct
-    // (deprecated 2026-05-30) to its drop-in successor.
-    const model = env.TRANSLATE_MODEL || '@cf/meta/llama-3.1-8b-instruct'
+    // (deprecated 2026-05-30) to @cf/meta/llama-3.1-8b-instruct.
+    // Phase DAB.10k.2 — Cloudflare has now also deprecated @cf/meta/
+    // llama-3.1-8b-instruct (Workers AI error 5028, confirmed via the
+    // /api/admin/translate/run?debug=1 attempts buffer on 2026-07-06).
+    // New default: @cf/meta/llama-3.3-70b-instruct-fp8-fast. Same
+    // { messages } and { prompt } payload shapes; no code change to
+    // the provider abstraction needed beyond the ID.
+    const model = env.TRANSLATE_MODEL || '@cf/meta/llama-3.3-70b-instruct-fp8-fast'
     return {
       name: 'cf-ai',
       async translate(text, opts = {}) {

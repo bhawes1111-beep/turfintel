@@ -173,15 +173,20 @@ assert(/prompt:\s*composed/.test(TR),
 assert(/composed\s*=\s*`\$\{TURF_SYSTEM_PROMPT\}/.test(TR),
   'composed prompt begins with `${TURF_SYSTEM_PROMPT}` (system prompt prefix)')
 
-// ── Model unchanged from Phase 9C.5c3e ─────────────────────────────────
-section('Model unchanged — still @cf/meta/llama-3.1-8b-instruct (9C.5c3e successor)')
+// ── Model (Phase DAB.10k.2 successor) ─────────────────────────────────
+// Phase DAB.10k.2 — llama-3.1-8b-instruct also deprecated by Cloudflare
+// (Workers AI error 5028, confirmed via ?debug=1 attempts buffer on
+// 2026-07-06). New model: @cf/meta/llama-3.3-70b-instruct-fp8-fast.
+section('Model — @cf/meta/llama-3.3-70b-instruct-fp8-fast (DAB.10k.2)')
 
-assert(/env\.TRANSLATE_MODEL\s*\|\|\s*['"]@cf\/meta\/llama-3\.1-8b-instruct['"]/.test(TR),
-  'translate.js fallback model is still @cf/meta/llama-3.1-8b-instruct')
-assert(/"TRANSLATE_MODEL"\s*:\s*"@cf\/meta\/llama-3\.1-8b-instruct"/.test(WRANGLER),
-  'wrangler.jsonc TRANSLATE_MODEL is still @cf/meta/llama-3.1-8b-instruct')
+assert(/env\.TRANSLATE_MODEL\s*\|\|\s*['"]@cf\/meta\/llama-3\.3-70b-instruct-fp8-fast['"]/.test(TR),
+  'translate.js fallback model is @cf/meta/llama-3.3-70b-instruct-fp8-fast')
+assert(/"TRANSLATE_MODEL"\s*:\s*"@cf\/meta\/llama-3\.3-70b-instruct-fp8-fast"/.test(WRANGLER),
+  'wrangler.jsonc TRANSLATE_MODEL is @cf/meta/llama-3.3-70b-instruct-fp8-fast')
 assert(!/env\.TRANSLATE_MODEL\s*\|\|\s*['"]@cf\/meta\/llama-3-8b-instruct['"]/.test(TR),
   'deprecated @cf/meta/llama-3-8b-instruct fallback is NOT re-introduced')
+assert(!/env\.TRANSLATE_MODEL\s*\|\|\s*['"]@cf\/meta\/llama-3\.1-8b-instruct['"]/.test(TR),
+  'deprecated @cf/meta/llama-3.1-8b-instruct fallback is NOT re-introduced (DAB.10k.2)')
 
 // ── Manual override protection — still in autoTranslate sweep ─────────
 section('Manual override protection — race-safe UPDATE guards preserved')
