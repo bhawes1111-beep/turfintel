@@ -288,15 +288,22 @@ for (const helper of [
 }
 
 // Button rendered, wired, accessible.
-assert(/<button[\s\S]{0,400}className=\{styles\.naLoadProgramBtn\}[\s\S]{0,400}onClick=\{\(\) => setLoadProgramOpen\(true\)\}/.test(BUILD),
-  'Load Program button rendered + wires onClick')
-assert(/Load Program/.test(BUILD),
-  'button label reads "Load Program"')
+// SPR.3a — Load-program action moved into the sticky wizard action bar
+// (SprayWizardActions). The setLoadProgramOpen(true) handler is now
+// passed to that component via the `onLoadTemplate` prop, and the
+// button in the actions component fires that prop as `onClick={onLoadTemplate}`.
+// The label was also relabeled to "Load Template" (S.6b → SPR.3a).
+assert(/onLoadTemplate=\{\(\) => setLoadProgramOpen\(true\)\}/.test(BUILD),
+  'Load-program action still opens LoadProgramModal via setLoadProgramOpen(true) (SPR.3a: passed as onLoadTemplate prop)')
+assert(/<button[\s\S]{0,400}className=\{styles\.naLoadProgramBtn\}[\s\S]{0,400}onClick=\{onLoadTemplate\}/.test(BUILD),
+  'Load Template button rendered in the sticky wizard action bar')
+assert(/Load Template/.test(BUILD),
+  'button label reads "Load Template" (SPR.3a rename of "Load Program"/"Load Planned Spray")')
 // Disabled only while committing (NOT when empty draft — supervisor
 // might want to "start from a program" on a fresh draft).
-// Phase S.5a.2 extended the disabled rule with `|| !canEditSprays`.
-assert(/onClick=\{\(\) => setLoadProgramOpen\(true\)\}[\s\S]{0,400}disabled=\{committing(?:\s*\|\| !canEditSprays)?\}/.test(BUILD),
-  'Load Program button disabled while committing or when !canEditSprays (still available on empty draft for authorized users)')
+// SPR.3a — disabled rule is preserved inside SprayWizardActions.
+assert(/<button[\s\S]{0,400}className=\{styles\.naLoadProgramBtn\}[\s\S]{0,400}disabled=\{committing \|\| !canEditSprays\}/.test(BUILD),
+  'Load Template button disabled while committing or when !canEditSprays (still available on empty draft for authorized users)')
 
 // Modal mounts behind state.
 assert(/\{loadProgramOpen && \(\s*\n\s*<LoadProgramModal/.test(BUILD),
@@ -356,8 +363,8 @@ assert(/<Field label="End time">/.test(BUILD),
   'End time field still present (S.5b.1)')
 assert(/<Field label="Soil temperature \(°F\)">/.test(BUILD),
   'Soil temperature field still present (S.5b.1)')
-assert(/<Field label="Wind \/ conditions notes">/.test(BUILD),
-  'Wind / conditions notes label still present (S.5b.1)')
+assert(/<Field label="Wind \/ conditions notes"[^>]*>/.test(BUILD),
+  'Wind / conditions notes label still present (S.5b.1; SPR.3a moved to Conditions step with `wide` prop)')
 
 assert(/import EditSprayRecordModal from '\.\/EditSprayRecordModal'/.test(RECORDS),
   'SprayRecords still imports EditSprayRecordModal (S.5a.1)')

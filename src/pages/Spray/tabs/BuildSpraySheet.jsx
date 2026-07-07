@@ -21,7 +21,7 @@
 //     (worker/api/sprays.js → deleteSpray) — not exercised from this
 //     screen but the contract is intact for the SprayRecords UI.
 
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { createSpray, useSpraysData } from '../../../utils/sprays/spraysStore'
 import { useInventoryData, recordInventoryUsage } from '../../../utils/inventory/inventoryStore'
@@ -275,6 +275,29 @@ function makeEmptyDraft() {
   }
 }
 
+// Phase SPR.3a — Multi-step wizard structure. Four steps guide the
+// user from context → tank → conditions → review. Draft state, commit
+// pipeline, calculations, permission gates, and inventory logic are
+// UNCHANGED — this is a render-layout change only.
+export const SPRAY_WIZARD_STEPS = [
+  { id: 'where',      label: 'Where & When',   short: 'Where' },
+  { id: 'mix',        label: 'Tank Mix',       short: 'Mix' },
+  { id: 'conditions', label: 'Conditions',     short: 'Weather' },
+  { id: 'review',     label: 'Review & Save',  short: 'Review' },
+]
+
+function wizardStepIndex(id) {
+  const i = SPRAY_WIZARD_STEPS.findIndex(s => s.id === id)
+  return i === -1 ? 0 : i
+}
+
+function resolveInitialWizardStep(candidate) {
+  if (!candidate) return SPRAY_WIZARD_STEPS[0].id
+  return SPRAY_WIZARD_STEPS.some(s => s.id === candidate)
+    ? candidate
+    : SPRAY_WIZARD_STEPS[0].id
+}
+
 // Phase S.3 — Wind direction options for the structured picker. "Variable"
 // covers shifting wind during the application; "Calm" covers near-zero
 // wind days. Compliance/regulatory record formats typically expect one
@@ -461,6 +484,16 @@ export default function BuildSpraySheet({ initialDate, onCommit } = {}) {
   const [saveAsProgramOpen, setSaveAsProgramOpen] = useState(false)
   // Phase S.5b.3 — Load-Program modal toggle. Same lifecycle pattern.
   const [loadProgramOpen, setLoadProgramOpen] = useState(false)
+
+  // Phase SPR.3a — Wizard step state. Kept out of the draft object so
+  // the draft's persisted shape and localStorage key stay unchanged.
+  // Fresh sessions land on Step 1; users can freely revisit prior steps.
+  const [wizardStep, setWizardStep] = useState(() => resolveInitialWizardStep('where'))
+  // Progressive disclosure toggles per step. Also intentionally local —
+  // these are UI-only and never round-trip through the draft.
+  const [showMoreWhere,      setShowMoreWhere]      = useState(false)
+  const [showMoreConditions, setShowMoreConditions] = useState(false)
+  const [showMoreActions,    setShowMoreActions]    = useState(false)
 
   // Phase S.5b.3 — Apply a loaded program to the builder draft.
   // The modal builds the rows + suggestions; this handler is the
@@ -991,20 +1024,107 @@ export default function BuildSpraySheet({ initialDate, onCommit } = {}) {
     }
   }
 
-  // ── Render ───────────────────────────────────────────────────────────
+  // ── Wizard step validation (Phase SPR.3a) ─────────────────────────
+  // Lightweight, per-step gates that prevent Continue from advancing
+  // when a step is clearly incomplete. The full commit pipeline in
+  // handleCommit remains the ultimate authority — nothing here relaxes
+  // the existing final validation, and no rules are duplicated.
+  const step1Issues = useMemo(() => {
+    const issues = []
+    if (!draft.operator?.trim()) issues.push('Operator is required')
+    if (!draft.area)             issues.push('Area treated is required')
+    if (!(Number(draft.acres) > 0)) issues.push('Acres must be greater than zero')
+    return issues
+  }, [draft.operator, draft.area, draft.acres])
+
+  const step2Issues = useMemo(() => {
+    const issues = []
+    if (enrichedRows.length === 0) {
+      issues.push('Add at least one product')
+    } else {
+      const incomplete = enrichedRows.some(r =>
+        !r.name?.trim() || !(Number(r.rate) > 0) || !r.rateUnit
+      )
+      if (incomplete) issues.push('Complete each product row (product, rate, rate unit)')
+    }
+    return issues
+  }, [enrichedRows])
+
+  // Step 3 (Conditions) currently has no required fields — mirrors the
+  // existing form, which never blocked commit on weather values. Left
+  // as an empty array so tests can pin "Conditions never blocks
+  // Continue" without additional logic.
+  const step3Issues = useMemo(() => [], [])
+
+  const stepIssuesById = {
+    where:      step1Issues,
+    mix:        step2Issues,
+    conditions: step3Issues,
+    review:     [],
+  }
+
+  const currentStepIndex = wizardStepIndex(wizardStep)
+  const currentStepId    = SPRAY_WIZARD_STEPS[currentStepIndex]?.id ?? 'where'
+  const currentIssues    = stepIssuesById[currentStepId] ?? []
+  const canContinue      = currentIssues.length === 0
+
+  const stepHeadingRef = useRef(null)
+  useEffect(() => {
+    // Move focus to the current step's heading when the step changes,
+    // so keyboard users land on the new content instead of the last
+    // control they touched. Silent no-op if the ref hasn't attached.
+    stepHeadingRef.current?.focus?.({ preventScroll: false })
+  }, [wizardStep])
+
+  const goToStep = useCallback((id) => {
+    setWizardStep(resolveInitialWizardStep(id))
+  }, [])
+
+  const goNext = useCallback(() => {
+    if (!canContinue) return
+    const next = SPRAY_WIZARD_STEPS[currentStepIndex + 1]
+    if (next) setWizardStep(next.id)
+  }, [canContinue, currentStepIndex])
+
+  const goBack = useCallback(() => {
+    const prev = SPRAY_WIZARD_STEPS[currentStepIndex - 1]
+    if (prev) setWizardStep(prev.id)
+  }, [currentStepIndex])
+
+  // ── Render (Phase SPR.3a — four-step wizard) ─────────────────────
+  //
+  // Layout order:
+  //   1. Workspace header
+  //   2. Wizard progress indicator
+  //   3. Current step body (Where / Mix / Conditions / Review)
+  //   4. Tank summary rail (visible on Mix + Review only)
+  //   5. Sticky action bar (Back / Continue / Save & Log Spray + more actions)
   return (
     <div className={styles.tabContent}>
       <WorkspaceSection
         title="New Application"
-        subtitle="Build a tank mix, preview operational totals, commit to permanent record."
+        subtitle="Build a tank mix, preview operational totals, save to permanent record."
       >
-        <div className={styles.naLayout}>
+        <SprayWizardProgress
+          steps={SPRAY_WIZARD_STEPS}
+          currentIndex={currentStepIndex}
+          onSelect={goToStep}
+          stepIssuesById={stepIssuesById}
+        />
 
-          {/* ── Left: builder ── */}
+        <div className={styles.naWizardLayout} data-wizard-step={currentStepId}>
+
+          {/* ── Left: current step ── */}
           <div className={styles.naBuilder}>
 
             <header className={styles.naHeader}>
-              <h2 className={styles.naTitle}>NEW SPRAY APPLICATION</h2>
+              <h2
+                ref={stepHeadingRef}
+                tabIndex={-1}
+                className={styles.naTitle}
+              >
+                {SPRAY_WIZARD_STEPS[currentStepIndex]?.label ?? 'New Application'}
+              </h2>
               <div className={styles.naHeaderMeta}>
                 <span className={styles.naMetaItem}>
                   <span className={styles.naMetaLabel}>Course</span>
@@ -1012,10 +1132,18 @@ export default function BuildSpraySheet({ initialDate, onCommit } = {}) {
                     {selectedCourse?.shortName ?? selectedCourse?.name ?? '—'}
                   </span>
                 </span>
+                <span className={styles.naMetaItem}>
+                  <span className={styles.naMetaLabel}>Step</span>
+                  <span className={styles.naMetaValue}>
+                    {currentStepIndex + 1} of {SPRAY_WIZARD_STEPS.length}
+                  </span>
+                </span>
               </div>
             </header>
 
-            {/* ── Metadata strip ── */}
+            {/* ── Step 1 — Where & When ── */}
+            {currentStepId === 'where' && (
+            <div className={styles.naStepBody} data-step="where">
             <div className={styles.naMetaGrid}>
               <Field label="Date">
                 <input
@@ -1024,116 +1152,6 @@ export default function BuildSpraySheet({ initialDate, onCommit } = {}) {
                   value={draft.date}
                   onChange={e => patchDraft({ date: e.target.value })}
                 />
-              </Field>
-
-              <Field label="Start time">
-                <input
-                  type="time"
-                  className={styles.naInput}
-                  value={draft.startTime}
-                  onChange={e => patchDraft({ startTime: e.target.value })}
-                />
-              </Field>
-
-              {/* Phase S.5b.1 — End time. Worker has supported
-                  end_time since the S.3 baseline; the builder simply
-                  wasn't capturing it. Optional — leave blank if
-                  unknown. */}
-              <Field label="End time">
-                <input
-                  type="time"
-                  className={styles.naInput}
-                  value={draft.endTime}
-                  onChange={e => patchDraft({ endTime: e.target.value })}
-                />
-              </Field>
-
-              <Field label="Operator">
-                {operatorOptions.length > 0 ? (
-                  <select
-                    className={styles.naInput}
-                    value={draft.operator}
-                    onChange={e => handleOperatorChange(e.target.value)}
-                  >
-                    <option value="">— Select —</option>
-                    {operatorOptions.map(emp => (
-                      <option key={emp.id} value={emp.name}>{emp.name}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    type="text"
-                    className={styles.naInput}
-                    value={draft.operator}
-                    onChange={e => handleOperatorChange(e.target.value)}
-                    placeholder="Operator name"
-                  />
-                )}
-              </Field>
-
-              {/* Phase S.3 — Optional pesticide license # for the
-                  applicator. Auto-fills from the crew employee record
-                  when the operator is picked (and the field is still
-                  blank); supervisor can override or leave empty. */}
-              <Field label="Applicator license #">
-                <input
-                  type="text"
-                  className={styles.naInput}
-                  value={draft.applicatorLicense}
-                  onChange={e => patchDraft({ applicatorLicense: e.target.value })}
-                  placeholder="Optional"
-                />
-              </Field>
-
-              <Field label="Spray rig">
-                <select
-                  className={styles.naInput}
-                  value={draft.sprayRig}
-                  onChange={e => patchDraft({ sprayRig: e.target.value })}
-                >
-                  {SPRAY_RIGS.map(r => (
-                    <option key={r.name} value={r.name}>
-                      {r.name} ({r.capacity} gal)
-                    </option>
-                  ))}
-                </select>
-              </Field>
-
-              <Field label="Tank capacity (gal)">
-                <input
-                  type="number"
-                  step="1"
-                  min="0"
-                  className={styles.naInput}
-                  value={draft.tankCapacity}
-                  onChange={e => patchDraft({ tankCapacity: e.target.value })}
-                  placeholder={String(sprayRigSpec.capacity)}
-                  title={`Defaults to ${sprayRigSpec.capacity} gal from ${sprayRigSpec.name}`}
-                />
-              </Field>
-
-              <Field label="Carrier rate">
-                <input
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  className={styles.naInput}
-                  value={draft.carrierRate}
-                  onChange={e => patchDraft({ carrierRate: e.target.value })}
-                  placeholder="44"
-                />
-              </Field>
-
-              <Field label="Carrier unit">
-                <select
-                  className={styles.naInput}
-                  value={draft.carrierUnit}
-                  onChange={e => patchDraft({ carrierUnit: e.target.value })}
-                >
-                  {CARRIER_UNIT_OPTS.map(o => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
               </Field>
 
               <Field label="Area treated">
@@ -1161,14 +1179,138 @@ export default function BuildSpraySheet({ initialDate, onCommit } = {}) {
                 />
               </Field>
 
-              <Field label="Target treatment" wide>
-                <input
-                  type="text"
+              <Field label="Operator">
+                {operatorOptions.length > 0 ? (
+                  <select
+                    className={styles.naInput}
+                    value={draft.operator}
+                    onChange={e => handleOperatorChange(e.target.value)}
+                  >
+                    <option value="">— Select —</option>
+                    {operatorOptions.map(emp => (
+                      <option key={emp.id} value={emp.name}>{emp.name}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    className={styles.naInput}
+                    value={draft.operator}
+                    onChange={e => handleOperatorChange(e.target.value)}
+                    placeholder="Operator name"
+                  />
+                )}
+              </Field>
+
+              <Field label="Spray rig">
+                <select
                   className={styles.naInput}
-                  value={draft.target}
-                  onChange={e => patchDraft({ target: e.target.value })}
-                  placeholder="Disease / pest / weed"
+                  value={draft.sprayRig}
+                  onChange={e => patchDraft({ sprayRig: e.target.value })}
+                >
+                  {SPRAY_RIGS.map(r => (
+                    <option key={r.name} value={r.name}>
+                      {r.name} ({r.capacity} gal)
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+
+            <button
+              type="button"
+              className={styles.naDisclosureBtn}
+              aria-expanded={showMoreWhere}
+              onClick={() => setShowMoreWhere(v => !v)}
+            >
+              {showMoreWhere ? 'Hide more details' : 'More details'}
+            </button>
+
+            {showMoreWhere && (
+              <div className={styles.naMetaGrid}>
+                <Field label="Start time">
+                  <input
+                    type="time"
+                    className={styles.naInput}
+                    value={draft.startTime}
+                    onChange={e => patchDraft({ startTime: e.target.value })}
+                  />
+                </Field>
+
+                <Field label="End time">
+                  <input
+                    type="time"
+                    className={styles.naInput}
+                    value={draft.endTime}
+                    onChange={e => patchDraft({ endTime: e.target.value })}
+                  />
+                </Field>
+
+                <Field label="Applicator license #">
+                  <input
+                    type="text"
+                    className={styles.naInput}
+                    value={draft.applicatorLicense}
+                    onChange={e => patchDraft({ applicatorLicense: e.target.value })}
+                    placeholder="Optional"
+                  />
+                </Field>
+
+                <Field label="Tank capacity (gal)">
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    className={styles.naInput}
+                    value={draft.tankCapacity}
+                    onChange={e => patchDraft({ tankCapacity: e.target.value })}
+                    placeholder={String(sprayRigSpec.capacity)}
+                    title={`Defaults to ${sprayRigSpec.capacity} gal from ${sprayRigSpec.name}`}
+                  />
+                </Field>
+
+                <Field label="Target treatment" wide>
+                  <input
+                    type="text"
+                    className={styles.naInput}
+                    value={draft.target}
+                    onChange={e => patchDraft({ target: e.target.value })}
+                    placeholder="Disease / pest / weed"
+                  />
+                </Field>
+              </div>
+            )}
+            </div>
+            )}
+
+            {/* ── Step 2 — Tank Mix ── */}
+            {currentStepId === 'mix' && (
+            <div className={styles.naStepBody} data-step="mix">
+
+            {/* ── Carrier controls (moved into Tank Mix step for continuity) ── */}
+            <div className={styles.naMetaGrid}>
+              <Field label="Carrier rate">
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  className={styles.naInput}
+                  value={draft.carrierRate}
+                  onChange={e => patchDraft({ carrierRate: e.target.value })}
+                  placeholder="44"
                 />
+              </Field>
+
+              <Field label="Carrier unit">
+                <select
+                  className={styles.naInput}
+                  value={draft.carrierUnit}
+                  onChange={e => patchDraft({ carrierUnit: e.target.value })}
+                >
+                  {CARRIER_UNIT_OPTS.map(o => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
               </Field>
             </div>
 
@@ -1333,29 +1475,13 @@ export default function BuildSpraySheet({ initialDate, onCommit } = {}) {
               draft={draft}
               enrichedRows={enrichedRows}
             />
-
-            {/* ── Conditions ── */}
-            <div className={styles.naSectionHeader}>
-              <h3 className={styles.naSectionTitle}>Conditions at application</h3>
             </div>
+            )}
+
+            {/* ── Step 3 — Conditions ── */}
+            {currentStepId === 'conditions' && (
+            <div className={styles.naStepBody} data-step="conditions">
             <div className={styles.naConditionsGrid}>
-              <Field label="Total water (gal)">
-                <input
-                  type="number"
-                  step="1"
-                  min="0"
-                  className={styles.naInput}
-                  value={summary.totalCarrierGal > 0 && parseFloat(draft.carrierRate) > 0
-                    ? Math.round(summary.totalCarrierGal * 10) / 10
-                    : draft.waterVolume}
-                  onChange={e => patchDraft({ waterVolume: e.target.value })}
-                  readOnly={parseFloat(draft.carrierRate) > 0}
-                  placeholder="auto from carrier rate"
-                  title={parseFloat(draft.carrierRate) > 0
-                    ? 'Derived from carrier rate × acres. Clear carrier rate to enter manually.'
-                    : 'Manual entry. Set a carrier rate above to derive automatically.'}
-                />
-              </Field>
               <Field label="Temperature (°F)">
                 <input
                   type="number"
@@ -1365,13 +1491,6 @@ export default function BuildSpraySheet({ initialDate, onCommit } = {}) {
                   placeholder="72"
                 />
               </Field>
-              {/* Phase S.3 — Structured wind speed + direction are the
-                  primary compliance fields. The free-text "Wind /
-                  conditions notes" further below is secondary and
-                  exists for legacy back-compat + nuance ("gusty",
-                  "shifting", "calm after 8am"). Most supervisors will
-                  fill the structured pair; the notes field is
-                  optional. */}
               <Field label="Wind speed (mph)">
                 <input
                   type="number"
@@ -1402,116 +1521,91 @@ export default function BuildSpraySheet({ initialDate, onCommit } = {}) {
                   placeholder="55"
                 />
               </Field>
-              {/* Phase S.5b.1 — Soil Temperature. Worker has supported
-                  soil_temp since the S.3 baseline. */}
-              <Field label="Soil temperature (°F)">
-                <input
-                  type="number"
-                  step="0.1"
-                  className={styles.naInput}
-                  value={draft.conditions.soilTemp}
-                  onChange={e => patchConditions({ soilTemp: e.target.value })}
-                  placeholder="68"
-                />
-              </Field>
-              {/* Phase S.5b.1 — Legacy free-text wind field, relabeled
-                  as "Wind / conditions notes" and moved to the end of
-                  the weather row so the structured pair above reads
-                  as the primary compliance entry. Stays on the same
-                  conditions.wind column so existing records render
-                  unchanged. */}
-              <Field label="Wind / conditions notes">
-                <input
-                  type="text"
-                  className={styles.naInput}
-                  value={draft.conditions.wind}
-                  onChange={e => patchConditions({ wind: e.target.value })}
-                  placeholder="gusty after 9am, partly cloudy"
-                />
-              </Field>
             </div>
 
-            {/* ── Observations ── */}
-            <div className={styles.naSectionHeader}>
-              <h3 className={styles.naSectionTitle}>Observations</h3>
-            </div>
-            <textarea
-              className={styles.naObservations}
-              value={draft.observations}
-              onChange={e => patchDraft({ observations: e.target.value })}
-              rows={4}
-              placeholder="Field notes, growth-stage observations, conditions changes, post-application notes…"
-            />
+            <button
+              type="button"
+              className={styles.naDisclosureBtn}
+              aria-expanded={showMoreConditions}
+              onClick={() => setShowMoreConditions(v => !v)}
+            >
+              {showMoreConditions ? 'Hide additional conditions' : 'Additional conditions'}
+            </button>
 
-            {/* ── Action row ── */}
-            <div className={styles.naActionRow}>
-              <button
-                type="button"
-                className={styles.naCommitBtn}
-                disabled={committing || enrichedRows.length === 0 || !canEditSprays}
-                onClick={handleCommit}
-                title={!canEditSprays ? 'Spray edit permission required' : undefined}
-              >
-                {committing ? 'Committing…' : 'Commit Application'}
-              </button>
-              <button
-                type="button"
-                className={styles.naSecondaryBtn}
-                onClick={clearDraft}
-              >
-                Discard draft
-              </button>
-              {/* Phase S.5b.2 — Save the current draft as a reusable
-                  planned spray (template). Does NOT commit a record,
-                  deduct inventory, or fire REI alerts.
-                  Phase S.5a.2 — Gated by canEditSprays.
-                  Phase S.6b — Relabeled "Save as Program" →
-                  "Save as Planned Spray" (program internals unchanged). */}
-              <button
-                type="button"
-                className={styles.naSaveAsProgramBtn}
-                onClick={() => setSaveAsProgramOpen(true)}
-                disabled={committing || enrichedRows.length === 0 || !canEditSprays}
-                title={!canEditSprays
-                  ? 'Spray edit permission required'
-                  : 'Save the current draft as a planned spray (no inventory deduction, no spray record created).'}
-              >
-                Save as Planned Spray
-              </button>
-              {/* Phase S.5b.3 — Load a saved planned spray into the
-                  current draft. Non-destructive — no record, no
-                  inventory, no alerts. Available even on an empty
-                  draft.
-                  Phase S.5a.2 — Gated by canEditSprays.
-                  Phase S.6b — Relabeled "Load Program" →
-                  "Load Planned Spray". */}
-              <button
-                type="button"
-                className={styles.naLoadProgramBtn}
-                onClick={() => setLoadProgramOpen(true)}
-                disabled={committing || !canEditSprays}
-                title={!canEditSprays
-                  ? 'Spray edit permission required'
-                  : 'Load a planned spray into the builder (replaces or appends product rows).'}
-              >
-                Load Planned Spray
-              </button>
-              <span className={styles.naActionHint}>
-                Draft autosaves locally · committing creates a permanent record + deducts inventory
-              </span>
-              {/* Phase S.5b.1 — Subtle draft-saved indicator. Reads
-                  the localStorage write timestamp from draftSavedAt.
-                  Synchronous write — no "saving…" spinner needed. */}
-              <span className={styles.naDraftSavedHint} aria-live="polite">
-                {draftSavedAt
-                  ? `Draft saved locally at ${draftSavedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
-                  : 'Unsaved changes'}
-              </span>
+            {showMoreConditions && (
+              <>
+              <div className={styles.naConditionsGrid}>
+                <Field label="Soil temperature (°F)">
+                  <input
+                    type="number"
+                    step="0.1"
+                    className={styles.naInput}
+                    value={draft.conditions.soilTemp}
+                    onChange={e => patchConditions({ soilTemp: e.target.value })}
+                    placeholder="68"
+                  />
+                </Field>
+                <Field label="Total water (gal)">
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    className={styles.naInput}
+                    value={summary.totalCarrierGal > 0 && parseFloat(draft.carrierRate) > 0
+                      ? Math.round(summary.totalCarrierGal * 10) / 10
+                      : draft.waterVolume}
+                    onChange={e => patchDraft({ waterVolume: e.target.value })}
+                    readOnly={parseFloat(draft.carrierRate) > 0}
+                    placeholder="auto from carrier rate"
+                    title={parseFloat(draft.carrierRate) > 0
+                      ? 'Derived from carrier rate × acres. Clear carrier rate to enter manually.'
+                      : 'Manual entry. Set a carrier rate above to derive automatically.'}
+                  />
+                </Field>
+                <Field label="Wind / conditions notes" wide>
+                  <input
+                    type="text"
+                    className={styles.naInput}
+                    value={draft.conditions.wind}
+                    onChange={e => patchConditions({ wind: e.target.value })}
+                    placeholder="gusty after 9am, partly cloudy"
+                  />
+                </Field>
+              </div>
+
+              <div className={styles.naSectionHeader}>
+                <h3 className={styles.naSectionTitle}>Observations</h3>
+              </div>
+              <textarea
+                className={styles.naObservations}
+                value={draft.observations}
+                onChange={e => patchDraft({ observations: e.target.value })}
+                rows={4}
+                placeholder="Field notes, growth-stage observations, conditions changes, post-application notes…"
+              />
+              </>
+            )}
             </div>
+            )}
+
+            {/* ── Step 4 — Review & Save ── */}
+            {currentStepId === 'review' && (
+            <div className={styles.naStepBody} data-step="review">
+              <SprayReviewSummary
+                draft={draft}
+                enrichedRows={enrichedRows}
+                summary={summary}
+                selectedCourse={selectedCourse}
+                stepIssuesById={stepIssuesById}
+                onEditStep={goToStep}
+              />
+            </div>
+            )}
 
           </div>
 
-          {/* ── Right: tank summary ── */}
+          {/* ── Right: tank summary — visible on Mix + Review only ── */}
+          {(currentStepId === 'mix' || currentStepId === 'review') && (
           <aside className={styles.naTankSummary}>
             <div className={styles.naTankHeader}>
               <h3 className={styles.naTankTitle}>Tank Summary</h3>
@@ -1598,8 +1692,30 @@ export default function BuildSpraySheet({ initialDate, onCommit } = {}) {
               </div>
             )}
           </aside>
+          )}
 
         </div>
+
+        {/* ── Sticky wizard action bar ── */}
+        <SprayWizardActions
+          currentStepId={currentStepId}
+          currentStepIndex={currentStepIndex}
+          totalSteps={SPRAY_WIZARD_STEPS.length}
+          canContinue={canContinue}
+          currentIssues={currentIssues}
+          committing={committing}
+          canEditSprays={canEditSprays}
+          hasRows={enrichedRows.length > 0}
+          showMoreActions={showMoreActions}
+          setShowMoreActions={setShowMoreActions}
+          draftSavedAt={draftSavedAt}
+          onBack={goBack}
+          onContinue={goNext}
+          onCommit={handleCommit}
+          onSaveAsTemplate={() => setSaveAsProgramOpen(true)}
+          onLoadTemplate={() => setLoadProgramOpen(true)}
+          onClear={clearDraft}
+        />
 
         {/* Phase S.5b.2 — Save-as-Program modal. Renders only when
             the supervisor clicks Save as Program in the action row.
@@ -2173,6 +2289,372 @@ function LoadStat({ label, value }) {
     <div className={styles.naLoadStat}>
       <span className={styles.naLoadStatLabel}>{label}</span>
       <span className={styles.naLoadStatValue}>{value}</span>
+    </div>
+  )
+}
+
+// ── Phase SPR.3a — Wizard components ─────────────────────────────────
+
+function SprayWizardProgress({ steps, currentIndex, onSelect, stepIssuesById }) {
+  return (
+    <nav
+      className={styles.naWizardProgress}
+      role="tablist"
+      aria-label="Spray application steps"
+    >
+      {steps.map((s, i) => {
+        const isCurrent  = i === currentIndex
+        const isPast     = i < currentIndex
+        const state      = isCurrent ? 'current' : isPast ? 'complete' : 'future'
+        const stepIssues = stepIssuesById[s.id] ?? []
+        const hasIssues  = stepIssues.length > 0
+        // Past + current steps clickable (safe — user can freely revisit).
+        // Future steps not clickable via progress rail; they must click
+        // Continue so per-step validation runs.
+        const clickable = isPast || isCurrent
+        return (
+          <button
+            key={s.id}
+            type="button"
+            role="tab"
+            aria-current={isCurrent ? 'step' : undefined}
+            aria-selected={isCurrent}
+            data-state={state}
+            data-has-issues={hasIssues && isCurrent ? 'true' : undefined}
+            className={styles.naWizardStep}
+            disabled={!clickable}
+            onClick={() => clickable && onSelect(s.id)}
+          >
+            <span className={styles.naWizardStepNum}>{i + 1}</span>
+            <span className={styles.naWizardStepLabel}>{s.label}</span>
+          </button>
+        )
+      })}
+    </nav>
+  )
+}
+
+function SprayWizardActions({
+  currentStepId,
+  currentStepIndex,
+  totalSteps,
+  canContinue,
+  currentIssues,
+  committing,
+  canEditSprays,
+  hasRows,
+  showMoreActions,
+  setShowMoreActions,
+  draftSavedAt,
+  onBack,
+  onContinue,
+  onCommit,
+  onSaveAsTemplate,
+  onLoadTemplate,
+  onClear,
+}) {
+  const isLast    = currentStepId === 'review'
+  const isFirst   = currentStepIndex === 0
+  const commitDisabled = committing || !hasRows || !canEditSprays
+
+  return (
+    <div className={styles.naWizardActionBar} role="group" aria-label="Wizard actions">
+      {currentIssues.length > 0 && !isLast && (
+        <ul className={styles.naWizardIssueList} aria-live="polite">
+          {currentIssues.map(msg => (
+            <li key={msg} className={styles.naWizardIssue}>{msg}</li>
+          ))}
+        </ul>
+      )}
+
+      <div className={styles.naWizardActionRow}>
+        <div className={styles.naWizardActionLeft}>
+          {!isFirst && (
+            <button
+              type="button"
+              className={styles.naSecondaryBtn}
+              onClick={onBack}
+              disabled={committing}
+            >
+              ← Back
+            </button>
+          )}
+          <span className={styles.naWizardStepHint}>
+            Step {currentStepIndex + 1} of {totalSteps}
+          </span>
+        </div>
+
+        <div className={styles.naWizardActionRight}>
+          <button
+            type="button"
+            className={styles.naSecondaryBtn}
+            onClick={() => setShowMoreActions(v => !v)}
+            aria-expanded={showMoreActions}
+            title="Template + form actions"
+          >
+            More actions
+          </button>
+
+          {isLast ? (
+            <button
+              type="button"
+              className={styles.naCommitBtn}
+              disabled={commitDisabled}
+              onClick={onCommit}
+              title={!canEditSprays ? 'Spray edit permission required' : undefined}
+            >
+              {committing ? 'Saving…' : 'Save & Log Spray'}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className={styles.naCommitBtn}
+              disabled={!canContinue}
+              onClick={onContinue}
+              title={!canContinue ? 'Resolve required fields to continue' : undefined}
+            >
+              Continue →
+            </button>
+          )}
+        </div>
+      </div>
+
+      {showMoreActions && (
+        <div className={styles.naWizardMoreRow}>
+          <button
+            type="button"
+            className={styles.naSaveAsProgramBtn}
+            onClick={onSaveAsTemplate}
+            disabled={committing || !hasRows || !canEditSprays}
+            title={!canEditSprays
+              ? 'Spray edit permission required'
+              : 'Save the current draft as a template (no inventory deduction, no spray record created).'}
+          >
+            Save as Template
+          </button>
+          <button
+            type="button"
+            className={styles.naLoadProgramBtn}
+            onClick={onLoadTemplate}
+            disabled={committing || !canEditSprays}
+            title={!canEditSprays
+              ? 'Spray edit permission required'
+              : 'Load a template into the builder (replaces or appends product rows).'}
+          >
+            Load Template
+          </button>
+          <button
+            type="button"
+            className={styles.naSecondaryBtn}
+            onClick={onClear}
+            disabled={committing}
+          >
+            Clear Form
+          </button>
+          <span className={styles.naDraftSavedHint} aria-live="polite">
+            {draftSavedAt
+              ? `Saved to this device at ${draftSavedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
+              : 'Unsaved changes'}
+          </span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Read-only summary. Consumes existing derived state — never recomputes.
+function SprayReviewSummary({
+  draft,
+  enrichedRows,
+  summary,
+  selectedCourse,
+  stepIssuesById,
+  onEditStep,
+}) {
+  const anyIssues =
+    (stepIssuesById.where?.length ?? 0) > 0 ||
+    (stepIssuesById.mix?.length ?? 0) > 0
+
+  return (
+    <div className={styles.naReview}>
+      {anyIssues && (
+        <div className={styles.naReviewIssues} role="alert">
+          <strong>Fix these before saving:</strong>
+          <ul>
+            {(stepIssuesById.where ?? []).map(m => (
+              <li key={`w-${m}`}>
+                {m}{' '}
+                <button
+                  type="button"
+                  className={styles.naReviewEditLink}
+                  onClick={() => onEditStep('where')}
+                >Edit</button>
+              </li>
+            ))}
+            {(stepIssuesById.mix ?? []).map(m => (
+              <li key={`m-${m}`}>
+                {m}{' '}
+                <button
+                  type="button"
+                  className={styles.naReviewEditLink}
+                  onClick={() => onEditStep('mix')}
+                >Edit</button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <ReviewCard
+        title="Application"
+        onEdit={() => onEditStep('where')}
+      >
+        <ReviewRow label="Date"                value={draft.date || '—'} />
+        <ReviewRow label="Start time"          value={draft.startTime || '—'} />
+        <ReviewRow label="End time"            value={draft.endTime || '—'} />
+        <ReviewRow label="Course"              value={selectedCourse?.shortName ?? selectedCourse?.name ?? '—'} />
+        <ReviewRow label="Area treated"        value={draft.area || '—'} />
+        <ReviewRow label="Acres"               value={draft.acres > 0 ? fmt(draft.acres, 1) : '—'} />
+        <ReviewRow label="Operator"            value={draft.operator || '—'} />
+        <ReviewRow label="Applicator license"  value={draft.applicatorLicense || '—'} />
+        <ReviewRow label="Spray rig"           value={draft.sprayRig || '—'} />
+        <ReviewRow label="Target treatment"    value={draft.target || '—'} />
+      </ReviewCard>
+
+      <ReviewCard
+        title="Tank mix"
+        onEdit={() => onEditStep('mix')}
+      >
+        <ReviewRow label="Products" value={enrichedRows.length} />
+        <ReviewRow
+          label="Total water"
+          value={summary.totalCarrierGal > 0 ? `${fmt(summary.totalCarrierGal, 0)} gal` : '—'}
+        />
+        <ReviewRow
+          label="Tanks required"
+          value={summary.loadPlan
+            ? `${summary.loadPlan.fullLoads}${summary.loadPlan.hasPartial ? ' full + 1 partial' : ' full'}`
+            : '—'}
+        />
+        <ReviewRow label="Estimated cost" value={fmtCurrency(summary.totalCost)} />
+
+        {enrichedRows.length > 0 && (
+          <div className={styles.naReviewProducts}>
+            <div className={styles.naReviewProductsHead}>
+              <span>Product</span>
+              <span>Rate</span>
+              <span>Qty needed</span>
+              <span>Cost</span>
+            </div>
+            {enrichedRows.map(r => (
+              <div key={r.id} className={styles.naReviewProductRow}>
+                <span>{r.name || '—'}</span>
+                <span>{r.rate ? formatRateLabel(r.rate, r.rateUnit) : '—'}</span>
+                <span>{r.qtyNeeded > 0 ? `${fmt(r.qtyNeeded, 2)} ${r.qtyUnit}` : '—'}</span>
+                <span>{fmtCurrency(r.cost)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </ReviewCard>
+
+      <ReviewCard
+        title="Conditions"
+        onEdit={() => onEditStep('conditions')}
+      >
+        <ReviewRow label="Temperature (°F)"    value={draft.conditions.temp || '—'} />
+        <ReviewRow label="Wind speed (mph)"    value={draft.conditions.windSpeedMph || '—'} />
+        <ReviewRow label="Wind direction"      value={draft.conditions.windDirection || '—'} />
+        <ReviewRow label="Humidity (%)"        value={draft.conditions.humidity || '—'} />
+        <ReviewRow label="Soil temperature"    value={draft.conditions.soilTemp || '—'} />
+        <ReviewRow label="Wind / notes"        value={draft.conditions.wind || '—'} />
+        {draft.observations && (
+          <div className={styles.naReviewObservations}>
+            <div className={styles.naReviewObservationsLabel}>Observations</div>
+            <div className={styles.naReviewObservationsBody}>{draft.observations}</div>
+          </div>
+        )}
+      </ReviewCard>
+
+      <ReviewCard title="Warnings & inventory impact">
+        {summary.unitMismatches.length === 0 &&
+         !summary.anyInsufficient &&
+         (summary.maxRei ?? 0) === 0 && (
+          <span className={styles.naUnavailable}>No warnings on this tank mix.</span>
+        )}
+        {summary.unitMismatches.length > 0 && (
+          <div className={styles.naReviewWarn} role="alert">
+            <strong>Unit mismatch.</strong>{' '}
+            {summary.unitMismatches.length === 1
+              ? `${summary.unitMismatches[0].name} rate is in ${summary.unitMismatches[0].rateMeasure} but inventory is in ${summary.unitMismatches[0].invUnit}.`
+              : `${summary.unitMismatches.length} products have rate units incompatible with inventory.`}
+            {' '}Inventory will be skipped on save for these rows.
+          </div>
+        )}
+        {summary.anyInsufficient && (
+          <div className={styles.naReviewWarn} role="alert">
+            <strong>Insufficient inventory.</strong> One or more products exceed
+            available stock for this tank mix.
+          </div>
+        )}
+        {(summary.maxRei ?? 0) > 0 && (
+          <ReviewRow label="REI (post-save)" value={`${summary.maxRei} hrs`} />
+        )}
+
+        <div className={styles.naReviewImpact}>
+          <div className={styles.naReviewImpactLabel}>Inventory impact on save</div>
+          <ul className={styles.naReviewImpactList}>
+            {enrichedRows
+              .filter(r => r.name && r.qtyNeeded > 0)
+              .map(r => {
+                const skip = r.inv && r.unitConversion && !r.unitConversion.ok
+                const insufficient = r.insufficient
+                return (
+                  <li key={r.id}>
+                    <span>{r.name}</span>
+                    <span>
+                      {skip
+                        ? 'Skipped — unit mismatch'
+                        : insufficient
+                          ? `Insufficient — will deduct up to ${fmt(r.available ?? 0, 1)} ${r.inv?.unit ?? r.qtyUnit}`
+                          : `Deduct ${fmt(r.qtyInInv ?? r.qtyNeeded, 2)} ${r.inv?.unit ?? r.qtyUnit}`}
+                    </span>
+                  </li>
+                )
+              })}
+            {enrichedRows.filter(r => r.name && r.qtyNeeded > 0).length === 0 && (
+              <li>No inventory changes.</li>
+            )}
+          </ul>
+        </div>
+      </ReviewCard>
+    </div>
+  )
+}
+
+function ReviewCard({ title, onEdit, children }) {
+  return (
+    <section className={styles.naReviewCard}>
+      <header className={styles.naReviewCardHead}>
+        <h3 className={styles.naReviewCardTitle}>{title}</h3>
+        {onEdit && (
+          <button
+            type="button"
+            className={styles.naReviewEditLink}
+            onClick={onEdit}
+          >Edit</button>
+        )}
+      </header>
+      <div className={styles.naReviewCardBody}>{children}</div>
+    </section>
+  )
+}
+
+function ReviewRow({ label, value }) {
+  return (
+    <div className={styles.naReviewRow}>
+      <span className={styles.naReviewRowLabel}>{label}</span>
+      <span className={styles.naReviewRowValue}>{value}</span>
     </div>
   )
 }

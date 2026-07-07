@@ -3006,3 +3006,362 @@ select.naInput option {
     justify-self: end;
   }
 }
+
+/* ── Phase SPR.3a — Spray Application Wizard ─────────────────────── */
+
+.naWizardProgress {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 0 12px;
+  margin: 0 0 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  scrollbar-width: thin;
+}
+
+.naWizardStep {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  color: rgba(255, 255, 255, 0.60);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  min-height: 40px;
+  transition: background 120ms, color 120ms, border-color 120ms;
+}
+.naWizardStep:disabled {
+  cursor: default;
+  opacity: 0.75;
+}
+.naWizardStep[data-state="current"] {
+  background: rgba(96, 165, 250, 0.16);
+  border-color: rgba(96, 165, 250, 0.55);
+  color: #cce4ff;
+}
+.naWizardStep[data-state="complete"] {
+  background: rgba(74, 222, 128, 0.10);
+  border-color: rgba(74, 222, 128, 0.35);
+  color: #a7f3c0;
+}
+.naWizardStep[data-state="future"] {
+  color: rgba(255, 255, 255, 0.48);
+}
+.naWizardStep[data-has-issues="true"] {
+  border-color: rgba(248, 113, 113, 0.60);
+}
+
+.naWizardStepNum {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.10);
+  font-size: 12px;
+  font-weight: 700;
+}
+.naWizardStep[data-state="current"] .naWizardStepNum {
+  background: rgba(96, 165, 250, 0.35);
+}
+.naWizardStep[data-state="complete"] .naWizardStepNum {
+  background: rgba(74, 222, 128, 0.30);
+}
+
+.naWizardStepLabel {
+  font-size: 13px;
+  letter-spacing: 0.02em;
+}
+
+.naWizardLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 320px);
+  gap: 20px;
+  align-items: flex-start;
+  padding-bottom: 96px; /* leave room for sticky action bar */
+}
+.naWizardLayout[data-wizard-step="where"],
+.naWizardLayout[data-wizard-step="conditions"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.naStepBody {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.naDisclosureBtn {
+  align-self: flex-start;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.80);
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 40px;
+}
+.naDisclosureBtn:hover {
+  background: rgba(255, 255, 255, 0.10);
+}
+
+.naWizardActionBar {
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  background: rgba(15, 22, 33, 0.94);
+  backdrop-filter: blur(6px);
+  border-top: 1px solid rgba(255, 255, 255, 0.10);
+  margin: 20px -12px -12px;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.naWizardActionRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.naWizardActionLeft,
+.naWizardActionRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.naWizardStepHint {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.naWizardMoreRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.08);
+}
+
+.naWizardIssueList {
+  list-style: none;
+  margin: 0;
+  padding: 6px 10px;
+  background: rgba(248, 113, 113, 0.10);
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  border-radius: 6px;
+  color: #ffb3b3;
+  font-size: 12px;
+}
+.naWizardIssue {
+  margin: 2px 0;
+}
+
+/* ── Review step ── */
+
+.naReview {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.naReviewCard {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.naReviewCardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.naReviewCardTitle {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.72);
+}
+.naReviewCardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.naReviewRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 3px 0;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.06);
+}
+.naReviewRow:last-child { border-bottom: none; }
+.naReviewRowLabel {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 12px;
+}
+.naReviewRowValue {
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: right;
+}
+
+.naReviewEditLink {
+  background: none;
+  border: none;
+  color: #60a5fa;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+}
+.naReviewEditLink:hover {
+  background: rgba(96, 165, 250, 0.12);
+  text-decoration: underline;
+}
+
+.naReviewProducts {
+  margin-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 8px;
+  overflow-x: auto;
+}
+.naReviewProductsHead,
+.naReviewProductRow {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 12px;
+}
+.naReviewProductsHead {
+  color: rgba(255, 255, 255, 0.55);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-weight: 600;
+}
+.naReviewProductRow {
+  color: rgba(255, 255, 255, 0.85);
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
+}
+.naReviewProductRow:last-child { border-bottom: none; }
+
+.naReviewObservations {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.naReviewObservationsLabel {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+  margin-bottom: 4px;
+}
+.naReviewObservationsBody {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.85);
+  white-space: pre-wrap;
+}
+
+.naReviewWarn {
+  padding: 8px 10px;
+  background: rgba(224, 108, 108, 0.10);
+  border: 1px solid rgba(224, 108, 108, 0.35);
+  border-radius: 6px;
+  color: #ffbcbc;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+.naReviewImpact {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.naReviewImpactLabel {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+  margin-bottom: 4px;
+}
+.naReviewImpactList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.naReviewImpactList li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.80);
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
+}
+.naReviewImpactList li:last-child { border-bottom: none; }
+
+.naReviewIssues {
+  padding: 10px 12px;
+  background: rgba(248, 113, 113, 0.10);
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  border-radius: 6px;
+  color: #ffb3b3;
+  font-size: 13px;
+}
+.naReviewIssues ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+/* ── Mobile wizard tuning ── */
+@media (max-width: 900px) {
+  .naWizardLayout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  .naWizardStepLabel {
+    display: none;
+  }
+  .naWizardStep {
+    padding: 8px 10px;
+    min-width: 44px;
+    justify-content: center;
+  }
+  .naWizardActionRow {
+    justify-content: stretch;
+  }
+  .naWizardActionLeft,
+  .naWizardActionRight {
+    flex: 1 1 100%;
+    justify-content: space-between;
+  }
+  .naReviewProductsHead,
+  .naReviewProductRow {
+    grid-template-columns: 2fr 1fr;
+  }
+  .naReviewProductsHead span:nth-child(3),
+  .naReviewProductsHead span:nth-child(4),
+  .naReviewProductRow span:nth-child(3),
+  .naReviewProductRow span:nth-child(4) {
+    display: none;
+  }
+}
+

@@ -110,29 +110,31 @@ for (const code of [BUILD_CODE, RECORDS_CODE]) {
 // ── BuildSpraySheet — Commit / Save / Load disabled gating ──────────
 section('BuildSpraySheet — Commit / Save / Load disabled when !canEditSprays')
 
-// Commit button — disabled rule extended with || !canEditSprays.
-assert(/<button[\s\S]{0,400}className=\{styles\.naCommitBtn\}[\s\S]{0,400}disabled=\{committing \|\| enrichedRows\.length === 0 \|\| !canEditSprays\}/.test(BUILD),
-  'Commit Application button disabled when !canEditSprays')
+// Phase SPR.3a — wizard restructured the action row into
+// SprayWizardActions; the commit-disable logic now lives in the
+// `commitDisabled` derivation. Rule content is preserved.
+assert(/const commitDisabled = committing \|\| !hasRows \|\| !canEditSprays/.test(BUILD),
+  'Save & Log Spray commit-disable rule: committing || !hasRows || !canEditSprays (SPR.3a)')
+assert(/<button[\s\S]{0,400}className=\{styles\.naCommitBtn\}[\s\S]{0,400}disabled=\{commitDisabled\}/.test(BUILD),
+  'Save & Log Spray button disabled by commitDisabled')
 assert(/title=\{!canEditSprays \? 'Spray edit permission required' : undefined\}/.test(BUILD),
-  'Commit button surfaces "Spray edit permission required" title when disabled')
+  'Save & Log Spray button surfaces "Spray edit permission required" title when disabled')
 
-// Save as Program button — disabled rule extended.
-assert(/<button[\s\S]{0,400}className=\{styles\.naSaveAsProgramBtn\}[\s\S]{0,400}disabled=\{committing \|\| enrichedRows\.length === 0 \|\| !canEditSprays\}/.test(BUILD),
-  'Save as Program button disabled when !canEditSprays')
-// Save as Program title uses ternary to swap between permission warning and original tooltip.
-// Phase S.6b — tooltip user-copy now says "planned spray" not "Spray Program".
-assert(/title=\{!canEditSprays\s*\n?\s*\?\s*'Spray edit permission required'\s*\n?\s*:\s*'Save the current draft as a planned spray/.test(BUILD),
-  'Save as Planned Spray title swaps to "Spray edit permission required" when disabled (S.6b copy)')
+// Save as Template — disabled rule extended with || !canEditSprays.
+assert(/<button[\s\S]{0,400}className=\{styles\.naSaveAsProgramBtn\}[\s\S]{0,400}disabled=\{committing \|\| !hasRows \|\| !canEditSprays\}/.test(BUILD),
+  'Save as Template button disabled when !canEditSprays (SPR.3a: uses !hasRows prop)')
+assert(/title=\{!canEditSprays\s*\n?\s*\?\s*'Spray edit permission required'\s*\n?\s*:\s*'Save the current draft as a template/.test(BUILD),
+  'Save as Template title swaps to "Spray edit permission required" when disabled (SPR.3a copy)')
 
-// Load Program button — disabled rule extended.
+// Load Template — disabled rule extended.
 assert(/<button[\s\S]{0,400}className=\{styles\.naLoadProgramBtn\}[\s\S]{0,400}disabled=\{committing \|\| !canEditSprays\}/.test(BUILD),
-  'Load Planned Spray button disabled when !canEditSprays (still available on empty draft for authorized users)')
-assert(/title=\{!canEditSprays\s*\n?\s*\?\s*'Spray edit permission required'\s*\n?\s*:\s*'Load a planned spray into the builder/.test(BUILD),
-  'Load Planned Spray title swaps to "Spray edit permission required" when disabled (S.6b copy)')
+  'Load Template button disabled when !canEditSprays (still available on empty draft for authorized users)')
+assert(/title=\{!canEditSprays\s*\n?\s*\?\s*'Spray edit permission required'\s*\n?\s*:\s*'Load a template into the builder/.test(BUILD),
+  'Load Template title swaps to "Spray edit permission required" when disabled (SPR.3a copy)')
 
-// Discard draft stays visible + ungated (local-state-only operation).
-assert(/className=\{styles\.naSecondaryBtn\}[\s\S]{0,200}onClick=\{clearDraft\}/.test(BUILD),
-  'Discard draft button still visible (local-state only — never gated)')
+// Clear Form (was: Discard draft) stays visible + ungated (local-state-only).
+assert(/className=\{styles\.naSecondaryBtn\}[\s\S]{0,200}onClick=\{onClear\}/.test(BUILD),
+  'Clear Form button still visible (local-state only — never gated by permission)')
 // Negative pin: clearDraft handler doesn't gain a canEditSprays check.
 const clearMatch = BUILD.match(/function clearDraft\(\)\s*\{[\s\S]*?\n  \}/)
 const clearSrc   = clearMatch ? clearMatch[0] : ''

@@ -223,7 +223,7 @@ assert(/wind:\s*['"]['"]/.test(BUILD),
 // notes" (the data column is unchanged — still conditions.wind). The
 // pin accepts either the original "Wind" label or the new "Wind /
 // conditions notes" label as long as the value binding stays the same.
-assert(/<Field label="(?:Wind|Wind \/ conditions notes)">[\s\S]{0,400}value=\{draft\.conditions\.wind\}/.test(BUILD),
+assert(/<Field label="(?:Wind|Wind \/ conditions notes)"[^>]*>[\s\S]{0,400}value=\{draft\.conditions\.wind\}/.test(BUILD),
   'BuildSpraySheet preserves the free-text conditions.wind input (S.5b.1: relabeled to "Wind / conditions notes")')
 
 // New structured wind fields.

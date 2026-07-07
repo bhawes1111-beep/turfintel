@@ -167,13 +167,29 @@ assert(!/moreTab === 'Planned Programs'/.test(SP),
 assert(!/activeTab === 'Planned Programs'/.test(SP),
   "no leftover activeTab === 'Planned Programs' route (S.6c removal)")
 
-// ── Planned Sprays workflow regression couples (S.6b) ───────────────
-section('Planned Sprays workflow preserved — Build Spray buttons + Planner page')
+// ── Planned Sprays workflow regression couples ─────────────────────
+//
+// Phase SPR.3a renamed the builder's action-row buttons:
+//   "Save as Planned Spray" → "Save as Template"
+//   "Load Planned Spray"    → "Load Template"
+// The underlying save/load handlers and modal titles are unchanged;
+// the modal still says "Save as Planned Spray" so users see the same
+// planned-spray concept in the modal itself. Only the button labels
+// changed to reduce competition with the primary Save & Log Spray CTA.
+section('Planned Sprays workflow preserved — builder buttons relabeled, planner page unchanged')
 
-assert(/>\s*Save as Planned Spray\s*<\/button>/.test(BUILD),
-  'Build Spray still renders "Save as Planned Spray" button (S.6b couple)')
-assert(/>\s*Load Planned Spray\s*<\/button>/.test(BUILD),
-  'Build Spray still renders "Load Planned Spray" button (S.6b couple)')
+assert(/>\s*Save as Template\s*<\/button>/.test(BUILD),
+  'Build Spray still exposes a Save-as-Template action (SPR.3a rename of "Save as Planned Spray")')
+assert(/>\s*Load Template\s*<\/button>/.test(BUILD),
+  'Build Spray still exposes a Load-Template action (SPR.3a rename of "Load Planned Spray")')
+
+// Modal titles unchanged — they still say "Planned Spray".
+const SAVE_MOD = readFileSync('src/pages/Spray/tabs/SaveAsProgramModal.jsx', 'utf8')
+const LOAD_MOD = readFileSync('src/pages/Spray/tabs/LoadProgramModal.jsx',   'utf8')
+assert(/Save as Planned Spray/.test(SAVE_MOD),
+  'SaveAsProgramModal title still says "Save as Planned Spray" (modal internal — user still sees the concept in the modal itself)')
+assert(/Load Planned Spray/.test(LOAD_MOD),
+  'LoadProgramModal title still says "Load Planned Spray" (modal internal)')
 
 const PLANNER = readFileSync('src/pages/Spray/tabs/SprayProgramPlanner.jsx', 'utf8')
 assert(/<WorkspaceSection\s+title="Planned Sprays"/.test(PLANNER),

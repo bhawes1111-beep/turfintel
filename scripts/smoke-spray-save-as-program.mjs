@@ -237,13 +237,21 @@ assert(/import SaveAsProgramModal from '\.\/SaveAsProgramModal'/.test(BUILD),
 assert(/const \[saveAsProgramOpen, setSaveAsProgramOpen\] = useState\(false\)/.test(BUILD),
   'saveAsProgramOpen state defined via useState(false)')
 
-assert(/<button[\s\S]{0,400}className=\{styles\.naSaveAsProgramBtn\}[\s\S]{0,400}onClick=\{\(\) => setSaveAsProgramOpen\(true\)\}/.test(BUILD),
-  'Save as Program button rendered + wires onClick')
-assert(/Save as Program/.test(BUILD),
-  'button label reads "Save as Program"')
-// Phase S.5a.2 extended the disabled rule with `|| !canEditSprays`.
-assert(/disabled=\{committing \|\| enrichedRows\.length === 0(?:\s*\|\| !canEditSprays)?\}/.test(BUILD),
-  'button disabled when committing or no products in draft (S.5a.2: also when !canEditSprays)')
+// SPR.3a — Save-as-Program action moved into the sticky wizard action
+// bar (SprayWizardActions). The setSaveAsProgramOpen(true) handler is
+// now passed via the onSaveAsTemplate prop and fired as
+// onClick={onSaveAsTemplate}. The visible label was also relabeled to
+// "Save as Template".
+assert(/onSaveAsTemplate=\{\(\) => setSaveAsProgramOpen\(true\)\}/.test(BUILD),
+  'Save-as-Program action still opens SaveAsProgramModal via setSaveAsProgramOpen(true) (SPR.3a: passed as onSaveAsTemplate prop)')
+assert(/<button[\s\S]{0,400}className=\{styles\.naSaveAsProgramBtn\}[\s\S]{0,400}onClick=\{onSaveAsTemplate\}/.test(BUILD),
+  'Save as Template button rendered in the sticky wizard action bar')
+assert(/Save as Template/.test(BUILD),
+  'button label reads "Save as Template" (SPR.3a rename of "Save as Program"/"Save as Planned Spray")')
+// SPR.3a — disable rule preserved but uses hasRows prop passed to the
+// actions component.
+assert(/<button[\s\S]{0,400}className=\{styles\.naSaveAsProgramBtn\}[\s\S]{0,400}disabled=\{committing \|\| !hasRows \|\| !canEditSprays\}/.test(BUILD),
+  'Save as Template button disabled when committing, no rows, or !canEditSprays')
 
 // Modal mounts behind state.
 assert(/\{saveAsProgramOpen && \(\s*\n\s*<SaveAsProgramModal[\s\S]{0,400}draft=\{draft\}[\s\S]{0,400}enrichedRows=\{enrichedRows\}/.test(BUILD),
@@ -285,8 +293,8 @@ assert(/<Field label="End time">/.test(BUILD),
   'End time field still present (S.5b.1)')
 assert(/<Field label="Soil temperature \(°F\)">/.test(BUILD),
   'Soil temperature field still present (S.5b.1)')
-assert(/<Field label="Wind \/ conditions notes">/.test(BUILD),
-  'Wind / conditions notes label still present (S.5b.1)')
+assert(/<Field label="Wind \/ conditions notes"[^>]*>/.test(BUILD),
+  'Wind / conditions notes label still present (S.5b.1; SPR.3a moved to Conditions step with `wide` prop)')
 assert(/endTime:\s*draft\.endTime \|\| null/.test(BUILD),
   'commit payload still includes endTime (S.5b.1)')
 assert(/soilTemp:\s*draft\.conditions\.soilTemp/.test(BUILD),

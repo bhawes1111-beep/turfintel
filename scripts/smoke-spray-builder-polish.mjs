@@ -73,7 +73,10 @@ assert(/<Field label="Soil temperature \(°F\)">[\s\S]{0,400}value=\{draft\.cond
 // ── Wind cleanup — relabel preserves the data column ────────────────
 section('Wind / conditions notes — relabeled but data column preserved')
 
-assert(/<Field label="Wind \/ conditions notes">[\s\S]{0,400}value=\{draft\.conditions\.wind\}/.test(BUILD),
+// SPR.3a — the "Wind / conditions notes" field moved to the Conditions
+// step's additional-fields disclosure, where it now uses the `wide`
+// column prop. Loosen the label match to accept either `>` or ` wide>`.
+assert(/<Field label="Wind \/ conditions notes"[^>]*>[\s\S]{0,400}value=\{draft\.conditions\.wind\}/.test(BUILD),
   'free-text wind input relabeled "Wind / conditions notes" but still bound to draft.conditions.wind')
 
 // Structured wind speed + direction still primary.
@@ -162,8 +165,10 @@ assert(!/setDraftSaving|saving:\s*true/.test(effSrc),
 // Render — green pill / amber unsaved-changes pill.
 assert(/<span className=\{styles\.naDraftSavedHint\} aria-live="polite">/.test(BUILD),
   'draft saved indicator renders with aria-live="polite"')
-assert(/Draft saved locally at \$\{draftSavedAt\.toLocaleTimeString/.test(BUILD),
-  'indicator surfaces formatted local time when draftSavedAt is set')
+// SPR.3a — indicator relabeled "Saved to this device at …" but still
+// uses toLocaleTimeString on draftSavedAt.
+assert(/Saved to this device at \$\{draftSavedAt\.toLocaleTimeString/.test(BUILD),
+  'indicator surfaces "Saved to this device at HH:MM AM" when draftSavedAt is set (SPR.3a rename)')
 assert(/'Unsaved changes'/.test(BUILD),
   'indicator surfaces "Unsaved changes" when draftSavedAt is null')
 
@@ -174,11 +179,14 @@ assert(/function clearDraft\(\)[\s\S]{0,500}setDraftSavedAt\(null\)/.test(BUILD)
 assert(/setDraft\(makeEmptyDraft\(\)\)[\s\S]{0,200}setDraftSavedAt\(null\)/.test(BUILD),
   'commit pipeline resets draftSavedAt after a successful commit')
 
-// CSS for the indicator + flex-wrap on action row.
+// CSS for the indicator + flex-wrap on the wizard action row.
 assert(/\.naDraftSavedHint\s*\{/.test(CSS),
   'CSS .naDraftSavedHint rule defined')
-assert(/\.naActionRow\s*\{[\s\S]{0,400}flex-wrap:\s*wrap/.test(CSS),
-  '.naActionRow has flex-wrap: wrap so the indicator drops to its own line on narrow viewports')
+// SPR.3a — indicator now lives inside the sticky wizard action bar. The
+// wrap semantic is preserved via .naWizardActionRow so the indicator
+// still drops to its own line on narrow viewports.
+assert(/\.naWizardActionRow\s*\{[\s\S]{0,400}flex-wrap:\s*wrap/.test(CSS),
+  '.naWizardActionRow has flex-wrap: wrap so actions drop cleanly on narrow viewports')
 
 // ── Snapshot integrity + product/inventory regression ──────────────
 section('Snapshot integrity + product/inventory pipeline unchanged')
