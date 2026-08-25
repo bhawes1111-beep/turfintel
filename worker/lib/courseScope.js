@@ -55,6 +55,7 @@ export const COURSE_SCOPED_READ_PATHS = [
   '/api/condition-logs',
   '/api/moisture',
   '/api/sprays',
+  '/api/spray-training-briefs',
   '/api/inventory',
   '/api/equipment',
   '/api/nutrition',

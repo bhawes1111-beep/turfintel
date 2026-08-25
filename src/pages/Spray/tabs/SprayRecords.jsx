@@ -57,7 +57,7 @@ function conditionsSummary(c) {
 // recordNeedsInfo.js so the Records filter toggle, the Workspace card,
 // and the Compliance Packet report all use the same predicate.
 
-export default function SprayRecords() {
+export default function SprayRecords({ onCreateTrainingBrief }) {
   const { records: SPRAY_RECORDS }      = useSpraysData()
   const { activeCourse }                = useCourse()
   const toast                           = useToast()
@@ -808,6 +808,17 @@ export default function SprayRecords() {
             </div>
 
             <div className="opActionRow">
+              {canEditSprays && onCreateTrainingBrief && (
+                <button
+                  className="opActionBtn"
+                  onClick={() => onCreateTrainingBrief({
+                    sourceType: 'spray_record',
+                    sourceId: selected.id,
+                  })}
+                >
+                  Training Brief
+                </button>
+              )}
               {/* Phase S.5a.1 — Edit shortcut from the detail modal.
                   Routes to the same EditSprayRecordModal as the
                   record-card Edit button.

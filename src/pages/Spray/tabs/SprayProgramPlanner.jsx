@@ -73,7 +73,7 @@ const EMPTY_ITEM_FORM = () => ({
   applicationNotes: '', status: 'planned', sortOrder: 0,
 })
 
-export default function SprayProgramPlanner() {
+export default function SprayProgramPlanner({ onCreateTrainingBrief }) {
   const { programs, itemsByProgramId, loading, error } = useSprayPrograms()
   // Phase 7F (3/?) — picker + intel inputs. Lazy-load only what's
   // needed; the catalog store is already lazy-fetched on first
@@ -527,6 +527,18 @@ export default function SprayProgramPlanner() {
                       />
                     </div>
                     <div className={styles.detailActions}>
+                      {onCreateTrainingBrief && selected.status !== 'archived' && (
+                        <button
+                          type="button"
+                          className={styles.btnSecondary}
+                          onClick={() => onCreateTrainingBrief({
+                            sourceType: 'planned_spray',
+                            sourceId: selected.id,
+                          })}
+                        >
+                          Training Brief
+                        </button>
+                      )}
                       <button
                         type="button"
                         className={styles.btnSecondary}

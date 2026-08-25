@@ -41,6 +41,7 @@ const MUTATION_RULES = [
   // ordering relative to '/api/sprays' is safe either way.
   ['/api/spray-programs',         'canEditSprays'],
   ['/api/spray-program-items',    'canEditSprays'],
+  ['/api/spray-training-briefs',  sprayTrainingBriefRule],
 
   ['/api/equipment-reservations', 'canEditEquipment'],
   ['/api/equipment',              'canEditEquipment'],
@@ -97,6 +98,15 @@ function attachmentsRule(actor) {
   return OPERATIONAL_EDIT_PERMS.some(p => actorHasPermission(actor, p))
 }
 
+// Managers own brief content and approval. Any authenticated crew-facing
+// user may submit the read-only knowledge check and acknowledgment.
+function sprayTrainingBriefRule(actor, { pathname }) {
+  if (pathname.endsWith('/acknowledgments')) {
+    return actorHasPermission(actor, 'canAccessDisplayBoard')
+  }
+  return actorHasPermission(actor, 'canEditSprays')
+}
+
 /** Find the matching rule (longest prefix wins via array order). */
 function matchRule(pathname) {
   for (const [prefix, rule] of MUTATION_RULES) {
@@ -118,7 +128,7 @@ export function isMutationAllowed(actor, pathname, method, body = null) {
   if (isAutomationActor(actor)) return true
   const rule = matchRule(pathname)
   if (rule == null) return true            // unmapped → any authenticated passes
-  if (typeof rule === 'function') return rule(actor, { method, body })
+  if (typeof rule === 'function') return rule(actor, { pathname, method, body })
   return actorHasPermission(actor, rule)
 }
 

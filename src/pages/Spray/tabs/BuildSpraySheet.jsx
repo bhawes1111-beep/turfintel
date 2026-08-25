@@ -360,7 +360,7 @@ function stockStatus(qty, reorderLevel) {
 // When mounted as the top-level Build Spray tab (no props), behavior
 // is byte-identical to pre-S.7: draft seeds from TODAY via
 // makeEmptyDraft(), no refresh callback fires.
-export default function BuildSpraySheet({ initialDate, onCommit } = {}) {
+export default function BuildSpraySheet({ initialDate, onCommit, onCreateTrainingBrief } = {}) {
   // Phase S.5a.2 — Permission-aware UI. Worker is the source of
   // truth (POST /api/sprays gated by canEditSprays); this client
   // gate just hides / disables actions to avoid dead-end clicks.
@@ -478,6 +478,7 @@ export default function BuildSpraySheet({ initialDate, onCommit } = {}) {
   }, [draft])
 
   const [committing, setCommitting] = useState(false)
+  const [creatingTrainingBrief, setCreatingTrainingBrief] = useState(false)
   // Phase S.5b.2 — Save-as-Program modal toggle. Independent of
   // commit/discard so the supervisor can review a draft, save it as
   // a reusable program, and still go on to commit/print/discard.
@@ -794,6 +795,69 @@ export default function BuildSpraySheet({ initialDate, onCommit } = {}) {
   ])
 
   // ── Mutations on draft ────────────────────────────────────────────────
+  async function handleCreateTrainingBrief() {
+    if (!onCreateTrainingBrief || enrichedRows.length === 0) return
+    setCreatingTrainingBrief(true)
+    try {
+      await onCreateTrainingBrief({
+        sourceType: 'wizard_draft',
+        sourceSnapshot: {
+          application: {
+            name: `${draft.area || 'Application'} training brief`,
+            applicationType: draft.applicationType ?? 'liquid',
+            plannedDate: draft.date,
+            startTime: draft.startTime,
+            endTime: draft.endTime,
+            areas: draft.area ? [{ name: draft.area, acreage: Number(draft.acres) || null }] : [],
+            acreage: Number(draft.acres) || null,
+            target: targetTreatment,
+            equipment: draft.sprayRig,
+            gpa: Number(draft.carrierRate) || null,
+            tankVolume: summary.effectiveTankCap || null,
+            loads: summary.loadPlan
+              ? summary.loadPlan.fullLoads + (summary.loadPlan.hasPartial ? 1 : 0)
+              : null,
+            operator: draft.operator,
+            weather: draft.conditions?.wind || '',
+            objective: targetTreatment,
+            warningSigns: draft.observations,
+            managerNotes: draft.observations,
+          },
+          products: enrichedRows.map(row => ({
+            inventoryItemId: row.inventoryItemId,
+            productCatalogId: row.intel?.catalogId,
+            name: row.name,
+            category: row.type || row.intel?.category,
+            activeIngredient: row.intel?.activeIngredientSummary,
+            rate: row.rate,
+            rateUnit: rateUnitSpec(row.rateUnit)?.label || row.rateUnit,
+            totalAmount: row.totalProduct || row.qtyNeeded,
+            totalUnit: row.totalProductUnit || row.qtyUnit,
+            fracGroup: row.intel?.fracGroup,
+            hracGroup: row.intel?.hracGroup,
+            iracGroup: row.intel?.iracGroup,
+            labelUrl: row.intel?.labelUrl,
+            signalWord: row.intel?.signalWord,
+            reiHours: row.intel?.reiHours,
+            phiHours: row.intel?.phiHours,
+            restrictedUse: row.intel?.restrictedUse === true,
+            source: row.intel?.source,
+            verificationStatus: 'unverified',
+          })),
+          instructions: {
+            sprayer: draft.sprayRig,
+            waterVolume: draft.carrierRate
+              ? `${draft.carrierRate} ${draft.carrierUnit || 'gal / acre'}`
+              : draft.waterVolume ? `${draft.waterVolume} gal total` : '',
+            observations: draft.observations,
+          },
+        },
+      })
+    } finally {
+      setCreatingTrainingBrief(false)
+    }
+  }
+
   function patchDraft(patch) {
     setDraft(prev => ({ ...prev, ...patch }))
   }
@@ -1712,6 +1776,8 @@ export default function BuildSpraySheet({ initialDate, onCommit } = {}) {
           onBack={goBack}
           onContinue={goNext}
           onCommit={handleCommit}
+          onCreateTrainingBrief={handleCreateTrainingBrief}
+          creatingTrainingBrief={creatingTrainingBrief}
           onSaveAsTemplate={() => setSaveAsProgramOpen(true)}
           onLoadTemplate={() => setLoadProgramOpen(true)}
           onClear={clearDraft}
@@ -2349,6 +2415,8 @@ function SprayWizardActions({
   onBack,
   onContinue,
   onCommit,
+  onCreateTrainingBrief,
+  creatingTrainingBrief,
   onSaveAsTemplate,
   onLoadTemplate,
   onClear,
@@ -2394,6 +2462,18 @@ function SprayWizardActions({
           >
             More actions
           </button>
+
+          {isLast && onCreateTrainingBrief && (
+            <button
+              type="button"
+              className={styles.naSecondaryBtn}
+              disabled={creatingTrainingBrief || !hasRows || !canEditSprays}
+              onClick={onCreateTrainingBrief}
+              title="Create a separate training draft without saving or completing this application."
+            >
+              {creatingTrainingBrief ? 'Creating Brief...' : 'Create Training Brief'}
+            </button>
+          )}
 
           {isLast ? (
             <button

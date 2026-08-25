@@ -63,6 +63,17 @@ import {
   patchSprayProgramItemCompletedLink,
 } from './api/sprayPrograms.js'
 import {
+  listSprayTrainingBriefs,
+  getSprayTrainingBrief,
+  createSprayTrainingBrief,
+  uploadSprayTrainingBrief,
+  updateSprayTrainingBrief,
+  approveSprayTrainingBrief,
+  regenerateSprayTrainingBrief,
+  archiveSprayTrainingBrief,
+  acknowledgeSprayTrainingBrief,
+} from './api/sprayTrainingBriefs.js'
+import {
   listCalendarEvents,
   getCalendarEvent,
   createCalendarEvent,
@@ -832,6 +843,37 @@ async function handleApi(request, env, url, ctx) {
   }
 
   // ── /api/spray-programs (Phase 7F.1 — Spray Program Planner) ──────────
+  // Training briefs are separate historical snapshots. These routes never
+  // write spray records, planned-program status, or inventory usage.
+  if (pathname === '/api/spray-training-briefs') {
+    if (method === 'GET') {
+      return listSprayTrainingBriefs(env, request, courseId, url.searchParams.get('status'))
+    }
+    if (method === 'POST') return createSprayTrainingBrief(env, request)
+  }
+  if (pathname === '/api/spray-training-briefs/upload') {
+    if (method === 'POST') return uploadSprayTrainingBrief(env, request)
+  }
+  const trainingApproveMatch = pathname.match(/^\/api\/spray-training-briefs\/([^/]+)\/approve$/)
+  if (trainingApproveMatch && method === 'POST') {
+    return approveSprayTrainingBrief(env, request, decodeURIComponent(trainingApproveMatch[1]))
+  }
+  const trainingRegenerateMatch = pathname.match(/^\/api\/spray-training-briefs\/([^/]+)\/regenerate$/)
+  if (trainingRegenerateMatch && method === 'POST') {
+    return regenerateSprayTrainingBrief(env, request, decodeURIComponent(trainingRegenerateMatch[1]))
+  }
+  const trainingAcknowledgmentMatch = pathname.match(/^\/api\/spray-training-briefs\/([^/]+)\/acknowledgments$/)
+  if (trainingAcknowledgmentMatch && method === 'POST') {
+    return acknowledgeSprayTrainingBrief(env, request, decodeURIComponent(trainingAcknowledgmentMatch[1]))
+  }
+  const trainingBriefMatch = pathname.match(/^\/api\/spray-training-briefs\/([^/]+)$/)
+  if (trainingBriefMatch) {
+    const id = decodeURIComponent(trainingBriefMatch[1])
+    if (method === 'GET') return getSprayTrainingBrief(env, request, id)
+    if (method === 'PATCH') return updateSprayTrainingBrief(env, request, id)
+    if (method === 'DELETE') return archiveSprayTrainingBrief(env, request, id)
+  }
+
   if (pathname === '/api/spray-programs') {
     if (method === 'GET') {
       const status = url.searchParams.get('status') || null

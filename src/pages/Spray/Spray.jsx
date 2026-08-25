@@ -13,6 +13,9 @@ import SprayReports           from './tabs/SprayReports'
 import ProgramIntelligence    from './tabs/ProgramIntelligence'
 import SprayProgramPlanner    from './tabs/SprayProgramPlanner'
 import SprayProgramCalendar   from './tabs/SprayProgramCalendar'
+import SprayTrainingBriefs    from './tabs/SprayTrainingBriefs'
+import { createTrainingBrief } from '../../utils/sprays/trainingBriefsStore'
+import { useToast } from '../../utils/feedback/toastContext'
 import styles from './Spray.module.css'
 
 // Phase SPR.2 — Unified Spray tab strip. Every course sees the same
@@ -26,6 +29,7 @@ export const SPRAY_TABS = [
   'Records',
   'Planning',
   'Calendar',
+  'Training Briefs',
   'Calculator',
   'Reports',
   'More',
@@ -59,6 +63,8 @@ const LEGACY_TAB_ALIASES = {
   'Mix Calculator':          'Calculator',
   // Legacy Spray Intelligence label → new Season Insights inside More.
   'Spray Intelligence':      'More',
+  'Spray Training':          'Training Briefs',
+  'Training Briefs':         'Training Briefs',
 }
 
 function resolveInitialTab(candidate) {
@@ -75,14 +81,29 @@ function resolveInitialTab(candidate) {
  * / reports code untouched.
  */
 export default function Spray() {
+  const toast = useToast()
   const [activeTab, setActiveTab] = useState(() => resolveInitialTab('Today'))
   const [moreTab,  setMoreTab]    = useState('Overview')
+  const [trainingBriefId, setTrainingBriefId] = useState(null)
 
   // Phase SPR.2 — CTA on Today that jumps to New Application (replaces
   // the previously embedded second BuildSpraySheet instance so the
   // builder mounts in exactly one place at a time).
   function goToNewApplication() {
     setActiveTab('New Application')
+  }
+
+  async function startTrainingBrief(source) {
+    try {
+      const brief = await createTrainingBrief(source)
+      setTrainingBriefId(brief.id)
+      setActiveTab('Training Briefs')
+      toast.success?.('Training brief draft created. Review it before approval.')
+      return brief
+    } catch (error) {
+      toast.error?.(error.message || 'Could not create training brief')
+      throw error
+    }
   }
 
   return (
@@ -94,12 +115,13 @@ export default function Spray() {
       onTabChange={setActiveTab}
     >
       {activeTab === 'Today'           && (
-        <SprayCalendarWorkspace onStartNewSpray={goToNewApplication} />
+        <SprayCalendarWorkspace onStartNewSpray={goToNewApplication} onCreateTrainingBrief={startTrainingBrief} />
       )}
-      {activeTab === 'New Application' && <BuildSpraySheet />}
-      {activeTab === 'Records'         && <SprayRecords />}
-      {activeTab === 'Planning'        && <SprayProgramPlanner />}
+      {activeTab === 'New Application' && <BuildSpraySheet onCreateTrainingBrief={startTrainingBrief} />}
+      {activeTab === 'Records'         && <SprayRecords onCreateTrainingBrief={startTrainingBrief} />}
+      {activeTab === 'Planning'        && <SprayProgramPlanner onCreateTrainingBrief={startTrainingBrief} />}
       {activeTab === 'Calendar'        && <SprayCalendar />}
+      {activeTab === 'Training Briefs' && <SprayTrainingBriefs initialBriefId={trainingBriefId} onBriefSelected={setTrainingBriefId} />}
       {activeTab === 'Calculator'      && <MixCalculator />}
       {activeTab === 'Reports'         && <SprayReports />}
       {activeTab === 'More' && (

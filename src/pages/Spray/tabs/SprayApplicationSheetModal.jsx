@@ -80,6 +80,7 @@ export default function SprayApplicationSheetModal({
   record,
   canEdit = false,
   onEdit,
+  onCreateTrainingBrief,
   onClose,
 }) {
   // Phase S.7b.2 — Hooks first, then guard. React requires the hooks
@@ -462,6 +463,15 @@ export default function SprayApplicationSheetModal({
                 Edit
               </button>
             )}
+              {canEdit && !editMode && onCreateTrainingBrief && (
+                <button
+                  type="button"
+                  className={styles.btnSecondary}
+                  onClick={() => onCreateTrainingBrief(record)}
+                >
+                  Training Brief
+                </button>
+              )}
             {/* Phase S.7b.2 — Chemical edit mode. Hidden for read-only
                 users; disabled while a save is in flight. */}
             {canEdit && canEditSprays && !editMode && (

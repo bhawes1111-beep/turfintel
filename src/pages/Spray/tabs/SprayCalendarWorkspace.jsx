@@ -122,7 +122,7 @@ function plannedItemDate(item) {
 }
 
 // ── Component ─────────────────────────────────────────────────────────
-export default function SprayCalendarWorkspace({ onStartNewSpray } = {}) {
+export default function SprayCalendarWorkspace({ onStartNewSpray, onCreateTrainingBrief } = {}) {
   const courseId = useSelectedCourseId()
   const { records: sprays, loading: spraysLoading } = useSpraysData()
   const { programs, itemsByProgramId } = useSprayPrograms()
@@ -517,7 +517,7 @@ export default function SprayCalendarWorkspace({ onStartNewSpray } = {}) {
               the spray and refreshes the calendar chips above.
             </p>
           </header>
-          <BuildSpraySheet initialDate={selectedDate} onCommit={handleEmbeddedCommit} />
+          <BuildSpraySheet initialDate={selectedDate} onCommit={handleEmbeddedCommit} onCreateTrainingBrief={onCreateTrainingBrief} />
         </section>
       )}
 
@@ -530,6 +530,7 @@ export default function SprayCalendarWorkspace({ onStartNewSpray } = {}) {
           record={viewingRecord}
           canEdit={canEditSprays}
           onEdit={(rec) => { setViewingRecordId(null); setEditingRecord(rec) }}
+          onCreateTrainingBrief={(rec) => onCreateTrainingBrief?.({ sourceType: 'spray_record', sourceId: rec.id })}
           onClose={() => setViewingRecordId(null)}
         />
       )}
