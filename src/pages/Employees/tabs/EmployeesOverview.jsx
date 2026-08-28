@@ -24,20 +24,24 @@ export default function EmployeesOverview() {
     const active   = employees.filter(e => e.status === 'active')
     const inactive = employees.filter(e => e.status === 'inactive')
     const onLeave  = employees.filter(e => e.status === 'on-leave')
-    const withRate = employees.filter(e => typeof e.payRate === 'number')
+    const withRate = employees.filter(e => !e.hidePayRate && e.payType !== 'salary' && typeof e.payRate === 'number')
+    const salaryEmployees = employees.filter(e => e.payType === 'salary' && typeof e.salaryAmount === 'number')
     const avgRate  = withRate.length > 0
       ? withRate.reduce((s, e) => s + e.payRate, 0) / withRate.length
       : null
     const distinctRoles = distinctCount(active, 'role')
     const certified     = active.filter(e => (e.certifications ?? []).length > 0).length
+    const spanishBoard  = active.filter(e => e.autoTranslateBoardNotes && e.boardLanguage === 'es').length
     return {
       total:    employees.length,
       active:   active.length,
       inactive: inactive.length,
       onLeave:  onLeave.length,
       avgRate,
+      salaryEmployees: salaryEmployees.length,
       distinctRoles,
       certified,
+      spanishBoard,
     }
   }, [employees])
 
@@ -63,8 +67,9 @@ export default function EmployeesOverview() {
           <span className={`${styles.statValue} ${styles.statValueMuted}`}>{stats.inactive}</span>
         </div>
         <div className={styles.statCard}>
-          <span className={styles.statLabel}>Crew Roles</span>
-          <span className={styles.statValue}>{stats.distinctRoles}</span>
+          <span className={styles.statLabel}>Spanish Board</span>
+          <span className={styles.statValue}>{stats.spanishBoard}</span>
+          <span className={styles.statPrivate}>Active employees</span>
         </div>
         <div className={styles.statCard}>
           <span className={styles.statLabel}>Avg Pay Rate</span>
@@ -72,6 +77,11 @@ export default function EmployeesOverview() {
             {stats.avgRate != null ? `$${stats.avgRate.toFixed(2)}` : '—'}
           </span>
           <span className={styles.statPrivate}>Private · management only</span>
+        </div>
+        <div className={styles.statCard}>
+          <span className={styles.statLabel}>Salary</span>
+          <span className={styles.statValue}>{stats.salaryEmployees}</span>
+          <span className={styles.statPrivate}>Private management only</span>
         </div>
       </div>
 

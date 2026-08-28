@@ -4,6 +4,13 @@
 import { json, badRequest, notFound, readJson } from '../lib/json.js'
 import { generateId } from '../lib/id.js'
 import { buildCourseFilter, resolveCourseId } from '../lib/scope.js'
+import { reconcileTicketPartInventory, reverseTicketPartInventory } from '../lib/ticketInventory.js'
+
+const RESOLVED_STATUSES = new Set(['completed', 'resolved', 'closed'])
+
+function isResolvedRepair(row) {
+  return RESOLVED_STATUSES.has(String(row?.status ?? '').toLowerCase())
+}
 
 function rowToRepair(row) {
   if (!row) return null
@@ -75,6 +82,10 @@ export async function createRepair(env, request) {
   if (!body.area)      return badRequest('area is required')
 
   const id = body.id ?? body.repairId ?? generateId('rep')
+  const resolved = RESOLVED_STATUSES.has(String(body.status ?? '').toLowerCase())
+  const completedDate = resolved
+    ? (body.dateCompleted ?? new Date().toISOString().slice(0, 10))
+    : null
 
   await env.DB.prepare(`
     INSERT INTO repairs (
@@ -95,16 +106,38 @@ export async function createRepair(env, request) {
     body.laborHours ?? 0,
     body.partsUsed != null ? JSON.stringify(body.partsUsed) : null,
     body.dateReported ?? null,
-    body.dateCompleted ?? null,
+    completedDate,
     body.notes ?? null,
     resolveCourseId(body),
   ).run()
+
+  const created = await env.DB.prepare('SELECT * FROM repairs WHERE id = ?').bind(id).first()
+  if (isResolvedRepair(created)) {
+    await reconcileTicketPartInventory(env, {
+      sourceId: `irrigation:${id}`,
+      partsUsed: created.parts_used,
+      courseId: created.course_id,
+      date: created.completed_at ?? created.date_reported,
+      area: created.area,
+      applicator: created.assigned_to,
+    })
+  }
 
   return getRepair(env, id)
 }
 
 export async function updateRepair(env, id, request) {
   const body = await readJson(request)
+  const existing = await env.DB.prepare('SELECT * FROM repairs WHERE id = ?').bind(id).first()
+  if (!existing) return notFound('Repair not found')
+  if (Object.prototype.hasOwnProperty.call(body, 'status')) {
+    const resolved = RESOLVED_STATUSES.has(String(body.status ?? '').toLowerCase())
+    if (!Object.prototype.hasOwnProperty.call(body, 'dateCompleted')) {
+      body.dateCompleted = resolved
+        ? (existing.completed_at ?? new Date().toISOString().slice(0, 10))
+        : null
+    }
+  }
   const sets = []
   const binds = []
   for (const [apiKey, dbCol] of Object.entries(MUTABLE_COLUMNS)) {
@@ -125,10 +158,23 @@ export async function updateRepair(env, id, request) {
   ).bind(...binds).run()
 
   if (!result.success || result.meta.changes === 0) return notFound('Repair not found')
+  const updated = await env.DB.prepare('SELECT * FROM repairs WHERE id = ?').bind(id).first()
+  if (isResolvedRepair(updated)) {
+    await reconcileTicketPartInventory(env, {
+      sourceId: `irrigation:${id}`,
+      partsUsed: updated.parts_used,
+      courseId: updated.course_id,
+      date: updated.completed_at ?? updated.date_reported,
+      area: updated.area,
+      applicator: updated.assigned_to,
+    })
+  }
   return getRepair(env, id)
 }
 
 export async function deleteRepair(env, id) {
+  const existing = await env.DB.prepare('SELECT course_id FROM repairs WHERE id = ?').bind(id).first()
+  if (existing) await reverseTicketPartInventory(env, `irrigation:${id}`, existing.course_id)
   const result = await env.DB.prepare(
     'DELETE FROM repairs WHERE id = ?',
   ).bind(id).run()

@@ -426,10 +426,10 @@ console.log('— Inventory page wiring')
   const page = readFileSync(PAGE, 'utf8')
   assert(/import\s+InventoryCostBasisReview\b/.test(page),
     'Inventory page imports InventoryCostBasisReview')
-  assert(/['"]Cost Basis Review['"]/.test(page),
-    'Inventory TABS includes "Cost Basis Review"')
-  assert(/activeTab === 'Cost Basis Review'\s*&&\s*<InventoryCostBasisReview/.test(page),
-    'Inventory page mounts InventoryCostBasisReview when its tab is active')
+  assert(/['"]Cost Review['"]/.test(page),
+    'Inventory flat nav includes "Cost Review"')
+  assert(/activeTab === 'Cost Review'\s*&&\s*<InventoryCostBasisReview/.test(page),
+    'Inventory page mounts InventoryCostBasisReview from Cost Review tab')
 }
 
 console.log('— write-path regression guards (Phase 7J.1 + 7M.1 still wired)')

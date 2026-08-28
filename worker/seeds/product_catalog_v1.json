@@ -145,14 +145,14 @@
       "product_name": "Daconil Action",
       "brand_owner": "Syngenta",
       "manufacturer": "Syngenta",
-      "epa_number": "100-1456",
+      "epa_number": "100-1364",
       "formulation": "SC",
       "category": "fungicide",
       "frac_group": "M5 + P 07",
       "chemical_class": "chloronitrile + benzothiadiazole",
       "active_ingredients": [
-        { "name": "Chlorothalonil", "percentage": 22.5 },
-        { "name": "Acibenzolar-S-methyl", "percentage": 0.65 }
+        { "name": "Chlorothalonil", "percentage": 53.94 },
+        { "name": "Acibenzolar-S-methyl", "percentage": 0.11 }
       ],
       "rates": [
         { "rate": "3.6 fl oz", "unit": "fl oz/1000 ft²", "interval": "7-14 day preventive" }
@@ -163,15 +163,15 @@
       "signal_word": "Warning",
       "rei_hours": 12,
       "phi_hours": null,
-      "label_url": "https://www.syngenta-us.com/labels/daconil-action",
+      "label_url": "https://www3.epa.gov/pesticides/chem_search/ppls/000100-01364-20220711.pdf",
       "notes": "Contact chlorothalonil with SAR activator (acibenzolar) for resistance-management plus host defense."
     },
     {
       "product_name": "Headway G",
       "brand_owner": "Syngenta",
-      "manufacturer": "Syngenta",
-      "epa_number": "100-1326",
-      "formulation": "G",
+      "manufacturer": "SYNGENTA CROP PROTECTION, LLC",
+      "epa_number": "100-1378",
+      "formulation": "Granular",
       "category": "fungicide",
       "frac_group": "3 + 11",
       "chemical_class": "triazole + strobilurin",
@@ -188,7 +188,7 @@
       "signal_word": "Caution",
       "rei_hours": 12,
       "phi_hours": null,
-      "label_url": "https://www.syngenta-us.com/labels/headway-g",
+      "label_url": "https://assets.greencastonline.com/pdf/labels/SCP1378AL1A10122.pdf",
       "notes": "Granular two-way preventive; convenient for crews without spray equipment on that day."
     },
     {

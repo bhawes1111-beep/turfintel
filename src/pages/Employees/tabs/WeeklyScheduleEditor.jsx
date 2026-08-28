@@ -96,13 +96,17 @@ export default function WeeklyScheduleEditor() {
     return scheduleIndex.get(empId)?.[dow] ?? null
   }
 
-  async function saveCell({ row, empId, dow, status, startTime, endTime, role }) {
+  async function saveCell({ row, empId, dow, status, startTime, endTime, autoLunchBreak, lunchStartTime, lunchEndTime, role }) {
     try {
       if (row) {
         await patchEmployeeSchedule(row.id, {
           status,
           startTime: status === 'scheduled' ? (startTime || DEFAULT_START) : null,
           endTime:   status === 'scheduled' ? (endTime   || DEFAULT_END)   : null,
+          lunchBreakMinutes: status === 'scheduled' && autoLunchBreak ? 30 : 0,
+          autoLunchBreak: status === 'scheduled' ? autoLunchBreak : false,
+          lunchStartTime: status === 'scheduled' && !autoLunchBreak ? (lunchStartTime || null) : null,
+          lunchEndTime: status === 'scheduled' && !autoLunchBreak ? (lunchEndTime || null) : null,
           role:      role?.trim() || null,
         })
       } else {
@@ -112,6 +116,10 @@ export default function WeeklyScheduleEditor() {
           status,
           startTime:  status === 'scheduled' ? (startTime || DEFAULT_START) : null,
           endTime:    status === 'scheduled' ? (endTime   || DEFAULT_END)   : null,
+          lunchBreakMinutes: status === 'scheduled' && autoLunchBreak ? 30 : 0,
+          autoLunchBreak: status === 'scheduled' ? autoLunchBreak : false,
+          lunchStartTime: status === 'scheduled' && !autoLunchBreak ? (lunchStartTime || null) : null,
+          lunchEndTime: status === 'scheduled' && !autoLunchBreak ? (lunchEndTime || null) : null,
           role:       role?.trim() || null,
         })
       }
@@ -142,6 +150,10 @@ export default function WeeklyScheduleEditor() {
             status:    'scheduled',
             startTime: DEFAULT_START,
             endTime:   DEFAULT_END,
+            lunchBreakMinutes: 30,
+            autoLunchBreak: true,
+            lunchStartTime: null,
+            lunchEndTime: null,
           })
         } else {
           await createEmployeeSchedule({
@@ -150,6 +162,10 @@ export default function WeeklyScheduleEditor() {
             status:     'scheduled',
             startTime:  DEFAULT_START,
             endTime:    DEFAULT_END,
+            lunchBreakMinutes: 30,
+            autoLunchBreak: true,
+            lunchStartTime: null,
+            lunchEndTime: null,
           })
         }
         saved += 1
@@ -181,7 +197,7 @@ export default function WeeklyScheduleEditor() {
           <p className={styles.subtitle}>
             Recurring weekly shifts. The Daily Assignment Board pulls
             from scheduled crew on the selected day; everyone else stays
-            off the board.
+            off the board. Auto 30 is checked by default for shifts of 8+ hours; uncheck it to enter Lunch Out and Lunch In times.
           </p>
         </div>
         <div className={styles.legend}>
@@ -280,6 +296,15 @@ export default function WeeklyScheduleEditor() {
                                   {row.endTime && `–${fmtTime(row.endTime)}`}
                                 </span>
                               )}
+                              {row.status === 'scheduled' && (
+                                <span className={styles.cellLunch}>
+                                  {row.autoLunchBreak !== false
+                                    ? 'Lunch 30m auto'
+                                    : row.lunchStartTime && row.lunchEndTime
+                                      ? `Lunch ${fmtTime(row.lunchStartTime)}-${fmtTime(row.lunchEndTime)}`
+                                      : 'No lunch set'}
+                                </span>
+                              )}
                               {row.status === 'scheduled' && row.role && (
                                 <span className={styles.cellRoleTag}>{row.role}</span>
                               )}
@@ -311,7 +336,7 @@ export default function WeeklyScheduleEditor() {
       <p className={styles.footnote}>
         Default morning shift: {fmtTime(DEFAULT_START)}–{fmtTime(DEFAULT_END)}.
         Click any cell to set a custom shift, mark off / vacation / sick,
-        or clear the day.
+        or clear the day. Auto 30 applies to shifts of 8+ hours; manual Lunch Out/In times use the actual interval.
       </p>
 
       {saveOpen && (
@@ -336,6 +361,9 @@ function CellEditor({ row, empId, dow, dayLabel, empName, onSave, onClear, onCan
   const [status,    setStatus]    = useState(row?.status    ?? 'scheduled')
   const [startTime, setStartTime] = useState(row?.startTime ?? DEFAULT_START)
   const [endTime,   setEndTime]   = useState(row?.endTime   ?? DEFAULT_END)
+  const [autoLunchBreak, setAutoLunchBreak] = useState(row?.autoLunchBreak !== false)
+  const [lunchStartTime, setLunchStartTime] = useState(row?.lunchStartTime ?? '')
+  const [lunchEndTime, setLunchEndTime] = useState(row?.lunchEndTime ?? '')
   const [role,      setRole]      = useState(row?.role      ?? '')
   const isScheduled = status === 'scheduled'
 
@@ -373,6 +401,25 @@ function CellEditor({ row, empId, dow, dayLabel, empName, onSave, onClear, onCan
               aria-label="End time"
             />
           </div>
+          <label className={styles.lunchToggle}>
+            <input
+              type="checkbox"
+              checked={autoLunchBreak}
+              onChange={e => setAutoLunchBreak(e.target.checked)}
+            />
+            <span>Auto 30-minute lunch</span>
+          </label>
+          <div className={styles.lunchTimes}>
+            <label>
+              <span>Lunch out</span>
+              <input type="time" className={styles.cellEditorField} value={lunchStartTime} disabled={autoLunchBreak} onChange={e => setLunchStartTime(e.target.value)} />
+            </label>
+            <span className={styles.cellEditorDash}>to</span>
+            <label>
+              <span>Lunch in</span>
+              <input type="time" className={styles.cellEditorField} value={lunchEndTime} disabled={autoLunchBreak} onChange={e => setLunchEndTime(e.target.value)} />
+            </label>
+          </div>
           <input
             type="text"
             className={styles.cellEditorField}
@@ -393,7 +440,7 @@ function CellEditor({ row, empId, dow, dayLabel, empName, onSave, onClear, onCan
         <button
           type="button"
           className={styles.cellEditorSave}
-          onClick={() => onSave({ row, empId, dow, status, startTime, endTime, role })}
+          onClick={() => onSave({ row, empId, dow, status, startTime, endTime, autoLunchBreak, lunchStartTime, lunchEndTime, role })}
         >Save</button>
         <button
           type="button"

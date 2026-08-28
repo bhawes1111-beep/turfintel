@@ -96,7 +96,7 @@ function LogModal({ onClose, inventory }) {
   }
 
   return createPortal(
-    <div className={styles.backdrop} onClick={onClose} role="dialog" aria-modal="true" aria-label="Log nutrition application">
+    <div className={styles.backdrop} role="dialog" aria-modal="true" aria-label="Log nutrition application">
       <div className={styles.modal} onClick={e => e.stopPropagation()}>
         <div className={styles.mHeader}>
           <span className={styles.mTitle}>Log Nutrition Application</span>
@@ -176,8 +176,8 @@ export default function NutritionApplications() {
   return (
     <div className={styles.wrap}>
       <div className={styles.headRow}>
-        <span className={styles.headTitle}>Nutrient Applications · {new Date().getFullYear()} season</span>
-        <button type="button" className={styles.logBtn} onClick={() => setLogOpen(true)}>+ Log Application</button>
+        <span className={styles.headTitle}>Log Nutrients · {new Date().getFullYear()} season</span>
+        <button type="button" className={styles.logBtn} onClick={() => setLogOpen(true)}>+ Log Nutrients</button>
       </div>
 
       {/* Seasonal totals */}
@@ -192,7 +192,7 @@ export default function NutritionApplications() {
         <p className={styles.empty}>Loading nutrition applications…</p>
       ) : !result.hasData ? (
         <p className={styles.empty}>
-          No nutrient applications yet this season. Tap <strong>Log Application</strong> for a granular/foliar
+          No nutrient applications yet this season. Tap <strong>Log Nutrients</strong> for a granular/foliar
           feed, or apply a fertilizer via Spray Records — fertilizer sprays appear here automatically with
           a source link. Seasonal N-P-K totals build from real applications only.
         </p>

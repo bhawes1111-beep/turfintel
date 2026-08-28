@@ -1773,6 +1773,39 @@
   min-width: 0;
 }
 
+.naStepBody[data-step="mix"] .naMetaGrid {
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  max-width: 860px;
+  gap: 12px;
+}
+
+.naStepBody[data-step="mix"] .naField {
+  padding: 12px 14px;
+  border-color: rgba(74, 222, 128, 0.14);
+  border-radius: 7px;
+  background:
+    linear-gradient(135deg, rgba(74, 222, 128, 0.055), rgba(74, 222, 128, 0.015)),
+    rgba(7, 22, 10, 0.72);
+}
+
+.naStepBody[data-step="mix"] .naFieldLabel {
+  color: rgba(134, 239, 172, 0.72);
+}
+
+.naStepBody[data-step="mix"] .naInput {
+  font-size: 14px;
+  font-weight: 800;
+  color: rgba(236, 253, 245, 0.98);
+}
+
+.naStepBody[data-step="mix"] select.naInput {
+  min-height: 36px;
+  background: rgba(3, 14, 6, 0.58);
+  border-color: rgba(74, 222, 128, 0.16);
+  border-radius: 5px;
+  padding: 6px 8px;
+}
+
 .naFieldWide {
   grid-column: span 2;
 }
@@ -1802,6 +1835,17 @@
   outline: 2px solid var(--color-accent, #4a9e4a);
   outline-offset: 1px;
   border-radius: 2px;
+}
+
+.naAreaSizeControl {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(112px, auto);
+  align-items: center;
+  gap: 7px;
+}
+
+.naAreaUnitSelect {
+  min-width: 112px;
 }
 
 /* Native <select> needs explicit affordance — without it the operator
@@ -1835,36 +1879,39 @@ select.naInput option {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 2px 4px;
-  border-bottom: 1px solid var(--color-border, rgba(255,255,255,0.07));
-  margin-top: 4px;
+  padding: 14px 0 10px;
+  border-bottom: 1px solid rgba(74, 222, 128, 0.16);
+  margin-top: 6px;
 }
 
 .naSectionTitle {
   margin: 0;
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--color-text-muted, #a8b0b8);
+  letter-spacing: 1.1px;
+  color: rgba(134, 239, 172, 0.88);
 }
 
 .naAddBtn {
   appearance: none;
-  background: rgba(74, 158, 74, 0.12);
-  border: 1px solid rgba(74, 158, 74, 0.32);
-  color: #6eb26e;
+  background: rgba(74, 222, 128, 0.11);
+  border: 1px solid rgba(74, 222, 128, 0.30);
+  color: rgba(134, 239, 172, 0.96);
   font-size: 11.5px;
-  font-weight: 600;
+  font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.4px;
-  padding: 5px 12px;
-  border-radius: 3px;
+  padding: 7px 13px;
+  border-radius: 6px;
   cursor: pointer;
+  transition: background 140ms, border-color 140ms, transform 140ms;
 }
 
 .naAddBtn:hover {
-  background: rgba(74, 158, 74, 0.2);
+  background: rgba(74, 222, 128, 0.18);
+  border-color: rgba(74, 222, 128, 0.46);
+  transform: translateY(-1px);
 }
 
 /* ── Product table ──────────────────────────────────────────────────────── */
@@ -1872,34 +1919,38 @@ select.naInput option {
 .naProductWrap {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
 }
 
 .naProductTable {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 12.5px;
-  border: 1px solid var(--color-border, rgba(255,255,255,0.08));
-  border-radius: 3px;
+  border: 1px solid rgba(74, 222, 128, 0.14);
+  border-radius: 8px;
   overflow: hidden;
-  background: var(--color-surface-elevated, rgba(255,255,255,0.02));
+  background:
+    linear-gradient(180deg, rgba(74, 222, 128, 0.035), rgba(0, 0, 0, 0)),
+    rgba(7, 22, 10, 0.74);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.16);
 }
 
 .naProductTable thead th {
-  background: rgba(255, 255, 255, 0.03);
-  padding: 8px 10px;
+  background: rgba(74, 222, 128, 0.075);
+  padding: 10px 12px;
   text-align: left;
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
   font-size: 10px;
   letter-spacing: 0.8px;
-  color: var(--color-text-muted, #8a929a);
-  border-bottom: 1px solid var(--color-border, rgba(255,255,255,0.08));
+  color: rgba(176, 217, 184, 0.88);
+  border-bottom: 1px solid rgba(74, 222, 128, 0.14);
 }
 
 .naProductTable tbody td {
-  padding: 6px 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  padding: 9px 12px;
+  border-bottom: 1px solid rgba(74, 222, 128, 0.07);
   vertical-align: middle;
 }
 
@@ -1911,20 +1962,28 @@ select.naInput option {
   background: rgba(220, 80, 80, 0.06);
 }
 
+.naProductTable tbody tr {
+  transition: background 140ms;
+}
+
+.naProductTable tbody tr:hover {
+  background: rgba(74, 222, 128, 0.035);
+}
+
 .naProductTable tfoot td {
-  padding: 8px 10px;
-  font-size: 11px;
-  font-weight: 600;
+  padding: 11px 12px;
+  font-size: 11.5px;
+  font-weight: 800;
   color: var(--color-text, #e4e8ec);
-  border-top: 1px solid var(--color-border, rgba(255,255,255,0.1));
-  background: rgba(255, 255, 255, 0.02);
+  border-top: 1px solid rgba(74, 222, 128, 0.16);
+  background: rgba(74, 222, 128, 0.055);
 }
 
 .naFooterLabel {
   text-align: right;
   text-transform: uppercase;
   letter-spacing: 0.6px;
-  color: var(--color-text-muted, #a8b0b8);
+  color: rgba(176, 217, 184, 0.86);
 }
 
 .naProductCell {
@@ -1936,26 +1995,40 @@ select.naInput option {
 
 .naProductSelect,
 .naRowInput {
-  appearance: none;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 3px;
-  padding: 4px 6px;
+  background: rgba(3, 14, 6, 0.68);
+  border: 1px solid rgba(74, 222, 128, 0.12);
+  border-radius: 5px;
+  padding: 6px 8px;
   font-family: inherit;
   font-size: 12.5px;
   color: var(--color-text, #e4e8ec);
   width: 100%;
   min-width: 0;
+  transition: background 140ms, border-color 140ms, box-shadow 140ms;
 }
 
 .naProductSelect:focus,
 .naRowInput:focus {
-  outline: 1px solid var(--color-accent, #4a9e4a);
-  outline-offset: 0;
+  outline: none;
+  border-color: rgba(74, 222, 128, 0.55);
+  box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.10);
+}
+
+select.naProductSelect,
+select.naRowInput {
+  appearance: auto;
+  -webkit-appearance: menulist;
+  cursor: pointer;
+}
+
+.naProductSelect:hover,
+.naRowInput:hover {
+  background: rgba(8, 28, 12, 0.78);
+  border-color: rgba(74, 222, 128, 0.22);
 }
 
 .naDimCell {
-  color: var(--color-text-muted, #8a929a);
+  color: rgba(134, 239, 172, 0.68);
   font-size: 11.5px;
   text-transform: capitalize;
 }
@@ -1964,6 +2037,44 @@ select.naInput option {
   text-align: right;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+.naQtyStack {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  line-height: 1.2;
+}
+
+.naQtyConverted {
+  color: rgba(134, 239, 172, 0.68);
+  font-size: 11px;
+}
+
+.naTotalInputWrap {
+  display: grid;
+  grid-template-columns: minmax(74px, 1fr) minmax(70px, auto);
+  align-items: center;
+  gap: 6px;
+  min-width: 165px;
+}
+
+.naTotalInputWrap .naQtyConverted {
+  grid-column: 1 / -1;
+  justify-self: end;
+}
+
+.naInputUnit {
+  color: var(--color-text-muted, #8a929a);
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.naTotalUnitSelect {
+  min-width: 70px;
+  padding-inline: 8px;
 }
 
 .naNumCell[data-warn="true"] {
@@ -2005,17 +2116,21 @@ select.naInput option {
 
 .naRemoveBtn {
   appearance: none;
-  background: transparent;
-  border: none;
-  color: var(--color-text-muted, #8a929a);
+  background: rgba(248, 113, 113, 0.04);
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: rgba(248, 180, 180, 0.66);
   font-size: 18px;
   line-height: 1;
-  padding: 0 6px;
+  padding: 2px 7px 4px;
   cursor: pointer;
+  transition: background 140ms, border-color 140ms, color 140ms;
 }
 
 .naRemoveBtn:hover {
-  color: #e07070;
+  background: rgba(248, 113, 113, 0.11);
+  border-color: rgba(248, 113, 113, 0.26);
+  color: #fca5a5;
 }
 
 /* ── Conditions row ─────────────────────────────────────────────────────── */
@@ -2024,6 +2139,127 @@ select.naInput option {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
+}
+
+.naWeatherPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid rgba(74, 222, 128, 0.16);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(74, 222, 128, 0.075), rgba(74, 222, 128, 0.02)),
+    rgba(7, 22, 10, 0.78);
+}
+
+.naWeatherPanel[data-ready="true"] {
+  border-color: rgba(74, 222, 128, 0.26);
+}
+
+.naWeatherPanelHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.naWeatherPanelTitle {
+  margin: 0;
+  color: rgba(236, 253, 245, 0.96);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.naWeatherPanelMeta {
+  margin: 3px 0 0;
+  color: rgba(210, 242, 218, 0.58);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.naWeatherFillBtn {
+  appearance: none;
+  flex: 0 0 auto;
+  padding: 7px 12px;
+  border: 1px solid rgba(74, 222, 128, 0.32);
+  border-radius: 6px;
+  background: rgba(74, 222, 128, 0.12);
+  color: rgba(187, 247, 208, 0.98);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.naWeatherFillBtn:hover:not(:disabled) {
+  background: rgba(74, 222, 128, 0.20);
+  border-color: rgba(74, 222, 128, 0.48);
+}
+
+.naWeatherFillBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.naWeatherPanelStats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.naWeatherPanelStat {
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(74, 222, 128, 0.10);
+  border-radius: 6px;
+  background: rgba(3, 14, 6, 0.42);
+}
+
+.naWeatherPanelStatLabel {
+  display: block;
+  color: rgba(176, 217, 184, 0.70);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.naWeatherPanelStatValue {
+  display: block;
+  margin-top: 3px;
+  color: rgba(236, 253, 245, 0.96);
+  font-size: 13px;
+  font-weight: 900;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.naWeatherAutofill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+  max-width: 100%;
+  padding: 7px 10px;
+  border: 1px solid rgba(74, 222, 128, 0.22);
+  border-radius: 7px;
+  background: rgba(74, 222, 128, 0.075);
+  color: rgba(210, 242, 218, 0.82);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.naWeatherAutofillDot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: rgba(74, 222, 128, 0.95);
+  box-shadow: 0 0 10px rgba(74, 222, 128, 0.36);
 }
 
 /* ── Load Plan (Phase 3) ────────────────────────────────────────────────── */
@@ -2497,6 +2733,82 @@ select.naInput option {
   font-variant-numeric: tabular-nums;
 }
 
+.naTankNutrientList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.naTankNutrientItem {
+  position: relative;
+  overflow: hidden;
+  padding: 9px 10px 9px 12px;
+  border: 1px solid rgba(74, 222, 128, 0.18);
+  border-radius: 7px;
+  background:
+    linear-gradient(135deg, rgba(74, 222, 128, 0.085), rgba(74, 222, 128, 0.025)),
+    rgba(5, 19, 9, 0.72);
+  box-shadow: inset 2px 0 0 rgba(74, 222, 128, 0.42);
+}
+
+.naTankNutrientHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.naTankNutrientIdentity {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.naTankNutrientBadge {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid rgba(74, 222, 128, 0.28);
+  border-radius: 6px;
+  background: rgba(74, 222, 128, 0.11);
+  color: rgba(134, 239, 172, 0.96);
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.naTankNutrientName {
+  min-width: 0;
+  color: rgba(220, 252, 231, 0.96);
+  font-size: 11.5px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.naTankNutrientValue {
+  flex: 0 0 auto;
+  color: rgba(236, 253, 245, 0.96);
+  font-size: 11px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  line-height: 1.25;
+  max-width: 48%;
+}
+
+.naTankNutrientForms {
+  margin: 6px 0 0 29px;
+  padding-top: 5px;
+  border-top: 1px solid rgba(74, 222, 128, 0.10);
+  color: rgba(210, 242, 218, 0.62);
+  font-size: 10.5px;
+  line-height: 1.4;
+}
+
 .naTankRowValue[data-tone="warn"]     { color: #e0a86d; }
 .naTankRowValue[data-tone="critical"] { color: #e07070; }
 
@@ -2548,12 +2860,22 @@ select.naInput option {
 @media (max-width: 760px) {
   .naMetaGrid,
   .naConditionsGrid,
+  .naWeatherPanelStats,
   .naLoadPlanStats { grid-template-columns: repeat(2, 1fr); }
   .naFieldWide { grid-column: span 2; }
   .naProductTable,
   .naLoadTable {
     display: block;
     overflow-x: auto;
+  }
+}
+
+@media (max-width: 560px) {
+  .naStepBody[data-step="mix"] .naMetaGrid {
+    grid-template-columns: 1fr;
+  }
+  .naAreaSizeControl {
+    grid-template-columns: minmax(0, 1fr) minmax(100px, auto);
   }
 }
 
@@ -3012,6 +3334,7 @@ select.naInput option {
 .naWizardProgress {
   display: flex;
   flex-wrap: nowrap;
+  align-items: center;
   gap: 8px;
   overflow-x: auto;
   padding: 4px 0 12px;
@@ -3098,6 +3421,50 @@ select.naInput option {
   gap: 16px;
 }
 
+.naApplicationTypeGroup {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.naApplicationTypeBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-height: 64px;
+  padding: 12px 14px;
+  border: 1px solid rgba(74, 222, 128, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
+  color: rgba(229, 244, 234, 0.82);
+  text-align: left;
+  cursor: pointer;
+  transition: background 120ms, border-color 120ms, color 120ms;
+}
+
+.naApplicationTypeBtn:hover {
+  background: rgba(74, 222, 128, 0.075);
+  border-color: rgba(74, 222, 128, 0.35);
+}
+
+.naApplicationTypeBtn[data-selected="true"] {
+  background: rgba(74, 222, 128, 0.12);
+  border-color: rgba(74, 222, 128, 0.58);
+  color: rgba(236, 253, 245, 0.98);
+}
+
+.naApplicationTypeTitle {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.naApplicationTypeDescription {
+  font-size: 11px;
+  line-height: 1.35;
+  color: rgba(176, 217, 184, 0.72);
+}
+
 .naDisclosureBtn {
   align-self: flex-start;
   background: rgba(255, 255, 255, 0.05);
@@ -3147,6 +3514,50 @@ select.naInput option {
 .naWizardStepHint {
   font-size: 12px;
   color: rgba(255, 255, 255, 0.55);
+}
+
+.naActionNutrients {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  max-width: min(720px, 100%);
+  padding: 7px 10px;
+  border: 1px solid rgba(74, 222, 128, 0.26);
+  border-radius: 6px;
+  background: rgba(74, 222, 128, 0.07);
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.naActionNutrientLabel {
+  color: rgba(74, 222, 128, 0.94);
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.naActionNutrientList {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+
+.naActionNutrientItem {
+  color: rgba(229, 244, 234, 0.9);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.naActionNutrientItem strong {
+  color: rgba(236, 253, 245, 0.98);
+}
+
+.naWizardProgress .naActionNutrients {
+  flex: 0 0 auto;
+  min-height: 40px;
+  max-width: none;
 }
 
 .naWizardMoreRow {
@@ -3296,6 +3707,61 @@ select.naInput option {
   padding-top: 8px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
+.naNoDeductBox {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 10px;
+  align-items: start;
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(74, 222, 128, 0.28);
+  border-radius: 8px;
+  background: rgba(34, 197, 94, 0.08);
+  color: rgba(255, 255, 255, 0.88);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.naNoDeductBox:hover {
+  border-color: rgba(74, 222, 128, 0.45);
+  background: rgba(34, 197, 94, 0.12);
+}
+.naNoDeductCheck {
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  border: 1px solid rgba(120, 190, 130, 0.75);
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.22);
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.14);
+}
+.naNoDeductBox[data-active="true"] .naNoDeductCheck {
+  border-color: rgba(74, 222, 128, 0.9);
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.95), rgba(22, 163, 74, 0.75));
+}
+.naNoDeductBox[data-active="true"] .naNoDeductCheck::after {
+  content: "";
+  display: block;
+  width: 9px;
+  height: 5px;
+  margin: 5px 0 0 4px;
+  border-left: 2px solid #eaffef;
+  border-bottom: 2px solid #eaffef;
+  transform: rotate(-45deg);
+}
+.naNoDeductBox strong {
+  display: block;
+  font-size: 13px;
+  color: #dfffe5;
+}
+.naNoDeductBox small {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: rgba(204, 255, 214, 0.68);
+}
 .naReviewImpactLabel {
   font-size: 11px;
   color: rgba(255, 255, 255, 0.55);
@@ -3337,6 +3803,10 @@ select.naInput option {
   }
 }
 @media (max-width: 600px) {
+  .naApplicationTypeGroup {
+    grid-template-columns: 1fr;
+  }
+
   .naWizardStepLabel {
     display: none;
   }
@@ -3353,6 +3823,21 @@ select.naInput option {
     flex: 1 1 100%;
     justify-content: space-between;
   }
+  .naActionNutrients {
+    order: -1;
+    width: 100%;
+  }
+  .naWizardProgress .naActionNutrients {
+    order: 0;
+    width: auto;
+    min-width: max-content;
+  }
+  .naActionNutrientItem {
+    white-space: normal;
+  }
+  .naWizardProgress .naActionNutrientItem {
+    white-space: nowrap;
+  }
   .naReviewProductsHead,
   .naReviewProductRow {
     grid-template-columns: 2fr 1fr;
@@ -3365,3 +3850,26 @@ select.naInput option {
   }
 }
 
+.naSampleRecommendationPanel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 12px 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(74, 222, 128, .28);
+  border-radius: 6px;
+  background: rgba(74, 222, 128, .055);
+}
+.naSampleRecommendationPanel > div:first-child { display: grid; gap: 3px; }
+.naSampleRecommendationPanel strong { color: var(--text-primary, #eef7ee); }
+.naSampleRecommendationPanel span { color: var(--text-muted, #87a08a); font-size: 12px; }
+.naSampleRecommendationChips { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.naSampleRecommendationChips span { padding: 5px 8px; border: 1px solid rgba(74, 222, 128, .25); border-radius: 4px; }
+.naSampleRecommendationChips b { color: #4ade80; }
+.naSampleNoRecommendation { font-style: italic; }
+.naSampleRateSelect { width: 100%; margin-top: 7px; padding: 6px 8px; border-color: rgba(74, 222, 128, .28); font-size: 11px; }
+@media (max-width: 760px) {
+  .naSampleRecommendationPanel { align-items: stretch; flex-direction: column; }
+  .naSampleRecommendationChips { justify-content: flex-start; }
+}

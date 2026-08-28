@@ -21,6 +21,10 @@ function rowToSchedule(row) {
     dayOfWeek:    row.day_of_week,
     startTime:    row.start_time,
     endTime:      row.end_time,
+    lunchBreakMinutes: row.lunch_break_minutes ?? 30,
+    lunchStartTime: row.lunch_start_time,
+    lunchEndTime: row.lunch_end_time,
+    autoLunchBreak: row.auto_lunch_break !== 0,
     role:         row.role,
     status:       row.status,
     isRecurring:  row.is_recurring === 1,
@@ -34,6 +38,10 @@ const CORE_COLUMNS = {
   dayOfWeek:   'day_of_week',
   startTime:   'start_time',
   endTime:     'end_time',
+  lunchBreakMinutes: 'lunch_break_minutes',
+  lunchStartTime: 'lunch_start_time',
+  lunchEndTime: 'lunch_end_time',
+  autoLunchBreak: 'auto_lunch_break',
   role:        'role',
   status:      'status',
 }
@@ -93,7 +101,9 @@ export async function createEmployeeSchedule(env, request) {
     INSERT INTO employee_schedules (
       id, course_id, employee_id, day_of_week,
       start_time, end_time, role, status, is_recurring
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      , lunch_break_minutes
+      , lunch_start_time, lunch_end_time, auto_lunch_break
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id,
     courseId,
@@ -104,6 +114,10 @@ export async function createEmployeeSchedule(env, request) {
     body.role      ?? null,
     status,
     body.isRecurring === false ? 0 : 1,
+    Math.max(0, Number(body.lunchBreakMinutes ?? 30) || 0),
+    body.lunchStartTime ?? null,
+    body.lunchEndTime ?? null,
+    body.autoLunchBreak === false ? 0 : 1,
   ).run()
 
   return getEmployeeSchedule(env, id)
@@ -125,6 +139,7 @@ export async function updateEmployeeSchedule(env, id, request) {
       value = coerceDay(value)
       if (value === null) return badRequest('dayOfWeek must be 0-6')
     }
+    if (apiKey === 'autoLunchBreak') value = value === false ? 0 : 1
     sets.push(`${dbCol} = ?`)
     binds.push(value)
   }
@@ -173,6 +188,10 @@ function rowToOverride(row) {
     effectiveDate: row.effective_date,
     startTime:     row.start_time,
     endTime:       row.end_time,
+    lunchBreakMinutes: row.lunch_break_minutes ?? 30,
+    lunchStartTime: row.lunch_start_time,
+    lunchEndTime: row.lunch_end_time,
+    autoLunchBreak: row.auto_lunch_break !== 0,
     role:          row.role,
     status:        row.status,
     notes:         row.notes,
@@ -181,11 +200,23 @@ function rowToOverride(row) {
   }
 }
 
+async function unlinkShiftTemplateApplicationsForDate(env, { courseId, effectiveDate }) {
+  if (!courseId || !effectiveDate) return
+  await env.DB.prepare(
+    `DELETE FROM shift_template_applications
+      WHERE course_id = ? AND effective_date = ?`,
+  ).bind(courseId, effectiveDate).run()
+}
+
 const OVERRIDE_CORE_COLUMNS = {
   employeeId:    'employee_id',
   effectiveDate: 'effective_date',
   startTime:     'start_time',
   endTime:       'end_time',
+  lunchBreakMinutes: 'lunch_break_minutes',
+  lunchStartTime: 'lunch_start_time',
+  lunchEndTime: 'lunch_end_time',
+  autoLunchBreak: 'auto_lunch_break',
   role:          'role',
   status:        'status',
   notes:         'notes',
@@ -235,6 +266,7 @@ export async function createEmployeeScheduleOverride(env, request) {
   if (!status) return badRequest('Invalid status (must be scheduled | off | vacation | sick)')
 
   const courseId = resolveCourseId(body)
+  await unlinkShiftTemplateApplicationsForDate(env, { courseId, effectiveDate })
 
   // Idempotent: if (course, employee, date) already exists, return it
   // unchanged. Client uses PATCH to mutate. Mirrors the recurring path.
@@ -251,7 +283,9 @@ export async function createEmployeeScheduleOverride(env, request) {
     INSERT INTO employee_schedule_overrides (
       id, course_id, employee_id, effective_date,
       start_time, end_time, role, status, notes
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      , lunch_break_minutes
+      , lunch_start_time, lunch_end_time, auto_lunch_break
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id,
     courseId,
@@ -262,6 +296,10 @@ export async function createEmployeeScheduleOverride(env, request) {
     body.role      ?? null,
     status,
     body.notes     ?? null,
+    Math.max(0, Number(body.lunchBreakMinutes ?? 30) || 0),
+    body.lunchStartTime ?? null,
+    body.lunchEndTime ?? null,
+    body.autoLunchBreak === false ? 0 : 1,
   ).run()
 
   return getEmployeeScheduleOverride(env, id)
@@ -269,6 +307,11 @@ export async function createEmployeeScheduleOverride(env, request) {
 
 export async function updateEmployeeScheduleOverride(env, id, request) {
   const body = await readJson(request)
+  const existing = await env.DB.prepare(
+    'SELECT * FROM employee_schedule_overrides WHERE id = ?',
+  ).bind(id).first()
+  if (!existing) return notFound('Schedule override not found')
+
   const sets = []
   const binds = []
 
@@ -283,6 +326,7 @@ export async function updateEmployeeScheduleOverride(env, id, request) {
       value = coerceDate(value)
       if (!value) return badRequest('effectiveDate must be YYYY-MM-DD')
     }
+    if (apiKey === 'autoLunchBreak') value = value === false ? 0 : 1
     sets.push(`${dbCol} = ?`)
     binds.push(value)
   }
@@ -297,14 +341,33 @@ export async function updateEmployeeScheduleOverride(env, id, request) {
   ).bind(...binds).run()
 
   if (!result.success || result.meta.changes === 0) return notFound('Schedule override not found')
+  await unlinkShiftTemplateApplicationsForDate(env, {
+    courseId: existing.course_id,
+    effectiveDate: existing.effective_date,
+  })
+  if (body.effectiveDate && body.effectiveDate !== existing.effective_date) {
+    await unlinkShiftTemplateApplicationsForDate(env, {
+      courseId: existing.course_id,
+      effectiveDate: body.effectiveDate,
+    })
+  }
   return getEmployeeScheduleOverride(env, id)
 }
 
 export async function deleteEmployeeScheduleOverride(env, id) {
+  const existing = await env.DB.prepare(
+    'SELECT * FROM employee_schedule_overrides WHERE id = ?',
+  ).bind(id).first()
+  if (!existing) return notFound('Schedule override not found')
+
   const result = await env.DB.prepare(
     'DELETE FROM employee_schedule_overrides WHERE id = ?',
   ).bind(id).run()
   if (!result.success || result.meta.changes === 0) return notFound('Schedule override not found')
+  await unlinkShiftTemplateApplicationsForDate(env, {
+    courseId: existing.course_id,
+    effectiveDate: existing.effective_date,
+  })
   return json({ ok: true, id })
 }
 
@@ -369,6 +432,10 @@ export async function listEmployeesDailySchedule(env, courseId = null, date = nu
         status:       ov.status,
         startTime:    ov.start_time,
         endTime:      ov.end_time,
+        lunchBreakMinutes: ov.lunch_break_minutes ?? rec?.lunch_break_minutes ?? 30,
+        lunchStartTime: ov.lunch_start_time,
+        lunchEndTime: ov.lunch_end_time,
+        autoLunchBreak: ov.auto_lunch_break !== 0,
         notes:        ov.notes,
         source:       'override',
         overrideId:   ov.id,
@@ -383,6 +450,10 @@ export async function listEmployeesDailySchedule(env, courseId = null, date = nu
         status:       rec.status,
         startTime:    rec.start_time,
         endTime:      rec.end_time,
+        lunchBreakMinutes: rec.lunch_break_minutes ?? 30,
+        lunchStartTime: rec.lunch_start_time,
+        lunchEndTime: rec.lunch_end_time,
+        autoLunchBreak: rec.auto_lunch_break !== 0,
         notes:        null,
         source:       'recurring',
         overrideId:   null,
@@ -396,6 +467,10 @@ export async function listEmployeesDailySchedule(env, courseId = null, date = nu
       status:       'scheduled',
       startTime:    null,
       endTime:      null,
+      lunchBreakMinutes: 30,
+      lunchStartTime: null,
+      lunchEndTime: null,
+      autoLunchBreak: true,
       notes:        null,
       source:       'none',
       overrideId:   null,
@@ -435,8 +510,31 @@ function diffHours(startTime, endTime) {
   if (![sh, sm, eh, em].every(Number.isFinite)) return 0
   const start = sh * 60 + sm
   const end   = eh * 60 + em
-  if (end <= start) return 0
-  return (end - start) / 60
+  let diff = end - start
+  if (diff < 0 && sh < 12) {
+    const afternoonEnd = end + (12 * 60)
+    const afternoonDiff = afternoonEnd - start
+    if (afternoonDiff > 0 && afternoonDiff <= 12 * 60) diff = afternoonDiff
+  }
+  if (diff < 0) diff += 24 * 60
+  if (diff <= 0) return 0
+  return Math.round((diff / 60) * 100) / 100
+}
+
+function paidScheduleHours(startTime, endTime, lunchBreakMinutes = 30) {
+  const gross = diffHours(startTime, endTime)
+  if (gross <= 0) return 0
+  if (gross < 8) return gross
+  const lunchHours = Math.max(0, Number(lunchBreakMinutes) || 0) / 60
+  return Math.max(0, Math.round((gross - lunchHours) * 100) / 100)
+}
+
+function paidScheduleHoursForRow(startTime, endTime, row) {
+  const gross = diffHours(startTime, endTime)
+  if (gross <= 0) return 0
+  if ((row?.auto_lunch_break ?? 1) !== 0) return paidScheduleHours(startTime, endTime, 30)
+  const lunchHours = diffHours(row?.lunch_start_time, row?.lunch_end_time)
+  return Math.max(0, Math.round((gross - lunchHours) * 100) / 100)
 }
 
 export async function listEmployeesMonthCalendar(env, courseId = null, month = null) {
@@ -504,7 +602,7 @@ export async function listEmployeesMonthCalendar(env, courseId = null, month = n
         // Override times override recurring; fall back to recurring.
         const start = ov?.start_time ?? rec?.start_time ?? null
         const end   = ov?.end_time   ?? rec?.end_time   ?? null
-        hours += diffHours(start, end)
+        hours += paidScheduleHoursForRow(start, end, ov ?? rec)
       } else {
         off += 1
       }
@@ -553,6 +651,7 @@ export async function copyEmployeeSchedulesDay(env, request) {
 
   const courseId = resolveCourseId(body)
   const courseFilter = buildCourseFilter(courseId)
+  await unlinkShiftTemplateApplicationsForDate(env, { courseId, effectiveDate: destinationDate })
 
   // Compute source DOW for the recurring lookup.
   const srcDow = new Date(`${sourceDate}T00:00:00`).getDay()
@@ -599,7 +698,9 @@ export async function copyEmployeeSchedulesDay(env, request) {
         INSERT INTO employee_schedule_overrides (
           id, course_id, employee_id, effective_date,
           start_time, end_time, role, status, notes
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          , lunch_break_minutes
+          , lunch_start_time, lunch_end_time, auto_lunch_break
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(
         generateId('schov'),
         courseId,
@@ -610,6 +711,10 @@ export async function copyEmployeeSchedulesDay(env, request) {
         effective.role,
         effective.status,
         ov?.notes ?? null,           // recurring rules have no notes
+        effective.lunch_break_minutes ?? 30,
+        effective.lunch_start_time ?? null,
+        effective.lunch_end_time ?? null,
+        effective.auto_lunch_break ?? 1,
       ).run()
       copied += 1
     } catch {

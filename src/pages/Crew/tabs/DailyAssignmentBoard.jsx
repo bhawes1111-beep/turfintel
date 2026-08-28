@@ -9,7 +9,7 @@
 // No new schema. Reuses the Phase 10 crew_assignment_id linkage to
 // surface chips next to the operator on the Display Board.
 
-import { useMemo, useState, Fragment } from 'react'
+import { useMemo, useRef, useState, Fragment } from 'react'
 import {
   createCrewAssignment,
   deleteCrewAssignment,
@@ -34,7 +34,6 @@ import { useScheduleOverridesData } from '../../../utils/schedules/scheduleOverr
 import {
   buildScheduleByEmployeeForDate,
   isEmployeeAssignableForDate,
-  hasAnyScheduleData,
 } from '../../../utils/schedules/dailyScheduleMerge'
 // Phase 9C.5d — Translation controls. The refresh hooks for the two
 // other stores pull fresh title_es / body_es / message_es values into
@@ -53,22 +52,37 @@ import TasksManagerModal from './TasksManagerModal'
 // for selectedDate via pickOrCreateEventForTask so the downstream
 // crew_assignment + kiosk join paths are unchanged.
 import { useTaskTemplatesData } from '../../../utils/tasks/taskTemplateStore'
+import {
+  useTaskCategoriesData,
+  normalizeTaskCategorySlug,
+} from '../../../utils/tasks/taskCategoryStore'
 // Phase 9C.18 — Capture morning-workflow friction without making the
 // supervisor leave the board. Reuses the Phase 31 pilot_feedback table
 // + /api/pilot-feedback endpoint via the existing createFeedback
 // helper; no new schema or worker route is added.
 import { createFeedback } from '../../../utils/feedback/feedbackStore'
+import {
+  deleteAttachment,
+  uploadAttachment,
+  useAttachmentsForParent,
+} from '../../../utils/attachments/attachmentsStore'
+import AssignmentPhotoViewer from '../../../components/assignments/AssignmentPhotoViewer'
 import styles from './DailyAssignmentBoard.module.css'
 
 // Phase 8A.3a — Crosswinds-only Notes + Status per assignment row.
 // The crew_assignments table already carries `notes` and `status`
 // columns; this slice just surfaces them in the UI. Status options
 // match the TaskTracker vocabulary the user requested. Legacy
-// 'assigned' rows render as 'pending' until a steward chooses a
-// new value (no DB rewrite). UI-only; no schema, no worker, no
-// DisplayBoard change.
+// 'assigned' / 'pending' rows render as planned until a steward chooses
+// a new value (no DB rewrite).
 const CROSSWINDS_COURSE_ID = 'crossroads-gc'
-const ASSIGNMENT_STATUS_OPTIONS = ['pending', 'in-progress', 'complete', 'blocked']
+const ASSIGNMENT_STATUS_OPTIONS = ['planned', 'in-progress', 'weather-delay', 'complete']
+const ASSIGNMENT_STATUS_LABELS = {
+  planned:       'Planned',
+  'in-progress': 'In Progress',
+  'weather-delay': 'Weather Delay',
+  complete:      'Complete',
+}
 
 // Phase DAB.10b — Ordinal labels for additional jobs. Index 1 = "2nd
 // Job" (the primary/1st job in the main row gets no label to keep
@@ -77,10 +91,58 @@ const ASSIGNMENT_STATUS_OPTIONS = ['pending', 'in-progress', 'complete', 'blocke
 // employee with 7 jobs still gets readable labels even though that's
 // not a normal workflow.
 const ORDINAL_LABELS = ['1st Job', '2nd Job', '3rd Job', '4th Job']
-const ASSIGNMENT_STATUS_DEFAULT = 'pending'
+const ASSIGNMENT_STATUS_DEFAULT = 'planned'
+
+function TaskOptions({ groups }) {
+  return groups.map(group => (
+    <optgroup key={group.key} label={group.label}>
+      {group.templates.map(template => (
+        <option key={template.id} value={template.id}>{template.name}</option>
+      ))}
+    </optgroup>
+  ))
+}
+
+function SubJobsEditor({ assignment, groups, disabled, onAdd, onRemove, label }) {
+  if (!assignment) return null
+  const subJobs = Array.isArray(assignment.subJobs) ? assignment.subJobs : []
+  return (
+    <div className={styles.subJobsEditor}>
+      {subJobs.length > 0 && (
+        <div className={styles.subJobList} aria-label={`${label} sub-jobs`}>
+          {subJobs.map(subJob => (
+            <span key={subJob.id} className={styles.subJobChip}>
+              <span>{subJob.name}</span>
+              <button
+                type="button"
+                onClick={() => onRemove(subJob.id)}
+                disabled={disabled}
+                aria-label={`Remove sub-job ${subJob.name}`}
+                title="Remove sub-job"
+              >x</button>
+            </span>
+          ))}
+        </div>
+      )}
+      <select
+        className={styles.subJobSelect}
+        value=""
+        onChange={event => {
+          if (event.target.value) onAdd(event.target.value)
+        }}
+        disabled={disabled}
+        aria-label={`Add a sub-job to ${label}`}
+      >
+        <option value="">+ Add sub-job</option>
+        <TaskOptions groups={groups} />
+      </select>
+    </div>
+  )
+}
 
 function normalizeAssignmentStatus(raw) {
-  if (raw === 'assigned' || raw == null || raw === '') return ASSIGNMENT_STATUS_DEFAULT
+  if (raw === 'assigned' || raw === 'pending' || raw == null || raw === '') return ASSIGNMENT_STATUS_DEFAULT
+  if (raw === 'completed' || raw === 'done') return 'complete'
   if (ASSIGNMENT_STATUS_OPTIONS.includes(raw)) return raw
   return ASSIGNMENT_STATUS_DEFAULT
 }
@@ -90,10 +152,6 @@ function normalizeAssignmentStatus(raw) {
 // original names were seeded into task_templates by
 // worker/migrations/0051_task_templates.sql. Supervisors now edit the
 // library from the Tasks tab modal at runtime.
-
-function slug(s) {
-  return (s ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
-}
 
 function shiftDate(iso, days) {
   const d = new Date(`${iso}T00:00:00`)
@@ -126,7 +184,178 @@ const TASK_CATEGORY_LABELS = {
   maintenance: 'Maintenance',
   other:       'Other',
 }
-const TASK_CATEGORY_ORDER = ['crew', 'irrigation', 'spray', 'agronomy', 'maintenance', 'other']
+
+function startOfAssignmentWeek(iso) {
+  const date = new Date(`${iso}T00:00:00`)
+  const mondayOffset = (date.getDay() + 6) % 7
+  date.setDate(date.getDate() - mondayOffset)
+  return date.toISOString().slice(0, 10)
+}
+
+function shortWeekDate(iso) {
+  return new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, {
+    month: 'short', day: 'numeric',
+  })
+}
+
+const CALENDAR_EVENT_LABELS = {
+  outing:      'Outing',
+  tournament:  'Tournament',
+  'cultural-practice': 'Cultural',
+  'course-closure': 'Closure',
+  'member-event': 'Member',
+  'staff-event': 'Staff',
+  vendor:      'Vendor',
+  'weather-watch': 'Weather',
+  other:       'Event',
+  spray:       'Application',
+  application: 'Application',
+  maintenance: 'Maintenance',
+  irrigation:  'Irrigation',
+  agronomy:    'Agronomy',
+  crew:        'Crew',
+}
+
+function calendarEventDate(event) {
+  return event?.startDate ?? event?.date ?? ''
+}
+
+function calendarEventCategory(event) {
+  return event?.eventType ?? event?.category ?? 'event'
+}
+
+function isAssignmentTaskCalendarEvent(event) {
+  const category = calendarEventCategory(event)
+  const sourceId = String(event?.sourceId ?? event?.metadata?.sourceId ?? '')
+  const sourceModule = event?.sourceModule ?? event?.metadata?.sourceModule
+  return category === 'crew'
+    && sourceModule === 'assignment-board'
+    && sourceId.startsWith('task-template:')
+}
+
+function isManagedEventCalendarEvent(event) {
+  const category = calendarEventCategory(event)
+  const sourceModule = event?.sourceModule ?? event?.metadata?.sourceModule
+  const tags = Array.isArray(event?.tags) ? event.tags : []
+  return category === 'outing'
+    || category === 'tournament'
+    || sourceModule === 'golf-outings-calendar'
+    || sourceModule === 'events-calendar'
+    || tags.includes('golf-outing')
+    || tags.includes('event-calendar')
+}
+
+function eventTimeLabel(event) {
+  if (event?.startTime && event?.endTime) return `${event.startTime}-${event.endTime}`
+  return event?.startTime ?? ''
+}
+
+function eventTypeLabel(event) {
+  const category = calendarEventCategory(event)
+  return CALENDAR_EVENT_LABELS[category]
+    ?? category.replace(/-/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase())
+}
+
+function AssignmentPhotoControl({ assignment, employeeName, jobLabel, uploadedBy }) {
+  const toast = useToast()
+  const fileInputRef = useRef(null)
+  const [uploading, setUploading] = useState(false)
+  const [viewerOpen, setViewerOpen] = useState(false)
+  const { attachments, loading, refresh } = useAttachmentsForParent(
+    'crew_assignment',
+    assignment?.id,
+    { enabled: Boolean(assignment?.id) },
+  )
+
+  if (!assignment?.id) return null
+
+  async function handleFilesSelected(event) {
+    const files = Array.from(event.target.files ?? [])
+    event.target.value = ''
+    if (files.length === 0) return
+
+    const invalid = files.find(file => !file.type.startsWith('image/') || file.size > 8 * 1024 * 1024)
+    if (invalid) {
+      toast.error('Photos must be image files no larger than 8 MB each.')
+      return
+    }
+
+    setUploading(true)
+    try {
+      for (const file of files) {
+        await uploadAttachment({
+          parentType: 'crew_assignment',
+          parentId: assignment.id,
+          file,
+          caption: `${employeeName} - ${jobLabel}`,
+          uploadedBy,
+        })
+      }
+      await refresh()
+      toast.success(`${files.length} assignment photo${files.length === 1 ? '' : 's'} added`)
+    } catch (error) {
+      toast.error(`Photo upload failed: ${error.message}`)
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  async function handleDeletePhoto(attachment) {
+    try {
+      await deleteAttachment(attachment.id)
+      await refresh()
+      toast.success('Assignment photo deleted')
+    } catch (error) {
+      toast.error(`Photo delete failed: ${error.message}`)
+      throw error
+    }
+  }
+
+  return (
+    <>
+      <div className={styles.assignmentPhotoActions}>
+        <input
+          ref={fileInputRef}
+          className={styles.assignmentPhotoInput}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+          multiple
+          onChange={handleFilesSelected}
+          aria-label={`Add photos for ${employeeName}, ${jobLabel}`}
+        />
+        <button
+          type="button"
+          className={styles.assignmentPhotoButton}
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+        >
+          {uploading ? 'Uploading...' : 'Add photo'}
+        </button>
+        {attachments.length > 0 && (
+          <button
+            type="button"
+            className={styles.assignmentPhotoButton}
+            data-variant="view"
+            onClick={() => setViewerOpen(true)}
+          >
+            View photos ({attachments.length})
+          </button>
+        )}
+        {loading && attachments.length === 0 && (
+          <span className={styles.assignmentPhotoLoading}>Loading photos...</span>
+        )}
+      </div>
+      {viewerOpen && attachments.length > 0 && (
+        <AssignmentPhotoViewer
+          attachments={attachments}
+          title={`${employeeName} - ${jobLabel}`}
+          onClose={() => setViewerOpen(false)}
+          onDelete={handleDeletePhoto}
+        />
+      )}
+    </>
+  )
+}
 
 export default function DailyAssignmentBoard({
   employees,
@@ -140,8 +369,10 @@ export default function DailyAssignmentBoard({
   const { overrides: scheduleOverrides } = useScheduleOverridesData()
   // Phase 9C.11 — reusable task library. Backs the DAB dropdown.
   const { templates: taskTemplates } = useTaskTemplatesData()
+  const { categories: taskCategories } = useTaskCategoriesData()
   const [selectedDate, setSelectedDate] = useState(TODAY_ISO)
   const [modalEmpId,   setModalEmpId]   = useState(null)
+  const [modalAssignmentId, setModalAssignmentId] = useState(null)
   const [tasksModalOpen, setTasksModalOpen] = useState(false)
   const [busyEmpId,    setBusyEmpId]    = useState(null)
   const [bulkBusy,     setBulkBusy]     = useState(null)   // 'copy' | 'clear' | null
@@ -223,6 +454,67 @@ export default function DailyAssignmentBoard({
     [dayEvents],
   )
 
+  const calendarEventsForSelectedDay = useMemo(() => {
+    return events
+      .filter(e => calendarEventDate(e) === selectedDate)
+      .filter(e => !['cancelled', 'deleted'].includes(e.status))
+      .filter(isManagedEventCalendarEvent)
+      .filter(e => !isAssignmentTaskCalendarEvent(e))
+      .sort((a, b) => {
+        const ta = a.startTime ?? ''
+        const tb = b.startTime ?? ''
+        if (ta !== tb) return ta.localeCompare(tb)
+        return (a.title ?? '').localeCompare(b.title ?? '')
+      })
+  }, [events, selectedDate])
+
+  const visibleCalendarEvents = calendarEventsForSelectedDay.slice(0, 3)
+  const hiddenCalendarEventCount = Math.max(
+    0,
+    calendarEventsForSelectedDay.length - visibleCalendarEvents.length,
+  )
+
+  const assignmentWeek = useMemo(() => {
+    const weekStart = startOfAssignmentWeek(selectedDate)
+    const eventById = new Map(events.map(event => [event.id, event]))
+    const employeeById = new Map(employees.map(employee => [employee.id, employee]))
+    const days = Array.from({ length: 7 }, (_, index) => {
+      const date = shiftDate(weekStart, index)
+      return {
+        date,
+        label: new Date(`${date}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short' }),
+        tasks: [],
+      }
+    })
+    const dayByDate = new Map(days.map(day => [day.date, day]))
+
+    for (const assignment of crewAssignments) {
+      if (assignment.status === 'cancelled') continue
+      const event = eventById.get(assignment.calendarEventId)
+      const date = calendarEventDate(event)
+      const day = dayByDate.get(date)
+      if (!day || !event) continue
+      const employee = employeeById.get(assignment.employeeId)
+      day.tasks.push({
+        id: assignment.id,
+        title: event.title ?? 'Assigned task',
+        employee: employee?.name ?? assignment.employeeName ?? 'Unassigned',
+        status: normalizeAssignmentStatus(assignment.status),
+        order: assignment.jobOrder ?? 0,
+      })
+    }
+
+    for (const day of days) {
+      day.tasks.sort((a, b) => {
+        const employeeOrder = a.employee.localeCompare(b.employee)
+        if (employeeOrder !== 0) return employeeOrder
+        if (a.order !== b.order) return a.order - b.order
+        return a.title.localeCompare(b.title)
+      })
+    }
+    return days
+  }, [selectedDate, events, employees, crewAssignments])
+
   // Phase 9C.11 — Active task templates drive the dropdown options. The
   // archived toggle in the Tasks Library modal is intentionally a
   // server-side fetch flag; here we still defensively filter by
@@ -239,6 +531,17 @@ export default function DailyAssignmentBoard({
       })
   }, [taskTemplates])
 
+  const taskCategoryMeta = useMemo(() => {
+    const map = new Map()
+    for (const c of (taskCategories ?? [])) {
+      const key = normalizeTaskCategorySlug(c.slug)
+      if (key) map.set(key, c)
+    }
+    const order = [...map.keys()]
+    order.push('other')
+    return { map, order }
+  }, [taskCategories])
+
   // Phase 9C.13 — Group active templates by category for an <optgroup>
   // dropdown. Categories appear in TASK_CATEGORY_ORDER; blank / unknown
   // categories bucket to "other" so a template with no category never
@@ -250,19 +553,19 @@ export default function DailyAssignmentBoard({
   const groupedActiveTaskTemplates = useMemo(() => {
     const buckets = new Map()
     for (const tmpl of activeTaskTemplates) {
-      const raw = (tmpl.category ?? '').trim().toLowerCase()
-      const key = TASK_CATEGORY_LABELS[raw] ? raw : 'other'
+      const raw = normalizeTaskCategorySlug(tmpl.category)
+      const key = taskCategoryMeta.map.has(raw) || TASK_CATEGORY_LABELS[raw] ? raw : 'other'
       if (!buckets.has(key)) buckets.set(key, [])
       buckets.get(key).push(tmpl)
     }
-    return TASK_CATEGORY_ORDER
+    return taskCategoryMeta.order
       .filter(key => buckets.has(key))
       .map(key => ({
         key,
-        label:     TASK_CATEGORY_LABELS[key],
+        label:     key === 'other' ? 'Other' : taskCategoryMeta.map.get(key)?.name ?? TASK_CATEGORY_LABELS[key] ?? 'Other',
         templates: buckets.get(key),
       }))
-  }, [activeTaskTemplates])
+  }, [activeTaskTemplates, taskCategoryMeta])
 
   // Scheduled employees (Phase 13):
   //   - If the employee_schedules table has any rows for this course,
@@ -634,16 +937,26 @@ export default function DailyAssignmentBoard({
 
       if (existing) {
         await unlinkReservationsFor(existing.id)
-        await deleteCrewAssignment(existing.id)
+        await patchCrewAssignment(existing.id, {
+          calendarEventId: event.id,
+          employeeId:      emp.id,
+          employeeName:    emp.name,
+          role:            emp.role ?? null,
+          status:          ASSIGNMENT_STATUS_DEFAULT,
+          notes:           notesToWrite,
+          subJobs:         existing.subJobs ?? [],
+        })
+      } else {
+        await createCrewAssignment({
+          calendarEventId: event.id,
+          employeeId:      emp.id,
+          employeeName:    emp.name,
+          role:            emp.role ?? null,
+          status:          ASSIGNMENT_STATUS_DEFAULT,
+          notes:           notesToWrite,
+          subJobs:         [],
+        })
       }
-      await createCrewAssignment({
-        calendarEventId: event.id,
-        employeeId:      emp.id,
-        employeeName:    emp.name,
-        role:            emp.role ?? null,
-        status:          'assigned',
-        notes:           notesToWrite,
-      })
 
       if (notesToWrite && canTranslate) {
         scheduleTranslationSweep()
@@ -664,6 +977,117 @@ export default function DailyAssignmentBoard({
   // Phase 8A.3a — Notes + Status handlers (Crosswinds-gated render).
   // Both write through patchCrewAssignment, which already does
   // optimistic local update + server reconcile + refresh-on-error.
+  function templateIdForAssignment(assignment) {
+    if (!assignment) return ''
+    const ev = events.find(e => e.id === assignment.calendarEventId)
+    const title = (ev?.title ?? '').trim().toLowerCase()
+    return activeTaskTemplates.find(tmpl =>
+      (tmpl.name ?? '').trim().toLowerCase() === title,
+    )?.id ?? ''
+  }
+
+  function jobLabelFromOrder(jobOrder) {
+    const order = Number.isFinite(Number(jobOrder)) ? Math.floor(Number(jobOrder)) : 0
+    return ORDINAL_LABELS[order] ?? `Job ${order + 1}`
+  }
+
+  async function handleAdditionalTaskChange(emp, assignment, templateId) {
+    if (!assignment) return
+    if (!templateId) {
+      await handleRemoveAdditionalJob(emp, assignment)
+      return
+    }
+    const template = activeTaskTemplates.find(t => t.id === templateId)
+    if (!template) {
+      toast.error('Task update failed: template not found')
+      return
+    }
+    setBusyEmpId(emp.id)
+    try {
+      const event = await pickOrCreateEventForTask(template, selectedDate)
+      if (!event?.id) {
+        toast.error('Task update failed: no event id returned')
+        return
+      }
+      if (assignment.calendarEventId === event.id) return
+
+      const existingJobs = assignmentsByEmpId.get(emp.id)
+        ?? assignmentsByEmpId.get(emp.name)
+        ?? []
+      if (existingJobs.some(j => j.id !== assignment.id && j.calendarEventId === event.id)) {
+        toast.info(`${emp.name} is already assigned to ${template.name}.`)
+        return
+      }
+
+      const carriedNotes = (assignment.notes ?? '').trim()
+      const defaultNotes = (template.defaultNotes ?? '').trim()
+      const notesToWrite = carriedNotes || defaultNotes || null
+      const linkedCountPrev = (reservationsByAssignment.get(assignment.id) ?? []).length
+
+      await unlinkReservationsFor(assignment.id)
+      await deleteCrewAssignment(assignment.id)
+      await createCrewAssignment({
+        calendarEventId: event.id,
+        employeeId:      emp.id,
+        employeeName:    emp.name,
+        role:            emp.role ?? null,
+        status:          normalizeAssignmentStatus(assignment.status),
+        notes:           notesToWrite,
+        jobOrder:        assignment.jobOrder ?? 0,
+        subJobs:         assignment.subJobs ?? [],
+      })
+
+      if (notesToWrite && canTranslate) scheduleTranslationSweep()
+      toast.success(linkedCountPrev > 0
+        ? `${jobLabelFromOrder(assignment.jobOrder)} updated. Equipment unlinked.`
+        : `${jobLabelFromOrder(assignment.jobOrder)} updated.`)
+    } catch (err) {
+      toast.error(`Task update failed: ${err.message}`)
+    } finally {
+      setBusyEmpId(null)
+    }
+  }
+
+  async function handleAddSubJob(emp, assignment, templateId) {
+    const template = activeTaskTemplates.find(item => item.id === templateId)
+    if (!assignment || !template) return
+    const current = Array.isArray(assignment.subJobs) ? assignment.subJobs : []
+    if (current.some(item => item.taskTemplateId === template.id)) {
+      toast.info(`${template.name} is already a sub-job.`)
+      return
+    }
+    const next = [
+      ...current,
+      {
+        id: globalThis.crypto?.randomUUID?.() ?? `sub-${Date.now()}`,
+        taskTemplateId: template.id,
+        name: template.name,
+      },
+    ]
+    setBusyEmpId(emp.id)
+    try {
+      await patchCrewAssignment(assignment.id, { subJobs: next })
+    } catch (err) {
+      toast.error(`Sub-job add failed: ${err.message}`)
+    } finally {
+      setBusyEmpId(null)
+    }
+  }
+
+  async function handleRemoveSubJob(emp, assignment, subJobId) {
+    if (!assignment) return
+    const next = (Array.isArray(assignment.subJobs) ? assignment.subJobs : [])
+      .filter(item => item.id !== subJobId)
+    setBusyEmpId(emp.id)
+    try {
+      await patchCrewAssignment(assignment.id, { subJobs: next })
+    } catch (err) {
+      toast.error(`Sub-job removal failed: ${err.message}`)
+    } finally {
+      setBusyEmpId(null)
+    }
+  }
+
   function handleNotesChange(assignmentId, value) {
     setNotesDraft(prev => ({ ...prev, [assignmentId]: value }))
   }
@@ -675,7 +1099,8 @@ export default function DailyAssignmentBoard({
     const current = (assignment.notes ?? '').trim()
     if (next === current) {
       setNotesDraft(prev => {
-        const { [assignment.id]: _, ...rest } = prev
+        const rest = { ...prev }
+        delete rest[assignment.id]
         return rest
       })
       return
@@ -683,7 +1108,8 @@ export default function DailyAssignmentBoard({
     try {
       await patchCrewAssignment(assignment.id, { notes: next })
       setNotesDraft(prev => {
-        const { [assignment.id]: _, ...rest } = prev
+        const rest = { ...prev }
+        delete rest[assignment.id]
         return rest
       })
       // Phase 9C.8 — auto-translate the new English note after a brief
@@ -711,7 +1137,8 @@ export default function DailyAssignmentBoard({
     const current = (assignment.notesEs ?? '').trim()
     if (next === current) {
       setNotesEsDraft(prev => {
-        const { [assignment.id]: _, ...rest } = prev
+        const rest = { ...prev }
+        delete rest[assignment.id]
         return rest
       })
       return
@@ -719,7 +1146,8 @@ export default function DailyAssignmentBoard({
     try {
       await patchCrewAssignment(assignment.id, { notesEs: next })
       setNotesEsDraft(prev => {
-        const { [assignment.id]: _, ...rest } = prev
+        const rest = { ...prev }
+        delete rest[assignment.id]
         return rest
       })
     } catch (err) {
@@ -943,14 +1371,15 @@ export default function DailyAssignmentBoard({
           employeeId:      oldA.employeeId ?? empStillThere.id,
           employeeName:    oldA.employeeName,
           role:            oldA.role ?? null,
-          // Copied rows always start as 'assigned' — don't carry
-          // 'complete' / 'in-progress' / 'blocked' state across days.
-          status:          'assigned',
+          // Copied rows always start planned — don't carry complete or
+          // in-progress state across days.
+          status:          ASSIGNMENT_STATUS_DEFAULT,
           // Copy English notes only when the option is on. The Spanish
           // translation field is intentionally omitted — the cron sweep
           // refills it from the new English so the manual-Spanish-wins
           // contract is preserved.
           notes:           options.copyNotes ? (oldA.notes ?? null) : null,
+          subJobs:         oldA.subJobs ?? [],
         })
 
         if (options.copyEquipment) {
@@ -1300,7 +1729,7 @@ export default function DailyAssignmentBoard({
         employeeId:      emp.id,
         employeeName:    emp.name,
         role:            emp.role ?? null,
-        status:          'assigned',
+        status:          ASSIGNMENT_STATUS_DEFAULT,
         notes:           defaultNotes || null,
         jobOrder:        nextOrder,
       })
@@ -1335,18 +1764,19 @@ export default function DailyAssignmentBoard({
     }
   }
 
-  function openEquipmentModalFor(emp) {
-    const assignment = assignmentByEmpId.get(emp.id) ?? assignmentByEmpId.get(emp.name)
+  function openEquipmentModalFor(emp, targetAssignment = null) {
+    const assignment = targetAssignment ?? assignmentByEmpId.get(emp.id) ?? assignmentByEmpId.get(emp.name)
     if (!assignment) {
       toast.info('Pick a task first — equipment links to a specific task.')
       return
     }
     setModalEmpId(emp.id)
+    setModalAssignmentId(assignment.id)
   }
 
   const modalEmployee   = dayEmployees.find(e => e.id === modalEmpId) ?? null
-  const modalAssignment = modalEmployee
-    ? (assignmentByEmpId.get(modalEmployee.id) ?? assignmentByEmpId.get(modalEmployee.name))
+  const modalAssignment = modalAssignmentId
+    ? crewAssignments.find(a => a.id === modalAssignmentId)
     : null
   const modalEvent = modalAssignment
     ? dayEvents.find(ev => ev.id === modalAssignment.calendarEventId)
@@ -1358,6 +1788,45 @@ export default function DailyAssignmentBoard({
   return (
     <section className={styles.section}>
 
+      <div className={styles.weekCalendar} aria-label="Current assignment week">
+        {assignmentWeek.map(day => {
+          const isSelectedDay = day.date === selectedDate
+          const isCurrentDay = day.date === TODAY_ISO()
+          return (
+            <button
+              key={day.date}
+              type="button"
+              className={styles.weekDay}
+              data-selected={isSelectedDay || undefined}
+              data-today={isCurrentDay || undefined}
+              onClick={() => setSelectedDate(day.date)}
+              aria-pressed={isSelectedDay}
+              aria-label={`${day.label}, ${shortWeekDate(day.date)}: ${day.tasks.length} assigned task${day.tasks.length === 1 ? '' : 's'}`}
+            >
+              <span className={styles.weekDayHeader}>
+                <span className={styles.weekDayName}>{day.label}</span>
+                <span className={styles.weekDayDate}>{shortWeekDate(day.date)}</span>
+              </span>
+              <span className={styles.weekDayTasks}>
+                {day.tasks.length > 0 ? day.tasks.map(task => (
+                  <span
+                    key={task.id}
+                    className={styles.weekTask}
+                    data-status={task.status}
+                    title={`${task.employee}: ${task.title} (${ASSIGNMENT_STATUS_LABELS[task.status]})`}
+                  >
+                    <span className={styles.weekTaskTitle}>{task.title}</span>
+                    <span className={styles.weekTaskEmployee}>{task.employee}</span>
+                  </span>
+                )) : (
+                  <span className={styles.weekDayEmpty}>No tasks</span>
+                )}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
       <header className={styles.sectionHeader}>
         <div className={styles.headerLeft}>
           <h3 className={styles.sectionTitle}>Daily Assignment Board</h3>
@@ -1366,13 +1835,53 @@ export default function DailyAssignmentBoard({
           </p>
         </div>
         <div className={styles.dateNav}>
+          <div className={styles.dayCalendarStrip} aria-label={`Events for ${selectedDate}`}>
+            <span className={styles.dayCalendarLabel}>Events</span>
+            {visibleCalendarEvents.length > 0 ? (
+              <div className={styles.dayCalendarEvents}>
+                {visibleCalendarEvents.map(event => {
+                  const time = eventTimeLabel(event)
+                  return (
+                    <span
+                      key={event.id}
+                      className={styles.dayCalendarEvent}
+                      data-kind={calendarEventCategory(event)}
+                      title={[
+                        eventTypeLabel(event),
+                        event.title,
+                        time,
+                        event.location,
+                      ].filter(Boolean).join(' - ')}
+                    >
+                      <span className={styles.dayCalendarEventType}>{eventTypeLabel(event)}</span>
+                      <span className={styles.dayCalendarEventTitle}>{event.title}</span>
+                      {time && <span className={styles.dayCalendarEventTime}>{time}</span>}
+                    </span>
+                  )
+                })}
+                {hiddenCalendarEventCount > 0 && (
+                  <span className={styles.dayCalendarMore}>+{hiddenCalendarEventCount}</span>
+                )}
+              </div>
+            ) : (
+              <span className={styles.dayCalendarEmpty}>No events</span>
+            )}
+          </div>
           <button
             type="button"
             className={styles.dateNavBtn}
             onClick={() => setSelectedDate(shiftDate(selectedDate, -1))}
             aria-label="Previous day"
           >‹</button>
-          <span className={styles.dateNavText}>{selectedDate}</span>
+          <input
+            type="date"
+            className={styles.dateNavPicker}
+            value={selectedDate}
+            onChange={e => {
+              if (e.target.value) setSelectedDate(e.target.value)
+            }}
+            aria-label="Select assignment board date"
+          />
           <button
             type="button"
             className={styles.dateNavBtn}
@@ -1608,7 +2117,7 @@ export default function DailyAssignmentBoard({
                       )
                     })()}
                   </td>
-                  <td className={styles.taskCell}>
+                  <td className={`${styles.taskCell} ${styles.taskCellStack}`}>
                     {/* Phase 9C.11 — Unified task-library dropdown.
                         Options come from active task_templates on every
                         course. The value resolves back to a template
@@ -1632,13 +2141,7 @@ export default function DailyAssignmentBoard({
                       onChange={e => handleQuickTaskChange(emp, e.target.value)}
                     >
                       <option value="">— Unassigned —</option>
-                      {groupedActiveTaskTemplates.map(group => (
-                        <optgroup key={group.key} label={group.label}>
-                          {group.templates.map(tmpl => (
-                            <option key={tmpl.id} value={tmpl.id}>{tmpl.name}</option>
-                          ))}
-                        </optgroup>
-                      ))}
+                      <TaskOptions groups={groupedActiveTaskTemplates} />
                     </select>
                     {assignment && (isCrosswinds ? (
                       // Phase 9C.2 — Crosswinds clear button: explicit
@@ -1663,6 +2166,16 @@ export default function DailyAssignmentBoard({
                         aria-label={`Clear task for ${emp.name}`}
                       >×</button>
                     ))}
+                    {assignment && (
+                      <SubJobsEditor
+                        assignment={assignment}
+                        groups={groupedActiveTaskTemplates}
+                        disabled={busyEmpId === emp.id || activeTaskTemplates.length === 0}
+                        onAdd={templateId => handleAddSubJob(emp, assignment, templateId)}
+                        onRemove={subJobId => handleRemoveSubJob(emp, assignment, subJobId)}
+                        label={`1st job for ${emp.name}`}
+                      />
+                    )}
                   </td>
                   <td>
                     {linkedRes.length > 0 ? (
@@ -1744,6 +2257,12 @@ export default function DailyAssignmentBoard({
                               {regeneratingId === assignment.id ? 'Regenerating…' : 'Regenerate'}
                             </button>
                           )}
+                          <AssignmentPhotoControl
+                            assignment={assignment}
+                            employeeName={emp.name}
+                            jobLabel="1st Job"
+                            uploadedBy={user?.name ?? user?.email ?? null}
+                          />
                         </div>
                       ) : (
                         <span className={styles.chipsEmpty}>—</span>
@@ -1762,7 +2281,7 @@ export default function DailyAssignmentBoard({
                           aria-label={`Status for ${emp.name}`}
                         >
                           {ASSIGNMENT_STATUS_OPTIONS.map(s => (
-                            <option key={s} value={s}>{s}</option>
+                            <option key={s} value={s}>{ASSIGNMENT_STATUS_LABELS[s]}</option>
                           ))}
                         </select>
                       ) : (
@@ -1778,8 +2297,9 @@ export default function DailyAssignmentBoard({
                     muscle memory preserved). */}
                 {additionalJobs.map((aj, idx) => {
                   const jobLabel = ORDINAL_LABELS[idx + 1] ?? `Job ${idx + 2}`
-                  const ev       = events.find(e => e.id === aj.calendarEventId)
-                  const taskName = ev?.title ?? '(unknown task)'
+                  const linkedAjRes = reservationsByAssignment.get(aj.id) ?? []
+                  const ajRowState = linkedAjRes.length > 0 ? 'equipped' : 'assigned'
+                  const ajEquipLabel = linkedAjRes.length > 0 ? `Equipment (${linkedAjRes.length})` : 'Equipment'
                   return (
                     <tr
                       key={aj.id}
@@ -1789,8 +2309,68 @@ export default function DailyAssignmentBoard({
                       <td className={styles.dabAdditionalJobLabel} colSpan={2}>
                         {jobLabel}
                       </td>
-                      <td className={styles.dabAdditionalJobTask}>
-                        {taskName}
+                      <td className={`${styles.taskCell} ${styles.taskCellStack} ${styles.dabAdditionalJobTask}`}>
+                        <select
+                          className={styles.taskSelect}
+                          value={templateIdForAssignment(aj)}
+                          disabled={busyEmpId === emp.id || activeTaskTemplates.length === 0}
+                          onChange={e => handleAdditionalTaskChange(emp, aj, e.target.value)}
+                          aria-label={`${jobLabel} task for ${emp.name}`}
+                        >
+                          <option value="">— Unassigned —</option>
+                          <TaskOptions groups={groupedActiveTaskTemplates} />
+                        </select>
+                        <SubJobsEditor
+                          assignment={aj}
+                          groups={groupedActiveTaskTemplates}
+                          disabled={busyEmpId === emp.id || activeTaskTemplates.length === 0}
+                          onAdd={templateId => handleAddSubJob(emp, aj, templateId)}
+                          onRemove={subJobId => handleRemoveSubJob(emp, aj, subJobId)}
+                          label={`${jobLabel} for ${emp.name}`}
+                        />
+                      </td>
+                      <td>
+                        {linkedAjRes.length > 0 ? (
+                          <span className={styles.chipRow}>
+                            {linkedAjRes.map(r => (
+                              <span
+                                key={r.id}
+                                className={styles.chip}
+                                data-status={r.status}
+                                title={`${r.equipmentName} · ${r.status}`}
+                              >
+                                {r.equipmentName}
+                              </span>
+                            ))}
+                          </span>
+                        ) : (
+                          <span className={styles.chipsEmpty}>—</span>
+                        )}
+                      </td>
+                      <td>
+                        <span className={styles.dabAdditionalJobActionStack}>
+                          <button
+                            type="button"
+                            className={styles.equipBtn}
+                            data-state={ajRowState}
+                            disabled={busyEmpId === emp.id}
+                            onClick={() => openEquipmentModalFor(emp, aj)}
+                            title="Assign / unassign machines"
+                          >
+                            {ajEquipLabel}
+                          </button>
+                          {!isCrosswinds && (
+                            <button
+                              type="button"
+                              className={styles.dabRemoveJobBtn}
+                              onClick={() => handleRemoveAdditionalJob(emp, aj)}
+                              disabled={busyEmpId === emp.id}
+                              aria-label={`Remove ${jobLabel} for ${emp.name}`}
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </span>
                       </td>
                       {/* Phase DAB.10c — Per-job notes editor. Crosswinds-
                           gated to match the primary row's notesCell. Uses
@@ -1802,37 +2382,87 @@ export default function DailyAssignmentBoard({
                           invalidation are inherited from the existing
                           handler. */}
                       {isCrosswinds && (
-                        <td className={styles.dabAdditionalJobNotesCell} colSpan={colSpan - 4}>
-                          <input
-                            type="text"
-                            className={styles.dabAdditionalJobNotesInput}
-                            placeholder="Notes…"
-                            value={notesDraft[aj.id] ?? aj.notes ?? ''}
-                            onChange={e => handleNotesChange(aj.id, e.target.value)}
-                            onBlur={() => handleNotesBlur(aj)}
-                            disabled={busyEmpId === emp.id}
-                            aria-label={`Notes for ${emp.name}'s ${jobLabel}`}
-                          />
+                        <td className={styles.dabAdditionalJobNotesCell}>
+                          <div className={styles.notesStack}>
+                            <input
+                              type="text"
+                              className={styles.notesInput}
+                              placeholder="Notes..."
+                              value={notesDraft[aj.id] ?? aj.notes ?? ''}
+                              onChange={e => handleNotesChange(aj.id, e.target.value)}
+                              onBlur={() => handleNotesBlur(aj)}
+                              disabled={busyEmpId === emp.id}
+                              aria-label={`Notes for ${emp.name}'s ${jobLabel}`}
+                            />
+                            <input
+                              type="text"
+                              lang="es"
+                              className={styles.notesInputEs}
+                              placeholder="Spanish notes..."
+                              value={notesEsDraft[aj.id] ?? aj.notesEs ?? ''}
+                              onChange={e => handleNotesEsChange(aj.id, e.target.value)}
+                              onBlur={() => handleNotesEsBlur(aj)}
+                              disabled={busyEmpId === emp.id}
+                              aria-label={`Spanish notes for ${emp.name}'s ${jobLabel}`}
+                            />
+                            {canTranslate && (
+                              <button
+                                type="button"
+                                className={styles.notesRegenerateBtn}
+                                data-variant="regenerate"
+                                onClick={() => handleRegenerateSpanish(aj)}
+                                disabled={
+                                  regeneratingId === aj.id
+                                  || translating
+                                  || regeneratingId !== null
+                                  || !(aj.notes ?? '').trim()
+                                }
+                                title="Clear and regenerate this Spanish note"
+                                aria-label={`Regenerate Spanish notes for ${emp.name}'s ${jobLabel}`}
+                              >
+                                {regeneratingId === aj.id ? 'Regenerating...' : 'Regenerate'}
+                              </button>
+                            )}
+                            <AssignmentPhotoControl
+                              assignment={aj}
+                              employeeName={emp.name}
+                              jobLabel={jobLabel}
+                              uploadedBy={user?.name ?? user?.email ?? null}
+                            />
+                          </div>
                         </td>
                       )}
                       {/* Non-Crosswinds courses don't render the Notes
                           column on the primary row either; collapse the
                           notes cell to a single colSpan filler so the
                           Remove button stays right-aligned. */}
-                      {!isCrosswinds && (
-                        <td className={styles.dabAdditionalJobNotesCell} colSpan={colSpan - 4} />
-                      )}
+                      {isCrosswinds && (
                       <td className={styles.dabAdditionalJobActions}>
-                        <button
-                          type="button"
-                          className={styles.dabRemoveJobBtn}
-                          onClick={() => handleRemoveAdditionalJob(emp, aj)}
-                          disabled={busyEmpId === emp.id}
-                          aria-label={`Remove ${jobLabel} for ${emp.name}`}
-                        >
-                          Remove
-                        </button>
+                        <span className={styles.dabAdditionalJobStatusActions}>
+                          <select
+                            className={styles.statusSelect}
+                            data-status={normalizeAssignmentStatus(aj.status)}
+                            value={normalizeAssignmentStatus(aj.status)}
+                            onChange={e => handleStatusChange(aj, e.target.value)}
+                            disabled={busyEmpId === emp.id}
+                            aria-label={`${jobLabel} status for ${emp.name}`}
+                          >
+                            {ASSIGNMENT_STATUS_OPTIONS.map(s => (
+                              <option key={s} value={s}>{ASSIGNMENT_STATUS_LABELS[s]}</option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            className={styles.dabRemoveJobBtn}
+                            onClick={() => handleRemoveAdditionalJob(emp, aj)}
+                            disabled={busyEmpId === emp.id}
+                            aria-label={`Remove ${jobLabel} for ${emp.name}`}
+                          >
+                            Remove
+                          </button>
+                        </span>
                       </td>
+                      )}
                     </tr>
                   )
                 })}
@@ -1899,7 +2529,10 @@ export default function DailyAssignmentBoard({
           equipment={equipment}
           reservations={equipmentReservations}
           dayEventIds={dayEventIds}
-          onClose={() => setModalEmpId(null)}
+          onClose={() => {
+            setModalEmpId(null)
+            setModalAssignmentId(null)
+          }}
         />
       )}
 
@@ -1998,7 +2631,7 @@ function CopyAssignmentsModal({
   const sameDay = sourceDate === destinationDate
 
   return (
-    <div className={styles.modalOverlay} onClick={onClose} role="dialog" aria-label="Copy assignments">
+    <div className={styles.modalOverlay} role="dialog" aria-label="Copy assignments">
       <div className={styles.modal} onClick={e => e.stopPropagation()} style={{ maxWidth: 520 }}>
 
         <header className={styles.modalHeader}>
@@ -2199,7 +2832,7 @@ function FeedbackModal({
   const canSubmit = !busy && message.trim().length > 0
 
   return (
-    <div className={styles.modalOverlay} onClick={onClose} role="dialog" aria-label="Report workflow issue">
+    <div className={styles.modalOverlay} role="dialog" aria-label="Report workflow issue">
       <div className={styles.modal} onClick={e => e.stopPropagation()} style={{ maxWidth: 480 }}>
 
         <header className={styles.modalHeader}>

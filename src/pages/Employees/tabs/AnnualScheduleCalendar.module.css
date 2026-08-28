@@ -40,6 +40,27 @@
   gap: 8px;
 }
 
+.batchToolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0 0 12px;
+}
+
+.batchTarget {
+  min-height: 27px;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 5px;
+  border: 1px solid rgba(74, 158, 74, 0.18);
+  background: rgba(0, 0, 0, 0.16);
+  color: rgba(212, 237, 212, 0.68);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
 .navBtn,
 .todayBtn {
   background: rgba(74, 158, 74, 0.14);
@@ -108,6 +129,14 @@
   background: rgba(34, 197, 94, 0.22);
   border-color: rgba(74, 222, 128, 0.65);
   box-shadow: inset 0 0 0 1px rgba(74, 222, 128, 0.4);
+}
+
+.dayTile[data-selected-multi="true"] {
+  background: rgba(74, 222, 128, 0.18);
+  border-color: rgba(134, 239, 172, 0.8);
+  box-shadow:
+    inset 0 0 0 1px rgba(134, 239, 172, 0.48),
+    0 0 0 1px rgba(34, 197, 94, 0.22);
 }
 
 .dayTile[data-today="true"] {
@@ -209,6 +238,11 @@
   cursor: pointer;
 }
 .actionBtn:hover:not(:disabled) { background: rgba(74, 158, 74, 0.26); }
+.actionBtn[data-active="true"] {
+  background: rgba(34, 197, 94, 0.26);
+  border-color: rgba(74, 222, 128, 0.72);
+  color: #dcfce7;
+}
 .actionBtnPrimary {
   background: rgba(74, 222, 128, 0.24);
   border-color: rgba(74, 222, 128, 0.55);
@@ -559,6 +593,22 @@
   margin-top: 2px;
   flex-shrink: 0;
   accent-color: #fbbf24;
+}
+
+.lunchToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  color: rgba(212, 237, 212, 0.8);
+  font-size: 11px;
+}
+
+.lunchToggle input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: #22c55e;
 }
 
 .previewActions {

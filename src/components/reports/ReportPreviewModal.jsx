@@ -2,33 +2,17 @@ import { useEffect, useCallback } from 'react'
 import { SECTION_TYPE, REPORT_TYPE } from '../../utils/reports/reportSchemas'
 import ReportActions from './ReportActions'
 import SprayIntelligencePreview from './SprayIntelligencePreview'
-import SprayProgramPreview      from './SprayProgramPreview'
-import SprayProgramCostPreview  from './SprayProgramCostPreview'
+import SprayProgramPreview from './SprayProgramPreview'
+import SprayProgramCostPreview from './SprayProgramCostPreview'
 import styles from './reports.module.css'
 
-// Phase 7E (2/?) — per-report custom-preview dispatcher. Any report
-// whose `type` appears as a key in CUSTOM_PREVIEWS renders via the
-// mapped component instead of the generic FIELDS/TABLE/TEXT path.
-// Falls through to the existing renderer for every other report so
-// adding a custom preview is opt-in per report.
 const CUSTOM_PREVIEWS = {
-  [REPORT_TYPE.SPRAY_INTELLIGENCE]:  SprayIntelligencePreview,
-  // Phase 7G (2/?) — Spray Program custom preview.
-  [REPORT_TYPE.SPRAY_PROGRAM]:       SprayProgramPreview,
-  // Phase 7I (4/?) — Spray Program Cost custom preview.
-  [REPORT_TYPE.SPRAY_PROGRAM_COST]:  SprayProgramCostPreview,
+  [REPORT_TYPE.SPRAY_INTELLIGENCE]: SprayIntelligencePreview,
+  [REPORT_TYPE.SPRAY_PROGRAM]: SprayProgramPreview,
+  [REPORT_TYPE.SPRAY_PROGRAM_COST]: SprayProgramCostPreview,
 }
 
-/**
- * Lightbox-style modal for previewing a TurfReport.
- * Renders all sections by type (fields / table / text) and an attachment strip.
- * Delegates export actions to ReportActions.
- *
- * @param {Object|null} report      - TurfReport from reportBuilder, or null (hidden)
- * @param {Function}    onClose     - Called on backdrop click, ✕ button, or Escape
- * @param {Object}      [courseInfo] - { name, superintendent } forwarded to print
- */
-export default function ReportPreviewModal({ report, onClose, courseInfo = {} }) {
+export default function ReportPreviewModal({ report, onClose, courseInfo = {}, rowActions = {} }) {
   const handleKeyDown = useCallback(
     e => { if (e.key === 'Escape') onClose?.() },
     [onClose],
@@ -46,51 +30,105 @@ export default function ReportPreviewModal({ report, onClose, courseInfo = {} })
     dateStyle: 'medium',
     timeStyle: 'short',
   })
+  const attachmentGroups = [
+    ['improvement', 'Improvements'],
+    ['concern', 'Concerns'],
+    ['other', 'Other Attachments'],
+  ].map(([key, label]) => ({
+    key,
+    label,
+    items: (report.attachments ?? []).filter(att => (att.category ?? 'other') === key),
+  })).filter(group => group.items.length > 0)
+
+  function renderTable(section) {
+    const actionsForSection = rowActions?.[section.id] ?? rowActions?.[section.title] ?? []
+    const hasRowActions = actionsForSection.length > 0
+
+    return (
+      <div className={styles.rpTableWrap}>
+        <table className={styles.rpTable}>
+          <thead>
+            <tr>
+              {section.data.columns.flatMap((col, ci) => [
+                <th key={col} className={styles.rpTableHead}>{col}</th>,
+                hasRowActions && ci === 0 ? (
+                  <th key={`${col}-action`} className={`${styles.rpTableHead} ${styles.rpTableActionHead}`}>
+                    View
+                  </th>
+                ) : null,
+              ])}
+            </tr>
+          </thead>
+          <tbody>
+            {section.data.rows.map((row, ri) => (
+              <tr key={ri} className={styles.rpTableRow}>
+                {row.flatMap((cell, ci) => [
+                  <td
+                    key={ci}
+                    className={styles.rpTableCell}
+                    data-label={section.data.columns[ci]}
+                  >
+                    {cell ?? '-'}
+                  </td>,
+                  hasRowActions && ci === 0 ? (
+                    <td
+                      key={`${ci}-action`}
+                      className={`${styles.rpTableCell} ${styles.rpTableActionCell}`}
+                      data-label="View"
+                    >
+                      {actionsForSection[ri] ? (
+                        <button
+                          type="button"
+                          className={styles.rpRowActionBtn}
+                          onClick={actionsForSection[ri].onClick}
+                          title={actionsForSection[ri].title}
+                        >
+                          {actionsForSection[ri].label || 'View'}
+                        </button>
+                      ) : '-'}
+                    </td>
+                  ) : null,
+                ])}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
 
   return (
     <div
       className={styles.rpOverlay}
-      onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-label={`Report: ${report.title}`}
     >
-      <div
-        className={styles.rpPanel}
-        onClick={e => e.stopPropagation()}
-      >
+      <div className={styles.rpPanel}>
         <button
           className={styles.rpClose}
           onClick={onClose}
           aria-label="Close report"
         >
-          ✕
+          x
         </button>
 
-        {/* ── Header ───────────────────────────────────────────────────────── */}
         <div className={styles.rpHeader}>
           <h2 className={styles.rpTitle}>{report.title}</h2>
           <p className={styles.rpMeta}>
             {dateStr}
-            {' · '}
+            {' - '}
             {report.module}
-            {' · '}
+            {' - '}
             {report.id}
           </p>
         </div>
 
-        {/* ── Body ─────────────────────────────────────────────────────────── */}
         <div className={styles.rpBody}>
-
           {(() => {
             const CustomPreview = CUSTOM_PREVIEWS[report.type]
-            if (CustomPreview) {
-              // Custom preview takes over the body region but the modal
-              // shell, header, attachments strip, and ReportActions stay
-              // exactly the same so export buttons + print continue to
-              // work uniformly.
-              return <CustomPreview report={report} />
-            }
+            if (CustomPreview) return <CustomPreview report={report} />
+
             return report.sections.map((section, i) => (
               <div key={i} className={styles.rpSection}>
                 <p className={styles.rpSectionTitle}>{section.title}</p>
@@ -100,36 +138,13 @@ export default function ReportPreviewModal({ report, onClose, courseInfo = {} })
                     {Object.entries(section.data).map(([label, value]) => (
                       <div key={label} className={styles.rpField}>
                         <span className={styles.rpFieldLabel}>{label}</span>
-                        <span className={styles.rpFieldValue}>{value ?? '—'}</span>
+                        <span className={styles.rpFieldValue}>{value ?? '-'}</span>
                       </div>
                     ))}
                   </div>
                 )}
 
-                {section.type === SECTION_TYPE.TABLE && (
-                  <div className={styles.rpTableWrap}>
-                    <table className={styles.rpTable}>
-                      <thead>
-                        <tr>
-                          {section.data.columns.map(col => (
-                            <th key={col} className={styles.rpTableHead}>{col}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {section.data.rows.map((row, ri) => (
-                          <tr key={ri} className={styles.rpTableRow}>
-                            {row.map((cell, ci) => (
-                              <td key={ci} className={styles.rpTableCell}>
-                                {cell ?? '—'}
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                {section.type === SECTION_TYPE.TABLE && renderTable(section)}
 
                 {section.type === SECTION_TYPE.TEXT && (
                   <p className={styles.rpText}>{section.data}</p>
@@ -138,44 +153,45 @@ export default function ReportPreviewModal({ report, onClose, courseInfo = {} })
             ))
           })()}
 
-          {/* ── Attachments strip ──────────────────────────────────────────── */}
           {report.attachments?.length > 0 && (
             <div className={styles.rpSection}>
               <p className={styles.rpSectionTitle}>
-                Attachments ({report.attachments.length})
+                Report Photos ({report.attachments.length})
               </p>
-              <div className={styles.rpAttachments}>
-                {report.attachments.map(att => (
-                  <div key={att.id} className={styles.rpAttachItem}>
-                    {att.thumbnailUrl ? (
-                      <img
-                        src={att.thumbnailUrl}
-                        alt={att.filename}
-                        className={styles.rpAttachThumb}
-                      />
-                    ) : (
-                      <span className={styles.rpAttachIcon}>
-                        {att.type === 'image' ? '🖼' : '📄'}
-                      </span>
-                    )}
-                    <span className={styles.rpAttachLabel} title={att.filename}>
-                      {att.filename}
-                    </span>
+              {attachmentGroups.map(group => (
+                <div key={group.key} className={styles.rpAttachGroup}>
+                  <p className={styles.rpAttachGroupTitle}>{group.label}</p>
+                  <div className={styles.rpAttachments}>
+                    {group.items.map(att => (
+                      <div key={att.id} className={styles.rpAttachItem}>
+                        {att.thumbnailUrl ? (
+                          <img
+                            src={att.thumbnailUrl}
+                            alt={att.caption || att.filename}
+                            className={styles.rpAttachThumb}
+                          />
+                        ) : (
+                          <span className={styles.rpAttachIcon}>
+                            {att.type === 'image' ? 'IMG' : 'DOC'}
+                          </span>
+                        )}
+                        <span className={styles.rpAttachLabel} title={att.caption || att.filename}>
+                          {att.caption || att.filename}
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
           )}
-
         </div>
 
-        {/* ── Actions ──────────────────────────────────────────────────────── */}
         <ReportActions
           report={report}
           onClose={onClose}
           courseInfo={courseInfo}
         />
-
       </div>
     </div>
   )

@@ -39,6 +39,26 @@ export function triggerPrint(report, courseInfo = {}) {
 }
 
 /**
+ * Open a polished PDF-ready report view in a new browser window.
+ * The user can print or save as PDF from that window without printing the app
+ * chrome, sidebar, or modal controls.
+ * @param {Object} report       - TurfReport
+ * @param {Object} [courseInfo] - { name, superintendent } optional branding
+ */
+export function viewPDF(report, courseInfo = {}) {
+  const win = window.open('', '_blank', 'width=900,height=900')
+  if (!win) {
+    triggerPrint(report, courseInfo)
+    return
+  }
+  const html = buildPrintDocument(report, courseInfo, { showToolbar: true })
+  win.document.open()
+  win.document.write(html)
+  win.document.close()
+  win.focus()
+}
+
+/**
  * Download a TurfReport as a JSON file.
  * thumbnailUrl fields are stripped in reportToJSON — they are ephemeral object URLs.
  * @param {Object} report - TurfReport
@@ -65,6 +85,6 @@ export function downloadCSV(content, filename) {
  * Logs a console warning rather than silently doing nothing.
  * Future: integrate jsPDF, pdf-lib, or a server-side renderer here.
  */
-export function exportPDF(_report) {
+export function exportPDF() {
   console.warn('[TurfIntel] PDF export is not yet implemented.')
 }

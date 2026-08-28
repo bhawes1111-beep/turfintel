@@ -1,0 +1,98 @@
+{
+  "version": "albaugh-crescendo-specimen-label-ad121020",
+  "generatedAt": "2026-08-08",
+  "source": "Official Albaugh CRESCENDO specimen label supplied by the user",
+  "notes": "Catalog record transcribed from and visually checked against the official 10-page Albaugh specimen label.",
+  "products": [
+    {
+      "product_name": "CRESCENDO",
+      "brand_owner": "Albaugh",
+      "manufacturer": "Albaugh, LLC",
+      "epa_number": "84059-27-42750",
+      "formulation": "Microbial biological pesticide",
+      "category": "insecticide",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Biological nematicide, insecticide, and miticide",
+      "active_ingredients": [
+        {
+          "name": "Chromobacterium subtsugae strain PRAA4-1T cells and spent fermentation media",
+          "percentage": 30
+        }
+      ],
+      "fertilizer_analysis": null,
+      "rates": [
+        {
+          "rate": "2.5-20 lb",
+          "unit": "lb/acre",
+          "interval": "Turf foliar application for labeled surface-feeding insects; do not irrigate after application"
+        },
+        {
+          "rate": "2.5-20 lb",
+          "unit": "lb/acre",
+          "interval": "Turf application for white grubs and annual bluegrass weevil; use at least 100 gal water/acre and irrigate after application to moisten the top inch of soil"
+        },
+        {
+          "rate": "0.5-20 lb",
+          "unit": "lb/acre",
+          "interval": "Turf soil treatment for low-to-medium populations of labeled nematodes"
+        },
+        {
+          "rate": "2-20 lb",
+          "unit": "lb/acre",
+          "interval": "Turf soil drench or injection in 100-150 gal water/acre"
+        },
+        {
+          "rate": "1-3 tbsp",
+          "unit": "tbsp/gal water",
+          "interval": "Hand-held or backpack sprayer; approximates 0.5-3 lb product/100 gal water"
+        }
+      ],
+      "targets": [
+        "Armyworms",
+        "Chinch bugs",
+        "Cutworms",
+        "Leafhoppers",
+        "Sod webworms",
+        "Annual bluegrass weevil",
+        "Black turfgrass ataenius larvae",
+        "European chafer larvae",
+        "Green June beetle larvae",
+        "Aphodius spp. larvae",
+        "May and June beetle larvae",
+        "Northern masked chafer larvae",
+        "Southern masked chafer larvae",
+        "Sugarcane grub larvae",
+        "Awl nematodes",
+        "Cyst nematodes",
+        "Reniform nematode",
+        "Dagger nematodes",
+        "Root-knot nematodes",
+        "Lance nematode",
+        "Lesion nematodes",
+        "Pin nematodes",
+        "Sting nematodes"
+      ],
+      "turf_sites": [
+        "golf course turf",
+        "sod farms",
+        "sports fields",
+        "residential turf",
+        "institutional turf",
+        "municipal turf",
+        "commercial turf",
+        "grass grown for seed",
+        "ornamental grasses"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": 4,
+      "phi_hours": null,
+      "label_url": "https://www.albaugh.com/docs/unitedstateslibraries/productfiles/crescendo-specimen-label-.pdf?sfvrsn=23145b9_1",
+      "notes": "For organic production; OMRI listed on the specimen label. Potency is at least 1,000 Cabbage Looper Killing Units (CLKU) per mg. For conventional ground sprays, use at least 10 gal total volume/acre. Maintain agitation and do not let spray mixture stand overnight. Product is most effective against new populations and recently hatched immature pests and is not systemic. For armyworms, cutworms, webworms, chinch bugs, or leafhoppers, do not irrigate after application. For white grubs and annual bluegrass weevil, use at least 100 gal water/acre, irrigate afterward to moisten the top inch of soil, and apply shortly after egg hatch at first or second instar; no more than 0.5 inch of thatch should be present. For nematodes, watered-in placement in the soil profile is required. Soil drench insect treatments may be repeated at 10- to 14-day intervals. Keep solution pH from 6 to 8, with neutral preferred. Toxic to aquatic invertebrates, certain non-target terrestrial arthropods, and bees; do not apply while bees are visiting the treatment area. Keep unprotected persons out of non-agricultural treated areas until sprays have dried. Follow the current label.",
+      "status": "active"
+    }
+  ]
+}

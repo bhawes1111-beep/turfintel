@@ -175,6 +175,29 @@
   border-bottom: 1px solid rgba(255,255,255,0.04);
 }
 
+.rpTableActionHead,
+.rpTableActionCell {
+  width: 72px;
+  text-align: center;
+}
+
+.rpRowActionBtn {
+  border: 1px solid rgba(74,158,74,0.36);
+  border-radius: 6px;
+  background: rgba(74,158,74,0.12);
+  color: var(--color-accent);
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.rpRowActionBtn:hover {
+  background: rgba(74,158,74,0.22);
+  border-color: rgba(74,158,74,0.58);
+}
+
 .rpTableRow:last-child .rpTableCell {
   border-bottom: none;
 }
@@ -190,22 +213,33 @@
 /* ── Attachments ────────────────────────────────────────────────────────────── */
 
 .rpAttachments {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 10px;
-  flex-wrap: wrap;
+}
+
+.rpAttachGroup + .rpAttachGroup {
+  margin-top: 14px;
+}
+
+.rpAttachGroupTitle {
+  margin-bottom: 7px;
+  color: var(--color-text);
+  font-size: 0.72rem;
+  font-weight: 800;
 }
 
 .rpAttachItem {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: 5px;
-  width: 72px;
+  min-width: 0;
 }
 
 .rpAttachThumb {
-  width: 64px;
-  height: 64px;
+  width: 100%;
+  aspect-ratio: 4 / 3;
   object-fit: cover;
   border-radius: 6px;
   border: 1px solid var(--color-border);
@@ -226,12 +260,10 @@
 }
 
 .rpAttachLabel {
-  font-size: 0.58rem;
+  font-size: 0.68rem;
   color: var(--color-text-muted);
-  text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
   width: 100%;
 }
 
@@ -301,13 +333,116 @@
    ════════════════════════════════════════════════════════════════════════════ */
 
 @media (max-width: 600px) {
+  .rpOverlay {
+    align-items: stretch;
+    padding: 0;
+  }
+
   .rpPanel {
-    max-height: 95vh;
-    border-radius: 10px;
+    width: 100%;
+    max-width: none;
+    max-height: 100dvh;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+
+  .rpClose {
+    top: 12px;
+    right: 12px;
+    width: 34px;
+    height: 34px;
+  }
+
+  .rpHeader {
+    padding: 16px 54px 13px 16px;
+  }
+
+  .rpTitle {
+    font-size: 0.95rem;
+  }
+
+  .rpMeta {
+    font-size: 0.64rem;
+    overflow-wrap: anywhere;
+  }
+
+  .rpBody {
+    padding: 0 14px 4px;
   }
 
   .rpFieldGrid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr;
+    gap: 9px;
+  }
+
+  .rpTableWrap {
+    overflow-x: visible;
+    border: none;
+    border-radius: 0;
+  }
+
+  .rpTable,
+  .rpTable thead,
+  .rpTable tbody,
+  .rpTable tr,
+  .rpTable th,
+  .rpTable td {
+    display: block;
+  }
+
+  .rpTable {
+    min-width: 0;
+    font-size: 0.78rem;
+  }
+
+  .rpTable thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .rpTableRow {
+    margin-bottom: 10px;
+    border: 1px solid rgba(74,158,74,0.2);
+    border-radius: 8px;
+    background: rgba(255,255,255,0.025);
+    overflow: hidden;
+  }
+
+  .rpTableRow:nth-child(even) {
+    background: rgba(255,255,255,0.035);
+  }
+
+  .rpTableCell {
+    display: grid;
+    grid-template-columns: minmax(92px, 34%) minmax(0, 1fr);
+    gap: 10px;
+    padding: 8px 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.055);
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  .rpTableCell::before {
+    content: attr(data-label);
+    color: var(--color-text-muted);
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .rpTableActionCell {
+    width: auto;
+    text-align: left;
+  }
+
+  .rpRowActionBtn {
+    width: 100%;
+    min-height: 34px;
   }
 
   .rpActions {
@@ -315,9 +450,17 @@
     padding: 10px 14px;
   }
 
+  .rpActionBtn,
+  .rpPdfBadge {
+    flex: 1 1 calc(50% - 6px);
+    min-height: 34px;
+    text-align: center;
+  }
+
   .rpActionBtnGhost {
     margin-left: 0;
     width: 100%;
+    flex-basis: 100%;
     text-align: center;
     justify-content: center;
   }
@@ -330,7 +473,9 @@
    so they don't appear in the printed output. */
 @media print {
   .rpClose,
-  .rpActions {
+  .rpActions,
+  .rpTableActionHead,
+  .rpTableActionCell {
     display: none !important;
   }
   .rpOverlay {

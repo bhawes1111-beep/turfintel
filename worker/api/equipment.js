@@ -20,6 +20,9 @@ function rowToEquipment(row) {
     year:               row.year,
     serialNumber:       row.serial_number,
     fuelType:           row.fuel_type,
+    tankCapacityGal:    row.tank_capacity_gal,
+    capacityLbs:        row.capacity_lbs,
+    heightOfCut:        row.height_of_cut,
     assignedOperator:   row.assigned_operator,
     lastService:        row.last_service,
     lastServiceHours:   row.last_service_hours,
@@ -43,6 +46,9 @@ const MUTABLE_COLUMNS = {
   year:             'year',
   serialNumber:     'serial_number',
   fuelType:         'fuel_type',
+  tankCapacityGal:  'tank_capacity_gal',
+  capacityLbs:      'capacity_lbs',
+  heightOfCut:      'height_of_cut',
   assignedOperator: 'assigned_operator',
   lastService:      'last_service',
   lastServiceHours: 'last_service_hours',
@@ -72,6 +78,18 @@ export async function createEquipment(env, request) {
   const body = await readJson(request)
   if (!body.name)     return badRequest('name is required')
   if (!body.category) return badRequest('category is required')
+  const heightOfCut = body.heightOfCut === '' || body.heightOfCut == null
+    ? null
+    : Number(body.heightOfCut)
+  if (heightOfCut != null && (!Number.isFinite(heightOfCut) || heightOfCut <= 0)) {
+    return badRequest('heightOfCut must be a positive decimal')
+  }
+  const capacityLbs = body.capacityLbs === '' || body.capacityLbs == null
+    ? null
+    : Number(body.capacityLbs)
+  if (capacityLbs != null && (!Number.isFinite(capacityLbs) || capacityLbs <= 0)) {
+    return badRequest('capacityLbs must be a positive number')
+  }
 
   const id = body.id ?? generateId('eq')
 
@@ -79,9 +97,9 @@ export async function createEquipment(env, request) {
     INSERT INTO equipment (
       id, name, category, status, hours, next_service_hours,
       manufacturer, model, year, serial_number, fuel_type,
-      assigned_operator, last_service, last_service_hours, service_interval, notes,
+      tank_capacity_gal, capacity_lbs, height_of_cut, assigned_operator, last_service, last_service_hours, service_interval, notes,
       course_id
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id,
     body.name,
@@ -94,6 +112,9 @@ export async function createEquipment(env, request) {
     body.year              ?? null,
     body.serialNumber      ?? null,
     body.fuelType          ?? null,
+    body.tankCapacityGal   ?? null,
+    capacityLbs,
+    heightOfCut,
     body.assignedOperator  ?? null,
     body.lastService       ?? null,
     body.lastServiceHours  ?? null,
@@ -107,6 +128,20 @@ export async function createEquipment(env, request) {
 
 export async function updateEquipment(env, id, request) {
   const body = await readJson(request)
+  if (Object.prototype.hasOwnProperty.call(body, 'capacityLbs')) {
+    const value = body.capacityLbs
+    if (value !== '' && value != null && (!Number.isFinite(Number(value)) || Number(value) <= 0)) {
+      return badRequest('capacityLbs must be a positive number')
+    }
+    body.capacityLbs = value === '' || value == null ? null : Number(value)
+  }
+  if (Object.prototype.hasOwnProperty.call(body, 'heightOfCut')) {
+    const value = body.heightOfCut
+    if (value !== '' && value != null && (!Number.isFinite(Number(value)) || Number(value) <= 0)) {
+      return badRequest('heightOfCut must be a positive decimal')
+    }
+    body.heightOfCut = value === '' || value == null ? null : Number(value)
+  }
   const sets = []
   const binds = []
   for (const [apiKey, dbCol] of Object.entries(MUTABLE_COLUMNS)) {

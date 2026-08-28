@@ -20,9 +20,12 @@ import { buildCourseFilter } from '../lib/scope.js'
 const ALLOWED_PARENT_TYPES = new Set([
   'daily_briefing',
   'operations_task',
+  'crew_assignment',
   // Phase 19 — Chemical Import Wizard stores the source label PDF here,
   // keyed to the inventory item id it will be saved against.
   'inventory_label',
+  'purchase_invoice',
+  'today_list_item',
   // Phase 7A.1 — mobile moisture capture may attach a field photo to the
   // observation row. UI lands in v2; the whitelist is opened now so the
   // contract is stable.
@@ -32,6 +35,8 @@ const ALLOWED_PARENT_TYPES = new Set([
   // as moisture: row chip + lightbox + delete. Worker contract opened up
   // front so the client + Worker ship in lockstep.
   'turf_health_observation',
+  'owner_report_photo',
+  'nutrient_sample_import',
 ])
 
 // Whitelist mirrors what mobile crews are likely to upload. HEIC covers
@@ -134,6 +139,41 @@ export async function streamAttachment(env, id) {
   return new Response(obj.body, { headers })
 }
 
+// Public employee-board access is limited to images attached to a crew
+// assignment on the exact board date and course supplied by the board feed.
+export async function streamBoardAssignmentPhoto(env, id, courseId, boardDate) {
+  if (!env.DB)     return new Response('D1 not configured', { status: 503 })
+  if (!env.PHOTOS) return new Response('R2 binding (PHOTOS) not configured', { status: 503 })
+  if (!courseId || !/^\d{4}-\d{2}-\d{2}$/.test(boardDate ?? '')) {
+    return new Response('Not found', { status: 404 })
+  }
+
+  const row = await env.DB.prepare(
+    `SELECT attachment.*
+       FROM operational_attachments attachment
+       JOIN crew_assignments assignment ON assignment.id = attachment.parent_id
+       JOIN calendar_events event ON event.id = assignment.calendar_event_id
+      WHERE attachment.id = ?
+        AND attachment.course_id = ?
+        AND attachment.parent_type = 'crew_assignment'
+        AND attachment.status = 'active'
+        AND attachment.content_type LIKE 'image/%'
+        AND event.course_id = ?
+        AND event.start_date = ?`,
+  ).bind(id, courseId, courseId, boardDate).first()
+  if (!row) return new Response('Not found', { status: 404 })
+
+  const obj = await env.PHOTOS.get(row.r2_key)
+  if (!obj) return new Response('Not found', { status: 404 })
+
+  const headers = new Headers()
+  headers.set('content-type', row.content_type)
+  headers.set('cache-control', 'public, max-age=300')
+  headers.set('x-content-type-options', 'nosniff')
+  if (row.file_size != null) headers.set('content-length', String(row.file_size))
+  return new Response(obj.body, { headers })
+}
+
 // ── Upload ────────────────────────────────────────────────────────────────
 //
 // Multipart form fields:
@@ -219,6 +259,54 @@ export async function createAttachment(env, request) {
 }
 
 // ── Delete ────────────────────────────────────────────────────────────────
+
+export async function updateAttachment(env, id, request) {
+  if (!env.DB) return json({ error: 'D1 not configured' }, 503)
+
+  const existing = await env.DB.prepare(
+    'SELECT id, file_name, caption FROM operational_attachments WHERE id = ? AND status = ?',
+  ).bind(id, 'active').first()
+  if (!existing) return notFound('Attachment not found')
+
+  let body
+  try {
+    body = await request.json()
+  } catch {
+    return badRequest('Expected JSON body')
+  }
+
+  const columns = []
+  const values = []
+
+  if (Object.prototype.hasOwnProperty.call(body ?? {}, 'caption')) {
+    const caption = typeof body.caption === 'string' && body.caption.trim()
+      ? body.caption.trim()
+      : null
+    columns.push('caption = ?')
+    values.push(caption)
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body ?? {}, 'fileName')) {
+    if (typeof body.fileName !== 'string') return badRequest('fileName must be text')
+    const fileName = body.fileName.trim().replace(/\s+/g, ' ')
+    if (!fileName) return badRequest('fileName cannot be blank')
+    if (fileName.length > 120) return badRequest('fileName cannot exceed 120 characters')
+    const hasInvalidCharacter = fileName.includes('/')
+      || fileName.includes('\\')
+      || [...fileName].some((character) => character.charCodeAt(0) < 32)
+    if (hasInvalidCharacter) return badRequest('fileName contains invalid characters')
+    columns.push('file_name = ?')
+    values.push(fileName)
+  }
+
+  if (columns.length === 0) return badRequest('caption or fileName is required')
+
+  await env.DB.prepare(
+    `UPDATE operational_attachments SET ${columns.join(', ')} WHERE id = ?`,
+  ).bind(...values, id).run()
+
+  return getAttachment(env, id)
+}
 
 export async function deleteAttachment(env, id) {
   if (!env.DB)     return json({ error: 'D1 not configured' },     503)

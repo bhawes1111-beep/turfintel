@@ -6,14 +6,18 @@
 // morning-meeting context panels below it: a 4-tile StatusBoard, the
 // Unassigned Events list, and the Pressure Signals feed.
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useAssignmentsData } from '../../../utils/assignments/assignmentsStore'
 import { useCalendarData } from '../../../utils/calendar/calendarStore'
 import { useEquipmentData } from '../../../utils/equipment/equipmentStore'
 import { useCrewData } from '../../../utils/crew/crewStore'
 import StatusBoard from '../../../components/primitives/StatusBoard'
 import { EmptyState } from '../../../components/shared/EmptyState'
+import DailyBriefingPanel from '../../Operations/DailyBriefingPanel'
+import OutingsCalendarPanel from '../../Operations/OutingsCalendarPanel'
 import DailyAssignmentBoard from './DailyAssignmentBoard'
+import WeeklyGoals from './WeeklyGoals'
+import YearlyGoals from './YearlyGoals'
 import styles from './CrewAssignments.module.css'
 
 const TODAY    = new Date().toISOString().slice(0, 10)
@@ -23,6 +27,14 @@ const HORIZON  = 7  // days of look-ahead for "upcoming pressure"
 // detector — if a crew is assigned to one of these but no equipment is
 // reserved, we flag it as pressure (not a hard error).
 const EQUIPMENT_IMPLYING_TYPES = new Set(['spray', 'maintenance', 'irrigation'])
+
+const ASSIGNMENT_SURFACES = [
+  { id: 'briefing', label: 'Briefing' },
+  { id: 'outings',  label: 'Events Calendar' },
+  { id: 'board',    label: 'Daily Assignment Board' },
+  { id: 'goals',    label: 'Weekly Goals / Improvements' },
+  { id: 'yearly-goals', label: 'Yearly Goals / Improvements' },
+]
 
 function addDays(isoDate, days) {
   const d = new Date(isoDate + 'T00:00:00')
@@ -54,6 +66,7 @@ export default function CrewAssignments() {
   const { events: calendarEvents }                    = useCalendarData()
   const { equipment }                                 = useEquipmentData()
   const { employees, loading: crewLoading }           = useCrewData()
+  const [activeSurface, setActiveSurface]             = useState('board')
 
   const horizonEnd = useMemo(() => addDays(TODAY, HORIZON), [])
 
@@ -230,6 +243,36 @@ export default function CrewAssignments() {
 
   return (
     <div className={styles.tabContent}>
+      <nav className={styles.assignmentSurfaceNav} aria-label="Assignments sections">
+        {ASSIGNMENT_SURFACES.map(surface => (
+          <button
+            key={surface.id}
+            type="button"
+            className={styles.assignmentSurfaceBtn}
+            data-active={activeSurface === surface.id ? 'true' : undefined}
+            aria-pressed={activeSurface === surface.id}
+            onClick={() => setActiveSurface(surface.id)}
+          >
+            {surface.label}
+          </button>
+        ))}
+      </nav>
+
+      {activeSurface === 'briefing' && (
+        <DailyBriefingPanel />
+      )}
+
+      {activeSurface === 'outings' && (
+        <OutingsCalendarPanel />
+      )}
+
+      {activeSurface === 'goals' && (
+        <WeeklyGoals />
+      )}
+
+      {activeSurface === 'yearly-goals' && (
+        <YearlyGoals />
+      )}
 
       {/* ── Phase 11 — Daily Assignment Board (employee-first) ──
           This is the primary surface. The legacy "no crew or equipment
@@ -238,92 +281,96 @@ export default function CrewAssignments() {
           StatusBoard moves below so it acts as context for the
           Unassigned / Pressure sections rather than blocking the new
           flow. */}
-      <DailyAssignmentBoard
-        employees={employees}
-        events={calendarEvents}
-        crewAssignments={crewAssignments}
-        equipmentReservations={equipmentReservations}
-        equipment={equipment}
-      />
-
-      {/* Summary stats */}
-      <StatusBoard columns={4}>
-        <StatusBoard.Tile
-          value={stats.todayAssignments}
-          label="Crew Assigned Today"
-          tone={stats.todayAssignments > 0 ? 'ok' : 'neutral'}
-        />
-        <StatusBoard.Tile
-          value={stats.todayReservations}
-          label="Equipment Reserved Today"
-          tone={stats.todayReservations > 0 ? 'ok' : 'neutral'}
-        />
-        <StatusBoard.Tile
-          value={stats.upcomingAssignments}
-          label={`Upcoming Crew (${HORIZON}d)`}
-          tone="info"
-        />
-        <StatusBoard.Tile
-          value={pressureSignals.length}
-          label="Pressure Signals"
-          tone={pressureSignals.length > 0 ? 'warn' : 'ok'}
-        />
-      </StatusBoard>
-
-
-      {/* ── C. Unassigned Operational Events ── */}
-      <section className={styles.section}>
-        <header className={styles.sectionHeader}>
-          <h3 className={styles.sectionTitle}>Unassigned Events</h3>
-          <span className={styles.sectionMeta}>Needs crew or equipment</span>
-        </header>
-        {unassignedItems.length === 0 ? (
-          <EmptyState
-            compact
-            title="Every near-term event has crew + equipment coverage."
-            description="Events without assignments or required equipment will surface here."
+      {activeSurface === 'board' && (
+        <>
+          <DailyAssignmentBoard
+            employees={employees}
+            events={calendarEvents}
+            crewAssignments={crewAssignments}
+            equipmentReservations={equipmentReservations}
+            equipment={equipment}
           />
-        ) : (
-          <ul className={styles.gapList}>
-            {unassignedItems.map(({ event, gaps }) => (
-              <li key={event.id} className={styles.gapRow}>
-                <span className={styles.gapDate}>{fmtDate(event.startDate ?? event.date)}</span>
-                <span className={styles.gapTitle}>{event.title}</span>
-                <span className={styles.gapType}>{event.eventType ?? event.category}</span>
-                <span className={styles.gapBadges}>
-                  {gaps.map(g => (
-                    <span key={g} className={styles.gapBadge} data-gap={g.replace(' ', '-')}>{g}</span>
-                  ))}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
 
-      {/* ── D. Pressure Signals ── */}
-      <section className={styles.section}>
-        <header className={styles.sectionHeader}>
-          <h3 className={styles.sectionTitle}>Pressure Signals</h3>
-          <span className={styles.sectionMeta}>Conflicts &amp; drift</span>
-        </header>
-        {pressureSignals.length === 0 ? (
-          <EmptyState
-            compact
-            title="No conflicts detected."
-            description="Double-bookings and orphaned records will appear here as they arise."
-          />
-        ) : (
-          <ul className={styles.signalList}>
-            {pressureSignals.map(s => (
-              <li key={s.id} className={styles.signalRow} data-severity={s.severity}>
-                <span className={styles.signalIcon}>{s.icon}</span>
-                <span className={styles.signalText}>{s.text}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+          {/* Summary stats */}
+          <StatusBoard columns={4}>
+            <StatusBoard.Tile
+              value={stats.todayAssignments}
+              label="Crew Assigned Today"
+              tone={stats.todayAssignments > 0 ? 'ok' : 'neutral'}
+            />
+            <StatusBoard.Tile
+              value={stats.todayReservations}
+              label="Equipment Reserved Today"
+              tone={stats.todayReservations > 0 ? 'ok' : 'neutral'}
+            />
+            <StatusBoard.Tile
+              value={stats.upcomingAssignments}
+              label={`Upcoming Crew (${HORIZON}d)`}
+              tone="info"
+            />
+            <StatusBoard.Tile
+              value={pressureSignals.length}
+              label="Pressure Signals"
+              tone={pressureSignals.length > 0 ? 'warn' : 'ok'}
+            />
+          </StatusBoard>
+
+
+          {/* ── C. Unassigned Operational Events ── */}
+          <section className={styles.section}>
+            <header className={styles.sectionHeader}>
+              <h3 className={styles.sectionTitle}>Unassigned Events</h3>
+              <span className={styles.sectionMeta}>Needs crew or equipment</span>
+            </header>
+            {unassignedItems.length === 0 ? (
+              <EmptyState
+                compact
+                title="Every near-term event has crew + equipment coverage."
+                description="Events without assignments or required equipment will surface here."
+              />
+            ) : (
+              <ul className={styles.gapList}>
+                {unassignedItems.map(({ event, gaps }) => (
+                  <li key={event.id} className={styles.gapRow}>
+                    <span className={styles.gapDate}>{fmtDate(event.startDate ?? event.date)}</span>
+                    <span className={styles.gapTitle}>{event.title}</span>
+                    <span className={styles.gapType}>{event.eventType ?? event.category}</span>
+                    <span className={styles.gapBadges}>
+                      {gaps.map(g => (
+                        <span key={g} className={styles.gapBadge} data-gap={g.replace(' ', '-')}>{g}</span>
+                      ))}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          {/* ── D. Pressure Signals ── */}
+          <section className={styles.section}>
+            <header className={styles.sectionHeader}>
+              <h3 className={styles.sectionTitle}>Pressure Signals</h3>
+              <span className={styles.sectionMeta}>Conflicts &amp; drift</span>
+            </header>
+            {pressureSignals.length === 0 ? (
+              <EmptyState
+                compact
+                title="No conflicts detected."
+                description="Double-bookings and orphaned records will appear here as they arise."
+              />
+            ) : (
+              <ul className={styles.signalList}>
+                {pressureSignals.map(s => (
+                  <li key={s.id} className={styles.signalRow} data-severity={s.severity}>
+                    <span className={styles.signalIcon}>{s.icon}</span>
+                    <span className={styles.signalText}>{s.text}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </>
+      )}
 
     </div>
   )

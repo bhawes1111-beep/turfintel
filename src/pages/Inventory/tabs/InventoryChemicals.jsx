@@ -3,16 +3,14 @@ import { useInventoryData } from '../../../utils/inventory/inventoryStore'
 import { useImportedLabels } from '../../../utils/inventory/labelImportStore'
 import { EmptyState } from '../../../components/shared/EmptyState'
 import WorkspaceSection from '../../../components/shared/WorkspaceSection'
-import {
-  SignalBadge,
-  ReiBadge,
-  PhiBadge,
-  GroupBadge,
-} from '../../../components/shared/LabelBadges'
-import CatalogChip from '../components/CatalogChip'
 // Phase I.1 — Edit inventory quantity for chemicals (drives spray
 // editor picker stock display).
 import EditInventoryQuantityModal from '../components/EditInventoryQuantityModal'
+import ChemicalDetailModal from '../components/ChemicalDetailModal'
+import { formatNutrientSourceSummary } from '../../../utils/inventory/nutrientForms'
+import { formatDiseaseTargetSummary } from '../../../utils/inventory/diseaseTargets'
+import { formatNematodeTargetSummary } from '../../../utils/inventory/nematodeTargets'
+import { formatWeedTargetSummary } from '../../../utils/inventory/weedTargets'
 import { useAuth } from '../../../context/AuthContext'
 import styles from '../Inventory.module.css'
 
@@ -43,13 +41,21 @@ export default function InventoryChemicals({ onOpenCatalog } = {}) {
   const [filter, setFilter] = useState('All')
   // Phase I.1 — Edit quantity modal state + permission gate.
   const [editingItem, setEditingItem] = useState(null)
+  const [selectedId, setSelectedId] = useState(null)
   const { can } = useAuth()
   const canEditInventory = can('canEditInventory')
+  const selected = chemicals.find(item => item.id === selectedId) ?? null
 
   const visible = useMemo(() => {
     return chemicals.filter(c => {
       const matchFilter = filter === 'All' || c.category === filter
       const matchSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
+                          (c.analysis ?? '').toLowerCase().includes(search.toLowerCase()) ||
+                          (c.nitrogenSource ?? '').toLowerCase().includes(search.toLowerCase()) ||
+                          formatNutrientSourceSummary(c.nutrientSources).toLowerCase().includes(search.toLowerCase()) ||
+                          formatDiseaseTargetSummary(c.diseaseTargets).toLowerCase().includes(search.toLowerCase()) ||
+                          formatNematodeTargetSummary(c.nematodeTargets).toLowerCase().includes(search.toLowerCase()) ||
+                          formatWeedTargetSummary(c.weedTargets).toLowerCase().includes(search.toLowerCase()) ||
                           (c.location ?? '').toLowerCase().includes(search.toLowerCase())
       return matchFilter && matchSearch
     })
@@ -97,86 +103,45 @@ export default function InventoryChemicals({ onOpenCatalog } = {}) {
           />
         )
       ) : (
-        <div className={styles.cardGrid}>
+        <div className={styles.tableWrap}>
+          <table className={`${styles.table} ${styles.chemicalTable}`}>
+            <thead>
+              <tr>
+                <th>Chemical name</th>
+                <th>In stock</th>
+                <th>Amount</th>
+              </tr>
+            </thead>
+            <tbody>
           {visible.map(c => {
             const status = stockStatus(c.quantity, c.reorderLevel)
-            const label = labelByItem[c.id]
             return (
-              <div key={c.id} className={styles.card}>
-                <div className={styles.cardTop}>
-                  <span className={styles.cardName}>{c.name}</span>
-                  <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
-                    <CatalogChip productCatalogId={c.productCatalogId} onOpen={onOpenCatalog} />
+              <tr
+                key={c.id}
+                className={styles.chemicalRow}
+                tabIndex={0}
+                role="button"
+                aria-label={`View all information for ${c.name}`}
+                onClick={() => setSelectedId(c.id)}
+                onKeyDown={event => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    setSelectedId(c.id)
+                  }
+                }}
+              >
+                <td><strong className={styles.chemicalName}>{c.name}</strong></td>
+                <td>
                     <span className={`${styles.stockBadge} ${STATUS_CLASS[status]}`}>
                       {STATUS_LABEL[status]}
                     </span>
-                  </span>
-                </div>
-                <div className={styles.cardMeta}>
-                  <div className={styles.cardMetaRow}>
-                    <span className={styles.cardMetaLabel}>Type</span>
-                    <span>{c.category}</span>
-                  </div>
-                  <div className={styles.cardMetaRow}>
-                    <span className={styles.cardMetaLabel}>Location</span>
-                    <span>{c.location}</span>
-                  </div>
-                  <div className={styles.cardMetaRow}>
-                    <span className={styles.cardMetaLabel}>Expires</span>
-                    <span>{c.expiryDate}</span>
-                  </div>
-                </div>
-                <div className={styles.cardQtyRow}>
-                  <span className={styles.cardQty}>{c.quantity}</span>
-                  <span className={styles.cardQtyUnit}>{c.unit}</span>
-                  <span className={styles.cardReorder}>· reorder at {c.reorderLevel}</span>
-                </div>
-                {/* Phase I.1 — Edit quantity button per chemical card. */}
-                {canEditInventory && (
-                  <div className={styles.cardEditBtnRow}>
-                    <button
-                      type="button"
-                      className={styles.cardEditBtn}
-                      onClick={() => setEditingItem(c)}
-                      aria-label={`Edit quantity for ${c.name}`}
-                    >
-                      Edit quantity
-                    </button>
-                  </div>
-                )}
-                {label && (
-                  <>
-                    {/* Phase 27C — quick safety + group badges derived from
-                        the saved label row. Each renders to null when its
-                        input is missing, so cards with partial labels show
-                        only the badges that are real. */}
-                    <div className={styles.cardLabelBadges}>
-                      <SignalBadge word={label.signalWord} />
-                      <ReiBadge   text={label.reiHours} />
-                      <PhiBadge   text={label.phi} />
-                      {label.fracGroup?.split(',').map(c => (
-                        <GroupBadge key={`F-${c}`} type="FRAC" code={c.trim()} />
-                      ))}
-                      {label.hracGroup?.split(',').map(c => (
-                        <GroupBadge key={`H-${c}`} type="HRAC" code={c.trim()} />
-                      ))}
-                      {label.iracGroup?.split(',').map(c => (
-                        <GroupBadge key={`I-${c}`} type="IRAC" code={c.trim()} />
-                      ))}
-                    </div>
-                    <a
-                      className={styles.cardLabelLink}
-                      href={label.pdfUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Open Label PDF ↗
-                    </a>
-                  </>
-                )}
-              </div>
+                </td>
+                <td><strong>{c.quantity ?? 0}</strong> <span className={styles.chemicalUnit}>{c.unit || ''}</span></td>
+              </tr>
             )
           })}
+            </tbody>
+          </table>
         </div>
       )}
       </WorkspaceSection>
@@ -187,6 +152,20 @@ export default function InventoryChemicals({ onOpenCatalog } = {}) {
           item={editingItem}
           onClose={() => setEditingItem(null)}
           onSaved={() => setEditingItem(null)}
+        />
+      )}
+
+      {selected && !editingItem && (
+        <ChemicalDetailModal
+          item={selected}
+          label={labelByItem[selected.id]}
+          canEdit={canEditInventory}
+          onOpenCatalog={onOpenCatalog}
+          onClose={() => setSelectedId(null)}
+          onEdit={() => {
+            setEditingItem(selected)
+            setSelectedId(null)
+          }}
         />
       )}
     </div>

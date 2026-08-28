@@ -411,6 +411,13 @@ button.selectedDayRow:focus-visible {
   color: rgba(255, 255, 255, 0.6);
 }
 
+.productSummaryLine {
+  font-size: 11px;
+  line-height: 1.35;
+  color: rgba(220, 252, 231, 0.86);
+  overflow-wrap: anywhere;
+}
+
 .editBtn {
   background: rgba(74, 222, 128, 0.18);
   border: 1px solid rgba(74, 222, 128, 0.55);
@@ -434,6 +441,61 @@ button.selectedDayRow:focus-visible {
 }
 
 /* ── Embedded builder section ────────────────────────────────────── */
+.plannedRecordRow {
+  border-color: rgba(96, 165, 250, 0.22);
+  background: rgba(96, 165, 250, 0.06);
+}
+
+button.plannedRecordRow:hover {
+  background: rgba(96, 165, 250, 0.12);
+  border-color: rgba(96, 165, 250, 0.42);
+}
+
+.plannedProgramRow {
+  align-items: flex-start;
+  flex-direction: column;
+}
+
+.statusPill {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border: 1px solid rgba(96, 165, 250, 0.45);
+  background: rgba(96, 165, 250, 0.14);
+  color: rgba(191, 219, 254, 1);
+  border-radius: 999px;
+  padding: 2px 7px;
+  white-space: nowrap;
+}
+
+.markCompleteBtn {
+  background: rgba(34, 197, 94, 0.24);
+  border: 1px solid rgba(74, 222, 128, 0.72);
+  color: rgba(220, 252, 231, 1);
+  border-radius: 4px;
+  padding: 2px 10px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.markCompleteBtn:hover {
+  background: rgba(34, 197, 94, 0.38);
+  border-color: rgba(134, 239, 172, 0.95);
+}
+
+.markCompleteBtn:focus-visible {
+  outline: 2px solid rgba(134, 239, 172, 0.9);
+  outline-offset: 1px;
+}
+
+.markCompleteBtn[aria-disabled="true"] {
+  opacity: 0.62;
+  cursor: wait;
+}
+
 .embeddedBuilder {
   background: rgba(0, 0, 0, 0.18);
   border: 1px solid rgba(255, 255, 255, 0.12);

@@ -108,7 +108,7 @@ function InviteModal({ actor, onClose }) {
   }
 
   return createPortal(
-    <div className={styles.backdrop} onClick={closeAndReset} role="dialog" aria-modal="true" aria-label="Invite user">
+    <div className={styles.backdrop} role="dialog" aria-modal="true" aria-label="Invite user">
       <div className={styles.modal} onClick={e => e.stopPropagation()}>
         <div className={styles.mHeader}>
           <span className={styles.mTitle}>{phase === 'FORM' ? 'Invite User' : 'Invite Link Ready'}</span>

@@ -43,7 +43,7 @@ assert(/const\s+NAV_TREE\s*=\s*\[/.test(SB),
   'legacy NAV_TREE constant still exists')
 
 // Legacy labels still in source — non-Crosswinds courses see them.
-for (const label of ['Operations', 'Sprays', 'Employee Management', 'Agronomy']) {
+for (const label of ['Operations', 'Applications', 'Employee Management', 'Agronomy']) {
   assert(new RegExp(`label:\\s*'${label.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}'`).test(SB),
     `legacy label "${label}" still present in NAV_TREE`)
 }
@@ -64,6 +64,7 @@ const CROSSWINDS_TOP = [
   ['spray',         '/spray'],
   ['inventory',     '/inventory'],
   ['equipment',     '/equipment'],
+  ['turf-health',   '/turf-health'],
   ['irrigation',    '/irrigation'],
   ['settings',      '/settings'],
 ]
@@ -77,8 +78,8 @@ assert(/id:\s*'assignments'[\s\S]{0,80}label:\s*'Assignments'[\s\S]{0,80}to:\s*'
   "Crosswinds /crew is labeled 'Assignments' (renamed from 'Operations')")
 
 // Crosswinds renames Sprays → Spray.
-assert(/id:\s*'spray'[\s\S]{0,60}label:\s*'Spray'[\s\S]{0,60}to:\s*'\/spray'/.test(SB),
-  "Crosswinds /spray is labeled 'Spray' (renamed from 'Sprays')")
+assert(/id:\s*'spray'[\s\S]{0,80}label:\s*'Applications'[\s\S]{0,80}to:\s*'\/spray'/.test(SB),
+  "Crosswinds /spray is labeled 'Applications'")
 
 // ── More group ──────────────────────────────────────────────────────────
 section('More collapsible group + children')
@@ -90,7 +91,6 @@ const MORE_CHILDREN = [
   ['morning-brief', '/morning-brief'],
   ['weather',       '/weather'],
   ['activity',      '/activity'],
-  ['turf-health',   '/turf-health'],
   ['reports',       '/reports'],
   ['disease',       '/disease'],
   ['employees',     '/employees'],
@@ -100,6 +100,9 @@ for (const [id, to] of MORE_CHILDREN) {
   assert(new RegExp(`id:\\s*'${id}'[\\s\\S]{0,200}to:\\s*'${to.replace(/\//g, '\\/')}'`).test(SB),
     `More child id='${id}' → to='${to}'`)
 }
+
+assert(/id:\s*'turf-health'[\s\S]{0,180}id:\s*'irrigation'/.test(SB),
+  'Turf Health is directly above Irrigation in the Crosswinds top-level menu')
 
 // Admin still permission-gated, now inside More.
 assert(/id:\s*'admin'[\s\S]{0,200}requires:\s*'canManageUsers'/.test(SB),

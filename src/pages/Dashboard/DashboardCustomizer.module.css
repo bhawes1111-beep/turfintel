@@ -1,0 +1,63 @@
+.panel {
+  margin: 0 var(--grid-padding) var(--grid-padding);
+  border: 1px solid rgba(74, 158, 74, 0.55);
+  background: #0c190f;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.26);
+}
+
+.header,
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+}
+
+.header { border-bottom: 1px solid var(--color-border); }
+.footer { border-top: 1px solid var(--color-border); justify-content: flex-end; }
+.header h2 { margin: 0; font-size: 15px; color: var(--color-text); }
+.header p { margin: 2px 0 0; font-size: 11px; color: var(--color-text-muted); }
+
+.headerActions { display: flex; align-items: center; gap: 10px; }
+.syncState { font-size: 11px; color: var(--color-text-muted); }
+
+.closeButton,
+.resetButton,
+.orderControls button {
+  padding: 7px 10px;
+  border: 1px solid var(--color-border);
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.closeButton:hover,
+.resetButton:hover,
+.orderControls button:hover:not(:disabled) { border-color: rgba(74, 158, 74, 0.55); background: rgba(74, 158, 74, 0.1); }
+.orderControls button:disabled { opacity: 0.35; cursor: default; }
+
+.moduleList { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.moduleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 11px 16px;
+  border-bottom: 1px solid rgba(42, 68, 45, 0.6);
+}
+.moduleRow:nth-child(odd) { border-right: 1px solid rgba(42, 68, 45, 0.6); }
+
+.visibilityControl { display: flex; align-items: center; gap: 9px; min-width: 0; color: var(--color-text); font-size: 12px; font-weight: 600; }
+.visibilityControl input { accent-color: #4ac66b; width: 16px; height: 16px; }
+.orderControls { display: flex; gap: 5px; flex: 0 0 auto; }
+.orderControls button { padding: 5px 8px; font-size: 10px; }
+
+@media (max-width: 768px) {
+  .panel { margin: 0 var(--grid-padding-mobile) var(--grid-padding-mobile); }
+  .moduleList { grid-template-columns: 1fr; }
+  .moduleRow:nth-child(odd) { border-right: 0; }
+  .header { align-items: flex-start; }
+  .headerActions { flex-direction: column-reverse; align-items: flex-end; }
+}

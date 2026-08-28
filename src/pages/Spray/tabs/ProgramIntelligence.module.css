@@ -61,6 +61,76 @@
   font-style: italic;
 }
 
+.snapshot {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.snapshotLead {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 14px 16px;
+  display: grid;
+  grid-template-columns: auto 120px 1fr;
+  gap: 12px;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.snapshotLead[data-tone="ok"] {
+  border-color: rgba(74, 158, 74, 0.28);
+  background: rgba(74, 158, 74, 0.08);
+}
+
+.snapshotLead[data-tone="warn"] {
+  border-color: rgba(212, 136, 58, 0.32);
+  background: rgba(212, 136, 58, 0.10);
+}
+
+.snapshotLead strong,
+.snapshotItem strong {
+  color: var(--color-text, #e4e8ec);
+  font-size: 15px;
+}
+
+.snapshotLead span:last-child,
+.snapshotItem span:last-child {
+  color: var(--color-text-muted, #a8b0b8);
+  font-size: 12px;
+}
+
+.snapshotGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.snapshotItem {
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.snapshotLabel {
+  color: var(--color-text-muted, #8a929a);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.detailToggleRow {
+  display: flex;
+  justify-content: flex-end;
+  margin: 8px 0 12px;
+}
+
 /* ── Filter strip (Phase 23B) ───────────────────────────────────────── */
 
 .filterStrip {
@@ -472,4 +542,6 @@
 @media (max-width: 1000px) {
   .layout      { grid-template-columns: 1fr; }
   .statsRow    { grid-template-columns: repeat(2, 1fr); }
+  .snapshotGrid { grid-template-columns: repeat(2, 1fr); }
+  .snapshotLead { grid-template-columns: 1fr; }
 }

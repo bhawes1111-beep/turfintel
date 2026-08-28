@@ -7,7 +7,7 @@
 // Crosswinds via Phase 9B.6) gains two new affordances:
 //   1. A fixed-position "+ Add Task" FAB that scrolls to the
 //      existing addTaskRef anchor.
-//   2. A "Manage Tasks" secondary button inside the add-task form's
+//   2. A "Task Library" secondary button inside the add-task form's
 //      button row that opens the existing TasksManagerModal.
 //
 // No new edit/delete logic. TasksManagerModal owns rename via
@@ -47,20 +47,20 @@ assert(/e\.status !== 'cancelled' && e\.status !== 'completed'/.test(OB),
 assert(/\[calendarEvents,\s*selectedDate\]/.test(OB),
   'dayCalendarEvents useMemo depends on [calendarEvents, selectedDate]')
 
-// ── Manage Tasks button inside obAddTaskBtns ───────────────────────────
-section('Manage Tasks button')
+// ── Task Library button inside obAddTaskBtns ───────────────────────────
+section('Task Library button')
 
 assert(/className=\{styles\.obManageTasksBtn\}/.test(OB),
-  'Manage Tasks button uses styles.obManageTasksBtn')
+  'Task Library button uses styles.obManageTasksBtn')
 assert(/onClick=\{\(\) => setTasksModalOpen\(true\)\}/.test(OB),
-  'Manage Tasks button onClick calls setTasksModalOpen(true)')
-assert(/Manage Tasks/.test(OB),
-  'button label "Manage Tasks" present in source')
+  'Task Library button onClick calls setTasksModalOpen(true)')
+assert(/Task Library/.test(OB),
+  'button label "Task Library" present in source')
 
 // Button sits inside the existing obAddTaskBtns row. Verify both the
-// row class and the Manage Tasks button appear near each other.
+// row class and the Task Library button appear near each other.
 assert(/styles\.obAddTaskBtns\}[\s\S]{0,800}styles\.obManageTasksBtn/.test(OB),
-  'Manage Tasks button is rendered inside the obAddTaskBtns row')
+  'Task Library button is rendered inside the obAddTaskBtns row')
 
 // ── Floating "+ Add Task" FAB ──────────────────────────────────────────
 section('Floating + Add Task FAB')

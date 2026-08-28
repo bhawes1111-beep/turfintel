@@ -362,32 +362,27 @@ console.log('— SprayProgramCalendar.jsx (tab body)')
   }
 }
 
-// ── 4. Spray workspace wires the tab ──────────────────────────────────────
-console.log('— Sprays workspace registers Program Calendar tab')
+// -- 4. Spray workspace keeps duplicate Program Calendar out of visible nav --
+console.log('Sprays workspace keeps Program Calendar out of visible nav')
 {
   const shell = readFileSync('src/pages/Spray/Spray.jsx', 'utf8')
-
-  assert(/from\s+['"]\.\/tabs\/SprayProgramCalendar['"]/.test(shell),
-    'Sprays imports SprayProgramCalendar tab')
-
-  // Phase SPR.2 — Unified tab constant SPRAY_TABS + SPRAY_MORE.
-  // SprayProgramCalendar is reachable via More → 'Planning Calendar'
-  // (the label collision with the Planner is gone).
-  const tabsMatch = shell.match(/export\s+const\s+SPRAY_TABS\s*=\s*\[([^\]]+)\]/)
-  const moreMatch = shell.match(/export\s+const\s+SPRAY_MORE\s*=\s*\[([^\]]+)\]/)
-  assert(tabsMatch && moreMatch, 'SPRAY_TABS + SPRAY_MORE declared')
-
-  assert(moreMatch && /'Planning Calendar'/.test(moreMatch[1]),
-    "'Planning Calendar' present in SPRAY_MORE (SPR.2 rename of legacy 'Planned Spray Calendar')")
-
-  assert(/moreTab\s*===\s*'Planning Calendar'\s*&&\s*<SprayProgramCalendar/.test(shell),
-    "Planning Calendar body wired to moreTab === 'Planning Calendar' → <SprayProgramCalendar /> (SPR.2)")
-
-  // Pre-existing unified tabs still present (regression guard for SPR.2).
-  for (const t of ['Today', 'New Application', 'Records', 'Planning',
-                   'Calendar', 'Calculator', 'Reports', 'More']) {
-    assert(tabsMatch && new RegExp(`'${t}'`).test(tabsMatch[1]),
-      `unified SPR.2 tab '${t}' present in SPRAY_TABS`)
+  const tabsMatch = shell.match(/const\s+SPRAY_TABS\s*=\s*\[([^\]]+)\]/)
+  assert(tabsMatch, 'SPRAY_TABS declared')
+  assert(!/SPRAY_MORE/.test(shell), 'SPRAY_MORE removed from Spray.jsx')
+  assert(!/SprayProgramCalendar/.test(shell),
+    'SprayProgramCalendar is not mounted as a separate visible tab')
+  for (const t of ['Calendar', 'New Application', 'Records', 'Resistance', 'Planning', 'Calculator', 'Reports']) {
+    assert(tabsMatch && new RegExp("'" + t + "'").test(tabsMatch[1]),
+      `spray tab '${t}' present in SPRAY_TABS`)
+  }
+  for (const [oldKey, newKey] of [
+    ['Planned Spray Calendar', 'Planning'],
+    ['Planning Calendar', 'Planning'],
+    ['Records Calendar', 'Records'],
+    ['Spray Calendar', 'Records'],
+  ]) {
+    const re = new RegExp("'" + oldKey + "'[^,}]*:\\s*'" + newKey + "'")
+    assert(re.test(shell), `${oldKey} maps to ${newKey}`)
   }
 }
 

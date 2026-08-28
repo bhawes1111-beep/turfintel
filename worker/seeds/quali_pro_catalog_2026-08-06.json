@@ -1,0 +1,3232 @@
+{
+  "version": "quali-pro-2026-08-06",
+  "generatedAt": "2026-08-17T22:45:19.517Z",
+  "source": "Quali-Pro / Control Solutions product listing and U.S. EPA PPLS",
+  "notes": "Current products listed by Quali-Pro. Distributor registrations are validated with PPLS distributor records; master registrations are validated with PPLS product records. Market label and SDS links are taken from the official Quali-Pro product page.",
+  "products": [
+    {
+      "product_name": "2-D",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-377",
+      "formulation": "Soluble Concentrate",
+      "category": "herbicide",
+      "frac_group": null,
+      "hrac_group": "4",
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Triclopyr;",
+          "percentage": 33
+        },
+        {
+          "name": "Clopyralid",
+          "percentage": 12.1
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Chickweed",
+        "Clover",
+        "Dandelion",
+        "Narrowleaf",
+        "Plantain",
+        "Oxalis",
+        "Smartweed",
+        "Wild Violet"
+      ],
+      "turf_sites": [
+        "Turf (see label for restrictions)",
+        "Golf Courses (Fairways only)",
+        "Non-Crop Areas"
+      ],
+      "restricted_use": false,
+      "signal_word": "Danger",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/2-D_Herbicide_Label1p.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/2-d. Registered product name: QUALI-PRO 2-D HERBICIDE. SDS: https://www.controlsolutionsinc.com/hubfs/Labels/QP%202-D%20Herbicide%20SDS%20Revised%201-19-2026.pdf?hsLang=en. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "2DQ",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-334",
+      "formulation": "Soluble Concentrate",
+      "category": "herbicide",
+      "frac_group": null,
+      "hrac_group": "4",
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "2,4-D;",
+          "percentage": 40
+        },
+        {
+          "name": "Dicamba;",
+          "percentage": 4.21
+        },
+        {
+          "name": "Quinclorac",
+          "percentage": 3.3
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Clover",
+        "Dandelion",
+        "Henbit",
+        "Plantains",
+        "Wild Onion",
+        "Many Other Broadleaf Weeds"
+      ],
+      "turf_sites": [
+        "Residential",
+        "Industrial",
+        "Institutional Lawns",
+        "Parks",
+        "Cemeteries",
+        "Athletic Fields",
+        "Golf Courses",
+        "Sod Farms"
+      ],
+      "restricted_use": false,
+      "signal_word": "Danger",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/2DQ_Label1gh.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/2dq. Registered product name: QUALI-PRO-2DQ. SDS: https://www.agrian.com/pdfs/2DQ_MSDS1h.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "3-D",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-378",
+      "formulation": "Soluble Concentrate",
+      "category": "herbicide",
+      "frac_group": null,
+      "hrac_group": "4",
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "2, 4-D;",
+          "percentage": 30.56
+        },
+        {
+          "name": "Mecoprop-p;",
+          "percentage": 8.17
+        },
+        {
+          "name": "Dicamba",
+          "percentage": 2.77
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Clover",
+        "Dandelion",
+        "Henbit",
+        "Plantains",
+        "Wild Onion",
+        "Many Other Broadleaf Weeds"
+      ],
+      "turf_sites": [
+        "Golf Courses",
+        "Sod Farms",
+        "Highways",
+        "Rights-Of-Way and Other Similar Non-Crop Areas"
+      ],
+      "restricted_use": false,
+      "signal_word": "Danger",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/3-D_Herbicide1c_Label.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/3-d. Registered product name: QUALI-PRO 3-D HERBICIDE. SDS: https://www.controlsolutionsinc.com/hubfs/Labels/QP%203-D%20Herbicide%20SDS.pdf?hsLang=en. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "3-D FOAM",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-503",
+      "formulation": null,
+      "category": "herbicide",
+      "frac_group": null,
+      "hrac_group": "4",
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "2, 4-D;",
+          "percentage": 0.18
+        },
+        {
+          "name": "Mecoprop-p;",
+          "percentage": 0.05
+        },
+        {
+          "name": "Dicamba",
+          "percentage": 0.02
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Clover",
+        "Chickweed",
+        "Dandelion",
+        "Ground Ivy",
+        "Henbit",
+        "Oxalis",
+        "Plantain",
+        "Other Broadleaf Weeds. See label for complete list."
+      ],
+      "turf_sites": [
+        "For Spot Treatment On: Ornamental Turf",
+        "Golf Courses",
+        "Cemeteries",
+        "Parks",
+        "Sports Fields",
+        "Turfgrass",
+        "Lawns",
+        "Fence Rows",
+        "Hedge Rows",
+        "Ditches",
+        "Right-Of-Ways",
+        "Around Buildings",
+        "Driveways",
+        "Sidewalks",
+        "Cartpaths",
+        "Pavers",
+        "Patios",
+        "Retaining Walls",
+        "and Other Similar Areas Where Broadleaf Weeds May Grow"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Quali-Pro_3-D_Foam_Label1.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/3-d-foam. Registered product name: CSI 20-379 3-D HERBICIDE. SDS: https://www.agrian.com/pdfs/Quali-Pro_3-D_Foam_MSDS1d.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "ABAMECTIN 0.15 EC",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-371",
+      "formulation": "Emulsifiable Concentrate",
+      "category": "insecticide",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": "6",
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Abamectin",
+          "percentage": 1.9
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Mites",
+        "Boxwood Leafminers",
+        "Liriomyza Leafminers",
+        "Aphids",
+        "Thrips",
+        "Whiteflies"
+      ],
+      "turf_sites": [
+        "Greenhouse",
+        "Shadehouse",
+        "Field-Grown",
+        "and Container Ornamentals",
+        "including Foliage Plants",
+        "Woody Ornamentals",
+        "and Christmas Trees"
+      ],
+      "restricted_use": false,
+      "signal_word": "Warning",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Abamectin_0.15_EC_Label1d.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/abamectin-015-ec. Registered product name: QUALI-PRO ABAMECTIN 0.15 EC. SDS: https://www.agrian.com/pdfs/Abamectin_0.15_EC_MSDS1i.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "ACEPHATE 90% PRILLS",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-253",
+      "formulation": "Ready-to-Use Solution",
+      "category": "insecticide",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": "1B",
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Acephate",
+          "percentage": 90
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Aphids",
+        "Thrips",
+        "Whitefly",
+        "Plant Bugs"
+      ],
+      "turf_sites": [
+        "A Wide Variety of Agricultural Crops and Non-Crop Areas."
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Acephate_90_Prills_Label.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/acephate-90-prills. Registered product name: Acephate 90% Prills. SDS: https://www.agrian.com/pdfs/Acephate_90_Prills1_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "BIFEN L/P GRANULES",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-124",
+      "formulation": "Granular",
+      "category": "insecticide",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": "3A",
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Bifenthrin",
+          "percentage": 0.2
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Ants (including Imported Fire Ants)",
+        "Chinch Bugs",
+        "Fleas",
+        "Mole Crickets",
+        "Ticks"
+      ],
+      "turf_sites": [
+        "Lawns in Landscaped Areas",
+        "Perimeters Around Residential",
+        "Institutional",
+        "Public",
+        "Commercial and Industrial Buildings",
+        "Parks",
+        "Recreational Areas",
+        "Athletic Fields"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Bifen_LP_Label1hi.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/bifen-lp-granules. Registered product name: BIFENTHRIN LP GRANULAR. SDS: https://www.agrian.com/pdfs/Bifen_LP_MSDS1u.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "BIFENTHRIN GOLF & NURSERY 7.9F",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-366",
+      "formulation": "Soluble Concentrate",
+      "category": "insecticide",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": "3A",
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Bifenthrin",
+          "percentage": 7.9
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "All Species of Lawn Ants",
+        "Carpenter Ants",
+        "Fire Ants",
+        "Billbugs",
+        "Fleas",
+        "Mites",
+        "Scorpions",
+        "Ticks"
+      ],
+      "turf_sites": [
+        "Commercial Non-Food Use Insect Control on Indoor and Outdoor Ornamentals",
+        "Greenhouses",
+        "Nurseries",
+        "Turf on Golf Courses and Sod Farms"
+      ],
+      "restricted_use": true,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Bifenthrin1d_Golf__Nursery_7.9F_Label.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/bifenthrin-golf-and-nursery-79f. Registered product name: QUALI-PRO BIFENTHRIN GOLF & NURSERY 7.9F. SDS: https://www.agrian.com/pdfs/Bifenthrin1b_Golf__Nursery_7.9F__MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "BIFENTHRIN I/ T 7.9 F (QP)",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-365",
+      "formulation": "Emulsifiable Concentrate",
+      "category": "insecticide",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": "3A",
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Bifenthrin",
+          "percentage": 7.9
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "All Species of Lawn Ants",
+        "Carpenter Ants",
+        "Fire Ants",
+        "Bill Bugs",
+        "Fleas",
+        "Mites",
+        "Scorpions",
+        "Ticks"
+      ],
+      "turf_sites": [
+        "In and Around Homes",
+        "Commercial and Industrial Buildings",
+        "Recreational Areas",
+        "Athletic Fields",
+        "Lawns and Ornamentals"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Bifenthrin_IT_7.9_F_Label1c.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/bifenthrin-it-79-f-qp. Registered product name: QUALI-PRO BIFENTHRIN I/T 7.9F. SDS: https://www.agrian.com/pdfs/Bifenthrin_IT_7.9_F_MSDS1c.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "BOSCALID",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "83529-164-53883",
+      "formulation": null,
+      "category": "fungicide",
+      "frac_group": "7",
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Boscalid",
+          "percentage": 70
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Dollar Spot",
+        "Dead Spot"
+      ],
+      "turf_sites": [
+        "Annual Bluegrass",
+        "Annual Ryegrass",
+        "Bahiagrass",
+        "Centipedegrass",
+        "Colonial Bentgrass",
+        "Common Bermudagrass",
+        "Creeping Bentgrass",
+        "Hybrid Bermudagrass",
+        "Kentucky Bluegrass",
+        "Perennial Ryegrass",
+        "Seashore Paspalum",
+        "St. Augustinegrass",
+        "Tall Fescue",
+        "Zoysiagrass"
+      ],
+      "restricted_use": false,
+      "signal_word": "Warning",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/BOSCALID_Labeldry.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/boscalid. Registered product name: Sharda Boscalid 70% WDG II. SDS: https://www.agrian.com/pdfs/BOSCALID_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "CHLOROTHALONIL 720 SFT",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-310",
+      "formulation": "Flowable Concentrate",
+      "category": "fungicide",
+      "frac_group": "M05",
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Chlorothalonil",
+          "percentage": 54
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Dollar Spot",
+        "Brown Patch",
+        "Algae",
+        "Leaf Spot",
+        "Anthracnose",
+        "Fusarium",
+        "Rust"
+      ],
+      "turf_sites": [
+        "Nursery",
+        "Greenhouse",
+        "Landscape",
+        "Irrigation",
+        "Golf Courses"
+      ],
+      "restricted_use": false,
+      "signal_word": "Warning",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/CHLOROTHALONIL_720_SFT_Label.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/chlorothalonil-720-sft. Registered product name: QUALI-PRO CHLOROTHALONIL 720 SFT. SDS: https://www.agrian.com/pdfs/CHLOROTHALONIL_720_SFT_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "CHLOROTHALONIL DF",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-313",
+      "formulation": "Water Dispersible Granule",
+      "category": "fungicide",
+      "frac_group": "M05",
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Chlorothalonil",
+          "percentage": 82.5
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Dollar Spot",
+        "Brown Patch",
+        "Algae",
+        "Leaf Spot",
+        "Anthracnose",
+        "Fusarium",
+        "Rust"
+      ],
+      "turf_sites": [
+        "Golf Courses",
+        "Greenhouse",
+        "Irrigation",
+        "Nursery",
+        "Trees"
+      ],
+      "restricted_use": false,
+      "signal_word": "Warning",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/CHLOROTHALONIL_DF1q_Label.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/chlorothalonil-df. Registered product name: Quali-Pro® Chlorothalonil DF. SDS: https://www.agrian.com/pdfs/CHLOROTHALONIL_DF1q_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "CHLORPYRIFOS 4E",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "MAKHTESHIM AGAN OF NORTH AMERICA, INC.",
+      "epa_number": "66222-19",
+      "formulation": "Emulsifiable Concentrate",
+      "category": "insecticide",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": "1B",
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Chlorpyrifos",
+          "percentage": 42.5
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Aphids",
+        "Ants",
+        "Armyworms",
+        "Bermudagrass mites",
+        "Bluegrass billbugs",
+        "Box elder bugs",
+        "Chinch bugs",
+        "Clover mites",
+        "Crickets",
+        "Cutworms",
+        "Fleas",
+        "Greenbug aphids",
+        "Leafhoppers",
+        "Sod webworms"
+      ],
+      "turf_sites": [
+        "Nursery",
+        "Greenhouse",
+        "Trees",
+        "Golf Courses"
+      ],
+      "restricted_use": true,
+      "signal_word": "Warning",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.controlsolutionsinc.com/hubfs/Labels/QP%20Chlorpyrifos%204E%202.5Gal_Label.pdf?hsLang=en",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/chlorpyrifos-4e. Registered product name: CHLORPYRIFOS 4E AG. SDS: https://www.controlsolutionsinc.com/hubfs/Labels/QP%20Chlorpyrifos%204E_SDS.pdf?hsLang=en. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "CONTRADO SC",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-534",
+      "formulation": null,
+      "category": "insecticide",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": "28",
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Chlorantraniliprole",
+          "percentage": 18.4
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "White Grubs",
+        "Billbugs",
+        "European Crane Fly Larvae",
+        "Spittlebugs",
+        "Turf Caterpillars",
+        "Annual Bluegrass Weevil (suppression)"
+      ],
+      "turf_sites": [
+        "Golf Courses",
+        "Turfgrass",
+        "Lawns",
+        "Recreational Turf",
+        "Landscapes",
+        "Interior Plantscapes",
+        "Commercial Ornamental Plant Nurseries",
+        "Greenhouses and Sod Farms"
+      ],
+      "restricted_use": false,
+      "signal_word": "No Signal Word",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Quali-Pro_Contrado_SC_Label.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/contrado-sc. Registered product name: CSI 22-433 CTPR 200 SC. SDS: https://www.agrian.com/pdfs/Quali-Pro_Contrado_SC_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "D-FENSE NXT",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-415",
+      "formulation": "Ready-to-Use Solution",
+      "category": "insecticide",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": "3A",
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Novaluron;",
+          "percentage": 0.2
+        },
+        {
+          "name": "Deltamethrin;",
+          "percentage": 0.06
+        },
+        {
+          "name": "Pyriproxyfen",
+          "percentage": 0.02
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Ants",
+        "Bed Bugs",
+        "Carpenter Ants",
+        "Carpenter Bees",
+        "Carpet Beetles (Black and Varied)",
+        "Centipedes",
+        "Chocolate Moths",
+        "Cigarette Beetles",
+        "Clover Mites",
+        "Cluster Flies",
+        "Cockroaches",
+        "Confused Flour Beetles",
+        "Crickets",
+        "Drugstore Beetles",
+        "Earwigs",
+        "Elm Leaf Beetles",
+        "Firebrats",
+        "Fleas",
+        "Flies",
+        "Fruit Flies",
+        "Gnats",
+        "Grain Mites",
+        "Granary Weevils",
+        "Ground Beetles",
+        "Hornets",
+        "House Flies",
+        "Indian Meal Moths",
+        "Lesser Grain Borers",
+        "Mediterranean Flour Moths",
+        "Midges",
+        "Millipedes",
+        "Mole Crickets",
+        "Mosquitoes",
+        "Mud Daubers",
+        "Pillbugs",
+        "Red Flour Beetles",
+        "Rice Weevils",
+        "Saw-Toothed Grain Beetles",
+        "Silverfish",
+        "Small Flying Moths",
+        "Sowbugs",
+        "Spiders",
+        "Spider Beetles",
+        "Termites† (Subterranean",
+        "Formosan & Drywood)",
+        "Ticks",
+        "Tobacco Moths",
+        "Wasps",
+        "and Webbing Clothes Moths"
+      ],
+      "turf_sites": [
+        "Apartments",
+        "Campgrounds",
+        "Non-Food Storage Areas",
+        "Homes",
+        "Hospitals (Unoccupied Rooms)",
+        "Hotels",
+        "Motels",
+        "Nursing Homes†",
+        "Resorts",
+        "Restaurants and Other Food Handling Establishments†",
+        "Schools",
+        "Supermarkets",
+        "Transportation Equipment (Buses",
+        "Boats",
+        "Ships",
+        "Trains",
+        "Trucks",
+        "Planes†)",
+        "Utilities",
+        "Warehouses",
+        "and other Commercial and Industrial Buildings"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/D-FENSE_NXT_Label1c.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/d-fense-nxt. Registered product name: CSI 16-105 Delta+Tekko Pro Aerosol. SDS: https://www.agrian.com/pdfs/D-FENSE_NXT_MSDS1.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "DITHIOPYR 2EW",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-500",
+      "formulation": null,
+      "category": "herbicide",
+      "frac_group": null,
+      "hrac_group": "3",
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Dithiopyr",
+          "percentage": 24
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Annual Grasses and Broadleaf Weeds"
+      ],
+      "turf_sites": [
+        "Established Lawns",
+        "Commercial Sod Farms",
+        "Ornamental and Sports Turf (Including But Not Limited To Sport Fields",
+        "Golf Course Fairways",
+        "Roughs",
+        "Tee Boxes",
+        "Unimproved Turfgrass Areas)",
+        "Container Grown Ornamentals",
+        "Field-Grown Ornamentals",
+        "Landscape Ornamentals",
+        "Non-Cropland (See List Above)",
+        "Natural Areas and Christmas Trees"
+      ],
+      "restricted_use": false,
+      "signal_word": "Warning",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Dithiopyr_2EW_Label1.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/dithiopyr-2-ew. Registered product name: CSI 21-405 Dimension 2EW. SDS: https://www.agrian.com/pdfs/Dithiopyr_2EW_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "DOXEM PLUS FIRE ANT BAIT",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-417",
+      "formulation": "Granular",
+      "category": "insecticide",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": "15 + IRAC + 7C",
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Indoxacarb;",
+          "percentage": 0.045
+        },
+        {
+          "name": "Novaluron;",
+          "percentage": 0.01
+        },
+        {
+          "name": "Pyriproxyfen",
+          "percentage": 0.01
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Imported Fire Ants",
+        "Bigheaded Ants",
+        "Pavement Ants and Turfgrass Ants"
+      ],
+      "turf_sites": [
+        "Lawns",
+        "Recreational Areas",
+        "Golf Courses and Other Non-Crop/Non-Grazed Areas"
+      ],
+      "restricted_use": false,
+      "signal_word": "No Signal Word",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/DOXEM_PLUS_FIRE_ANT_BAIT_Label.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/doxem-plus-fab. Registered product name: CSI 16-107E I-N-P Fire Ant Granule. SDS: https://www.agrian.com/pdfs/DOXEM_PLUS_FIRE_ANT_BAIT_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "DOXEM T&O",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-533",
+      "formulation": null,
+      "category": "insecticide",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": "22A",
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Indoxacarb",
+          "percentage": 20.9
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Annual Bluegrass Weevils",
+        "Armyworms",
+        "Cutworms",
+        "Sod Webworms",
+        "Mole Crickets",
+        "European Crane Flies",
+        "and certain nuisance ant species"
+      ],
+      "turf_sites": [
+        "Golf Courses",
+        "Sports Fields",
+        "Residential and Commercial Lawns",
+        "and Landscape Ornamentals"
+      ],
+      "restricted_use": false,
+      "signal_word": "No Signal Word",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Quali-Pro_Doxem_TO_Label.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/doxem-t-o. Registered product name: CSI 17-215 Indoxacarb. SDS: https://www.agrian.com/pdfs/Quali-Pro_Doxem_TO_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "DURAFLEX ZC",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-426",
+      "formulation": "Soluble Concentrate",
+      "category": "insecticide",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": "15 + IRAC + 7C",
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Bifenthrin;",
+          "percentage": 3.95
+        },
+        {
+          "name": "Novaluron;",
+          "percentage": 1.3
+        },
+        {
+          "name": "Pyriproxyfen",
+          "percentage": 1.3
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Mosquitoes",
+        "Cockroaches",
+        "Ants",
+        "Fleas",
+        "Stored Product Pests and More"
+      ],
+      "turf_sites": [
+        "In and Around Such Areas as Homes",
+        "Commercial and Industrial Buildings",
+        "Recreational Areas",
+        "and Ornamentals"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/DuraFlex_ZC_Label.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/duraflex-zc. Registered product name: CSI 16-199 B-N-P ZC. SDS: https://www.agrian.com/pdfs/DuraFlex_ZC_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "ENCLAVE",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-309",
+      "formulation": "Emulsifiable Concentrate",
+      "category": "fungicide",
+      "frac_group": "1 + FRAC + 3",
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Chlorothalonil;",
+          "percentage": 28.7
+        },
+        {
+          "name": "Iprodione;",
+          "percentage": 9.4
+        },
+        {
+          "name": "Thiophanate methyl,",
+          "percentage": 9.4
+        },
+        {
+          "name": "Tebuconazole",
+          "percentage": 2.8
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Dollar Spot",
+        "Brown Patch",
+        "Anthracnose",
+        "Snow Mold",
+        "Blights",
+        "Leaf Spots",
+        "Powdery Mildew",
+        "Rust Diseases"
+      ],
+      "turf_sites": [
+        "Golf Courses",
+        "Commercial Turf",
+        "Landscape Ornamentals",
+        "Nursery",
+        "Greenhouses"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Enclave_Label1d.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/enclave. Registered product name: QUALI-PRO ENCLAVE 5.3F. SDS: https://www.agrian.com/pdfs/Enclave_MSDS1g.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "ETHEPHON 2SL",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-314",
+      "formulation": "Ready-to-Use Solution",
+      "category": "pgr",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": "Plant Growth Regulator",
+      "active_ingredients": [
+        {
+          "name": "Ethephon",
+          "percentage": 21.7
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Kentucky Bluegrass",
+        "Perennial Ryegrass",
+        "Tall & Fine Fescue",
+        "Bentgrass",
+        "Dwarf Mistletoe",
+        "Apple Trees",
+        "Crabapple Trees",
+        "Carob Trees",
+        "Olive Trees"
+      ],
+      "turf_sites": [
+        "Nursery",
+        "Landscape",
+        "Turf",
+        "Trees",
+        "Golf Courses"
+      ],
+      "restricted_use": false,
+      "signal_word": "Danger",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/ETHEPHON_2SL_Label.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/ethephon-2sl. Registered product name: QUALI-PRO ETHEPHON 2 SL. SDS: https://www.agrian.com/pdfs/ETHEPHON_2SL_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "EXPEL",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-478",
+      "formulation": null,
+      "category": "herbicide",
+      "frac_group": null,
+      "hrac_group": "14",
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Sulfentrazone",
+          "percentage": 39.6
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Yellow Nutsedge",
+        "Purple Nutsedge",
+        "Green Kyllinga",
+        "Beggarweed",
+        "Bittercress",
+        "Black Medic",
+        "Buttercup",
+        "Carpetweed",
+        "Chickweed",
+        "Clover",
+        "Copperleaf",
+        "Dandelion",
+        "Dock",
+        "Dollar Weed",
+        "Evening Primrose",
+        "Goldenrod",
+        "Ground Ivy",
+        "Groundsel",
+        "Henbit",
+        "Knotweed",
+        "Parsley",
+        "Plantain",
+        "Puncture Weed",
+        "Purslane",
+        "Pusley (Florida)",
+        "Redweed",
+        "Rocket",
+        "Shepherd’s Purse",
+        "Smartweed (PA)",
+        "Sorrel",
+        "Speedwell",
+        "Spurge",
+        "Velvetleaf",
+        "Violet",
+        "Wild Garlic",
+        "Wild Onion",
+        "Woodsorrel"
+      ],
+      "turf_sites": [
+        "Commercial and Residential Cool & Warm-Season Grass",
+        "Athletic Fields",
+        "Commercial Sod Farms",
+        "and Golf Course fairways and roughs"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Expel_Label1vg.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/expel. Registered product name: CSI 19-350 Sulfentrazone. SDS: https://www.agrian.com/pdfs/EXPEL_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "FAHRENHEIT",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-387",
+      "formulation": "Granular",
+      "category": "herbicide",
+      "frac_group": null,
+      "hrac_group": "2 + WSSA",
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Dicamba;",
+          "percentage": 33
+        },
+        {
+          "name": "Metsulfuron-Methyl",
+          "percentage": 5
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Annual and Perennial Broadleaf Weeds and Grasses"
+      ],
+      "turf_sites": [
+        "Residential Lawns",
+        "Commercial Lawns",
+        "Golf Courses",
+        "Sports Fields",
+        "Parks",
+        "Campsites",
+        "Recreational Areas",
+        "Roadsides",
+        "School Grounds",
+        "Cemeteries",
+        "Sod Farms"
+      ],
+      "restricted_use": false,
+      "signal_word": "Warning",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/FAHRENHEIT1_Label.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/fahrenheit. Registered product name: Fahrenheit. SDS: https://www.agrian.com/pdfs/FAHRENHEIT_MSDS1a.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "FIPRONIL 0.0143G BROADCAST",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-272",
+      "formulation": "Granular",
+      "category": "insecticide",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": "2B",
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Fipronil",
+          "percentage": 0.0143
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Fire Ants",
+        "Mole Crickets",
+        "Fleas",
+        "Ticks",
+        "Other Nuisance Ants"
+      ],
+      "turf_sites": [
+        "Landscape",
+        "Turf",
+        "Golf Courses"
+      ],
+      "restricted_use": true,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Fipronil_0.0143G_Broadcast_Label1rt.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/fipronil-00143g-broadcast. Registered product name: CSI FIP PRO. SDS: https://www.agrian.com/pdfs/Fipronil1_0.0143G_Broadcast_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "FIPRONIL 0.1G",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-273",
+      "formulation": "Granular",
+      "category": "insecticide",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": "2B",
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Fipronil",
+          "percentage": 0.1
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Mole Crickets",
+        "Imported Fire Ants",
+        "Fleas",
+        "Ticks",
+        "Nuisance Ants"
+      ],
+      "turf_sites": [
+        "Landscape",
+        "Turf",
+        "Golf Courses"
+      ],
+      "restricted_use": true,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Fipronil1_0.1G_Label.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/fipronil-01g. Registered product name: CSI FIP PRO PLUS. SDS: https://www.agrian.com/pdfs/Fipronil1_0.1G_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "FLEX-GUARD",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-454",
+      "formulation": "Soluble Concentrate",
+      "category": "fungicide",
+      "frac_group": "29",
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Fluazinam",
+          "percentage": 40
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Dollar Spot",
+        "Leaf Spot",
+        "Brown Blight",
+        "Brown Patch",
+        "Anthracnose",
+        "Gray & Pink Snow Mold and other listed diseases"
+      ],
+      "turf_sites": [
+        "Golf Courses Only. Tees",
+        "Greens",
+        "Fairways and Roughs"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/FLEX-GUARD_Label.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/flex-guard. Registered product name: CSI 18-257 Fluazinam. SDS: https://www.agrian.com/pdfs/FLEX-GUARD_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "FLUMISHIELD SC",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "81927-78-53883",
+      "formulation": null,
+      "category": "herbicide",
+      "frac_group": null,
+      "hrac_group": "14",
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Flumioxazin",
+          "percentage": 42
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Barnyardgrass*",
+        "Bittercress",
+        "Bluegrass",
+        "Chickweed",
+        "Crabgrass*",
+        "Dandelion*",
+        "Eclipta",
+        "Field pennycress",
+        "Florida beggarweed",
+        "Florida pusley",
+        "Foxtail*",
+        "Goosegrass*",
+        "Groundsel",
+        "Kochia",
+        "Lambsquarters",
+        "Morningglory",
+        "Nightshade",
+        "Palmer amaranth",
+        "Pigweed",
+        "Pineapple-weed*",
+        "Prickly sida (teaweed)",
+        "Puncturevine",
+        "Ragweed",
+        "Redmaids",
+        "Russian thistle",
+        "Shepherd’s-purse",
+        "Spiny amaranth",
+        "Spurge",
+        "Velvetleaf",
+        "Waterhemp",
+        "Yellow rocket (*Pre-emergent control only)"
+      ],
+      "turf_sites": [
+        "Dormant Bermudagrass on Residential Sites",
+        "Golf Courses",
+        "and Sod Farms",
+        "Around Established Woody Ornamentals In Landscapes",
+        "Container and Field Grown Conifers and Deciduous Trees (Including Christmas Trees) Non-Crop Areas: Around Buildings",
+        "Fencerows",
+        "Gravel Surfaces",
+        "Driveways",
+        "Ground Mats and Pads"
+      ],
+      "restricted_use": false,
+      "signal_word": "No Signal Word",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Quali-Pro_FLUMISHIELD_SC_Label.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/flumishield-sc. Registered product name: ALLIGARE FLUMI SC. SDS: https://www.agrian.com/pdfs/Quali-Pro_FLUMISHIELD_SC_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "FOSETYL-AL 80 WDG",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "MAKHTESHIM AGAN OF NORTH AMERICA, INC.",
+      "epa_number": "66222-161",
+      "formulation": "Water Dispersible Granule",
+      "category": "fungicide",
+      "frac_group": "33",
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Aluminum Tris",
+          "percentage": 80
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Pythium Blight",
+        "Pythium Root Rot",
+        "Yellow Tuft",
+        "Phytophthora Root Rot"
+      ],
+      "turf_sites": [
+        "Turf Grass on Golf Courses",
+        "Sod Farms",
+        "Industrial",
+        "Municipal and Commercial Turf Areas",
+        "Conifer Nurseries"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Fosetyl-Al_80_WDG_Label1u.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/fosetyl-al-80-wdg. Registered product name: LEGION 80 WDG. SDS: https://www.agrian.com/pdfs/Fosetyl-Al_80_WDG_MSDS1g.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "FOURSOME PLUS",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "Control Solutions, Inc.",
+      "epa_number": null,
+      "formulation": "Turf pigment",
+      "category": "pigment",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "No active ingredient",
+          "percentage": null
+        }
+      ],
+      "rates": [],
+      "targets": [],
+      "turf_sites": [
+        "Turf",
+        "Golf Courses"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Foursome_Plus_Label.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/foursome-plus. Registered product name: FOURSOME PLUS. SDS: https://s3-us-west-1.amazonaws.com/agrian-cg-fs1-production/pdfs/Foursome_Plus_MSDS4.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "GATEWAY",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "91234-199-53883",
+      "formulation": null,
+      "category": "fungicide",
+      "frac_group": "21",
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Cyazofamid",
+          "percentage": 34.5
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Downy Mildews",
+        "Pythium Blight",
+        "Pythium Damping-Off",
+        "Pythium Root Dysfunction",
+        "Pythium Root Rot"
+      ],
+      "turf_sites": [
+        "Golf Courses (Greens",
+        "Tees and Fairways)",
+        "Sod Farms",
+        "Seed Farms",
+        "Sport Fields",
+        "Residential and Commercial Lawns"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/GATEWAY_Label.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/gateway. Registered product name: A275.02. SDS: https://www.agrian.com/pdfs/GATEWAY_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "GLYPHOSATE PLUS",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-319",
+      "formulation": "Soluble Concentrate",
+      "category": "herbicide",
+      "frac_group": null,
+      "hrac_group": "9",
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Glyphosate",
+          "percentage": 41
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Annual and Perennial Broadleaf Weeds and Grasses"
+      ],
+      "turf_sites": [
+        "Nursery",
+        "Greenhouse",
+        "Landscape",
+        "Turf",
+        "Non-Crop Areas",
+        "Golf Courses"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Glyphosate_Plus1j_Label.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/glyphosate-plus. Registered product name: QUALI-PRO GLYPHOSATE PLUS . SDS: https://www.agrian.com/pdfs/Glyphosate_Plus1j_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "IMIDACLOPRID 0.5G",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-367",
+      "formulation": "Granular",
+      "category": "insecticide",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": "4A",
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Imidacloprid",
+          "percentage": 0.5
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Southern Masked Chafer",
+        "Northern Masked Chafer",
+        "Japanese Beetle",
+        "European Chafer",
+        "European Crane Fly",
+        "Green June Beetle"
+      ],
+      "turf_sites": [
+        "Landscape",
+        "Turf",
+        "Trees",
+        "Golf Courses"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Imidacloprid1_0.5G_Label.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/imidacloprid-05g. Registered product name: QUALI-PRO IMIDACLOPRID 0.5G INSECTICIDE. SDS: https://www.agrian.com/pdfs/Imidacloprid1_0.5G_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "IMIDACLOPRID 2F T&O",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-514",
+      "formulation": "Emulsifiable Concentrate",
+      "category": "insecticide",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": "4A",
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Imidacloprid",
+          "percentage": 21.8
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Southern Masked Chafer",
+        "Northern Masked Chafer",
+        "Japanese Beetle",
+        "European Chafer",
+        "European Crane Fly",
+        "Green June Beetle"
+      ],
+      "turf_sites": [
+        "Landscape",
+        "Turf",
+        "Golf Courses"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Quali-Pro_IMIDACLOPRID_2F_Label.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/imidacloprid-to-2f. Registered product name: QUALI-PRO IMIDACLOPRID 2F TURF & ORNAMENTAL INSECTICIDE. SDS: https://www.agrian.com/pdfs/Quali-Pro_IMIDACLOPRID_2F_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "IMIDACLOPRID 75 WSB",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-513",
+      "formulation": "Water Soluble Packaging",
+      "category": "insecticide",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": "4A",
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Imidacloprid",
+          "percentage": 75
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Southern Masked Chafer",
+        "Northern Masked Chafer",
+        "Japanese Beetle",
+        "European Chafer",
+        "European Crane Fly",
+        "Green June Beetle"
+      ],
+      "turf_sites": [
+        "Turfgrass (Including Sod Farms)",
+        "Landscape Ornamentals",
+        "Fruit and Nut Trees",
+        "and Interior Plantscapes"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Imidacloprid_75_WSB_Label1a.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/imidacloprid-75-wsb. Registered product name: QUALI-PRO IMIDACLOPRID 75 WSB. SDS: https://www.agrian.com/pdfs/IMIDACLOPRID_75_WSB_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "IPRO 2",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-380",
+      "formulation": "Emulsifiable Concentrate",
+      "category": "fungicide",
+      "frac_group": "2",
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Iprodione",
+          "percentage": 23
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Fusarium Blight",
+        "Brown Patch",
+        "Dollar Spot",
+        "Gray Snow Mold",
+        "Leaf Spots",
+        "Necrotic Ring Spot",
+        "Alternaria Leaf Blight",
+        "Botrytis Blight",
+        "Botrytis Storage Rot",
+        "Fusarium Corm Rot",
+        "Fusarium Leaf Spot",
+        "Ink Spot",
+        "Rhizoctonia Stem & Root Rot"
+      ],
+      "turf_sites": [
+        "Nursery",
+        "Greenhouse",
+        "Landscape",
+        "Turf",
+        "Golf Courses"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Ipro_2_Label1d.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/ipro-2. Registered product name: QUALI-PRO IPRO 2. SDS: https://www.agrian.com/pdfs/Ipro_2_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "LAMBDA GC-O",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "MAKHTESHIM AGAN OF NORTH AMERICA, INC.",
+      "epa_number": "53883-244-66222",
+      "formulation": "Emulsifiable Concentrate",
+      "category": "insecticide",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": "3A",
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Lambda - Cyhalothrin",
+          "percentage": 9.7
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Chinch Bugs",
+        "Sod Webworms",
+        "Cutworms",
+        "Bluegrass Billbugs",
+        "Ants",
+        "Aphids",
+        "Mites",
+        "Whiteflies"
+      ],
+      "turf_sites": [
+        "Nursery",
+        "Greenhouse",
+        "Landscape",
+        "Turf",
+        "Golf Courses"
+      ],
+      "restricted_use": true,
+      "signal_word": "Warning",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Lambda_GC-O_Label1.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/lambda-gc-o. Registered product name: LAMBDA 9.7 GC-O. SDS: https://www.agrian.com/pdfs/Lambda_GC-O1c_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "MEFENOXAM 2 AQ",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-433",
+      "formulation": "Emulsifiable Concentrate",
+      "category": "fungicide",
+      "frac_group": "4",
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Mefenoxam",
+          "percentage": 22.5
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Pythium",
+        "Phytophthora",
+        "Yellow Tuft",
+        "Downy Mildew"
+      ],
+      "turf_sites": [
+        "Nursery",
+        "Greenhouse",
+        "Landscape",
+        "Turf",
+        "Trees"
+      ],
+      "restricted_use": false,
+      "signal_word": "Warning",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/MEFENOXAM_2_AQ_Label1.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/mefenoxam-2-aq. Registered product name: QUALI-PRO MEFENOXAM 2AQ. SDS: https://www.agrian.com/pdfs/MEFENOXAM_2_AQ_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "MSM TURF",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-430",
+      "formulation": "Water Dispersible Granule",
+      "category": "herbicide",
+      "frac_group": null,
+      "hrac_group": "2",
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Metsulfuron Methyl",
+          "percentage": 60
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Clover",
+        "Dollar Weed",
+        "Bahiagrass",
+        "Foxtail"
+      ],
+      "turf_sites": [
+        "Ornamental Turf",
+        "Golf Courses"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/MSM_TURF_Label1t.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/msm-turf. Registered product name: MSM TURF HERBICIDE. SDS: https://www.agrian.com/pdfs/MSM_TURF1c_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "MYCLOBUTANIL 20EW T&O",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-431",
+      "formulation": "Emulsifiable Concentrate",
+      "category": "fungicide",
+      "frac_group": "3",
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Myclobutanil",
+          "percentage": 19.7
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Dollar Spot",
+        "Anthracnose",
+        "Spring Dead Spot",
+        "Brown Patch",
+        "Summer Patch",
+        "Powdery Mildew",
+        "Rust",
+        "Necrotic Ring Spot"
+      ],
+      "turf_sites": [
+        "Greenhouse",
+        "Landscape",
+        "Turf",
+        "Golf Courses"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Myclobutanil_20_EW_TO1_Label.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/myclobutanil-20ew-to. Registered product name: QUALI-PRO MYCLOBUTANIL 20EW T&O. SDS: https://www.agrian.com/pdfs/Myclobutanil_20_EW_TO1_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "NEGATE 37WG",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-307",
+      "formulation": "Water Dispersible Granule",
+      "category": "herbicide",
+      "frac_group": null,
+      "hrac_group": "2",
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Rimsulfuron,",
+          "percentage": 16.67
+        },
+        {
+          "name": "Metsulfuron Methyl",
+          "percentage": 20
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Poa Annua",
+        "Poa Trivalis",
+        "Ryegrass",
+        "Bentgrass",
+        "Clovers",
+        "Dandelion",
+        "Henbit",
+        "Chickweed",
+        "Wild Onion & Wild Garlic",
+        "Spurge"
+      ],
+      "turf_sites": [
+        "Golf Courses",
+        "Sod Farms",
+        "Sports Fields",
+        "Industrial",
+        "Commercial and Residential Lawns"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Negate_37WG1n_Label.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/negate-37wg. Registered product name: QUALI-PRO NEGATE 37WG. SDS: https://www.agrian.com/pdfs/Negate_37WG_MSDS1d.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "NIMITZ PRO G",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-357",
+      "formulation": "Granular",
+      "category": "insecticide",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Fluensulfone",
+          "percentage": 1.5
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Ecto- and Endo- Parasitic Nematodes"
+      ],
+      "turf_sites": [
+        "Golf Course Greens",
+        "Tees and Fairways",
+        "Sports Fields",
+        "Commercial Turfgrass Areas",
+        "Residential Lawns",
+        "Sod Farms"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Nimitz_Pro_G_Label1fl.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/nimitz-pro-g. Registered product name: MCW2 1.5% G. SDS: https://www.agrian.com/pdfs/Nimitz_Pro_G1_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "OXADIAZON 2G",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-372",
+      "formulation": "Granular",
+      "category": "herbicide",
+      "frac_group": null,
+      "hrac_group": "14",
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Oxadiazon",
+          "percentage": 2
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Bittercress",
+        "Carpetweed",
+        "Annual Bluegrass",
+        "Crabgrass",
+        "Common Groundsel",
+        "Petty Spurge",
+        "Barnyardgrass"
+      ],
+      "turf_sites": [
+        "Nursery",
+        "Landscape",
+        "Turf"
+      ],
+      "restricted_use": true,
+      "signal_word": "Warning",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Oxadiazon_2G_Label1j.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/oxadiazon-2g. Registered product name: Quali-Pro® Oxadiazon 2G. SDS: https://www.agrian.com/pdfs/Oxadiazon_2G1e_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "OXADIAZON SC",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-364",
+      "formulation": "Soluble Concentrate",
+      "category": "herbicide",
+      "frac_group": null,
+      "hrac_group": "14",
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Oxadiazon",
+          "percentage": 34.4
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Goosegrass",
+        "Annual Bluegrass",
+        "Crabgrass",
+        "Field Sandbur",
+        "Annual Sedge",
+        "Pigweed",
+        "Oxalis",
+        "Stinging Nettle"
+      ],
+      "turf_sites": [
+        "Commercial Landscapes",
+        "Turf (Non-Residential)",
+        "Golf Courses"
+      ],
+      "restricted_use": true,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Oxadiazon_SC_Label1g.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/oxadiazon-sc. Registered product name: QUALI-PRO OXADIAZON SC. SDS: https://www.agrian.com/pdfs/Oxadiazon_SC_MSDS1gf.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "PAC-LOW SC",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-519",
+      "formulation": null,
+      "category": "pgr",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": "Plant Growth Regulator",
+      "active_ingredients": [
+        {
+          "name": "Paclobutrazol",
+          "percentage": 22.9
+        }
+      ],
+      "rates": [],
+      "targets": [],
+      "turf_sites": [
+        "Turfgrass"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Pac-Low_SC_Label1.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/pac-low. Registered product name: CSI 22-426 Paclo. SDS: https://www.agrian.com/pdfs/PAC-LOW_SC_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "PENDANT SC",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-477",
+      "formulation": null,
+      "category": "fungicide",
+      "frac_group": "12",
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Fludioxonil",
+          "percentage": 11.8
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Brown Patch",
+        "Leafspot",
+        "Anthracnose",
+        "Gray Leafspot",
+        "Bentgrass Dead Spot",
+        "Pink and Gray Snow Mold"
+      ],
+      "turf_sites": [
+        "Golf Courses",
+        "Commercial and Residential Lawns",
+        "Sod Farms",
+        "Sport Fields",
+        "Parks",
+        "Municipal Grounds and Cemeteries"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Pendant_SC_Label.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/pendant-sc. Registered product name: CSI 19-349 Fludioxonil. SDS: https://www.agrian.com/pdfs/Pendant_SC_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "PRAMITOL 25E",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-505",
+      "formulation": "Emulsifiable Concentrate",
+      "category": "herbicide",
+      "frac_group": null,
+      "hrac_group": "5",
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Prometon",
+          "percentage": 25
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Johnsongrass",
+        "Bindweed",
+        "Annual Weeds Or Grasses",
+        "Perennial Weeds Or Grasses",
+        "Downy Bromegrass",
+        "Oatgrass",
+        "Goosegrass",
+        "Quackgrass",
+        "Puncturevine",
+        "Goldenrod",
+        "Plantain",
+        "Wild Carrot",
+        "Other Hard To Control Weeds and Grasses"
+      ],
+      "turf_sites": [
+        "Buildings",
+        "Fences",
+        "Recreational Areas",
+        "Fuel Tanks",
+        "Roadways",
+        "Airports",
+        "Highway Medians",
+        "Pipelines"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Pramitol_25E_Label1pd.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/pramitol-25e-qp. Registered product name: PRAMITOL® 25E. SDS: https://www.agrian.com/pdfs/Pramitol_25E_MSDS1h.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "PRAMITOL 5PS",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-506",
+      "formulation": "Pelleted/Tableted",
+      "category": "herbicide",
+      "frac_group": null,
+      "hrac_group": "5",
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Prometon",
+          "percentage": 5
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "For Total Vegetation Control of Weeds In Non-Crop Areas"
+      ],
+      "turf_sites": [
+        "Bare Ground Weed Control Around Buildings",
+        "Storage Areas",
+        "Fences",
+        "Pumps",
+        "Machinery",
+        "Fuel Tanks",
+        "Recreational Areas",
+        "Roadways",
+        "Guard Rails",
+        "Airports",
+        "Military Installations",
+        "Highway Medians",
+        "Pipelines",
+        "Railroads",
+        "Lumberyards",
+        "Rights-Of-Way",
+        "Industrial Sites (Including But Not Limited To Cross Connects",
+        "Pedestals",
+        "Transformers",
+        "Vaults",
+        "Buried Cable Closures",
+        "Telephone Booths",
+        "Fire Plugs)",
+        "and Similar Areas"
+      ],
+      "restricted_use": false,
+      "signal_word": "Warning",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Pramitol_5PS_Label1v.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/pramitol-5ps-qp. Registered product name: PRAMITOL 5PS PELLETED HERBICIDE. SDS: https://www.agrian.com/pdfs/Pramitol_5PS_MSDS1v.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "PRODIAMINE 4L",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-379",
+      "formulation": "Emulsifiable Concentrate",
+      "category": "herbicide",
+      "frac_group": null,
+      "hrac_group": "3",
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Prodiamine",
+          "percentage": 40.8
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Annual Bluegrass (Poa Annua)",
+        "Henbit",
+        "Knotweed",
+        "Chickweed",
+        "Spurge",
+        "Foxtail",
+        "Goosegrass"
+      ],
+      "turf_sites": [
+        "Nursery",
+        "Landscape",
+        "Turf",
+        "Trees",
+        "Golf Courses"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Prodiamine_4L_Label1v.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/prodiamine-4l. Registered product name: QUALI-PRO PRODIAMINE 4L. SDS: https://www.agrian.com/pdfs/Prodiamine_4L1_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "PRODIAMINE 65 WDG",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-429",
+      "formulation": "Water Dispersible Granule",
+      "category": "herbicide",
+      "frac_group": null,
+      "hrac_group": "3",
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Prodiamine",
+          "percentage": 65
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Annual Bluegrass (Poa Annua)",
+        "Henbit",
+        "Knotweed",
+        "Chickweed",
+        "Spurge",
+        "Foxtail",
+        "Goosegrass"
+      ],
+      "turf_sites": [
+        "Nursery",
+        "Landscape",
+        "Turf",
+        "Trees",
+        "Golf Courses"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/PRODIAMINE_65WDG_Label.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/prodiamine-65-wdg. Registered product name: PRODIAMINE 65 WG HERBICIDE. SDS: https://www.agrian.com/pdfs/PRODIAMINE_65WDG_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "PRODOXABEN G",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-479",
+      "formulation": null,
+      "category": "herbicide",
+      "frac_group": null,
+      "hrac_group": "21 + WSSA",
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Prodiamine;",
+          "percentage": 0.4
+        },
+        {
+          "name": "Isoxaben",
+          "percentage": 0.25
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Annual Bluegrass (Poa Annua)",
+        "Barnyardgrass",
+        "Common Chickweed",
+        "Crowfootgrass",
+        "Wooly Cupgrass",
+        "Annual Foxtail",
+        "Goosegrass",
+        "Henbit",
+        "Itchgrass",
+        "Johnsongrass (from seed)",
+        "Knotweed",
+        "Lovegrass",
+        "Pigweed",
+        "Common Purslane",
+        "Rescuegrass",
+        "Sprangletop",
+        "Witchgrass",
+        "Yellow Woodsorrel (from seed). See label for other listed weeds."
+      ],
+      "turf_sites": [
+        "Established Turfgrasses (Excluding Golf Course Putting Greens)",
+        "Lawns and Ornamentals",
+        "Conifer and Hardwood Seedling Nurseries",
+        "Non-Crop Areas Including Rights-Of-Way For Transportation Systems And Utilities (Such As Roadways",
+        "Roadsides",
+        "Railways",
+        "and Equipment Yards)",
+        "Facilities Including Substations",
+        "Tank Farms",
+        "Pumping Stations",
+        "Parking And Storage Areas",
+        "Non-Grazed Fence Rows",
+        "and Christmas Tree Farms"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/PRODOXABEN_G_Label.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/prodoxaben-g. Registered product name: CSI 19-334 Prodoxaben Granule. SDS: https://www.agrian.com/pdfs/PRODOXABEN_G_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "PRODOXABEN SC",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-325",
+      "formulation": "Emulsifiable Concentrate",
+      "category": "herbicide",
+      "frac_group": null,
+      "hrac_group": "21 + WSSA",
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Prodiamine;",
+          "percentage": 23.3
+        },
+        {
+          "name": "Isoxaben",
+          "percentage": 15.5
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Annual Bluegrass (Poa Annua)",
+        "Barnyard Grass",
+        "Common Chickweed",
+        "Crowfootgrass",
+        "Wooly Cupgrass",
+        "Annual Foxtail",
+        "Goosegrass",
+        "Henbit",
+        "Itchgrass",
+        "Johnsongrass (from seed)",
+        "Knotweed",
+        "Lovegrass",
+        "Pigweed",
+        "Common Purslane",
+        "Rescuegrass",
+        "Sprangletop",
+        "Witchgrass",
+        "Yellow Woodsorrel (from seed). See label for other listed weeds."
+      ],
+      "turf_sites": [
+        "Established Turfgrasses (Excluding Golf Course Putting Greens)",
+        "Lawns and Ornamentals",
+        "Conifer and Hardwood Seedling Nurseries",
+        "Non-Crop Areas Including Rights-Of-Way For Transportation Systems and Utilities (Such As Roadways",
+        "Roadsides",
+        "Railways",
+        "and Equipment Yards)",
+        "Facilities Including Substations",
+        "Tank Farms",
+        "Pumping Stations",
+        "Parking and Storage Areas",
+        "Non-Grazed Fence Rows",
+        "and Christmas Tree Farms"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Quali-Pro1_Prodoxaben_3.7_SC_Label.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/prodoxaben-sc. Registered product name: QUALI-PRO PRODOXABEN 3.7 SC. SDS: https://www.agrian.com/pdfs/QUALI-PRO_PRODOXABEN_3.7_SC_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "PROFLEX",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-427",
+      "formulation": "Microencapsulated",
+      "category": "insecticide",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": "15 + IRAC + 7C",
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Lambda-Cyhalothrin;",
+          "percentage": 3.88
+        },
+        {
+          "name": "Novaluron;",
+          "percentage": 1.3
+        },
+        {
+          "name": "Pyriproxyfen",
+          "percentage": 1.3
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Ants (including RIFA)",
+        "Bed Bugs",
+        "Cockroaches",
+        "Crickets",
+        "Earwigs",
+        "Firebrats",
+        "Silverfish",
+        "Stinkbugs",
+        "Fleas",
+        "Ticks",
+        "Flying Insect Pests",
+        "Stored Product Pests",
+        "Boxelder Bugs",
+        "Centipedes",
+        "Millipedes",
+        "Mosquitoes",
+        "Pillbugs",
+        "and Sowbugs"
+      ],
+      "turf_sites": [
+        "For use in",
+        "on and around buildings and structures for the control of listed pests. May be used on the following areas that are NOT frequented by homeowners",
+        "children",
+        "pets or the general public: nonresidential lawns",
+        "non-residential turfgrass",
+        "ornamental trees",
+        "ornamental grasses in non-residential landscaping",
+        "shrubs around residential",
+        "institutional",
+        "public",
+        "commercial",
+        "agricultural and industrial buildings",
+        "and golf course out of play areas (including native planting areas",
+        "around clubhouses",
+        "outbuildings and on-course lavatories)."
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Proflex_Label1ht.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/proflex. Registered product name: CSI 16-119A L-N-P ZC. SDS: https://www.agrian.com/pdfs/Proflex_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "PROPICONAZOLE 14.3",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-363",
+      "formulation": "Emulsifiable Concentrate",
+      "category": "fungicide",
+      "frac_group": "3",
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Propiconazole",
+          "percentage": 14.3
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Rusts",
+        "Pink & Gray Snowmolds",
+        "Gray Leaf Spot",
+        "Zoysia Patch",
+        "Dollar Spot",
+        "Summer Patch",
+        "Anthracnose",
+        "Leaf Spot",
+        "Brown Patch",
+        "Powdery Mildew"
+      ],
+      "turf_sites": [
+        "Labeled For Nursery",
+        "Landscape",
+        "Turf",
+        "Trees",
+        "and Golf Courses"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Propiconazole_14.3_Label1gt.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/propiconazole-143. Registered product name: BUMPER 14.3 EC. SDS: https://www.agrian.com/pdfs/Propiconazole_14_3_MSDS1q.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "QUINCLORAC 1.5L",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-336",
+      "formulation": "Flowable Concentrate",
+      "category": "herbicide",
+      "frac_group": null,
+      "hrac_group": "4",
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Quinclorac",
+          "percentage": 17.79
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Crabgrass (large & smooth)",
+        "Foxtail (giant",
+        "green & yellow)",
+        "Kikuyugrass",
+        "Signalgrass (broadleaf)",
+        "Torpedograss",
+        "Bindweed (field)",
+        "Clover (hop",
+        "red & white)",
+        "Daisy (english)",
+        "Dandelion",
+        "Dollarweed",
+        "Geranium (Carolina)",
+        "Morningglory spp.",
+        "Speedwell (common",
+        "slender & thymeleaf)"
+      ],
+      "turf_sites": [
+        "Residential and Non-Residential Turfgrass",
+        "Golf Course",
+        "Sod Farms"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Quinclorac_1.5_L_Label1k.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/quinclorac-15l. Registered product name: QUINCLORAC 1.5 L. SDS: https://www.agrian.com/pdfs/Quinclorac_1.5_L_MSDS76tr.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "RIMSULFURON 25 DF",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "MAKHTESHIM AGAN OF NORTH AMERICA, INC.",
+      "epa_number": "66222-184",
+      "formulation": "Water Dispersible Granule",
+      "category": "herbicide",
+      "frac_group": null,
+      "hrac_group": "2",
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Rimsulfuron",
+          "percentage": 25
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Annual Bluegrass",
+        "Ryegrass Spp.",
+        "Little Barley",
+        "Rough Bluegrass",
+        "Common Chickweed",
+        "Shepherds Purse",
+        "Henbit",
+        "Cutleaf Evening Primrose",
+        "Spotted Spurge"
+      ],
+      "turf_sites": [
+        "Turf",
+        "Non-Crop Industrial Areas"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Rimsulfuron_25_DF_Label1c.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/rimsulfuron-25-df. Registered product name: Pruvin® HERBICIDE. SDS: https://www.agrian.com/pdfs/Rimsulfuron_25_DF_MSDS1.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "SEDGEMASTER",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "91234-31-53883",
+      "formulation": "Water Dispersible Granule",
+      "category": "herbicide",
+      "frac_group": null,
+      "hrac_group": "2",
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Halosulfuron-Methyl",
+          "percentage": 75
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Yellow and Purple Nutsedge"
+      ],
+      "turf_sites": [
+        "Turfgrass",
+        "Landscaped Areas and Other Non-Crop Areas"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/SEDGEMASTER_Label.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/sedgemaster. Registered product name: A304.01. SDS: https://www.agrian.com/pdfs/SEDGEMASTER_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "SMOKESHOW",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "83529-112-53883",
+      "formulation": "Water Dispersible Granule",
+      "category": "herbicide",
+      "frac_group": null,
+      "hrac_group": "14 + WSSA",
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Metribuzin;",
+          "percentage": 27
+        },
+        {
+          "name": "Sulfentrazone",
+          "percentage": 18
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Crabgrass",
+        "Dallisgrass",
+        "Goosegrass",
+        "Sandbur",
+        "Sedges",
+        "Kyllinga and over 50 other weeds"
+      ],
+      "turf_sites": [
+        "Golf Course Rough and Fairways",
+        "Residential and Commercial Lawns",
+        "Athletic Fields"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.controlsolutionsinc.com/hubfs/Labels/453647%20QP%20Smokeshow%205lb%20Book_PA%20-%20approved%208-19-24.pdf?hsLang=en",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/smokeshow. Registered product name: Sharda Metribuzin 27% + Sulfentrazone 18% DF. SDS: https://www.agrian.com/pdfs/Smokeshow_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "STROBE 2L",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-393",
+      "formulation": null,
+      "category": "fungicide",
+      "frac_group": "11",
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Azoxystrobin",
+          "percentage": 22.9
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Anthracnose",
+        "Brown Patch",
+        "Downy Mildew",
+        "Gray Leaf Spot",
+        "Leaf Blights",
+        "Leaf Spots",
+        "Necrotic Ring Spot",
+        "Powdery Mildew",
+        "Pythium Blight",
+        "Rust",
+        "Snow Mold",
+        "Summer Patch",
+        "Take-All Patch",
+        "Zoysia Patch"
+      ],
+      "turf_sites": [
+        "Golf Courses",
+        "Commercial and Residential Lawn and Landscape Areas",
+        "Parks",
+        "Recreation Areas and Athletic Fields"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Strobe_2L1q_Label.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/strobe-2l. Registered product name: CSI 15-114 Azoxystrobin. SDS: https://www.agrian.com/pdfs/Strobe_2L1q_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "STROBE 50WG",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-343",
+      "formulation": "Water Dispersible Granule",
+      "category": "fungicide",
+      "frac_group": "11",
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Azoxystrobin",
+          "percentage": 50
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Anthracnose",
+        "Brown Patch",
+        "Downy Mildew",
+        "Gray Leaf Spot",
+        "Leaf Blights",
+        "Leaf Spots",
+        "Necrotic Ring Spot",
+        "Powdery Mildew",
+        "Pythium Blight",
+        "Rust",
+        "Snow Mold",
+        "Summer Patch",
+        "Take-All Patch",
+        "Zoysia Patch"
+      ],
+      "turf_sites": [
+        "Golf Courses",
+        "Turf Production Farms",
+        "Ornamentals",
+        "Lawn and Landscape Areas Around Residential",
+        "Institutional",
+        "Public",
+        "Commercial and Industrial Buildings",
+        "Parks",
+        "Recreational Areas and Athletic Fields"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Strobe_50WG_Labe1dl.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/strobe-50wg. Registered product name: AZOXYSTROBIN 50 WG. SDS: https://www.agrian.com/pdfs/Strobe_50WG_MSDS1a.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "STROBE PRO",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-418",
+      "formulation": "Emulsifiable Concentrate",
+      "category": "fungicide",
+      "frac_group": "11 + FRAC",
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Azoxystrobin;",
+          "percentage": 6
+        },
+        {
+          "name": "Propiconazole",
+          "percentage": 10
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Foliar",
+        "Stem and Root Diseases such as Leaf and Stem Blights",
+        "Leaf Spots",
+        "Patch Diseases",
+        "Anthracnose",
+        "Fairy Rings",
+        "Mildews",
+        "Molds and Rusts of Turfgrass"
+      ],
+      "turf_sites": [
+        "Golf Courses",
+        "Lawns and Landscape Areas Around Residential",
+        "Institutional",
+        "Public",
+        "Commercial and Industrial Buildings",
+        "Parks",
+        "Recreational Areas",
+        "Athletic Fields"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/STROBE_PRO_Label.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/strobe-pro. Registered product name: CSI 15-128B Azoxy + Propiconazole. SDS: https://www.agrian.com/pdfs/STROBE_PRO_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "STROBE PRO G",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-440",
+      "formulation": "Granular",
+      "category": "fungicide",
+      "frac_group": "11 + FRAC",
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Azoxystrobin;",
+          "percentage": 0.31
+        },
+        {
+          "name": "Propiconazole",
+          "percentage": 0.75
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Foliar",
+        "Stem and Root Diseases such as Leaf and Stem Blights",
+        "Dollar Spot",
+        "Leaf Spots",
+        "Patch Diseases",
+        "Anthracnose",
+        "Fairy Rings",
+        "Mildews",
+        "Molds and Rusts Of Turfgrass"
+      ],
+      "turf_sites": [
+        "Golf Courses",
+        "Lawns and Landscape Areas Around Residential",
+        "Institutional",
+        "Public",
+        "Commercial and Industrial Buildings",
+        "Parks",
+        "Recreational Areas",
+        "Athletic Fields"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/STROBE_PRO_G_Label.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/strobe-pro-g. Registered product name: CSI 16-190 AZOXY + PPZ . SDS: https://www.agrian.com/pdfs/STROBE_PRO_G_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "STRYKER WASP AND HORNET KILLER",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-384",
+      "formulation": "Pressurized Liquid",
+      "category": "insecticide",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": "3A",
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Prallethrin",
+          "percentage": 0.1
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Wasps",
+        "Hornets",
+        "Yellow Jackets",
+        "Spiders"
+      ],
+      "turf_sites": [
+        "For Outdoors and In Attics and Crawl Spaces Only"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Stryker_Wasp_and_Hornet_Killer_Label1gt.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/stryker-whk. Registered product name: CSI WASP KILLER. SDS: https://www.agrian.com/pdfs/Stryker_Wasp_and_Hornet_Killer_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "SUPRADO",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-480",
+      "formulation": null,
+      "category": "insecticide",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": "15",
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Novaluron",
+          "percentage": 10
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Annual Bluegrass Weevils",
+        "Bluegrass and Hunting Billbug Larvae",
+        "Turf Caterpillars",
+        "White Grubs",
+        "Chinch Bugs",
+        "Mole Crickets",
+        "and Bermudagrass Mites"
+      ],
+      "turf_sites": [
+        "Golf Courses",
+        "Sports and Recreational Turf",
+        "Commercial Sod Farms",
+        "and Lawns On and Around Residential",
+        "Commercial and Institutional Properties"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/SUPRADO_Label3.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/suprado. Registered product name: CSI 15-185T. SDS: https://www.agrian.com/pdfs/SUPRADO_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "T-NEX",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-353",
+      "formulation": "Emulsifiable Concentrate",
+      "category": "pgr",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": "Plant Growth Regulator",
+      "active_ingredients": [
+        {
+          "name": "Trinexapac-Ethyl",
+          "percentage": 12
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Bahiagrass",
+        "Fescue",
+        "Bentgrass",
+        "Kikuyugrass",
+        "Bermudagrass",
+        "Annual bluegrass (Poa annua)",
+        "Bluegrass",
+        "Ryegrass",
+        "Buffalograss",
+        "St. Augustinegrass",
+        "Carpetgrass",
+        "Zoysiagrass"
+      ],
+      "turf_sites": [
+        "Turf",
+        "Golf Courses"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/T-Nex_Label1b.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/t-nex. Registered product name: QUALI-PRO T-NEX. SDS: https://www.agrian.com/pdfs/T-Nex_MSDS1d.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "T/I 2.5 G",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-435",
+      "formulation": "Granular",
+      "category": "herbicide",
+      "frac_group": null,
+      "hrac_group": "21",
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Trifluralin;",
+          "percentage": 2
+        },
+        {
+          "name": "Isoxaben",
+          "percentage": 0.5
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Barnyardgrass",
+        "Bittercress",
+        "Common Chickweed",
+        "Crabgrass",
+        "Dandelion",
+        "Foxtail",
+        "Goosegrass",
+        "Groundsel",
+        "Henbit",
+        "Marestail",
+        "Musk Thistle",
+        "Oxalis",
+        "Ragweed",
+        "Spurge"
+      ],
+      "turf_sites": [
+        "Nursery",
+        "Landscape Beds",
+        "Non-Crop Areas",
+        "Ornamental Beds and Containers",
+        "Conifer Trees and Other Mulch Beds"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/TI_2.5_G_Label1.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/ti-25-g. Registered product name: QUALI-PRO T/I 2.5 G. SDS: https://www.agrian.com/pdfs/TI_2.5_G_MSDS1a.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "TAURUS TRIO G",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-381",
+      "formulation": "Granular",
+      "category": "insecticide",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": "2B + IRAC",
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Fipronil;",
+          "percentage": 0.0143
+        },
+        {
+          "name": "Bifenthrin;",
+          "percentage": 0.23
+        },
+        {
+          "name": "Lambda-Cyhalothrin",
+          "percentage": 0.059
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Fire Ants",
+        "Mole Crickets",
+        "Fleas",
+        "Ticks and Other Nuisance Ants"
+      ],
+      "turf_sites": [
+        "Taurus Trio G Is Registered For Use By Licensed Applicators For Broadcast Applications On Turfgrass and Landscaped Areas Including Golf Courses",
+        "Residential",
+        "Commercial",
+        "Outdoor Containerized Nurseries",
+        "Industrial Areas",
+        "Cemeteries",
+        "Parks",
+        "Campsites",
+        "Schools",
+        "Sports Fields",
+        "Sod Farms"
+      ],
+      "restricted_use": true,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Taurus_Trio_G_Label2.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/taurus-trio-g. Registered product name: TRISECTIS G. SDS: https://www.agrian.com/pdfs/Taurus_Trio_G_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "TEBUCONAZOLE 3.6F",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "MAKHTESHIM AGAN OF NORTH AMERICA, INC.",
+      "epa_number": "66222-117",
+      "formulation": "Emulsifiable Concentrate",
+      "category": "fungicide",
+      "frac_group": "3",
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Tebuconazole",
+          "percentage": 38.7
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Brown Patch",
+        "Dollar Spot",
+        "Necrotic Ring Spot",
+        "Anthracnose",
+        "Fusarium Patch",
+        "Gray Leaf Spot",
+        "Snow Molds"
+      ],
+      "turf_sites": [
+        "Warm and Cool Season Grasses"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/Tebuconazole_3.6F1d_Label.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/tebuconazole-36f. Registered product name: ORIUS 3.6F. SDS: https://www.agrian.com/pdfs/Tebuconazole_3.6F_MSDS1q.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "TEKKO 0.2G",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-344",
+      "formulation": "Granular",
+      "category": "insecticide",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": "15",
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Novaluron",
+          "percentage": 0.2
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "All Mosquito Species Larvae and/or Pupae In Aquatic Environments"
+      ],
+      "turf_sites": [
+        "Drainage Areas",
+        "Ditches",
+        "Wastewater Treatment Facilities",
+        "Retention Ponds",
+        "Bird Baths",
+        "Abandoned Swimming Pools",
+        "Gutters",
+        "Water-Holding Receptacles (E.G.",
+        "Tires",
+        "Flower Pots",
+        "Cans & Other Containers). See Label for Complete List of Use sites"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.controlsolutionsinc.com/hubfs/Labels/Label_Insert-Tekko%200.2G.pdf?hsLang=en",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/tekko-02g. Registered product name: NOVALURON® 0.2G MOSQUITO LARVICIDE. SDS: https://www.agrian.com/pdfs/Tekko_0.2G_MSDS.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "TM 4.5 FLOWABLE",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-483",
+      "formulation": null,
+      "category": "fungicide",
+      "frac_group": "1",
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Thiophanate Methyl",
+          "percentage": 46.2
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Brown Patch",
+        "Dollar Spot",
+        "Gray Leaf Spot",
+        "Anthracnose",
+        "Summer Patch",
+        "Fusarium Blight",
+        "Powdery Mildew",
+        "Leaf Spots and Blights"
+      ],
+      "turf_sites": [
+        "Nursery",
+        "Greenhouse",
+        "Landscape",
+        "Turf",
+        "Trees",
+        "Golf Courses"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/TM_4.5_Label2i.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/tm-45-flowable. Registered product name: Quali-Pro TM 4.5. SDS: https://www.agrian.com/pdfs/TM_4.5_MSDS2i.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    },
+    {
+      "product_name": "TODAL",
+      "brand_owner": "Quali-Pro",
+      "manufacturer": "CONTROL SOLUTIONS, INC.",
+      "epa_number": "53883-410",
+      "formulation": null,
+      "category": "insecticide",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": "6",
+      "pgr_class": null,
+      "active_ingredients": [
+        {
+          "name": "Abamectin",
+          "percentage": 1.9
+        }
+      ],
+      "rates": [],
+      "targets": [
+        "Turf-Parasitic Nematodes and Bermudagrass Mites"
+      ],
+      "turf_sites": [
+        "Golf Course Greens",
+        "Tees and Fairways"
+      ],
+      "restricted_use": true,
+      "signal_word": "Warning",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.agrian.com/pdfs/TODAL_Label.pdf",
+      "notes": "Quali-Pro product page: https://www.controlsolutionsinc.com/quali-pro/products/todal. Registered product name: Quali-Pro Todal. SDS: https://www.agrian.com/pdfs/TODAL_MSDS1.pdf. Read and follow the linked market label for rates, REI, PPE, and restrictions.",
+      "status": "active"
+    }
+  ]
+}

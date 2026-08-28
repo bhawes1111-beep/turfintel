@@ -12,20 +12,23 @@ import { ModuleOverview, StatCard, InfoCard, Badge } from '../../../components/s
 export default function EquipmentOverview() {
   const { equipment = [], serviceLog = [], loading } = useEquipmentData()
   const { repairs = [] } = useRepairsData()
+  const safeEquipment = useMemo(() => Array.isArray(equipment) ? equipment : [], [equipment])
+  const safeServiceLog = useMemo(() => Array.isArray(serviceLog) ? serviceLog : [], [serviceLog])
+  const safeRepairs = useMemo(() => Array.isArray(repairs) ? repairs : [], [repairs])
 
   const o = useMemo(() => {
-    const down = equipment.filter(e =>
+    const down = safeEquipment.filter(e =>
       e.status === 'out-of-service' || e.status === 'down' || e.status === 'maintenance',
     )
-    const operational = equipment.filter(e => e.status === 'available' || e.status === 'operational' || e.status === 'ready')
-    const overdue = serviceLog.filter(l =>
+    const operational = safeEquipment.filter(e => e.status === 'available' || e.status === 'operational' || e.status === 'ready')
+    const overdue = safeServiceLog.filter(l =>
       l.status === 'overdue' || (l.status === 'open' && l.priority === 'critical'),
     )
-    const openRepairs = repairs.filter(r => r.status !== 'completed')
-    return { down, operational, overdue, openRepairs, total: equipment.length }
-  }, [equipment, serviceLog, repairs])
+    const openRepairs = safeRepairs.filter(r => r.status !== 'completed')
+    return { down, operational, overdue, openRepairs, total: safeEquipment.length }
+  }, [safeEquipment, safeServiceLog, safeRepairs])
 
-  if (loading && equipment.length === 0) {
+  if (loading && safeEquipment.length === 0) {
     return <ModuleOverview><InfoCard title="Loading equipment…" rows={[]} /></ModuleOverview>
   }
 

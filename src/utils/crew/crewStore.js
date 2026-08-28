@@ -22,6 +22,7 @@ let state = {
   error:     null,
   lastFetch: null,
 }
+const disabledState = { ...state, loading: false, error: null }
 
 const subscribers = new Set()
 let hasBooted = false
@@ -118,6 +119,8 @@ function subscribe(cb) {
 }
 
 function getSnapshot() { return state }
+function getDisabledSnapshot() { return disabledState }
+function subscribeDisabled() { return () => {} }
 
 /**
  * useCrewData — read-only subscription to the crew vertical.
@@ -127,6 +130,10 @@ function getSnapshot() { return state }
  * legacy aliases (employeeId, fullName, assignedArea) so existing
  * consumers keep working without field-rename churn.
  */
-export function useCrewData() {
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+export function useCrewData({ enabled = true } = {}) {
+  return useSyncExternalStore(
+    enabled ? subscribe : subscribeDisabled,
+    enabled ? getSnapshot : getDisabledSnapshot,
+    enabled ? getSnapshot : getDisabledSnapshot,
+  )
 }

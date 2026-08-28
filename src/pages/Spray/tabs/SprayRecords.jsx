@@ -311,7 +311,7 @@ export default function SprayRecords({ onCreateTrainingBrief }) {
   return (
     <div className={styles.tabContent}>
       <WorkspaceSection
-        title="Spray Records"
+        title="Application Records"
         subtitle="Completed, in-progress, planned, and pending-review applications."
       >
 
@@ -323,7 +323,7 @@ export default function SprayRecords({ onCreateTrainingBrief }) {
           placeholder="Search product, area, applicator, pest…"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          aria-label="Search spray records"
+          aria-label="Search application records"
         />
 
         <div className={styles.filterRow}>
@@ -466,8 +466,8 @@ export default function SprayRecords({ onCreateTrainingBrief }) {
       {visible.length === 0 ? (
         SPRAY_RECORDS.length === 0 ? (
           <EmptyState
-            title="No spray records available."
-            description="Completed and planned spray applications will appear here."
+            title="No application records available."
+            description="Completed and planned applications will appear here."
           />
         ) : (
           <EmptyState
@@ -482,6 +482,7 @@ export default function SprayRecords({ onCreateTrainingBrief }) {
             const primaryType = r.products[0]?.type
             const colors = TYPE_COLORS[primaryType] || {}
             const statusMeta = STATUS_META[r.status] || {}
+            const isGranular = String(r.applicationName ?? r.carrierVolume ?? '').toLowerCase().includes('granular')
             return (
               <button
                 key={r.id}
@@ -495,7 +496,7 @@ export default function SprayRecords({ onCreateTrainingBrief }) {
                       {r.products.map(p => p.name).join(' + ')}
                     </span>
                     {r.products.length > 1 && (
-                      <span className={styles.mixBadge}>Tank Mix</span>
+                      <span className={styles.mixBadge}>{isGranular ? 'Granular' : 'Tank Mix'}</span>
                     )}
                     <span
                       className={styles.recordTypePill}
@@ -578,7 +579,6 @@ export default function SprayRecords({ onCreateTrainingBrief }) {
       {selected && (
         <div
           className={styles.modalOverlay}
-          onClick={() => setSelected(null)}
           role="dialog"
           aria-modal="true"
           aria-label="Spray record details"
@@ -713,6 +713,11 @@ export default function SprayRecords({ onCreateTrainingBrief }) {
                         </span>
                         <span className={styles.modalProductName}>{p.name}</span>
                         <span className={styles.modalProductRate}>{p.rate}</span>
+                        {p.quantityUsed != null && (
+                          <span className={styles.modalProductRate}>
+                            Total: {Number(p.quantityUsed.toFixed?.(4) ?? p.quantityUsed)} {p.unit || ''}
+                          </span>
+                        )}
                         {complianceParts.length > 0 && (
                           <span className={styles.modalProductRate} style={{ opacity: 0.7, fontStyle: 'italic' }}>
                             {complianceParts.join(' · ')}

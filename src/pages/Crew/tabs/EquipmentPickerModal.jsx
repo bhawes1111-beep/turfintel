@@ -167,7 +167,7 @@ export default function EquipmentPickerModal({
   }
 
   return (
-    <div className={styles.modalOverlay} onClick={onClose} role="dialog">
+    <div className={styles.modalOverlay} role="dialog">
       <div className={styles.modal} onClick={e => e.stopPropagation()}>
 
         <header className={styles.modalHeader}>

@@ -1,0 +1,91 @@
+{
+  "version": "arena-50-wdg-label-2025-07-01",
+  "generatedAt": "2026-08-08",
+  "source": "Arena 50 WDG label supplied through CDMS; U.S. EPA PPLS registration verification",
+  "notes": "Catalog record transcribed from the supplied 2025 label and verified against EPA registration 59639-152.",
+  "products": [
+    {
+      "product_name": "ARENA 50 WDG INSECTICIDE",
+      "brand_owner": "Valent",
+      "manufacturer": "Valent U.S.A. LLC",
+      "epa_number": "59639-152",
+      "formulation": "Water Dispersible Granule",
+      "category": "insecticide",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": "4A",
+      "pgr_class": null,
+      "chemical_class": "Neonicotinoid insecticide",
+      "active_ingredients": [
+        {
+          "name": "Clothianidin",
+          "percentage": 50
+        }
+      ],
+      "fertilizer_analysis": null,
+      "rates": [
+        {
+          "rate": "0.14-0.29 oz",
+          "unit": "oz/1,000 sq ft",
+          "interval": "Annual bluegrass weevil larvae, billbugs, black turfgrass ataenius, spittlebugs, and listed white grubs"
+        },
+        {
+          "rate": "0.22-0.29 oz",
+          "unit": "oz/1,000 sq ft",
+          "interval": "Armyworms, chinch bugs, crane flies, cutworms, nuisance ants, and sod webworms"
+        },
+        {
+          "rate": "0.29 oz",
+          "unit": "oz/1,000 sq ft",
+          "interval": "Mole cricket suppression"
+        },
+        {
+          "rate": "0.1 oz",
+          "unit": "oz/1,000 sq ft",
+          "interval": "Reduced-rate summer white grub application, June 1 through July 15"
+        }
+      ],
+      "targets": [
+        "Annual bluegrass weevil larvae",
+        "Billbugs",
+        "Black turfgrass ataenius",
+        "May and June beetle grubs (Phyllophaga spp.)",
+        "Spittlebugs",
+        "Asiatic garden beetle grubs",
+        "European chafer grubs",
+        "Green June beetle grubs",
+        "Japanese beetle grubs",
+        "Northern masked chafer grubs",
+        "Oriental beetle grubs",
+        "Southern masked chafer grubs",
+        "Armyworms",
+        "Chinch bugs",
+        "American crane fly",
+        "European crane fly",
+        "Cutworms",
+        "Nuisance ants",
+        "Sod webworms",
+        "Mole crickets (suppression)"
+      ],
+      "turf_sites": [
+        "airports",
+        "athletic fields",
+        "cemeteries",
+        "commercial sod farms",
+        "golf courses",
+        "home lawns",
+        "industrial landscapes",
+        "commercial landscapes",
+        "parks",
+        "playgrounds"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": 12,
+      "phi_hours": null,
+      "label_url": "https://www.cdms.net/ldat/ld8N9005.pdf",
+      "notes": "Broad-spectrum systemic turf insecticide. Turf label rate range is 6.4-12.8 oz/acre, with pest-specific rates. Apply in 1-5 gal water/1,000 sq ft and follow with enough irrigation or rainfall to move the active ingredient through the thatch. Do not exceed 12.8 oz product/acre/year (0.4 lb clothianidin a.i./acre/year). Observe pollinator restrictions and keep children and pets off treated areas until dry. Distributed by Nufarm Americas Inc.; follow the linked label for all directions and restrictions.",
+      "status": "active"
+    }
+  ]
+}

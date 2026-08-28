@@ -22,9 +22,14 @@ function rowToRecord(row, products = [], areas = []) {
   return {
     id:              row.id,
     applicationName: row.application_name,
+    applicationType: row.application_type ?? (String(row.application_name ?? row.carrier_volume ?? '').toLowerCase().includes('granular') ? 'granular' : 'liquid'),
+    equipmentId:     row.equipment_id ?? null,
+    equipmentName:   row.equipment_name ?? null,
+    tankCapacity:    row.tank_capacity ?? null,
     targetPest:      row.target,
     applicator:      row.operator,
     course:          row.course,
+    nutrientSampleId: row.nutrient_sample_id ?? null,
     date:            row.spray_date,
     startTime:       row.start_time,
     endTime:         row.end_time,
@@ -46,6 +51,8 @@ function rowToRecord(row, products = [], areas = []) {
     phi:           row.phi,
     carrierVolume: row.carrier_volume,
     totalVolume:   row.total_volume,
+    irrigationInches:  row.irrigation_inches,
+    irrigationMinutes: row.irrigation_minutes,
     holes,
     // First area is exposed as `area` (most UI uses a single area string);
     // the full list is exposed as `areas` for any future multi-area UI.
@@ -81,6 +88,7 @@ function rowToRecord(row, products = [], areas = []) {
     deletedAt:         row.deleted_at,
     deletedBy:         row.deleted_by,
     inventoryReverted: row.inventory_reverted === 1,
+    deductInventory:   row.deduct_inventory !== 0,
     createdAt:    row.created_at,
     updatedAt:    row.updated_at,
   }
@@ -88,9 +96,14 @@ function rowToRecord(row, products = [], areas = []) {
 
 const MUTABLE_RECORD_COLS = {
   applicationName: 'application_name',
+  applicationType: 'application_type',
+  equipmentId:     'equipment_id',
+  equipmentName:   'equipment_name',
+  tankCapacity:    'tank_capacity',
   targetPest:      'target',
   applicator:      'operator',
   course:          'course',
+  nutrientSampleId: 'nutrient_sample_id',
   date:            'spray_date',
   startTime:       'start_time',
   endTime:         'end_time',
@@ -99,6 +112,8 @@ const MUTABLE_RECORD_COLS = {
   phi:             'phi',
   carrierVolume:   'carrier_volume',
   totalVolume:     'total_volume',
+  irrigationInches:  'irrigation_inches',
+  irrigationMinutes: 'irrigation_minutes',
   notes:           'notes',
   // Phase S.3 — record-level compliance + cost snapshots are PATCHable
   // so a supervisor can backfill old records by hand without resaving
@@ -107,6 +122,20 @@ const MUTABLE_RECORD_COLS = {
   windSpeedMph:      'wind_speed_mph',
   windDirection:     'wind_direction',
   totalCostSnapshot: 'total_cost_snapshot',
+  deductInventory:   'deduct_inventory',
+}
+
+function isCompletedStatus(status) {
+  const value = String(status ?? '').trim().toLowerCase()
+  return value === 'completed' || value === 'complete' || value === 'done'
+}
+
+function isValidProductRate(rate) {
+  if (rate == null || rate === '') return true
+  if (typeof rate === 'number') return Number.isFinite(rate)
+  const value = String(rate).trim()
+  if (!value) return true
+  return /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:\s+.+)?$/.test(value)
 }
 
 // ── List + Get ────────────────────────────────────────────────────────────
@@ -158,6 +187,51 @@ export async function listSprays(env, courseId = null) {
   return json(rows.map(r => rowToRecord(r, productsBy.get(r.id) ?? [], areasBy.get(r.id) ?? [])))
 }
 
+function rowToBoardSpray(row, products = [], areas = []) {
+  return {
+    id:              row.id,
+    applicationName: row.application_name,
+    date:            row.spray_date,
+    startTime:       row.start_time,
+    endTime:         row.end_time,
+    status:          row.status,
+    rei:             row.rei,
+    area:            areas[0]?.area_name ?? null,
+    products:        products.map(p => ({ name: p.product_name })),
+  }
+}
+
+export async function listDisplayBoardSprays(env, courseId = null, date = null) {
+  const courseFilter = buildCourseFilter(courseId)
+  const clauses = ['deleted_at IS NULL']
+  const binds = [...courseFilter.binds]
+
+  if (courseFilter.where) {
+    clauses.unshift(courseFilter.where.replace(/^WHERE\s+/i, ''))
+  }
+  if (date) {
+    clauses.push('spray_date = ?')
+    binds.push(date)
+  }
+
+  const { results: rows } = await env.DB.prepare(
+    `SELECT id, application_name, spray_date, start_time, end_time, status, rei
+       FROM spray_records
+      WHERE ${clauses.join(' AND ')}
+      ORDER BY datetime(spray_date) DESC, start_time ASC, created_at DESC`,
+  ).bind(...binds).all()
+
+  const ids = rows.map(r => r.id)
+  const productsBy = await fetchProductsForRecords(env, ids)
+  const areasBy = await fetchAreasForRecords(env, ids)
+
+  return json(rows.map(r => rowToBoardSpray(
+    r,
+    productsBy.get(r.id) ?? [],
+    areasBy.get(r.id) ?? [],
+  )))
+}
+
 export async function getSpray(env, id) {
   const row = await env.DB.prepare(
     'SELECT * FROM spray_records WHERE id = ?',
@@ -202,19 +276,27 @@ export async function createSpray(env, request) {
 
   await env.DB.prepare(`
     INSERT INTO spray_records (
-      id, application_name, target, operator, course,
+      id, application_name, application_type, equipment_id, equipment_name, tank_capacity,
+      target, operator, course, nutrient_sample_id,
       spray_date, start_time, end_time, status,
       temperature, wind, humidity, soil_temp,
       rei, phi, carrier_volume, total_volume,
+      irrigation_inches, irrigation_minutes,
       holes, notes, course_id,
-      applicator_license, wind_speed_mph, wind_direction, total_cost_snapshot
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      applicator_license, wind_speed_mph, wind_direction, total_cost_snapshot,
+      deduct_inventory
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id,
     body.applicationName ?? null,
+    body.applicationType ?? null,
+    body.equipmentId     ?? null,
+    body.equipmentName   ?? null,
+    body.tankCapacity    ?? null,
     body.targetPest      ?? body.target      ?? null,
     body.applicator      ?? body.operator    ?? null,
     body.course          ?? null,
+    body.nutrientSampleId ?? null,
     body.date            ?? body.sprayDate   ?? null,
     body.startTime       ?? null,
     body.endTime         ?? null,
@@ -227,6 +309,8 @@ export async function createSpray(env, request) {
     body.phi             ?? null,
     body.carrierVolume   ?? null,
     body.totalVolume     ?? null,
+    body.irrigationInches  ?? null,
+    body.irrigationMinutes ?? null,
     body.holes != null ? JSON.stringify(body.holes) : null,
     body.notes           ?? null,
     resolveCourseId(body),
@@ -236,6 +320,7 @@ export async function createSpray(env, request) {
     body.conditions?.windSpeedMph  ?? body.windSpeedMph  ?? null,
     body.conditions?.windDirection ?? body.windDirection ?? null,
     body.totalCostSnapshot                            ?? null,
+    body.deductInventory === false ? 0 : 1,
   ).run()
 
   // Products
@@ -307,17 +392,32 @@ export async function createSpray(env, request) {
     `).bind(generateId('sarea'), id, body.area, body.acreage ?? null).run()
   }
 
+  await syncSprayInventoryForStatus(
+    env,
+    id,
+    body.status ?? 'planned',
+    body.deductInventory !== false,
+  )
+
   return getSpray(env, id)
 }
 
 export async function updateSpray(env, id, request) {
   const body = await readJson(request)
+  const existingRecord = await env.DB.prepare(
+    'SELECT status, deduct_inventory FROM spray_records WHERE id = ? AND deleted_at IS NULL',
+  ).bind(id).first()
+  if (!existingRecord) return notFound('Spray record not found')
+  const finalStatus = Object.prototype.hasOwnProperty.call(body, 'status')
+    ? body.status
+    : existingRecord.status
+  const completingApplication = isCompletedStatus(finalStatus)
   const sets = []
   const binds = []
   for (const [apiKey, dbCol] of Object.entries(MUTABLE_RECORD_COLS)) {
     if (Object.prototype.hasOwnProperty.call(body, apiKey)) {
       sets.push(`${dbCol} = ?`)
-      binds.push(body[apiKey])
+      binds.push(apiKey === 'deductInventory' ? (body[apiKey] === false ? 0 : 1) : body[apiKey])
     }
   }
   // Conditions (nested) flatten to columns. Phase S.3 added structured
@@ -354,7 +454,7 @@ export async function updateSpray(env, id, request) {
   // don't touch inventory or snapshots.
   let areaEditApplied = false
   if (Array.isArray(body.areas)) {
-    if (body.areas.length === 0) {
+    if (completingApplication && body.areas.length === 0) {
       return badRequest('Completed spray must have at least one area row')
     }
     for (const a of body.areas) {
@@ -375,7 +475,7 @@ export async function updateSpray(env, id, request) {
 
   let productEditApplied = false
   if (Array.isArray(body.products)) {
-    if (body.products.length === 0) {
+    if (completingApplication && body.products.length === 0) {
       return badRequest('Completed spray must have at least one product row')
     }
     for (const p of body.products) {
@@ -386,7 +486,7 @@ export async function updateSpray(env, id, request) {
       if (p.quantityUsed != null && Number.isNaN(Number(p.quantityUsed))) {
         return badRequest(`Invalid quantityUsed for ${name}`)
       }
-      if (p.rate != null && Number.isNaN(Number(p.rate))) {
+      if (!isValidProductRate(p.rate)) {
         return badRequest(`Invalid rate for ${name}`)
       }
       // Phase S.7b.5 — Inventory-linked rows must have a positive
@@ -394,7 +494,11 @@ export async function updateSpray(env, id, request) {
       // deducting (replaceSprayProducts guards on quantityUsed > 0),
       // which violates the user's expectation that linking a product
       // implies an inventory adjustment.
-      if (p.inventoryItemId && (p.quantityUsed == null || Number(p.quantityUsed) <= 0)) {
+      if (
+        completingApplication
+        && p.inventoryItemId
+        && (p.quantityUsed == null || Number(p.quantityUsed) <= 0)
+      ) {
         return badRequest(
           `Inventory-linked product rows require quantityUsed greater than 0 (row: ${name})`,
         )
@@ -463,7 +567,58 @@ export async function updateSpray(env, id, request) {
     ).bind(id).run()
   }
 
+  const finalDeductInventory = Object.prototype.hasOwnProperty.call(body, 'deductInventory')
+    ? body.deductInventory !== false
+    : existingRecord.deduct_inventory !== 0
+  await syncSprayInventoryForStatus(env, id, finalStatus, finalDeductInventory)
+  await syncSprayCalendarEvent(env, id)
   return getSpray(env, id)
+}
+
+async function syncSprayCalendarEvent(env, sprayId) {
+  const event = await env.DB.prepare(
+    `SELECT id, payload_json FROM calendar_events
+      WHERE source_id = ? AND source_type = 'spray'
+      ORDER BY created_at DESC LIMIT 1`,
+  ).bind(sprayId).first()
+  if (!event) return
+
+  const record = await env.DB.prepare('SELECT * FROM spray_records WHERE id = ?').bind(sprayId).first()
+  if (!record) return
+  const area = await env.DB.prepare(
+    'SELECT area_name FROM spray_areas WHERE spray_record_id = ? ORDER BY created_at ASC LIMIT 1',
+  ).bind(sprayId).first()
+  const { results: products } = await env.DB.prepare(
+    'SELECT product_name FROM spray_products WHERE spray_record_id = ? ORDER BY created_at ASC',
+  ).bind(sprayId).all()
+
+  let payload = {}
+  try { payload = JSON.parse(event.payload_json || '{}') } catch { /* keep empty payload */ }
+  const productNames = products.map(product => product.product_name).filter(Boolean)
+  payload.assignedStaff = record.operator ? [record.operator] : []
+  payload.equipment = record.equipment_name ? [record.equipment_name] : []
+  payload.tags = productNames
+
+  const typeLabel = record.application_type === 'granular' ? 'Granular' : 'Spray'
+  const location = area?.area_name ?? null
+  const title = `${typeLabel}${location ? ` - ${location}` : ''}${productNames.length ? `: ${productNames.join(' + ')}` : ''}`
+  await env.DB.prepare(`
+    UPDATE calendar_events
+       SET title = ?, status = ?, start_date = ?, start_time = ?, end_date = ?, end_time = ?,
+           location = ?, description = ?, payload_json = ?, updated_at = datetime('now')
+     WHERE id = ?
+  `).bind(
+    title,
+    record.status ?? 'planned',
+    record.spray_date,
+    record.start_time,
+    record.spray_date,
+    record.end_time,
+    location,
+    record.notes,
+    JSON.stringify(payload),
+    event.id,
+  ).run()
 }
 
 // Phase S.7c — Replace the area rows for an existing spray. Mirrors
@@ -537,7 +692,7 @@ async function replaceSprayProducts(env, sprayId, products) {
     `DELETE FROM spray_products WHERE spray_record_id = ?`,
   ).bind(sprayId).run()
 
-  // 3. Insert fresh rows + deduct new inventory + log new usage.
+  // 3. Insert fresh rows. Status synchronization handles inventory.
   for (const p of products) {
     // Snapshot resolution — caller-supplied wins, catalog fills gaps,
     // anything missing stays NULL (rendered as "—" client-side).
@@ -575,37 +730,89 @@ async function replaceSprayProducts(env, sprayId, products) {
       p.totalCostSnapshot        ?? null,
     ).run()
 
-    // Deduct + log usage when we have enough info to do so. Match
-    // createSpray's behavior: rows without inventoryItemId OR without
-    // quantityUsed are recorded on the spray (compliance) but do not
-    // touch inventory.
-    if (p.inventoryItemId && p.quantityUsed != null && Number(p.quantityUsed) > 0) {
-      const item = await env.DB.prepare(
-        'SELECT id, quantity FROM inventory_items WHERE id = ? LIMIT 1',
-      ).bind(p.inventoryItemId).first()
-      if (item) {
-        const newQty = Math.max(0, (item.quantity ?? 0) - Number(p.quantityUsed))
-        await env.DB.prepare(
-          `UPDATE inventory_items SET quantity = ?, updated_at = datetime('now') WHERE id = ?`,
-        ).bind(newQty, item.id).run()
-      }
-      await env.DB.prepare(`
-        INSERT INTO inventory_usage (
-          id, product_name, quantity_used, unit, source_id, date, area, applicator, course_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).bind(
-        generateId('usage'),
-        productName,
-        Number(p.quantityUsed),
-        p.unit ?? null,
-        sprayId,
-        null,
-        null,
-        null,
-        null,
-      ).run()
-    }
   }
+}
+
+async function restoreSprayInventoryUsage(env, sprayId) {
+  const { results: usageRows } = await env.DB.prepare(
+    `SELECT * FROM inventory_usage WHERE source_id = ? AND reverted_at IS NULL`,
+  ).bind(sprayId).all()
+  const nowIso = new Date().toISOString().slice(0, 19).replace('T', ' ')
+  for (const usage of usageRows) {
+    let item = await env.DB.prepare(
+      'SELECT id, quantity FROM inventory_items WHERE name = ? LIMIT 1',
+    ).bind(usage.product_name).first()
+    if (!item) {
+      item = await env.DB.prepare(
+        'SELECT id, quantity FROM inventory_items WHERE LOWER(name) = LOWER(?) LIMIT 1',
+      ).bind(usage.product_name).first()
+    }
+    if (item) {
+      await env.DB.prepare(
+        `UPDATE inventory_items SET quantity = ?, updated_at = datetime('now') WHERE id = ?`,
+      ).bind((Number(item.quantity) || 0) + (Number(usage.quantity_used) || 0), item.id).run()
+    }
+    await env.DB.prepare(
+      'UPDATE inventory_usage SET reverted_at = ? WHERE id = ?',
+    ).bind(nowIso, usage.id).run()
+  }
+}
+
+async function deductSprayInventory(env, sprayId) {
+  const active = await env.DB.prepare(
+    `SELECT COUNT(*) AS count FROM inventory_usage WHERE source_id = ? AND reverted_at IS NULL`,
+  ).bind(sprayId).first()
+  if ((Number(active?.count) || 0) > 0) return
+
+  const record = await env.DB.prepare(
+    'SELECT spray_date, operator, course_id FROM spray_records WHERE id = ?',
+  ).bind(sprayId).first()
+  if (!record) return
+  const area = await env.DB.prepare(
+    'SELECT area_name FROM spray_areas WHERE spray_record_id = ? ORDER BY created_at ASC LIMIT 1',
+  ).bind(sprayId).first()
+  const { results: products } = await env.DB.prepare(
+    `SELECT inventory_item_id, product_name, quantity_used, unit
+       FROM spray_products
+      WHERE spray_record_id = ? AND inventory_item_id IS NOT NULL AND quantity_used > 0`,
+  ).bind(sprayId).all()
+
+  for (const product of products) {
+    const item = await env.DB.prepare(
+      'SELECT id, quantity FROM inventory_items WHERE id = ? LIMIT 1',
+    ).bind(product.inventory_item_id).first()
+    if (!item) continue
+    const requested = Number(product.quantity_used) || 0
+    const available = Math.max(0, Number(item.quantity) || 0)
+    const deducted = Math.min(available, requested)
+    if (deducted <= 0) continue
+    await env.DB.prepare(
+      `UPDATE inventory_items SET quantity = ?, updated_at = datetime('now') WHERE id = ?`,
+    ).bind(available - deducted, item.id).run()
+    await env.DB.prepare(`
+      INSERT INTO inventory_usage (
+        id, product_name, quantity_used, unit, source_id, date, area, applicator, course_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      generateId('usage'),
+      product.product_name,
+      deducted,
+      product.unit ?? null,
+      sprayId,
+      record.spray_date ?? null,
+      area?.area_name ?? null,
+      record.operator ?? null,
+      record.course_id ?? null,
+    ).run()
+  }
+}
+
+async function syncSprayInventoryForStatus(env, sprayId, status, deductInventory = true) {
+  if (isCompletedStatus(status) && deductInventory) {
+    await deductSprayInventory(env, sprayId)
+    return
+  }
+  await restoreSprayInventoryUsage(env, sprayId)
 }
 
 /**

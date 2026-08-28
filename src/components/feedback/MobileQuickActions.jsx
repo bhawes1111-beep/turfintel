@@ -51,7 +51,7 @@ function AddNoteModal({ onClose }) {
   }
 
   return createPortal(
-    <div className={styles.backdrop} onClick={onClose} role="dialog" aria-modal="true" aria-label="Add note">
+    <div className={styles.backdrop} role="dialog" aria-modal="true" aria-label="Add note">
       <div className={styles.modal} onClick={e => e.stopPropagation()}>
         <div className={styles.header}>
           <span className={styles.headerTitle}>Add Note</span>

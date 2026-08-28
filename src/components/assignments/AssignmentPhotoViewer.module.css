@@ -1,0 +1,105 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(0, 6, 2, 0.96);
+}
+
+.viewer {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: min(1180px, 100%);
+  height: min(900px, 100%);
+  overflow: hidden;
+  border: 1px solid rgba(74, 222, 128, 0.42);
+  border-radius: 8px;
+  background: #07140a;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.66);
+  color: #e6f4e7;
+}
+
+.header,
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #0d2111;
+}
+
+.header { border-bottom: 1px solid rgba(74, 222, 128, 0.2); }
+.header > div { display: flex; flex-direction: column; min-width: 0; }
+.header strong {
+  overflow: hidden;
+  color: #dff5df;
+  font-size: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.header span,
+.footer span { color: rgba(212, 237, 212, 0.68); font-size: 12px; }
+
+.imageStage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  overflow: hidden;
+  background: #010402;
+}
+.image { display: block; width: 100%; height: 100%; object-fit: contain; }
+
+.closeButton,
+.navButton,
+.deleteButton {
+  min-height: 40px;
+  border-radius: 6px;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.closeButton,
+.navButton {
+  border: 1px solid rgba(134, 239, 172, 0.5);
+  background: rgba(22, 101, 52, 0.72);
+  color: #ecfdf5;
+}
+.closeButton { padding: 8px 14px; }
+.navButton {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  padding: 9px 12px;
+  transform: translateY(-50%);
+  background: rgba(7, 20, 10, 0.86);
+}
+.previousButton { left: 12px; }
+.nextButton { right: 12px; }
+
+.footer {
+  min-height: 56px;
+  border-top: 1px solid rgba(74, 222, 128, 0.2);
+}
+.footer span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.deleteButton {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  border: 1px solid rgba(248, 113, 113, 0.55);
+  background: rgba(127, 29, 29, 0.36);
+  color: #fecaca;
+}
+.deleteButton:disabled { cursor: wait; opacity: 0.55; }
+.closeButton:focus-visible,
+.navButton:focus-visible,
+.deleteButton:focus-visible { outline: 2px solid #86efac; outline-offset: 2px; }
+
+@media (max-width: 640px) {
+  .backdrop { padding: 0; }
+  .viewer { width: 100%; height: 100%; border: 0; border-radius: 0; }
+  .header, .footer { padding: 10px 12px; }
+  .navButton { top: auto; bottom: 12px; transform: none; }
+}

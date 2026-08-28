@@ -29,7 +29,8 @@ const DB_NAME      = 'turfintel-db'
 const DEFAULT_SEED = 'worker/seeds/product_catalog_v1.json'
 
 const ALLOWED_CATEGORIES = new Set([
-  'herbicide', 'fungicide', 'insecticide', 'pgr', 'fertilizer', 'biostimulant',
+  'herbicide', 'fungicide', 'insecticide', 'pgr', 'fertilizer', 'biostimulant', 'pigment',
+  'adjuvant', 'surfactant', 'tank_additive',
 ])
 const ALLOWED_STATUSES = new Set(['active', 'discontinued', 'unverified'])
 
@@ -127,7 +128,10 @@ function validate(p, warnings) {
     return `invalid status '${status}' (allowed: ${[...ALLOWED_STATUSES].join(', ')})`
   }
   // Soft warnings — don't reject the row, just log it.
-  if (p.category !== 'fertilizer' && p.category !== 'biostimulant' && !p.epa_number) {
+  const nonPesticideCategories = new Set([
+    'fertilizer', 'biostimulant', 'pigment', 'adjuvant', 'surfactant', 'tank_additive',
+  ])
+  if (!nonPesticideCategories.has(p.category) && !p.epa_number) {
     warnings.push(`${p.product_name}: pesticide-category row has no epa_number`)
   }
   if (Array.isArray(p.active_ingredients)) {

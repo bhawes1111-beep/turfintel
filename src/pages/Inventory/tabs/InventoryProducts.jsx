@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useInventoryData, setInventoryCatalogLink } from '../../../utils/inventory/inventoryStore'
+import { useInventoryData, deleteInventory, setInventoryCatalogLink } from '../../../utils/inventory/inventoryStore'
 import { useProductCatalog, getCatalogProductById } from '../../../utils/productCatalog/productCatalogStore'
 import { EmptyState } from '../../../components/shared/EmptyState'
 import WorkspaceSection from '../../../components/shared/WorkspaceSection'
@@ -17,6 +17,11 @@ import ManualProductForm from '../components/ManualProductForm'
 // drawer + chemical card so a superintendent can correct on-hand
 // counts without deleting / re-adding items.
 import EditInventoryQuantityModal from '../components/EditInventoryQuantityModal'
+import {
+  calculateContainerInventoryValue,
+  formatContainerSize,
+  formatMoney,
+} from '../../../utils/inventory/containerSize'
 import { useAuth } from '../../../context/AuthContext'
 import styles from '../Inventory.module.css'
 import linkStyles from '../components/CatalogLinkSection.module.css'
@@ -40,6 +45,11 @@ const STATUS_META = {
 const FILTER_KEY = { 'Good': 'good', 'Low': 'low', 'Critical': 'critical', 'Out of Stock': 'out' }
 
 const SORT_STATUS = { out: 0, critical: 1, low: 2, good: 3 }
+
+function currentStockValue(item) {
+  return calculateContainerInventoryValue(item?.containerCount, item?.containerPrice) ??
+    (item?.costPerUnit != null ? Number(item.quantity ?? 0) * Number(item.costPerUnit) : null)
+}
 
 export default function InventoryProducts({
   initialSelectedId = null,
@@ -76,6 +86,22 @@ export default function InventoryProducts({
   const [editingItem, setEditingItem] = useState(null)
   const { can } = useAuth()
   const canEditInventory = can('canEditInventory')
+
+  async function handleDeleteItem(item) {
+    if (!item) return
+    const ok = window.confirm(
+      `Delete ${item.name} from inventory? This removes the inventory item and any saved label tied to it.`,
+    )
+    if (!ok) return
+
+    try {
+      await deleteInventory(item.id)
+      setSelectedId(null)
+      setSelectedSource(null)
+    } catch (err) {
+      window.alert(err?.message || 'Could not delete this inventory item.')
+    }
+  }
 
   // Derive selected product from live state so modal reflects current quantities
   const selected = useMemo(
@@ -170,9 +196,8 @@ export default function InventoryProducts({
           {visible.length} product{visible.length !== 1 ? 's' : ''}
           {(catFilter !== 'All' || stkFilter !== 'All' || search) ? ' (filtered)' : ''}
         </p>
-        {/* Phase 7Q (1/?) — manual product entry. The PDF wizard
-            stays available from the workspace header; this toggle
-            is the pilot's hand-entry path. */}
+        {/* Phase 7Q (1/?) — manual product entry. This toggle
+            is the primary hand-entry path. */}
         {!addingProduct && (
           <button
             type="button"
@@ -206,7 +231,7 @@ export default function InventoryProducts({
         inventoryProducts.length === 0 ? (
           <EmptyState
             title="No products in inventory yet."
-            description="Add real Crosswinds chemicals, fertilizers, and other products you'll apply in the next 30 days. The PDF wizard is also available in the workspace header."
+            description="Add chemicals, fertilizers, parts, fuel, and other stock manually as you rebuild inventory."
           />
         ) : (
           <EmptyState
@@ -220,6 +245,7 @@ export default function InventoryProducts({
           {visible.map(p => {
             const status = stockStatus(p.quantity, p.reorderLevel)
             const meta   = STATUS_META[status]
+            const containerSize = formatContainerSize(p)
             const pct    = p.reorderLevel > 0
               ? Math.min(100, Math.round((p.quantity / (p.reorderLevel * 2)) * 100))
               : 100
@@ -241,6 +267,9 @@ export default function InventoryProducts({
                     <span className={styles.ipCardLocation}>{p.location}</span>
                     {p.vendor && (
                       <span className={styles.ipCardVendor}>{p.vendor}</span>
+                    )}
+                    {containerSize && (
+                      <span className={styles.ipCardContainer}>{containerSize}</span>
                     )}
                   </div>
 
@@ -279,6 +308,7 @@ export default function InventoryProducts({
         if (!selected) return null
         const status = stockStatus(selected.quantity, selected.reorderLevel)
         const meta   = STATUS_META[status]
+        const selectedContainerSize = formatContainerSize(selected)
         const accentColors = {
           good:     '#4ecb4e',
           low:      '#d4883a',
@@ -312,9 +342,17 @@ export default function InventoryProducts({
                       type="button"
                       className={styles.ipModalEditBtn}
                       onClick={() => setEditingItem(selected)}
-                      aria-label={`Edit quantity for ${selected.name}`}
+                      aria-label={`Edit inventory item ${selected.name}`}
                     >
-                      Edit quantity / unit
+                      Edit item
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.ipModalEditBtn} ${styles.ipModalDeleteBtn}`}
+                      onClick={() => handleDeleteItem(selected)}
+                      aria-label={`Delete ${selected.name} from inventory`}
+                    >
+                      Delete Item
                     </button>
                   </div>
                 )}
@@ -330,6 +368,10 @@ export default function InventoryProducts({
                     <div className={styles.ipModalField}>
                       <span className={styles.ipModalFieldLabel}>Unit</span>
                       <span className={styles.ipModalFieldValue}>{selected.unit}</span>
+                    </div>
+                    <div className={styles.ipModalField}>
+                      <span className={styles.ipModalFieldLabel}>Package / Stock Math</span>
+                      <span className={styles.ipModalFieldValue}>{selectedContainerSize || 'Not set'}</span>
                     </div>
                     <div className={styles.ipModalField}>
                       <span className={styles.ipModalFieldLabel}>Stock Status</span>
@@ -350,7 +392,7 @@ export default function InventoryProducts({
                   onOpenPicker={() => setPickerOpen(true)}
                   onUnlink={async () => {
                     try { await setInventoryCatalogLink(selected.id, null) }
-                    catch (e) { /* surfaced by store error state */ }
+                    catch { /* surfaced by store error state */ }
                   }}
                 />
 
@@ -438,15 +480,27 @@ export default function InventoryProducts({
                     <h3 className={styles.ipModalSectionTitle}>Cost Information</h3>
                     <div className={styles.ipModalGrid}>
                       <div className={styles.ipModalField}>
-                        <span className={styles.ipModalFieldLabel}>Cost per {selected.unit}</span>
+                        <span className={styles.ipModalFieldLabel}>
+                          {selected.containerPrice != null ? 'Price per container' : `Cost per ${selected.unit}`}
+                        </span>
                         <span className={styles.ipModalFieldValue}>
-                          ${selected.costPerUnit.toFixed(2)}
+                          {selected.containerPrice != null
+                            ? formatMoney(selected.containerPrice)
+                            : `$${selected.costPerUnit.toFixed(2)}`}
                         </span>
                       </div>
+                      {selected.containerPrice != null && selected.costPerUnit != null && (
+                        <div className={styles.ipModalField}>
+                          <span className={styles.ipModalFieldLabel}>Derived Cost per {selected.unit}</span>
+                          <span className={styles.ipModalFieldValue}>
+                            ${selected.costPerUnit.toFixed(2)}
+                          </span>
+                        </div>
+                      )}
                       <div className={styles.ipModalField}>
                         <span className={styles.ipModalFieldLabel}>Current Stock Value</span>
                         <span className={styles.ipModalFieldValue}>
-                          ${(selected.quantity * selected.costPerUnit).toFixed(2)}
+                          {formatMoney(currentStockValue(selected))}
                         </span>
                       </div>
                       {selected.quantity < selected.reorderLevel && (

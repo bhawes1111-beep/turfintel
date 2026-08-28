@@ -27,6 +27,7 @@ let state = {
   error:     null,
   lastFetch: null,
 }
+const disabledState = { ...state, loading: false, error: null }
 
 const subscribers = new Set()
 let hasBooted = false
@@ -137,6 +138,8 @@ function subscribe(cb) {
 }
 
 function getSnapshot() { return state }
+function getDisabledSnapshot() { return disabledState }
+function subscribeDisabled() { return () => {} }
 
 /**
  * useAlertsData — read-only subscription to the Alerts vertical.
@@ -147,6 +150,10 @@ function getSnapshot() { return state }
  * status, course, date ("May 6" string), actionLabel, metadata: {
  * sourceId, sourceModule, createdAt } }.
  */
-export function useAlertsData() {
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+export function useAlertsData({ enabled = true } = {}) {
+  return useSyncExternalStore(
+    enabled ? subscribe : subscribeDisabled,
+    enabled ? getSnapshot : getDisabledSnapshot,
+    enabled ? getSnapshot : getDisabledSnapshot,
+  )
 }

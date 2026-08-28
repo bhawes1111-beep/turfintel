@@ -5,6 +5,10 @@ import { json, badRequest, notFound, readJson } from '../lib/json.js'
 import { generateId } from '../lib/id.js'
 import { buildCourseFilter, resolveCourseId } from '../lib/scope.js'
 
+function normalizeInventoryName(value) {
+  return String(value ?? '').trim().toUpperCase()
+}
+
 // ── Mappers ────────────────────────────────────────────────────────────────
 
 export function rowToItem(row) {
@@ -13,12 +17,44 @@ export function rowToItem(row) {
   if (row.related_usage) {
     try { relatedUsage = JSON.parse(row.related_usage) } catch { relatedUsage = [] }
   }
+  let nutrientSources = []
+  if (row.nutrient_sources) {
+    try { nutrientSources = JSON.parse(row.nutrient_sources) } catch { nutrientSources = [] }
+  }
+  let diseaseTargets = []
+  if (row.disease_targets) {
+    try { diseaseTargets = JSON.parse(row.disease_targets) } catch { diseaseTargets = [] }
+  }
+  let nematodeTargets = []
+  if (row.nematode_targets) {
+    try { nematodeTargets = JSON.parse(row.nematode_targets) } catch { nematodeTargets = [] }
+  }
+  let weedTargets = []
+  if (row.weed_targets) {
+    try { weedTargets = JSON.parse(row.weed_targets) } catch { weedTargets = [] }
+  }
+  let fertilizerCoating = null
+  if (row.fertilizer_coating) {
+    try { fertilizerCoating = JSON.parse(row.fertilizer_coating) } catch { fertilizerCoating = null }
+  }
+  let equipmentList = []
+  if (row.equipment_list) {
+    try { equipmentList = JSON.parse(row.equipment_list) } catch { equipmentList = [] }
+  }
+  if (!Array.isArray(equipmentList) || equipmentList.length === 0) {
+    equipmentList = row.equipment ? [row.equipment] : []
+  }
   return {
     id:           row.id,
     kind:         row.kind,
-    name:         row.name,
+    name:         normalizeInventoryName(row.name),
     category:     row.category,
     unit:         row.unit,
+    containerCount: row.container_count,
+    containerSize: row.container_size,
+    containerUnit: row.container_unit,
+    containerType: row.container_type,
+    containerPrice: row.container_price,
     quantity:     row.quantity,
     reorderLevel: row.reorder_level,
     location:     row.location,
@@ -38,8 +74,14 @@ export function rowToItem(row) {
     expiryDate:    row.expiry_date,
     partNumber:    row.part_number,
     equipment:     row.equipment,
+    equipmentList,
     analysis:        row.analysis,
     nitrogenSource:  row.nitrogen_source,
+    nutrientSources,
+    diseaseTargets,
+    nematodeTargets,
+    weedTargets,
+    fertilizerCoating,
     tankCapacity:    row.tank_capacity,
     currentLevel:  row.current_level,
     lastFill:      row.last_fill,
@@ -77,6 +119,11 @@ const MUTABLE_COLUMNS = {
   name:         'name',
   category:     'category',
   unit:         'unit',
+  containerCount: 'container_count',
+  containerSize: 'container_size',
+  containerUnit: 'container_unit',
+  containerType: 'container_type',
+  containerPrice: 'container_price',
   quantity:     'quantity',
   reorderLevel: 'reorder_level',
   location:     'location',
@@ -88,8 +135,14 @@ const MUTABLE_COLUMNS = {
   expiryDate:   'expiry_date',
   partNumber:   'part_number',
   equipment:    'equipment',
+  equipmentList: 'equipment_list',
   analysis:       'analysis',
   nitrogenSource: 'nitrogen_source',
+  nutrientSources: 'nutrient_sources',
+  diseaseTargets: 'disease_targets',
+  nematodeTargets: 'nematode_targets',
+  weedTargets: 'weed_targets',
+  fertilizerCoating: 'fertilizer_coating',
   tankCapacity:   'tank_capacity',
   currentLevel: 'current_level',
   lastFill:     'last_fill',
@@ -117,26 +170,34 @@ export async function getInventory(env, id) {
 export async function createInventory(env, request) {
   const body = await readJson(request)
   if (!body.kind) return badRequest('kind is required')
-  if (!body.name) return badRequest('name is required')
+  const name = normalizeInventoryName(body.name)
+  if (!name) return badRequest('name is required')
 
   const id = body.id ?? generateId('inv')
 
   await env.DB.prepare(`
     INSERT INTO inventory_items (
-      id, kind, name, category, unit, quantity, reorder_level,
+      id, kind, name, category, unit,
+      container_count, container_size, container_unit, container_type, container_price,
+      quantity, reorder_level,
       location, vendor, cost_per_unit, notes,
       manufacturer, epa_number, expiry_date,
-      part_number, equipment,
-      analysis, nitrogen_source,
+      part_number, equipment, equipment_list,
+      analysis, nitrogen_source, nutrient_sources, disease_targets, nematode_targets, weed_targets, fertilizer_coating,
       tank_capacity, current_level, last_fill,
       related_usage, course_id
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id,
     body.kind,
-    body.name,
+    name,
     body.category       ?? null,
     body.unit           ?? null,
+    body.containerCount ?? null,
+    body.containerSize  ?? null,
+    body.containerUnit  ?? null,
+    body.containerType  ?? null,
+    body.containerPrice ?? null,
     body.quantity       ?? 0,
     body.reorderLevel   ?? null,
     body.location       ?? null,
@@ -148,8 +209,14 @@ export async function createInventory(env, request) {
     body.expiryDate     ?? null,
     body.partNumber     ?? null,
     body.equipment      ?? null,
+    body.equipmentList != null ? JSON.stringify(body.equipmentList) : null,
     body.analysis       ?? null,
     body.nitrogenSource ?? null,
+    body.nutrientSources != null ? JSON.stringify(body.nutrientSources) : null,
+    body.diseaseTargets != null ? JSON.stringify(body.diseaseTargets) : null,
+    body.nematodeTargets != null ? JSON.stringify(body.nematodeTargets) : null,
+    body.weedTargets != null ? JSON.stringify(body.weedTargets) : null,
+    body.fertilizerCoating != null ? JSON.stringify(body.fertilizerCoating) : null,
     body.tankCapacity   ?? null,
     body.currentLevel   ?? null,
     body.lastFill       ?? null,
@@ -168,7 +235,11 @@ export async function updateInventory(env, id, request) {
     if (Object.prototype.hasOwnProperty.call(body, apiKey)) {
       sets.push(`${dbCol} = ?`)
       let value = body[apiKey]
-      if (apiKey === 'relatedUsage' && value != null) value = JSON.stringify(value)
+      if (apiKey === 'name') {
+        value = normalizeInventoryName(value)
+        if (!value) return badRequest('name is required')
+      }
+      if ((apiKey === 'relatedUsage' || apiKey === 'nutrientSources' || apiKey === 'diseaseTargets' || apiKey === 'nematodeTargets' || apiKey === 'weedTargets' || apiKey === 'fertilizerCoating' || apiKey === 'equipmentList') && value != null) value = JSON.stringify(value)
       binds.push(value)
     }
   }

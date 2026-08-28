@@ -1,0 +1,78 @@
+{
+  "version": "envu-indemnify-label-221216AV1",
+  "generatedAt": "2026-08-08",
+  "source": "Envu official U.S. specimen label",
+  "notes": "Catalog record transcribed from the official Indemnify specimen label supplied by the user.",
+  "products": [
+    {
+      "product_name": "INDEMNIFY",
+      "brand_owner": "Envu",
+      "manufacturer": "Environmental Science U.S., LLC",
+      "epa_number": "101563-164",
+      "formulation": "Suspension Concentrate",
+      "category": "fungicide",
+      "frac_group": "7",
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "SDHI benzamide nematicide/fungicide",
+      "active_ingredients": [
+        {
+          "name": "Fluopyram",
+          "percentage": 34.5,
+          "cas_number": "658066-35-4"
+        }
+      ],
+      "fertilizer_analysis": null,
+      "rates": [
+        {
+          "rate": "0.195-0.39 fl oz",
+          "unit": "fl oz/1,000 sq ft",
+          "interval": "Minimum 14 days; begin preventively and reapply as needed without exceeding annual limits"
+        },
+        {
+          "rate": "0.39 fl oz",
+          "unit": "fl oz/1,000 sq ft",
+          "interval": "Curative spot treatment; repeat up to 4 times at labeled intervals"
+        }
+      ],
+      "targets": [
+        "Sting nematode (Belonolaimus longicaudatus)",
+        "Stem-gall nematode (Anguina pacificae)",
+        "Ring nematodes (Mesocriconema spp.)",
+        "Spiral nematodes (Helicotylenchus spp.)",
+        "Lance nematode (Hoplolaimus galeatus)",
+        "Root-lesion nematodes (Pratylenchus spp.)",
+        "Awl nematodes (Dolichodorus spp.)",
+        "Cyst nematodes (Punctodera and Heterodera)",
+        "Dagger nematodes (Xiphinema spp.)",
+        "Needle nematodes (Longidorus spp.)",
+        "Pin nematodes (Paratylenchus spp.)",
+        "Root-knot nematodes (Meloidogyne spp.)",
+        "Sheath nematodes (Hemicycliophora spp.)",
+        "Sheathoid nematodes (Hemicriconemoides spp.)",
+        "Stubby-root nematodes (Paratrichodorus and Trichodorus spp.)",
+        "Stunt nematodes (Tylenchorhynchus spp.)"
+      ],
+      "turf_sites": [
+        "golf course greens",
+        "golf course tees",
+        "golf course fairways",
+        "golf course roughs",
+        "sod farms",
+        "sports fields",
+        "residential turf",
+        "institutional turf",
+        "municipal turf",
+        "commercial turf"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": 12,
+      "phi_hours": null,
+      "label_url": "https://bynder.envu.com/m/13032620ef50656b/original/Digital_TO_Indemnify_label_NA_US_EN.pdf",
+      "notes": "Systemic turf nematicide. Apply in 2-5 gal water/1,000 sq ft (50-100 gal/acre) and irrigate to root-zone depth within 24 hours for optimum control. Maximum 17.1 fl oz product/acre/year. Residential turf may not exceed 0.355 fl oz/1,000 sq ft or 15.5 fl oz/acre/year. Curative spot treatments are limited to 10,000 sq ft per acre per year. Follow the linked label for all PPE, drift, irrigation, site, and state restrictions.",
+      "status": "active"
+    }
+  ]
+}

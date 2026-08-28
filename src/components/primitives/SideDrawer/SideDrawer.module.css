@@ -12,8 +12,7 @@
   backdrop-filter: blur(3px);
   z-index: 300;
   display: block;
-  /* Cursor signals click-to-close */
-  cursor: pointer;
+  cursor: default;
 }
 
 /* Drawer panel (right-anchored, full viewport height) */

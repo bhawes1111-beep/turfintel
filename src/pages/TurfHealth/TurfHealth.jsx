@@ -13,6 +13,7 @@
 // Each sub-component reads from the shared store hooks — no prop drilling.
 
 import { useMemo, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import PageShell from '../../components/layout/PageShell'
 import { useAuth } from '../../context/AuthContext'
 import { useToast } from '../../utils/feedback/toastContext'
@@ -29,13 +30,17 @@ import { openPhotoPicker } from '../../utils/media/pickPhoto'
 import {
   healthTypeLabel,
   healthTypeIcon,
+  HEALTH_TYPE_LABELS,
   SEVERITY_LABELS,
   SEVERITY_ORDER,
 } from '../../utils/turfHealth/healthTypes'
 import TurfHealthPhotoViewer from '../../components/turfHealth/TurfHealthPhotoViewer'
+import TurfHealthCaptureSheet, { useRecentTurfHealthLocations } from '../../components/turfHealth/TurfHealthCaptureSheet'
+import TurfHealthEditModal from '../../components/turfHealth/TurfHealthEditModal'
+import NutrientSamples from '../../components/turfHealth/NutrientSamples'
 import styles from './TurfHealth.module.css'
 
-const TABS = ['Overview', 'Active Issues', 'Recent Observations']
+const TABS = ['Overview', 'Nutrients', 'Active Issues', 'Recent Observations', 'Resolved']
 
 const SEVERITY_COLOR = {
   high:     '#ef4444',
@@ -58,14 +63,49 @@ function fmtAgo(iso) {
   return `${Math.round(h / 24)}d ago`
 }
 
+function fmtDate(value) {
+  if (!value) return ''
+  const date = new Date(`${value}T00:00:00`)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
 // ── Workspace shell ────────────────────────────────────────────────────────
 
 export default function TurfHealth() {
-  const [activeTab, setActiveTab] = useState('Overview')
+  const navigate = useNavigate()
+  const location = useLocation()
+  const requestedTab = TABS.includes(location.state?.activeTab) ? location.state.activeTab : 'Overview'
+  const [activeTab, setActiveTab] = useState(requestedTab)
   const [viewerObs, setViewerObs] = useState(null)
+  const [editObs, setEditObs] = useState(null)
+  const [captureOpen, setCaptureOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const [typeFilter, setTypeFilter] = useState('all')
+  const [severityFilter, setSeverityFilter] = useState('all')
 
+  const { can } = useAuth()
+  const canEdit = can('canEditTurfHealth')
   const { observations, loading, error } = useTurfHealthData()
   const { byParent: attachmentsByParent } = useTurfHealthAttachments()
+  const recentLocations = useRecentTurfHealthLocations()
+
+  const filteredObservations = useMemo(() => {
+    const search = query.trim().toLowerCase()
+    return observations.filter(observation => {
+      if (typeFilter !== 'all' && observation.healthType !== typeFilter) return false
+      if (severityFilter !== 'all' && observation.severity !== severityFilter) return false
+      if (!search) return true
+      const searchable = [
+        observation.location,
+        healthTypeLabel(observation.healthType),
+        observation.surfaceNote,
+        observation.notes,
+        STATUS_LABEL[observation.status],
+      ].filter(Boolean).join(' ').toLowerCase()
+      return searchable.includes(search)
+    })
+  }, [observations, query, typeFilter, severityFilter])
 
   const viewerAttachments = viewerObs
     ? (attachmentsByParent.get(viewerObs.id) ?? [])
@@ -79,6 +119,35 @@ export default function TurfHealth() {
       activeTab={activeTab}
       onTabChange={setActiveTab}
     >
+      {activeTab !== 'Nutrients' && <div className={styles.toolbar}>
+        <div className={styles.filters}>
+          <input
+            type="search"
+            value={query}
+            onChange={event => setQuery(event.target.value)}
+            placeholder="Search location, type, or notes..."
+            aria-label="Search turf health observations"
+          />
+          <select value={typeFilter} onChange={event => setTypeFilter(event.target.value)} aria-label="Filter by issue type">
+            <option value="all">All issue types</option>
+            {Object.entries(HEALTH_TYPE_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+          <select value={severityFilter} onChange={event => setSeverityFilter(event.target.value)} aria-label="Filter by severity">
+            <option value="all">All severities</option>
+            <option value="high">High</option>
+            <option value="moderate">Moderate</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+        {canEdit && (
+          <button type="button" className={styles.newButton} onClick={() => setCaptureOpen(true)}>
+            + New Observation
+          </button>
+        )}
+      </div>}
+
       {error && <p className={styles.error}>Load error: {error}</p>}
 
       {activeTab === 'Overview' && (
@@ -90,21 +159,48 @@ export default function TurfHealth() {
         />
       )}
 
+      {activeTab === 'Nutrients' && (
+        <NutrientSamples
+          key={location.state?.nutrientSampleId || 'nutrients'}
+          canEdit={canEdit}
+          initialSampleId={location.state?.nutrientSampleId ?? ''}
+          onStartApplication={sample => navigate('/spray', {
+            state: {
+              activeTab: 'New Application',
+              nutrientSampleId: sample.id,
+              area: sample.location,
+            },
+          })}
+        />
+      )}
+
       {activeTab === 'Active Issues' && (
         <ActiveIssues
-          observations={observations}
+          observations={filteredObservations}
           loading={loading}
           attachmentsByParent={attachmentsByParent}
           onOpenViewer={setViewerObs}
+          onEdit={canEdit ? setEditObs : null}
+        />
+      )}
+
+      {activeTab === 'Resolved' && (
+        <ResolvedIssues
+          observations={filteredObservations}
+          loading={loading}
+          attachmentsByParent={attachmentsByParent}
+          onOpenViewer={setViewerObs}
+          onEdit={canEdit ? setEditObs : null}
         />
       )}
 
       {activeTab === 'Recent Observations' && (
         <RecentObservations
-          observations={observations}
+          observations={filteredObservations}
           loading={loading}
           attachmentsByParent={attachmentsByParent}
           onOpenViewer={setViewerObs}
+          onEdit={canEdit ? setEditObs : null}
         />
       )}
 
@@ -113,6 +209,15 @@ export default function TurfHealth() {
         attachments={viewerAttachments}
         onClose={() => setViewerObs(null)}
       />
+      {captureOpen && (
+        <TurfHealthCaptureSheet
+          recentLocations={recentLocations}
+          onClose={() => setCaptureOpen(false)}
+        />
+      )}
+      {editObs && (
+        <TurfHealthEditModal observation={editObs} onClose={() => setEditObs(null)} />
+      )}
     </PageShell>
   )
 }
@@ -123,6 +228,7 @@ function Overview({ observations, loading, attachmentsByParent, onOpenViewer }) 
   const stats = useMemo(() => {
     const active     = observations.filter(o => o.status === 'active'     || o.status === 'monitoring').length
     const high       = observations.filter(o => o.severity === 'high'     && o.status !== 'resolved').length
+    const resolved   = observations.filter(o => o.status === 'resolved').length
     const total      = observations.length
     // Per-type counts (active + monitoring only).
     const byType = {}
@@ -132,7 +238,7 @@ function Overview({ observations, loading, attachmentsByParent, onOpenViewer }) 
       byType[o.healthType] = (byType[o.healthType] ?? 0) + 1
     }
     const byTypeList = Object.entries(byType).sort((a, b) => b[1] - a[1])
-    return { active, high, total, byTypeList }
+    return { active, high, resolved, total, byTypeList }
   }, [observations])
 
   // Recent photo-backed observations — newest-first, top 3, only rows that
@@ -163,6 +269,7 @@ function Overview({ observations, loading, attachmentsByParent, onOpenViewer }) 
       <div className={styles.statsRow}>
         <StatCard label="Active / monitoring" value={stats.active} />
         <StatCard label="High severity"       value={stats.high} accent={SEVERITY_COLOR.high} />
+        <StatCard label="Resolved"            value={stats.resolved} />
         <StatCard label="Total observations"  value={stats.total} muted />
       </div>
 
@@ -213,7 +320,7 @@ function StatCard({ label, value, accent, muted }) {
 
 // ── Active Issues tab ──────────────────────────────────────────────────────
 
-function ActiveIssues({ observations, loading, attachmentsByParent, onOpenViewer }) {
+function ActiveIssues({ observations, loading, attachmentsByParent, onOpenViewer, onEdit }) {
   const visible = useMemo(() => {
     return (observations ?? [])
       .filter(o => o.status === 'active' || o.status === 'monitoring')
@@ -249,6 +356,7 @@ function ActiveIssues({ observations, loading, attachmentsByParent, onOpenViewer
             obs={o}
             attachmentsByParent={attachmentsByParent}
             onOpenViewer={onOpenViewer}
+            onEdit={onEdit}
             showStatus
           />
         ))}
@@ -259,7 +367,7 @@ function ActiveIssues({ observations, loading, attachmentsByParent, onOpenViewer
 
 // ── Recent Observations tab ────────────────────────────────────────────────
 
-function RecentObservations({ observations, loading, attachmentsByParent, onOpenViewer }) {
+function RecentObservations({ observations, loading, attachmentsByParent, onOpenViewer, onEdit }) {
   const { can } = useAuth()
   const toast = useToast()
   const canEdit = can('canEditTurfHealth')
@@ -304,10 +412,49 @@ function RecentObservations({ observations, loading, attachmentsByParent, onOpen
             obs={o}
             attachmentsByParent={attachmentsByParent}
             onOpenViewer={onOpenViewer}
+            onEdit={!o._pending ? onEdit : null}
             onAddPhoto={canEdit ? handleAddPhoto : null}
             onDelete={canEdit ? handleDelete : null}
             showStatus
             showRetry
+          />
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+function ResolvedIssues({ observations, loading, attachmentsByParent, onOpenViewer, onEdit }) {
+  const resolved = useMemo(
+    () => observations
+      .filter(observation => observation.status === 'resolved' && !observation._pending)
+      .sort((a, b) => (b.updatedAt ?? b.observedAt ?? '').localeCompare(a.updatedAt ?? a.observedAt ?? '')),
+    [observations],
+  )
+
+  if (loading && observations.length === 0) {
+    return <p className={styles.empty}>Loading...</p>
+  }
+  if (resolved.length === 0) {
+    return (
+      <div className={styles.empty}>
+        <p>No resolved turf health issues.</p>
+        <p className={styles.emptyHint}>Resolved observations remain archived here and can be reopened.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className={styles.section}>
+      <ul className={styles.obsList}>
+        {resolved.map(observation => (
+          <ObservationRow
+            key={observation.id}
+            obs={observation}
+            attachmentsByParent={attachmentsByParent}
+            onOpenViewer={onOpenViewer}
+            onEdit={onEdit}
+            showStatus
           />
         ))}
       </ul>
@@ -321,6 +468,7 @@ function ObservationRow({
   obs,
   attachmentsByParent,
   onOpenViewer,
+  onEdit,
   onAddPhoto,
   onDelete,
   showStatus,
@@ -356,6 +504,9 @@ function ObservationRow({
             <span className={styles.obsStatus}>{STATUS_LABEL[obs.status] ?? obs.status}</span>
           )}
           <span className={styles.obsTime}>{fmtAgo(obs.observedAt)}</span>
+          {obs.followUpDate && (
+            <span className={styles.followUp}>Follow-up {fmtDate(obs.followUpDate)}</span>
+          )}
         </div>
         {(obs.surfaceNote || obs.notes) && (
           <p className={styles.obsNote}>{obs.surfaceNote || obs.notes}</p>
@@ -419,6 +570,13 @@ function ObservationRow({
           aria-label={obs._pending ? 'Discard pending observation' : 'Delete observation'}
           title={obs._pending ? 'Discard pending observation' : 'Delete observation'}
         >✕</button>
+      )}
+      {onEdit && (
+        <button
+          type="button"
+          className={styles.editButton}
+          onClick={() => onEdit(obs)}
+        >Edit</button>
       )}
     </li>
   )

@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { useRepairsData, patchRepair } from '../../../utils/repairs/repairsStore'
+import { useRepairsData, patchRepair, createRepair, deleteRepair } from '../../../utils/repairs/repairsStore'
+import { refreshInventoryData, useInventoryData } from '../../../utils/inventory/inventoryStore'
 import { useToast } from '../../../utils/feedback/toastContext'
 import { createAlert } from '../../../utils/alerts/alertsStore'
 import { createCalendarEvent } from '../../../utils/calendar/calendarStore'
@@ -13,8 +14,6 @@ import { getMediaByModule, getThumbnailBlob } from '../../../utils/media/mediaSt
 import ReportPreviewModal from '../../../components/reports/ReportPreviewModal'
 import { EmptyState } from '../../../components/shared/EmptyState'
 import styles from '../Irrigation.module.css'
-
-const WEEK_START = '2026-05-04'
 
 const STATUS_FILTERS = [
   { label: 'All',          value: 'All'          },
@@ -60,6 +59,114 @@ const SORT_STATUS      = { 'in-progress': 0, open: 1, 'parts-needed': 2, complet
 const SORT_PRIORITY    = { high: 0, medium: 1, low: 2 }
 const PRIORITY_CYCLE   = { high: 'medium', medium: 'low', low: 'high' }
 
+function todayKey() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function emptyRepairTicket() {
+  return {
+    issueType:    'broken-head',
+    area:         '',
+    hole:         '',
+    headNumber:   '',
+    description:  '',
+    priority:     'medium',
+    status:       'open',
+    assignedTo:   '',
+    laborHours:   '',
+    partsUsed:    [{ part: '', qty: '', cost: '' }],
+    dateReported: todayKey(),
+    notes:        '',
+  }
+}
+
+function parseOptionalNumber(value, label) {
+  if (value === '' || value == null) return null
+  const next = Number(value)
+  if (!Number.isFinite(next)) throw new Error(`${label} must be a number when set.`)
+  if (next < 0) throw new Error(`${label} cannot be negative.`)
+  return next
+}
+
+function cleanTicketParts(parts) {
+  return parts
+    .map(part => ({
+      inventoryItemId: part.inventoryItemId || null,
+      part: String(part.part ?? '').trim(),
+      qty:  parseOptionalNumber(part.qty, 'Part quantity'),
+      cost: parseOptionalNumber(part.cost, 'Part cost'),
+    }))
+    .filter(part => part.part || part.qty != null || part.cost != null)
+}
+
+function normalizePartLookup(value) {
+  return String(value ?? '').trim().replace(/\s+/g, ' ').toLowerCase()
+}
+
+function formatMoneyInput(value) {
+  const num = Number(value)
+  if (!Number.isFinite(num)) return ''
+  return num.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1')
+}
+
+function formatMoneyLabel(value) {
+  const num = Number(value)
+  if (!Number.isFinite(num)) return '$0.00'
+  return `$${num.toFixed(2)}`
+}
+
+function inventoryPartUnitPrice(item) {
+  const costPerUnit = Number(item?.costPerUnit)
+  if (Number.isFinite(costPerUnit) && costPerUnit >= 0) return costPerUnit
+
+  const containerPrice = Number(item?.containerPrice)
+  if (Number.isFinite(containerPrice) && containerPrice >= 0) return containerPrice
+
+  return null
+}
+
+function calculateInventoryPartCost(item, qty) {
+  const unitPrice = inventoryPartUnitPrice(item)
+  if (unitPrice == null) return null
+
+  if (qty === '' || qty == null) return null
+  const quantity = Number(qty)
+  if (!Number.isFinite(quantity) || quantity < 0) return null
+  return unitPrice * quantity
+}
+
+function partsTotal(parts = []) {
+  return parts.reduce((sum, part) => {
+    const cost = Number(part?.cost)
+    return sum + (Number.isFinite(cost) ? cost : 0)
+  }, 0)
+}
+
+function ticketFromRepair(repair) {
+  return {
+    ...emptyRepairTicket(),
+    issueType:    repair.issueType || 'broken-head',
+    area:         repair.area || '',
+    hole:         repair.hole == null ? '' : String(repair.hole),
+    headNumber:   repair.headNumber || '',
+    description:  repair.description || '',
+    priority:     repair.priority || 'medium',
+    status:       repair.status || 'open',
+    assignedTo:   repair.assignedTo || '',
+    laborHours:   repair.laborHours == null ? '' : String(repair.laborHours),
+    partsUsed:    repair.partsUsed?.length
+      ? repair.partsUsed.map(part => ({
+        inventoryItemId: part.inventoryItemId || null,
+        part: part.part || part.name || '',
+        qty:  part.qty == null ? '' : String(part.qty),
+        cost: part.cost == null ? '' : String(part.cost),
+      }))
+      : [{ part: '', qty: '', cost: '' }],
+    dateReported: repair.dateReported || todayKey(),
+    notes:        repair.notes || '',
+  }
+}
+
 function matchesArea(repair, area) {
   if (area === 'All')          return true
   if (area === 'Greens')       return repair.area.includes('Green')
@@ -72,6 +179,7 @@ function matchesArea(repair, area) {
 
 export default function Repairs() {
   const { repairs }                          = useRepairsData()
+  const { items: inventoryItems }             = useInventoryData()
   const toast                                = useToast()
   const [search,         setSearch]         = useState('')
   const [statusFilter,   setStatusFilter]   = useState('All')
@@ -84,7 +192,32 @@ export default function Repairs() {
   const [hoveredId,      setHoveredId]      = useState(null)
   const [expandedId,     setExpandedId]     = useState(null)
   const [reportThumbs,   setReportThumbs]   = useState([])
+  const [ticketOpen,     setTicketOpen]     = useState(false)
+  const [ticketForm,     setTicketForm]     = useState(() => emptyRepairTicket())
+  const [ticketSaving,   setTicketSaving]   = useState(false)
+  const [editingRepairId,setEditingRepairId]= useState(null)
   const attachSectionRef                     = useRef(null)
+
+  const irrigationPartOptions = useMemo(
+    () => inventoryItems
+      .filter(item => item.kind === 'irrigation' || item.kind === 'part')
+      .sort((a, b) => String(a.name).localeCompare(String(b.name))),
+    [inventoryItems],
+  )
+
+  const irrigationPartOptionsByName = useMemo(() => {
+    const options = new Map()
+    for (const part of irrigationPartOptions) {
+      options.set(normalizePartLookup(part.name), part)
+      if (part.partNumber) options.set(normalizePartLookup(part.partNumber), part)
+    }
+    return options
+  }, [irrigationPartOptions])
+
+  const ticketPartsTotal = useMemo(
+    () => partsTotal(ticketForm.partsUsed),
+    [ticketForm.partsUsed],
+  )
 
   function closeModal() {
     setSelected(null)
@@ -103,21 +236,22 @@ export default function Repairs() {
 
   // ── Inline action handlers ─────────────────────────────────────────────────
 
-  function handleMarkComplete(repair, e) {
+  async function changeRepairStatus(repair, status, e) {
     e.stopPropagation()
-    const isCompleted = repair.status === 'completed'
-    if (isCompleted) {
-      patchRepair(repair.repairId, { status: 'open', dateCompleted: null })
-        .then(() => toast.info('Repair reopened'))
-        .catch(err => toast.error?.(`Save failed: ${err.message}`))
-    } else {
-      patchRepair(repair.repairId, {
-        status:        'completed',
-        dateCompleted: new Date().toISOString().slice(0, 10),
+    try {
+      await patchRepair(repair.repairId, {
+        status,
+        dateCompleted: status === 'completed' ? (repair.dateCompleted || todayKey()) : null,
       })
-        .then(() => toast.success('Repair marked complete ✓'))
-        .catch(err => toast.error?.(`Save failed: ${err.message}`))
+      if (status === 'completed') await refreshInventoryData()
+      toast.success?.(`Repair moved to ${STATUS_META[status]?.label || status}.`)
+    } catch (err) {
+      toast.error?.(`Save failed: ${err.message}`)
     }
+  }
+
+  function handleMarkComplete(repair, e) {
+    return changeRepairStatus(repair, repair.status === 'completed' ? 'open' : 'completed', e)
   }
 
   function handleCyclePriority(repair, e) {
@@ -144,10 +278,189 @@ export default function Repairs() {
     setSelectedSection('attachments')
   }
 
+  function openNewTicket() {
+    setEditingRepairId(null)
+    setTicketForm(emptyRepairTicket())
+    setTicketOpen(true)
+  }
+
+  function openEditTicket(repair) {
+    setSelected(null)
+    setSelectedSection(null)
+    setEditingRepairId(repair.repairId)
+    setTicketForm(ticketFromRepair(repair))
+    setTicketOpen(true)
+  }
+
+  async function handleDeleteRepair(repair, e) {
+    e?.stopPropagation?.()
+    if (!window.confirm(`Delete irrigation repair ticket for ${repair.area || 'this repair'}?`)) return
+    try {
+      await deleteRepair(repair.repairId)
+      await refreshInventoryData()
+      if (selected?.repairId === repair.repairId) closeModal()
+      if (editingRepairId === repair.repairId) closeTicketForm()
+      toast.success?.('Irrigation repair ticket deleted.')
+    } catch (err) {
+      toast.error?.(`Delete failed: ${err.message ?? err}`)
+    }
+  }
+
   function handleCloseReport() {
     reportThumbs.forEach(url => URL.revokeObjectURL(url))
     setReportThumbs([])
     setActiveReport(null)
+  }
+
+  function updateTicketForm(patch) {
+    setTicketForm(prev => ({ ...prev, ...patch }))
+  }
+
+  function updateTicketPart(index, patch) {
+    setTicketForm(prev => ({
+      ...prev,
+      partsUsed: prev.partsUsed.map((part, partIndex) =>
+        partIndex === index ? { ...part, ...patch } : part,
+      ),
+    }))
+  }
+
+  function pricePatchForInventoryPart(currentPart, inventoryPart, qty = currentPart.qty) {
+    if (!inventoryPart) return {}
+    const nextQty = qty === '' || qty == null ? '' : qty
+    const nextCost = calculateInventoryPartCost(inventoryPart, nextQty)
+    return {
+      inventoryItemId: inventoryPart.id,
+      part: inventoryPart.name || currentPart.part,
+      qty:  nextQty,
+      cost: nextCost == null ? '' : formatMoneyInput(nextCost),
+    }
+  }
+
+  function findInventoryPart(partName, { allowPartial = false } = {}) {
+    const lookup = normalizePartLookup(partName)
+    if (!lookup) return null
+    const direct = irrigationPartOptionsByName.get(lookup)
+    if (direct) return direct
+    if (!allowPartial) return null
+    return irrigationPartOptions.find(part => {
+      const name = normalizePartLookup(part.name)
+      const partNumber = normalizePartLookup(part.partNumber)
+      return name.includes(lookup) || (partNumber && partNumber.includes(lookup))
+    }) ?? null
+  }
+
+  function chooseTicketPart(index, partName) {
+    setTicketForm(prev => ({
+      ...prev,
+      partsUsed: prev.partsUsed.map((part, partIndex) => {
+        if (partIndex !== index) return part
+        const next = { ...part, inventoryItemId: null, part: partName }
+        return { ...next, ...pricePatchForInventoryPart(next, findInventoryPart(partName)) }
+      }),
+    }))
+  }
+
+  function reconcileTicketPart(index, partName) {
+    setTicketForm(prev => ({
+      ...prev,
+      partsUsed: prev.partsUsed.map((part, partIndex) => {
+        if (partIndex !== index) return part
+        const next = { ...part, inventoryItemId: null, part: partName }
+        return { ...next, ...pricePatchForInventoryPart(next, findInventoryPart(partName, { allowPartial: true })) }
+      }),
+    }))
+  }
+
+  function changeTicketPartQty(index, qty) {
+    setTicketForm(prev => ({
+      ...prev,
+      partsUsed: prev.partsUsed.map((part, partIndex) => {
+        if (partIndex !== index) return part
+        const next = { ...part, qty }
+        return { ...next, ...pricePatchForInventoryPart(next, findInventoryPart(part.part), qty) }
+      }),
+    }))
+  }
+
+  function addTicketPart() {
+    setTicketForm(prev => ({
+      ...prev,
+      partsUsed: [...prev.partsUsed, { part: '', qty: '', cost: '' }],
+    }))
+  }
+
+  function removeTicketPart(index) {
+    setTicketForm(prev => ({
+      ...prev,
+      partsUsed: prev.partsUsed.length <= 1
+        ? [{ part: '', qty: '', cost: '' }]
+        : prev.partsUsed.filter((_, partIndex) => partIndex !== index),
+    }))
+  }
+
+  function closeTicketForm() {
+    if (ticketSaving) return
+    setTicketOpen(false)
+    setEditingRepairId(null)
+    setTicketForm(emptyRepairTicket())
+  }
+
+  async function saveRepairTicket(e) {
+    e?.preventDefault?.()
+    const area = ticketForm.area.trim()
+    const description = ticketForm.description.trim()
+    if (!area) {
+      toast.info?.('Area is required.')
+      return
+    }
+    if (!description) {
+      toast.info?.('Description is required.')
+      return
+    }
+
+    let laborHours
+    let partsUsed
+    let hole
+    try {
+      laborHours = parseOptionalNumber(ticketForm.laborHours, 'Labor hours') ?? 0
+      hole = parseOptionalNumber(ticketForm.hole, 'Hole')
+      partsUsed = cleanTicketParts(ticketForm.partsUsed)
+    } catch (err) {
+      toast.info?.(err.message)
+      return
+    }
+
+    setTicketSaving(true)
+    try {
+      const payload = {
+        issueType:    ticketForm.issueType,
+        area,
+        hole,
+        headNumber:   ticketForm.headNumber.trim() || null,
+        description,
+        priority:     ticketForm.priority,
+        status:       ticketForm.status,
+        assignedTo:   ticketForm.assignedTo.trim() || null,
+        laborHours,
+        partsUsed,
+        dateReported: ticketForm.dateReported || todayKey(),
+        notes:        ticketForm.notes.trim() || null,
+      }
+      if (editingRepairId) {
+        await patchRepair(editingRepairId, payload)
+        toast.success?.('Irrigation repair ticket updated.')
+      } else {
+        await createRepair(payload)
+        toast.success?.('Irrigation repair ticket added.')
+      }
+      if (ticketForm.status === 'completed') await refreshInventoryData()
+      closeTicketForm()
+    } catch (err) {
+      toast.error?.(`Ticket save failed: ${err.message ?? err}`)
+    } finally {
+      setTicketSaving(false)
+    }
   }
 
   async function generateRepairReport(repair) {
@@ -238,10 +551,11 @@ export default function Repairs() {
   }, [selected])
 
   const stats = useMemo(() => ({
-    open:              repairs.filter(r => r.status !== 'completed').length,
-    highPriority:      repairs.filter(r => r.priority === 'high' && r.status !== 'completed').length,
-    completedThisWeek: repairs.filter(r => r.status === 'completed' && r.dateCompleted >= WEEK_START).length,
-    partsNeeded:       repairs.filter(r => r.status === 'parts-needed').length,
+    all:         repairs.length,
+    open:        repairs.filter(r => r.status === 'open').length,
+    inProgress:  repairs.filter(r => r.status === 'in-progress').length,
+    partsNeeded: repairs.filter(r => r.status === 'parts-needed').length,
+    completed:   repairs.filter(r => r.status === 'completed').length,
   }), [repairs])
 
   const filtered = useMemo(() => {
@@ -271,27 +585,27 @@ export default function Repairs() {
       {/* ── Stat row ─────────────────────────────────────────────────────── */}
       <div className={styles.irStatRow}>
         <div className={styles.irStatCard}>
-          <span className={styles.irStatLabel}>Open Repairs</span>
+          <span className={styles.irStatLabel}>Open</span>
           <span className={`${styles.irStatValue} ${stats.open > 0 ? styles.irStatAmber : ''}`}>
             {stats.open}
           </span>
         </div>
         <div className={styles.irStatCard}>
-          <span className={styles.irStatLabel}>High Priority</span>
-          <span className={`${styles.irStatValue} ${stats.highPriority > 0 ? styles.irStatRed : ''}`}>
-            {stats.highPriority}
-          </span>
-        </div>
-        <div className={styles.irStatCard}>
-          <span className={styles.irStatLabel}>Completed This Week</span>
-          <span className={`${styles.irStatValue} ${styles.irStatGreen}`}>
-            {stats.completedThisWeek}
+          <span className={styles.irStatLabel}>In Progress</span>
+          <span className={`${styles.irStatValue} ${stats.inProgress > 0 ? styles.irStatAmber : ''}`}>
+            {stats.inProgress}
           </span>
         </div>
         <div className={styles.irStatCard}>
           <span className={styles.irStatLabel}>Parts Needed</span>
           <span className={`${styles.irStatValue} ${stats.partsNeeded > 0 ? styles.irStatRed : ''}`}>
             {stats.partsNeeded}
+          </span>
+        </div>
+        <div className={styles.irStatCard}>
+          <span className={styles.irStatLabel}>Completed</span>
+          <span className={`${styles.irStatValue} ${styles.irStatGreen}`}>
+            {stats.completed}
           </span>
         </div>
       </div>
@@ -305,6 +619,9 @@ export default function Repairs() {
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
+        <button className="opActionBtn" onClick={openNewTicket}>
+          + New Repair Ticket
+        </button>
         <button className="opActionBtn" onClick={generateSummaryReport}>
           Summary Report
         </button>
@@ -317,7 +634,9 @@ export default function Repairs() {
             key={value}
             className={`${styles.irChip} ${statusFilter === value ? styles.irChipActive : ''}`}
             onClick={() => setStatusFilter(value)}
-          >{label}</button>
+          >{label} ({value === 'All'
+            ? stats.all
+            : stats[value === 'in-progress' ? 'inProgress' : value === 'parts-needed' ? 'partsNeeded' : value]})</button>
         ))}
       </div>
 
@@ -404,9 +723,17 @@ export default function Repairs() {
                 </div>
 
                 <div className={styles.irCardRight}>
-                  <span className={`${styles.irStatusBadge} ${styles[sm.cls]}`}>
-                    {sm.label}
-                  </span>
+                  <select
+                    className={`${styles.irInlineStatusSelect} ${styles[sm.cls]}`}
+                    value={repair.status}
+                    onClick={e => e.stopPropagation()}
+                    onChange={e => changeRepairStatus(repair, e.target.value, e)}
+                    aria-label={`Status for ${issueLabel}`}
+                  >
+                    {STATUS_FILTERS.filter(option => option.value !== 'All').map(option => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
                   <span className={styles.irPriorityLabel} style={{ color: accent }}>
                     {repair.priority.charAt(0).toUpperCase() + repair.priority.slice(1)}
                   </span>
@@ -489,6 +816,19 @@ export default function Repairs() {
                       title: 'Add to Operations Calendar',
                     }] : []),
                     {
+                      id: 'edit',
+                      label: 'Edit',
+                      onClick: e => { e.stopPropagation(); openEditTicket(repair) },
+                      title: 'Edit repair ticket',
+                    },
+                    {
+                      id: 'delete',
+                      label: 'Delete',
+                      variant: 'danger',
+                      onClick: e => handleDeleteRepair(repair, e),
+                      title: 'Delete repair ticket',
+                    },
+                    {
                       id: 'report',
                       label: '📄 Report',
                       onClick: e => handleInlineReport(repair, e),
@@ -519,6 +859,156 @@ export default function Repairs() {
         )}
       </div>
 
+      {ticketOpen && (
+        <div className={styles.irModalOverlay} role="presentation">
+          <form className={styles.irTicketForm} onSubmit={saveRepairTicket}>
+            <header className={styles.irTicketHeader}>
+              <div>
+                <h2 className={styles.irModalTitle}>
+                  {editingRepairId ? 'Edit Irrigation Repair Ticket' : 'New Irrigation Repair Ticket'}
+                </h2>
+                <p className={styles.irModalSub}>Log heads, valves, leaks, wire, and pump station repairs.</p>
+              </div>
+              <button type="button" className={styles.irModalClose} onClick={closeTicketForm} disabled={ticketSaving}>
+                Close
+              </button>
+            </header>
+
+            <div className={styles.irTicketBody}>
+              <section className={styles.irModalSection}>
+                <p className={styles.irModalSectionTitle}>Ticket</p>
+                <div className={styles.irTicketGrid}>
+                  <label className={styles.irTicketField}>
+                    <span>Issue type</span>
+                    <select value={ticketForm.issueType} onChange={e => updateTicketForm({ issueType: e.target.value })} disabled={ticketSaving}>
+                      {Object.entries(ISSUE_TYPE_LABELS).map(([value, label]) => (
+                        <option key={value} value={value}>{label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className={styles.irTicketField}>
+                    <span>Status</span>
+                    <select value={ticketForm.status} onChange={e => updateTicketForm({ status: e.target.value })} disabled={ticketSaving}>
+                      {STATUS_FILTERS.filter(option => option.value !== 'All').map(option => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className={styles.irTicketField}>
+                    <span>Priority</span>
+                    <select value={ticketForm.priority} onChange={e => updateTicketForm({ priority: e.target.value })} disabled={ticketSaving}>
+                      {PRIORITY_FILTERS.filter(option => option.value !== 'All').map(option => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className={styles.irTicketField}>
+                    <span>Date reported</span>
+                    <input type="date" value={ticketForm.dateReported} onChange={e => updateTicketForm({ dateReported: e.target.value })} disabled={ticketSaving} />
+                  </label>
+                </div>
+              </section>
+
+              <section className={styles.irModalSection}>
+                <p className={styles.irModalSectionTitle}>Location</p>
+                <div className={styles.irTicketGrid}>
+                  <label className={styles.irTicketField}>
+                    <span>Area *</span>
+                    <input type="text" value={ticketForm.area} onChange={e => updateTicketForm({ area: e.target.value })} placeholder="Green 4, Pump Station, Hole 12" disabled={ticketSaving} />
+                  </label>
+                  <label className={styles.irTicketField}>
+                    <span>Hole</span>
+                    <input type="number" min="0" step="1" value={ticketForm.hole} onChange={e => updateTicketForm({ hole: e.target.value })} disabled={ticketSaving} />
+                  </label>
+                  <label className={styles.irTicketField}>
+                    <span>Head / valve #</span>
+                    <input type="text" value={ticketForm.headNumber} onChange={e => updateTicketForm({ headNumber: e.target.value })} disabled={ticketSaving} />
+                  </label>
+                </div>
+              </section>
+
+              <section className={styles.irModalSection}>
+                <p className={styles.irModalSectionTitle}>Work</p>
+                <label className={styles.irTicketField}>
+                  <span>Description *</span>
+                  <textarea rows={3} value={ticketForm.description} onChange={e => updateTicketForm({ description: e.target.value })} placeholder="What needs to be repaired?" disabled={ticketSaving} />
+                </label>
+                <div className={styles.irTicketGrid}>
+                  <label className={styles.irTicketField}>
+                    <span>Assigned to</span>
+                    <input type="text" value={ticketForm.assignedTo} onChange={e => updateTicketForm({ assignedTo: e.target.value })} disabled={ticketSaving} />
+                  </label>
+                  <label className={styles.irTicketField}>
+                    <span>Labor hours</span>
+                    <input type="number" min="0" step="0.25" value={ticketForm.laborHours} onChange={e => updateTicketForm({ laborHours: e.target.value })} disabled={ticketSaving} />
+                  </label>
+                </div>
+              </section>
+
+              <section className={styles.irModalSection}>
+                <div className={styles.irTicketSectionHeader}>
+                  <p className={styles.irModalSectionTitle}>Parts</p>
+                  <button type="button" onClick={addTicketPart} disabled={ticketSaving}>+ Add part</button>
+                </div>
+                {ticketForm.partsUsed.map((part, index) => (
+                  <div key={index} className={styles.irTicketPartRow}>
+                    <label className={styles.irTicketField}>
+                      <span>Part</span>
+                      <input
+                        list="irrigation-ticket-parts"
+                        value={part.part}
+                        onChange={e => chooseTicketPart(index, e.target.value)}
+                        onBlur={e => reconcileTicketPart(index, e.currentTarget.value)}
+                        disabled={ticketSaving}
+                      />
+                    </label>
+                    <label className={styles.irTicketField}>
+                      <span>Qty</span>
+                      <input type="number" min="0" step="0.01" value={part.qty} onChange={e => changeTicketPartQty(index, e.target.value)} disabled={ticketSaving} />
+                    </label>
+                    <label className={styles.irTicketField}>
+                      <span>Cost</span>
+                      <input type="number" min="0" step="0.01" value={part.cost} onChange={e => updateTicketPart(index, { cost: e.target.value })} disabled={ticketSaving} />
+                    </label>
+                    <button type="button" className={styles.irTicketRemoveBtn} onClick={() => removeTicketPart(index)} disabled={ticketSaving}>
+                      Remove
+                    </button>
+                  </div>
+                ))}
+                <datalist id="irrigation-ticket-parts">
+                  {irrigationPartOptions.map(item => (
+                    <option
+                      key={item.id}
+                      value={item.name}
+                      label={inventoryPartUnitPrice(item) == null ? (item.category || item.kind) : formatMoneyLabel(inventoryPartUnitPrice(item))}
+                    />
+                  ))}
+                </datalist>
+                <div className={styles.irTicketTotal}>
+                  <span>Parts total</span>
+                  <strong>{formatMoneyLabel(ticketPartsTotal)}</strong>
+                </div>
+              </section>
+
+              <section className={styles.irModalSection}>
+                <p className={styles.irModalSectionTitle}>Notes</p>
+                <label className={styles.irTicketField}>
+                  <span>Notes</span>
+                  <textarea rows={3} value={ticketForm.notes} onChange={e => updateTicketForm({ notes: e.target.value })} disabled={ticketSaving} />
+                </label>
+              </section>
+            </div>
+
+            <footer className={styles.irTicketFooter}>
+              <button type="button" className={styles.irModalClose} onClick={closeTicketForm} disabled={ticketSaving}>Cancel</button>
+              <button type="submit" className="opActionBtn" disabled={ticketSaving}>
+                {ticketSaving ? 'Saving...' : (editingRepairId ? 'Save Changes' : 'Save Ticket')}
+              </button>
+            </footer>
+          </form>
+        </div>
+      )}
+
       {/* ── Detail modal ─────────────────────────────────────────────────── */}
       {selected && (() => {
         const sm         = STATUS_META[selected.status] || { label: selected.status, cls: '' }
@@ -527,7 +1017,7 @@ export default function Repairs() {
         const repairTags = [selected.priority, selected.issueType, selected.area].filter(Boolean)
 
         return (
-          <div className={styles.irModalOverlay} onClick={closeModal}>
+          <div className={styles.irModalOverlay}>
             <div className={styles.irModalPanel} onClick={e => e.stopPropagation()}>
               <div className={styles.irModalAccent} style={{ background: accent }} />
               <div className={styles.irModalBody}>
@@ -615,13 +1105,20 @@ export default function Repairs() {
                       <div className={styles.irPartsHeader}>
                         <span className={styles.irPartsQtyHead}>Qty</span>
                         <span className={styles.irPartsNameHead}>Part / Material</span>
+                        <span className={styles.irPartsCostHead}>Cost</span>
                       </div>
                       {selected.partsUsed.map((p, i) => (
                         <div key={i} className={styles.irPartsRow}>
                           <span className={styles.irPartsQty}>{p.qty}</span>
                           <span className={styles.irPartsName}>{p.part}</span>
+                          <span className={styles.irPartsCost}>{p.cost != null ? formatMoneyLabel(p.cost) : '-'}</span>
                         </div>
                       ))}
+                      <div className={styles.irPartsRow}>
+                        <span className={styles.irPartsQty}></span>
+                        <span className={styles.irPartsName}><strong>Parts total</strong></span>
+                        <span className={styles.irPartsCost}><strong>{formatMoneyLabel(partsTotal(selected.partsUsed))}</strong></span>
+                      </div>
                     </div>
                   ) : (
                     <p className={styles.irNoParts}>No parts required.</p>
@@ -688,6 +1185,18 @@ export default function Repairs() {
                 </div>
 
                 <div className="opActionRow">
+                  <button
+                    className="opActionBtn"
+                    onClick={() => openEditTicket(selected)}
+                  >
+                    Edit Ticket
+                  </button>
+                  <button
+                    className={styles.irModalDeleteBtn}
+                    onClick={e => handleDeleteRepair(selected, e)}
+                  >
+                    Delete Ticket
+                  </button>
                   <button
                     className="opActionBtn"
                     onClick={() => generateRepairReport(selected)}

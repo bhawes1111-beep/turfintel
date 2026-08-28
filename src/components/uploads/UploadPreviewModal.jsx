@@ -13,7 +13,7 @@ import styles from './uploads.module.css'
  * Object URL is created on open and revoked on close or record change.
  *
  * @param {Object|null} record    - TurfMediaRecord to preview, or null (modal hidden)
- * @param {Function}    onClose   - Called when backdrop, ✕ button, or Escape is pressed
+ * @param {Function}    onClose   - Called when the close button or Escape is pressed
  * @param {Function}    [onDelete]- Called with record.id when delete is confirmed
  */
 export default function UploadPreviewModal({ record, onClose, onDelete }) {
@@ -75,7 +75,6 @@ export default function UploadPreviewModal({ record, onClose, onDelete }) {
   return (
     <div
       className={styles.modalOverlay}
-      onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-label={`Preview: ${record.filename}`}

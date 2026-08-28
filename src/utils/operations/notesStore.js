@@ -29,6 +29,7 @@ let state = {
   error:     null,
   lastFetch: null,
 }
+const disabledState = { ...state, loading: false, error: null }
 
 const subscribers = new Set()
 let hasBooted = false
@@ -126,11 +127,17 @@ function subscribe(cb) {
 }
 
 function getSnapshot() { return state }
+function getDisabledSnapshot() { return disabledState }
+function subscribeDisabled() { return () => {} }
 
 /**
  * useOperationsNotesData — read-only subscription.
  * Returns { notes, loading, error, lastFetch }.
  */
-export function useOperationsNotesData() {
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+export function useOperationsNotesData({ enabled = true } = {}) {
+  return useSyncExternalStore(
+    enabled ? subscribe : subscribeDisabled,
+    enabled ? getSnapshot : getDisabledSnapshot,
+    enabled ? getSnapshot : getDisabledSnapshot,
+  )
 }

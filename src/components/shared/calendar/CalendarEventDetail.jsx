@@ -4,7 +4,7 @@ import { resolveEventColor, EVENT_STATUS, MONTH_NAMES } from './calendarTokens'
 
 /**
  * Full-detail modal for a single calendar event.
- * Click the backdrop or press Escape to close.
+ * Use the close button or press Escape to close.
  *
  * Props:
  *   event   — event object from calendarTokens shape
@@ -36,7 +36,6 @@ export default function CalendarEventDetail({ event, onClose }) {
   return (
     <div
       className={styles.detailOverlay}
-      onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-label={event.title}

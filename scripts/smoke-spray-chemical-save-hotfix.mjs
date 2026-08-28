@@ -25,7 +25,7 @@
 // Worker pipeline (S.7b.2) unchanged — pinned here as regression
 // couples so any drift surfaces loud.
 
-import { readFileSync, readdirSync } from 'fs'
+import { readFileSync } from 'fs'
 
 let passed = 0, failed = 0
 function assert(cond, label, ctx) {
@@ -46,12 +46,9 @@ const REPORT     = readFileSync('src/utils/reports/reportBuilder.js',           
 // ── No D1 migration / no new endpoints / permission unchanged ─────
 section('No D1 migration / worker S.7b.2 path still intact')
 
-const migrationFiles = readdirSync('worker/migrations').filter(f => f.endsWith('.sql')).sort()
-assert(migrationFiles.includes('0054_shift_templates.sql'),
-  'regression: 0054_shift_templates.sql still in the ledger')
-const past0055 = migrationFiles.filter(f => /^00(5[6-9]|[6-9]\d|\d{3,})/.test(f))
-assert(past0055.length === 0,
-  `no migration past 0055 (found: ${past0055.join(', ') || 'none'})`)
+const STATUS_MIG = readFileSync('worker/migrations/0077_spray_status_inventory.sql', 'utf8')
+assert(/deduct_inventory/.test(STATUS_MIG),
+  'status-driven inventory migration remains in the ledger')
 
 // Permission unchanged.
 assert(/\['\/api\/sprays',\s*'canEditSprays'\]/.test(PERM),
@@ -85,10 +82,12 @@ assert(/UPDATE inventory_items SET quantity = \?/.test(replaceBody),
   'replaceSprayProducts() still restores + deducts inventory_items.quantity')
 assert(/UPDATE inventory_usage SET reverted_at = \?/.test(replaceBody),
   'replaceSprayProducts() still marks old usage rows reverted_at')
-assert(/INSERT INTO inventory_usage/.test(replaceBody),
-  'replaceSprayProducts() still inserts new inventory_usage rows')
-assert(/if \(p\.inventoryItemId && p\.quantityUsed != null && Number\(p\.quantityUsed\) > 0\)/.test(replaceBody),
-  'replaceSprayProducts() still guards deduction on inventoryItemId + quantityUsed > 0')
+assert(/await syncSprayInventoryForStatus\(env, id, finalStatus, finalDeductInventory\)/.test(SPRAYS_W),
+  'updateSpray() re-applies inventory through the status synchronizer')
+assert(/WHERE spray_record_id = \? AND inventory_item_id IS NOT NULL AND quantity_used > 0/.test(SPRAYS_W),
+  'status-driven deduction only reads linked products with positive quantities')
+assert(/INSERT INTO inventory_usage/.test(SPRAYS_W),
+  'status-driven deduction inserts inventory usage rows')
 
 // ── FIX 1: Sheet stale display — viewingRecordId pattern ──────────
 section('FIX 1: Sheet renders LIVE record (id-based lookup)')
@@ -173,11 +172,15 @@ assert(/await patchSpray\(record\.id, payload\)/.test(SHEET),
 
 // All critical fields still in payload. Phase S.7b.6 maps rate via
 // formatRateLabel(r.rate, r.rateUnit) and quantityUsed via r.totalUsed.
-for (const field of ['inventoryItemId', 'productCatalogId', 'name', 'unit']) {
+for (const field of ['inventoryItemId', 'productCatalogId']) {
   assert(new RegExp(`${field}:\\s*r\\.${field}|${field}:\\s*String\\(r\\.${field}\\)`).test(SHEET),
     `save payload includes ${field}`)
 }
-assert(/quantityUsed:\s+r\.totalUsed/.test(SHEET),
+assert(/name:\s+String\(r\.name\)\.trim\(\)/.test(SHEET),
+  'save payload includes the trimmed product name')
+assert(/unit:\s+quantityUnit/.test(SHEET),
+  'save payload stores the normalized inventory quantity unit')
+assert(/const quantityUsed = r\.totalUsed[\s\S]{0,180}normalized\.quantityUsed/.test(SHEET),
   'save payload maps totalUsed → quantityUsed (S.7b.6 rename)')
 assert(/rate:\s+r\.rate === '' \|\| r\.rate == null \? null : formatRateLabel/.test(SHEET),
   'save payload formats rate as label string (S.7b.6 — matches BuildSpraySheet commit shape)')

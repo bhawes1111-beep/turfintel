@@ -61,7 +61,7 @@ export default function PlantNutritionOverview() {
       <EmptyState
         icon="🌱"
         title="No nutrition data yet this season"
-        description="Seasonal N-P-K totals and recent applications appear here as you log nutrient applications (Applications tab) or apply fertilizer via Spray Records. Lab reports import from the Upload Center. No figures are shown until real records exist."
+        description="Seasonal N-P-K totals and recent applications appear here as you log nutrients or apply fertilizer through spray records. Lab reports live together under Lab Reports. No figures are shown until real records exist."
       />
     )
   }
@@ -76,7 +76,7 @@ export default function PlantNutritionOverview() {
       <InfoCard title="Recent Applications">
         {result.applications.length === 0 ? (
           <p style={{ color: 'var(--color-text-muted)', fontSize: 13, margin: 0 }}>
-            No nutrient applications yet — log one in the Applications tab or apply fertilizer via Spray Records.
+            No nutrient applications yet — log one in Log Nutrients or apply fertilizer via Spray Records.
           </p>
         ) : (
           <div>

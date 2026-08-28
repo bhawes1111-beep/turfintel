@@ -1,0 +1,53 @@
+{
+  "version": "yara-tropicote-50lb-label-2025-01",
+  "generatedAt": "2026-08-08",
+  "source": "Yara official YaraLiva Tropicote 50 lb guaranteed-analysis label and product page",
+  "notes": "Catalog record transcribed from the official manufacturer label supplied by the user and checked against Yara's official product page.",
+  "products": [
+    {
+      "product_name": "YARALIVA TROPICOTE 15.5-0-0",
+      "brand_owner": "YaraLiva",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Granular calcium nitrate fertilizer; 90% of particles 2-4 mm",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Calcium nitrate fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 15.5
+        },
+        {
+          "name": "Nitrate Nitrogen",
+          "percentage": 14.5
+        },
+        {
+          "name": "Ammoniacal Nitrogen",
+          "percentage": 1
+        },
+        {
+          "name": "Calcium (Ca)",
+          "percentage": 19
+        }
+      ],
+      "fertilizer_analysis": "15.5-0-0; Total Nitrogen (N) 15.5%: 14.5% nitrate nitrogen and 1.0% ammoniacal nitrogen; Calcium (Ca) 19.0%",
+      "rates": [],
+      "targets": [
+        "Nitrogen nutrition",
+        "Calcium nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": "Danger",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.yara.us/contentassets/280676bbae1c466799e9d22b57225584/yaraliva-tropicote-50lb-label.pdf",
+      "notes": "Dry, free-flowing granular calcium nitrate fertilizer derived from ammonium calcium nitrate double salt. The 50 lb label guarantees 15.5% total N (14.5% nitrate N and 1.0% ammoniacal N) and 19.0% calcium. Yara identifies it as chloride-free and intended for field application. The label provides no universal application rate and directs use according to a qualified recommendation or approved nutrient-management plan. Keep dry and use clean, dry, well-maintained equipment. Do not apply near water, storm drains, drainage ditches, impervious surfaces, or when heavy rain is expected.",
+      "status": "active"
+    }
+  ]
+}

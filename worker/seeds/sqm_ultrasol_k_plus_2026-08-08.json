@@ -1,0 +1,45 @@
+{
+  "version": "sqm-ultrasol-k-plus-label-2025-02",
+  "generatedAt": "2026-08-08",
+  "source": "SQM official Ultrasol K Plus guaranteed-analysis label",
+  "notes": "Catalog record transcribed from the official manufacturer label supplied by the user.",
+  "products": [
+    {
+      "product_name": "ULTRASOL K PLUS",
+      "brand_owner": "SQM",
+      "manufacturer": "SQM North America Corporation",
+      "epa_number": null,
+      "formulation": "Water-soluble potassium nitrate crystals",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Potassium nitrate fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Nitrate Nitrogen",
+          "percentage": 13
+        },
+        {
+          "name": "Soluble Potash (K2O)",
+          "percentage": 46
+        }
+      ],
+      "fertilizer_analysis": "13-0-46; Total Nitrogen (N) 13.0% from nitrate nitrogen; Soluble Potash (K2O) 46.0%",
+      "rates": [],
+      "targets": [
+        "Nitrogen nutrition",
+        "Potassium nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://cms.sqmnutrition.com/wp-content/uploads/2025/02/Ultrasol-K-Plus_Label.pdf",
+      "notes": "13-0-46 non-acid-forming potassium nitrate crystals derived from potassium nitrate. All 13% nitrogen is nitrate nitrogen; soluble potash is 46% K2O. Official label lists a 50 lb net package and directs use according to a qualified nutrient recommendation or approved nutrient-management plan; it does not publish a universal application rate.",
+      "status": "active"
+    }
+  ]
+}

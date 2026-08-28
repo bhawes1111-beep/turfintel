@@ -245,6 +245,7 @@ const ICONS = {
 
 const NAV_TREE = [
   { id: 'dashboard',     label: 'Dashboard',           icon: 'dashboard',     to: '/dashboard'      },
+  { id: 'to-do-list',    label: 'To Do List',          icon: 'assignments',   to: '/to-do-list'     },
   // Phase 6A.1 — Morning Brief promoted from a tab inside Operations to a
   // top-level route + sidebar entry. Highest-value 5:30am surface; deserves
   // a one-click landing. The legacy tab inside /crew remains for back-compat.
@@ -256,8 +257,8 @@ const NAV_TREE = [
   // Phase 7B.1 — Turf Health vertical (shade, airflow, weak turf, chronic
   // stress). Peer to Disease / Plant Nutrition / Cultural Practices; lives
   // at top level so the FAB-routed capture flow has a workspace home.
+  { id: 'sprays',     label: 'Applications', icon: 'spray',      to: '/spray'      },
   { id: 'turf-health', label: 'Turf Health', icon: 'turf-health', to: '/turf-health' },
-  { id: 'sprays',     label: 'Sprays',     icon: 'spray',      to: '/spray'      },
   { id: 'irrigation', label: 'Irrigation', icon: 'irrigation', to: '/irrigation' },
   { id: 'equipment',  label: 'Equipment',  icon: 'equipment',  to: '/equipment'  },
   { id: 'inventory',  label: 'Inventory',  icon: 'inventory',  to: '/inventory'  },
@@ -280,13 +281,15 @@ const CROSSWINDS_COURSE_ID = 'crossroads-gc'
 
 const NAV_TREE_CROSSWINDS = [
   { id: 'dashboard',     label: 'Dashboard',     icon: 'dashboard',     to: '/dashboard'      },
+  { id: 'to-do-list',    label: 'To Do List',    icon: 'assignments',   to: '/to-do-list'     },
   // Phase 8A.2 made Crosswinds default the /crew workspace to its
   // Assignments tab. Relabel the entry so the nav matches the landing.
   { id: 'assignments',   label: 'Assignments',   icon: 'operations',    to: '/crew'           },
   { id: 'display-board', label: 'Display Board', icon: 'display',       to: '/display-board'  },
-  { id: 'spray',         label: 'Spray',         icon: 'spray',         to: '/spray'          },
+  { id: 'spray',         label: 'Applications',  icon: 'spray',         to: '/spray'          },
   { id: 'inventory',     label: 'Inventory',     icon: 'inventory',     to: '/inventory'      },
   { id: 'equipment',     label: 'Equipment',     icon: 'equipment',     to: '/equipment'      },
+  { id: 'turf-health',   label: 'Turf Health',   icon: 'turf-health',   to: '/turf-health'    },
   { id: 'irrigation',    label: 'Irrigation',    icon: 'irrigation',    to: '/irrigation'     },
   { id: 'settings',      label: 'Settings',      icon: 'settings',      to: '/settings'       },
   // Collapsible "More" group — secondary surfaces. Children keep their
@@ -299,7 +302,6 @@ const NAV_TREE_CROSSWINDS = [
       { id: 'morning-brief', label: 'Morning Brief', icon: 'morning-brief',   to: '/morning-brief' },
       { id: 'weather',       label: 'Weather',       icon: 'weather',         to: '/weather'       },
       { id: 'activity',      label: 'Activity',      icon: 'activity',        to: '/activity'      },
-      { id: 'turf-health',   label: 'Turf Health',   icon: 'turf-health',     to: '/turf-health'   },
       { id: 'reports',       label: 'Reports',       icon: 'reports',         to: '/reports'       },
       { id: 'disease',       label: 'Disease',       icon: 'agronomy',        to: '/disease'       },
       { id: 'employees',     label: 'Employees',     icon: 'crew',            to: '/employees'     },
@@ -583,3 +585,5 @@ export default function Sidebar({ isOpen, onClose }) {
     </>
   )
 }
+
+

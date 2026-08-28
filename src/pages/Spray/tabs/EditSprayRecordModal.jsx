@@ -23,6 +23,15 @@
 import { useEffect, useState } from 'react'
 import { patchSpray, refreshSpraysData } from '../../../utils/sprays/spraysStore'
 import { useToast } from '../../../utils/feedback/toastContext'
+import { useEquipmentData } from '../../../utils/equipment/equipmentStore'
+import { useNutrientSamplesData } from '../../../utils/turfHealth/nutrientSamplesStore'
+import {
+  CARRIER_RATE_UNITS,
+  calculateCarrierGallons,
+  formatCarrierSummary,
+  parseCarrierRate,
+  sumApplicationAcres,
+} from '../../../utils/sprays/carrierRate'
 import styles from '../Spray.module.css'
 
 // Whitelist of fields the modal sends in the PATCH body. Matches the
@@ -42,14 +51,34 @@ const WIND_DIRECTIONS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
 // echo back a value that should remain frozen at write time.
 function buildPatchPayload(formState) {
   const payload = {
+    applicationName:   formState.applicationName.trim() || null,
+    applicationType:   formState.applicationType,
+    equipmentId:       formState.equipmentId || null,
+    equipmentName:     formState.equipmentName || null,
+    tankCapacity:      formState.applicationType === 'granular' || formState.tankCapacity === '' ? null : Number(formState.tankCapacity),
     date:              formState.date              || null,
     startTime:         formState.startTime         || null,
     endTime:           formState.endTime           || null,
     applicator:        formState.applicator        || null,
+    nutrientSampleId:  formState.nutrientSampleId  || null,
     applicatorLicense: formState.applicatorLicense?.trim() || null,
     targetPest:        formState.targetPest        || null,
     status:            formState.status            || null,
+    deductInventory:   formState.deductInventory,
     notes:             formState.notes             || null,
+    course:            formState.course.trim() || null,
+    rei:               formState.rei === '' ? null : Number(formState.rei),
+    phi:               formState.phi === '' ? null : Number(formState.phi),
+    carrierVolume:     formState.applicationType === 'granular'
+      ? null
+      : formatCarrierSummary(formState.carrierRate, formState.carrierUnit, formState.totalVolume),
+    totalVolume:       formState.applicationType === 'granular' || formState.totalVolume === '' ? null : Number(formState.totalVolume),
+    irrigationInches:  formState.irrigationInches === '' ? null : Number(formState.irrigationInches),
+    irrigationMinutes: formState.irrigationMinutes === '' ? null : Number(formState.irrigationMinutes),
+    holes:             formState.holesText.split(',').map(value => value.trim()).filter(Boolean).map(value => {
+      const numeric = Number(value)
+      return Number.isFinite(numeric) ? numeric : value
+    }),
     conditions: {
       temp:           formState.temp           === '' ? null : Number(formState.temp),
       wind:           formState.wind           || null,
@@ -75,6 +104,8 @@ function buildPatchPayload(formState) {
 
 export default function EditSprayRecordModal({ record, onClose, onSaved }) {
   const toast = useToast()
+  const { equipment } = useEquipmentData()
+  const { samples: nutrientSamples } = useNutrientSamplesData()
   const [busy, setBusy] = useState(false)
 
   // Seed form from the record. Conditions live in a nested object
@@ -82,15 +113,41 @@ export default function EditSprayRecordModal({ record, onClose, onSaved }) {
   // Phase S.7c — Areas seeded from record.areas. areasTouched starts
   // false; any add/edit/remove flips it so buildPatchPayload includes
   // the areas array on the PATCH.
-  const [form, setForm] = useState(() => ({
+  const [form, setForm] = useState(() => {
+    const initialAreas = Array.isArray(record.areas) && record.areas.length > 0
+      ? record.areas.map(a => ({ name: a.name ?? '', acreage: a.acreage ?? '' }))
+      : [{ name: '', acreage: '' }]
+    const initialCarrier = parseCarrierRate(
+      record.carrierVolume,
+      record.totalVolume,
+      sumApplicationAcres(initialAreas),
+    )
+
+    return ({
+    applicationName:   record.applicationName   ?? '',
+    applicationType:   record.applicationType   ?? (String(record.applicationName ?? record.carrierVolume ?? '').toLowerCase().includes('granular') ? 'granular' : 'liquid'),
+    equipmentId:       record.equipmentId       ?? '',
+    equipmentName:     record.equipmentName     ?? '',
+    tankCapacity:      record.tankCapacity      ?? '',
     date:              record.date              ?? '',
     startTime:         record.startTime         ?? '',
     endTime:           record.endTime           ?? '',
     applicator:        record.applicator        ?? '',
+    nutrientSampleId:  record.nutrientSampleId  ?? '',
     applicatorLicense: record.applicatorLicense ?? '',
     targetPest:        record.targetPest        ?? '',
     status:            record.status            ?? 'completed',
+    deductInventory:   record.deductInventory   !== false,
     notes:             record.notes             ?? '',
+    course:            record.course            ?? '',
+    rei:               record.rei               ?? '',
+    phi:               record.phi               ?? '',
+    carrierRate:       initialCarrier.rate,
+    carrierUnit:       initialCarrier.unit,
+    totalVolume:       record.totalVolume       ?? '',
+    irrigationInches:  record.irrigationInches  ?? '',
+    irrigationMinutes: record.irrigationMinutes ?? '',
+    holesText:         Array.isArray(record.holes) ? record.holes.join(', ') : '',
     temp:              record.conditions?.temp          ?? '',
     wind:              record.conditions?.wind          ?? '',
     windSpeedMph:      record.conditions?.windSpeedMph  ?? '',
@@ -99,11 +156,9 @@ export default function EditSprayRecordModal({ record, onClose, onSaved }) {
     soilTemp:          record.conditions?.soilTemp      ?? '',
     // Areas: each row { name, acreage }. Always at least one slot so
     // the user has somewhere to type when a record loaded with none.
-    areas:             Array.isArray(record.areas) && record.areas.length > 0
-      ? record.areas.map(a => ({ name: a.name ?? '', acreage: a.acreage ?? '' }))
-      : [{ name: '', acreage: '' }],
+    areas:             initialAreas,
     areasTouched:      false,
-  }))
+  })})
 
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape' && !busy) onClose() }
@@ -112,17 +167,44 @@ export default function EditSprayRecordModal({ record, onClose, onSaved }) {
   }, [onClose, busy])
 
   function setField(key, value) {
-    setForm(prev => ({ ...prev, [key]: value }))
+    setForm(prev => {
+      if (key === 'carrierRate' || key === 'carrierUnit') {
+        const carrierRate = key === 'carrierRate' ? value : prev.carrierRate
+        const carrierUnit = key === 'carrierUnit' ? value : prev.carrierUnit
+        const total = calculateCarrierGallons(carrierRate, carrierUnit, sumApplicationAcres(prev.areas))
+        return {
+          ...prev,
+          [key]: value,
+          totalVolume: total == null ? prev.totalVolume : String(Number(total.toFixed(2))),
+        }
+      }
+      return { ...prev, [key]: value }
+    })
+  }
+
+  function selectEquipment(id) {
+    const unit = equipment.find(item => item.id === id)
+    setForm(prev => ({
+      ...prev,
+      equipmentId: id,
+      equipmentName: unit?.name ?? '',
+      tankCapacity: unit?.tankCapacityGal ?? unit?.tankCapacity ?? prev.tankCapacity,
+    }))
   }
 
   // Phase S.7c — Area-row handlers. Any touch flips areasTouched
   // so buildPatchPayload sends the areas array on save.
   function patchArea(i, patch) {
-    setForm(prev => ({
-      ...prev,
-      areasTouched: true,
-      areas: prev.areas.map((a, idx) => idx === i ? { ...a, ...patch } : a),
-    }))
+    setForm(prev => {
+      const areas = prev.areas.map((a, idx) => idx === i ? { ...a, ...patch } : a)
+      const total = calculateCarrierGallons(prev.carrierRate, prev.carrierUnit, sumApplicationAcres(areas))
+      return {
+        ...prev,
+        areasTouched: true,
+        areas,
+        totalVolume: total == null ? prev.totalVolume : String(Number(total.toFixed(2))),
+      }
+    })
   }
   function addArea() {
     setForm(prev => ({
@@ -132,11 +214,16 @@ export default function EditSprayRecordModal({ record, onClose, onSaved }) {
     }))
   }
   function removeArea(i) {
-    setForm(prev => ({
-      ...prev,
-      areasTouched: true,
-      areas: prev.areas.filter((_, idx) => idx !== i),
-    }))
+    setForm(prev => {
+      const areas = prev.areas.filter((_, idx) => idx !== i)
+      const total = calculateCarrierGallons(prev.carrierRate, prev.carrierUnit, sumApplicationAcres(areas))
+      return {
+        ...prev,
+        areasTouched: true,
+        areas,
+        totalVolume: total == null ? prev.totalVolume : String(Number(total.toFixed(2))),
+      }
+    })
   }
 
   async function handleSave() {
@@ -152,6 +239,17 @@ export default function EditSprayRecordModal({ record, onClose, onSaved }) {
     if (form.endTime && !/^\d{2}:\d{2}$/.test(form.endTime)) {
       toast.error('End time must be HH:MM.')
       return
+    }
+    for (const [label, value] of [
+      ['Tank capacity', form.tankCapacity], ['REI', form.rei], ['PHI', form.phi],
+      ['Carrier rate', form.carrierRate],
+      ['Total volume', form.totalVolume], ['Irrigation inches', form.irrigationInches],
+      ['Irrigation minutes', form.irrigationMinutes],
+    ]) {
+      if (value !== '' && (!Number.isFinite(Number(value)) || Number(value) < 0)) {
+        toast.error(`${label} must be zero or greater.`)
+        return
+      }
     }
     // Phase S.7c — Area validation (only when user touched the section).
     if (form.areasTouched) {
@@ -191,10 +289,9 @@ export default function EditSprayRecordModal({ record, onClose, onSaved }) {
   return (
     <div
       className={styles.modalOverlay}
-      onClick={() => { if (!busy) onClose() }}
       role="dialog"
       aria-modal="true"
-      aria-label="Edit spray record"
+      aria-label="Edit application record"
     >
       <div
         className={styles.modalPanel}
@@ -208,7 +305,7 @@ export default function EditSprayRecordModal({ record, onClose, onSaved }) {
 
         <div className={styles.modalHeader}>
           <div>
-            <h2 className={styles.modalTitle}>Edit Spray Record</h2>
+            <h2 className={styles.modalTitle}>Edit Application Record</h2>
             <p className={styles.modalSubtitle}>
               {(record.products ?? []).map(p => p.name).join(' + ') || '(no products)'} · {record.date}
             </p>
@@ -228,6 +325,44 @@ export default function EditSprayRecordModal({ record, onClose, onSaved }) {
           <section className={styles.modalSection}>
             <h3 className={styles.modalSectionTitle}>Application details</h3>
             <div className={styles.editFieldGrid}>
+              <label className={`${styles.editField} ${styles.editFieldWide}`}>
+                <span>Application name</span>
+                <input type="text" value={form.applicationName} onChange={e => setField('applicationName', e.target.value)} disabled={busy} />
+              </label>
+              <label className={styles.editField}>
+                <span>Application type</span>
+                <select value={form.applicationType} onChange={e => setField('applicationType', e.target.value)} disabled={busy}>
+                  <option value="liquid">Liquid</option>
+                  <option value="granular">Granular</option>
+                </select>
+              </label>
+              <label className={styles.editField}>
+                <span>Application equipment</span>
+                <select value={form.equipmentId} onChange={e => selectEquipment(e.target.value)} disabled={busy}>
+                  <option value="">Unassigned</option>
+                  {equipment.map(unit => <option key={unit.id} value={unit.id}>{unit.name}</option>)}
+                </select>
+              </label>
+              <label className={styles.editField}>
+                <span>Tank capacity (gal)</span>
+                <input type="number" min="0" step="0.1" value={form.tankCapacity} onChange={e => setField('tankCapacity', e.target.value)} disabled={busy || form.applicationType === 'granular'} />
+              </label>
+              <label className={styles.editField}>
+                <span>Course label</span>
+                <input type="text" value={form.course} onChange={e => setField('course', e.target.value)} disabled={busy} />
+              </label>
+              <label className={styles.editField}>
+                <span>Nutrient sample</span>
+                <select value={form.nutrientSampleId} onChange={e => setField('nutrientSampleId', e.target.value)} disabled={busy}>
+                  <option value="">Not linked</option>
+                  {form.nutrientSampleId && !nutrientSamples.some(sample => sample.id === form.nutrientSampleId) && (
+                    <option value={form.nutrientSampleId}>Linked sample (unavailable)</option>
+                  )}
+                  {nutrientSamples.map(sample => (
+                    <option key={sample.id} value={sample.id}>{sample.sampleDate} / {sample.location} / {sample.sampleType}</option>
+                  ))}
+                </select>
+              </label>
               <label className={styles.editField}>
                 <span>Date</span>
                 <input
@@ -247,6 +382,17 @@ export default function EditSprayRecordModal({ record, onClose, onSaved }) {
                   {STATUS_OPTIONS.map(o => (
                     <option key={o.value} value={o.value}>{o.label}</option>
                   ))}
+                </select>
+              </label>
+              <label className={styles.editField}>
+                <span>Inventory on completion</span>
+                <select
+                  value={form.deductInventory ? 'deduct' : 'keep'}
+                  onChange={e => setField('deductInventory', e.target.value === 'deduct')}
+                  disabled={busy}
+                >
+                  <option value="deduct">Deduct products when completed</option>
+                  <option value="keep">Do not deduct inventory</option>
                 </select>
               </label>
               <label className={styles.editField}>
@@ -296,10 +442,43 @@ export default function EditSprayRecordModal({ record, onClose, onSaved }) {
                   disabled={busy}
                 />
               </label>
+              <label className={styles.editField}>
+                <span>REI (hours)</span>
+                <input type="number" min="0" step="1" value={form.rei} onChange={e => setField('rei', e.target.value)} disabled={busy} />
+              </label>
+              <label className={styles.editField}>
+                <span>PHI (days)</span>
+                <input type="number" min="0" step="1" value={form.phi} onChange={e => setField('phi', e.target.value)} disabled={busy} />
+              </label>
+              <label className={styles.editField}>
+                <span>Carrier rate (GPA)</span>
+                <input type="number" min="0" step="0.1" value={form.carrierRate} onChange={e => setField('carrierRate', e.target.value)} disabled={busy || form.applicationType === 'granular'} />
+              </label>
+              <label className={styles.editField}>
+                <span>Carrier rate unit</span>
+                <select value={form.carrierUnit} onChange={e => setField('carrierUnit', e.target.value)} disabled={busy || form.applicationType === 'granular'}>
+                  {CARRIER_RATE_UNITS.map(option => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </label>
+              <label className={styles.editField}>
+                <span>Total volume (gal)</span>
+                <input type="number" min="0" step="0.1" value={form.totalVolume} onChange={e => setField('totalVolume', e.target.value)} disabled={busy || form.applicationType === 'granular'} />
+              </label>
+              <label className={styles.editField}>
+                <span>Irrigation (inches)</span>
+                <input type="number" min="0" step="0.01" value={form.irrigationInches} onChange={e => setField('irrigationInches', e.target.value)} disabled={busy} />
+              </label>
+              <label className={styles.editField}>
+                <span>Irrigation (minutes)</span>
+                <input type="number" min="0" step="1" value={form.irrigationMinutes} onChange={e => setField('irrigationMinutes', e.target.value)} disabled={busy} />
+              </label>
+              <label className={styles.editField}>
+                <span>Holes</span>
+                <input type="text" value={form.holesText} onChange={e => setField('holesText', e.target.value)} disabled={busy} placeholder="1, 2, 3" />
+              </label>
             </div>
-            <p className={styles.editHint}>
-              Area / acreage edits will be handled in a later phase to preserve the original area snapshot.
-            </p>
           </section>
 
           {/* ── Weather ── */}

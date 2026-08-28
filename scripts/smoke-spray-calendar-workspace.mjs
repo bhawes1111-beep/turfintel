@@ -63,9 +63,9 @@ section('No D1 migration / no worker churn')
 const migrationFiles = readdirSync('worker/migrations').filter(f => f.endsWith('.sql')).sort()
 assert(migrationFiles.includes('0054_shift_templates.sql'),
   'regression: 0054_shift_templates.sql still in the ledger')
-const past0055 = migrationFiles.filter(f => /^00(5[6-9]|[6-9]\d|\d{3,})/.test(f))
-assert(past0055.length === 0,
-  `no migration past 0055 (found: ${past0055.join(', ') || 'none'})`)
+const past0070 = migrationFiles.filter(f => /^00(7[1-9]|[8-9]\d|\d{3,})/.test(f))
+assert(past0070.length === 0,
+  `no migration past 0070 (found: ${past0070.join(', ') || 'none'})`)
 
 for (const path of [
   // Phase S.7b.2 — worker/api/sprays.js gained product-edit support;
@@ -110,8 +110,8 @@ assert(/^export default function SprayCalendarWorkspace\(\{\s*onStartNewSpray\s*
 assert(CW_CSS.length > 500, 'CSS module has substantive content')
 
 // Imports reuse existing stores + the shared Needs Info helper.
-assert(/import \{ useSpraysData, refreshSpraysData \} from '\.\.\/\.\.\/\.\.\/utils\/sprays\/spraysStore'/.test(CW),
-  'imports useSpraysData + refreshSpraysData from existing store')
+assert(/import \{ useSpraysData, refreshSpraysData, patchSpray \} from '\.\.\/\.\.\/\.\.\/utils\/sprays\/spraysStore'/.test(CW),
+  'imports useSpraysData + refreshSpraysData + narrow patchSpray from existing store')
 assert(/useSprayPrograms,\s*\n?\s*refreshSprayPrograms,\s*\n?\s*listSprayProgramItems,/.test(CW),
   'imports useSprayPrograms + refreshSprayPrograms + listSprayProgramItems')
 assert(/import \{ recordNeedsInfo \} from '\.\.\/\.\.\/\.\.\/utils\/sprays\/recordNeedsInfo'/.test(CW),
@@ -127,9 +127,9 @@ assert(/import SprayCalendarWorkspace from '\.\/tabs\/SprayCalendarWorkspace'/.t
 
 // Phase SPR.2 — Course-specific fork removed. Single 'Today' tab
 // mounts <SprayCalendarWorkspace onStartNewSpray={goToNewApplication} />.
-const sprayCalendarMounts = SP.match(/activeTab === 'Today'[\s\S]{0,200}<SprayCalendarWorkspace\s+onStartNewSpray=\{goToNewApplication\}/g) ?? []
+const sprayCalendarMounts = SP.match(/activeTab === 'Calendar'[\s\S]{0,200}<SprayCalendarWorkspace\s+onStartNewSpray=\{goToNewApplication\}/g) ?? []
 assert(sprayCalendarMounts.length === 1,
-  `single 'Today' tab mounts <SprayCalendarWorkspace onStartNewSpray={goToNewApplication} /> (found ${sprayCalendarMounts.length}) [SPR.2]`)
+  `single 'Calendar' tab mounts <SprayCalendarWorkspace onStartNewSpray={goToNewApplication} /> (found ${sprayCalendarMounts.length}) [SPR.2]`)
 
 // Negative pin — the old <SprayWorkspace onNavigateTab=…/> mounts are gone.
 assert(!/<SprayWorkspace onNavigateTab=/.test(SP),
@@ -138,8 +138,8 @@ assert(!/<SprayWorkspace onNavigateTab=/.test(SP),
 // Phase SPR.2 — Default activeTab renamed from 'Workspace' to 'Today'
 // (unified tab list). Landing behavior unchanged — Today still mounts
 // SprayCalendarWorkspace.
-assert(/resolveInitialTab\(['"]Today['"]\)/.test(SP),
-  "activeTab defaults to 'Today' (SPR.2 unified label; landing on the calendar workspace)")
+assert(/resolveInitialTab\(['"]Calendar['"]\)/.test(SP),
+  "activeTab defaults to 'Calendar' (landing on the calendar workspace)")
 
 // Phase SPR.2 — Legacy SprayWorkspace.jsx DELETED (dead code, superseded
 // by SprayCalendarWorkspace).
@@ -233,7 +233,7 @@ assert(/countChipPlanned/.test(CW) && /countChipPlanned/.test(CW_CSS),
   'planned count chip ("N planned") rendered + styled')
 
 // Needs-info chip uses the shared S.6a helper.
-assert(/needsInfoCount = recs\.filter\(recordNeedsInfo\)/.test(CW),
+assert(/needsInfoCount = completedRecs\.filter\(recordNeedsInfo\)/.test(CW),
   'Needs Info badge driven by shared recordNeedsInfo helper')
 assert(/needsInfoBadge/.test(CW) && /needsInfoBadge/.test(CW_CSS),
   '.needsInfoBadge rendered + styled')
@@ -243,14 +243,16 @@ section('Selected-day panel — completed + planned + empty state')
 
 assert(/\{formatDayLabel\(selectedDate\)\}/.test(CW),
   'panel header renders full weekday+date via formatDayLabel')
-assert(/No sprays logged or planned for this date\./.test(CW),
+assert(/No applications logged or planned for this date\./.test(CW),
   'empty state copy per spec')
 
 // Both blocks render conditionally.
-assert(/selectedRecords\.length > 0 &&/.test(CW),
-  'Completed block rendered when selectedRecords.length > 0')
-assert(/selectedPlanned\.length > 0 &&/.test(CW),
-  'Planned block rendered when selectedPlanned.length > 0')
+assert(/selectedCompletedRecords\.length > 0 &&/.test(CW),
+  'Completed block rendered when selectedCompletedRecords.length > 0')
+assert(/selectedPlannedCount > 0 &&/.test(CW),
+  'Planned block rendered when selectedPlannedCount > 0')
+assert(/return names\.join\(', '\)/.test(CW) && /productSummaryLine/.test(CW) && /productSummaryLine/.test(CW_CSS),
+  'bottom detail panel shows the full product list without truncating chemicals')
 
 // Row metadata includes program name from planned items.
 assert(/item\.programName/.test(CW),
@@ -299,8 +301,21 @@ assert(/activeTab === 'New Application' && <BuildSpraySheet \/>/.test(SP),
 // ── Workspace is read-only — no spray mutations ─────────────────────
 section('SprayCalendarWorkspace is read-only — no mutations')
 
-assert(!/createSpray\b|patchSpray\b|deleteSpray\b/.test(CW_CODE),
-  'never calls createSpray / patchSpray / deleteSpray')
+assert(/import \{ useSpraysData, refreshSpraysData, patchSpray \} from/.test(CW),
+  'imports patchSpray for the narrow Mark Complete action')
+assert(/function handleMarkComplete\(record, e\)/.test(CW),
+  'declares handleMarkComplete(record, e)')
+assert(/patchSpray\(record\.id, \{ status: 'completed' \}\)/.test(CW),
+  'Mark Complete patches only status: completed')
+assert(/selectedCompletedRecords\s*=\s*selectedRecords\.filter\(isCompletedRecord\)/.test(CW),
+  'separates completed saved records from planned/open saved records')
+assert(/selectedOpenRecords\s*=\s*selectedRecords\.filter\(isOpenApplicationRecord\)/.test(CW),
+  'separates planned/open saved records for the Planned section')
+assert(/Mark Complete/.test(CW) && /plannedRecordRow/.test(CW_CSS),
+  'renders and styles the Mark Complete action for planned saved records')
+
+assert(!/createSpray\b|deleteSpray\b/.test(CW_CODE),
+  'calendar still never calls createSpray / deleteSpray')
 assert(!/createSprayProgram\b|updateSprayProgram\b|archiveSprayProgram\b/.test(CW_CODE),
   'never calls createSprayProgram / updateSprayProgram / archiveSprayProgram')
 assert(!/createSprayProgramItem\b|updateSprayProgramItem\b|deleteSprayProgramItem\b/.test(CW_CODE),
@@ -317,6 +332,8 @@ section('Permission gating — preserved via embedded BuildSpraySheet')
 
 // The calendar workspace itself doesn't reference canEditSprays — gating
 // lives inside BuildSpraySheet which still imports useAuth.
+assert(/const canEditSprays = can\('canEditSprays'\)/.test(CW),
+  'SprayCalendarWorkspace gates Mark Complete with canEditSprays')
 assert(/import \{ useAuth \} from '\.\.\/\.\.\/\.\.\/context\/AuthContext'/.test(BUILD),
   'BuildSpraySheet still imports useAuth (S.5a.2 gate preserved)')
 assert(/const canEditSprays = can\('canEditSprays'\)/.test(BUILD),

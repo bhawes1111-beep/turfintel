@@ -502,19 +502,15 @@ console.log('— src/pages/Inventory/Inventory.jsx (Catalog tab registered)')
     'imports InventoryCatalog tab body')
   assert(/'Catalog'/.test(shell),
     "'Catalog' literal appears in Inventory shell")
-  // Confirm 'Catalog' is in the legacy TABS array (registered, not just imported).
-  // Phase 9B.2 renamed the constant to LEGACY_TABS while preserving the
-  // same 11-label payload for non-Crosswinds courses.
-  const tabsMatch = shell.match(/const\s+(?:LEGACY_TABS|TABS)\s*=\s*\[([^\]]+)\]/)
+  const tabsMatch = shell.match(/const\s+INVENTORY_TABS\s*=\s*\[([^\]]+)\]/)
   assert(tabsMatch && /'Catalog'/.test(tabsMatch[1]),
-    "'Catalog' present in legacy TABS array")
+    "'Catalog' present in Inventory flat tabs")
   assert(/activeTab\s*===\s*'Catalog'\s*&&\s*<InventoryCatalog/.test(shell),
-    'Catalog tab body wired to activeTab === Catalog')
+    'Catalog body wired to direct Catalog tab')
 
-  // Pre-existing tabs must remain unchanged in this commit.
-  for (const t of ['Overview', 'Products', 'Chemicals', 'Fertilizer', 'Parts', 'Fuel', 'Low Stock', 'Purchase History']) {
+  for (const t of ['Stock', 'Low Stock', 'Chemicals', 'Fertilizer', 'Parts', 'Fuel', 'Purchases', 'Cost Review', 'Catalog', 'Link Review']) {
     assert(tabsMatch && new RegExp(`'${t}'`).test(tabsMatch[1]),
-      `pre-existing tab '${t}' still in TABS`)
+      `inventory flat tab '${t}' still present`)
   }
 }
 
@@ -650,7 +646,7 @@ console.log('— Inventory shell: navigation state for catalog jump')
   assert(/function\s+openCatalogProduct/.test(src) || /openCatalogProduct\s*=/.test(src),
     'shell defines openCatalogProduct callback')
   assert(/setActiveTab\(['"]Catalog['"]\)/.test(src),
-    'callback switches activeTab to Catalog')
+    'callback switches directly to Catalog')
 
   // Each linkable tab receives onOpenCatalog — either as an inline prop
   // OR via a {...productsProps}-style spread whose object declaration
@@ -1588,17 +1584,14 @@ console.log('— Inventory shell: Link Review tab registered')
     'imports InventoryLinkReview')
   assert(/'Link Review'/.test(shell),
     "'Link Review' literal present in shell")
-  // Phase 9B.2 renamed the constant to LEGACY_TABS while preserving
-  // the same 11-label payload for non-Crosswinds courses.
-  const tabsMatch = shell.match(/const\s+(?:LEGACY_TABS|TABS)\s*=\s*\[([^\]]+)\]/)
+  const tabsMatch = shell.match(/const\s+INVENTORY_TABS\s*=\s*\[([^\]]+)\]/)
   assert(tabsMatch && /'Link Review'/.test(tabsMatch[1]),
-    "'Link Review' present in legacy TABS array")
+    "'Link Review' present in Inventory flat tabs")
   assert(/activeTab\s*===\s*'Link Review'\s*&&\s*<InventoryLinkReview/.test(shell),
-    "Link Review tab wired to activeTab === 'Link Review'")
-  // Pre-existing 9 tabs still present.
-  for (const t of ['Overview','Products','Chemicals','Fertilizer','Parts','Fuel','Low Stock','Purchase History','Catalog']) {
+    "Link Review wired to direct Link Review tab")
+  for (const t of ['Stock','Low Stock','Chemicals','Fertilizer','Parts','Fuel','Purchases','Cost Review','Catalog']) {
     assert(tabsMatch && new RegExp(`'${t}'`).test(tabsMatch[1]),
-      `pre-existing tab '${t}' still in TABS`)
+      `inventory flat tab '${t}' still present`)
   }
 }
 

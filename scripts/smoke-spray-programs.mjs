@@ -453,13 +453,11 @@ console.log('— Sprays workspace registers Program Planner tab')
 
   assert(/from\s+['"]\.\/tabs\/SprayProgramPlanner['"]/.test(shell),
     "Sprays imports the new SprayProgramPlanner tab")
-  // Phase SPR.2 — Unified SPRAY_TABS constant. 'Planning' is the tab
-  // that mounts SprayProgramPlanner (no 'Planned Sprays' collision).
-  const tabsMatch = shell.match(/export\s+const\s+SPRAY_TABS\s*=\s*\[([^\]]+)\]/)
+  const tabsMatch = shell.match(/const\s+SPRAY_TABS\s*=\s*\[([^\]]+)\]/)
   assert(tabsMatch && /'Planning'/.test(tabsMatch[1]),
-    "SPR.2: 'Planning' present in SPRAY_TABS (mounts SprayProgramPlanner)")
+    'Planning present in SPRAY_TABS')
   assert(/activeTab\s*===\s*'Planning'\s*&&\s*<SprayProgramPlanner/.test(shell),
-    "SPR.2: Planning tab body wired to <SprayProgramPlanner />")
+    'Planning body wired directly to <SprayProgramPlanner />')
 
   // No 'Planned Programs' anywhere in the visible nav (was already removed
   // by S.6c; SPR.2 preserves the negative pin).

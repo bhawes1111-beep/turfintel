@@ -534,7 +534,6 @@ export default function OperationsCalendar() {
         return (
           <div
             className={styles.ocModalOverlay}
-            onClick={e => { if (e.target === e.currentTarget) setSelectedEvent(null) }}
           >
             <div className={styles.ocModalPanel}>
               <div className={styles.ocModalAccent} style={{ background: catMeta?.color || '#888' }} />
@@ -625,7 +624,6 @@ export default function OperationsCalendar() {
       {dayModal && (() => (
         <div
           className={styles.ocModalOverlay}
-          onClick={e => { if (e.target === e.currentTarget) setDayModal(null) }}
         >
           <div className={styles.ocModalPanel}>
             <div className={styles.ocModalAccent} style={{ background: '#4a9e4a' }} />

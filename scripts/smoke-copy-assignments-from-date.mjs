@@ -180,10 +180,10 @@ assert(/await createCrewAssignment\(\{[\s\S]{0,400}calendarEventId:\s*destEvent\
 assert(/employeeId:\s*oldA\.employeeId \?\? empStillThere\.id/.test(helperSrc),
   'createCrewAssignment uses oldA.employeeId with the matched-employee fallback')
 
-// Copied rows always start as 'assigned' — no completed/in-progress
-// state carries across days.
-assert(/status:\s*['"]assigned['"]/.test(helperSrc),
-  "copied assignment status is hardcoded to 'assigned' (does not carry source row's status)")
+// Copied rows always start as planned — no complete/in-progress state
+// carries across days.
+assert(/status:\s*ASSIGNMENT_STATUS_DEFAULT/.test(helperSrc),
+  "copied assignment status uses the planned default (does not carry source row's status)")
 
 // Notes are opt-in.
 assert(/notes:\s*options\.copyNotes \? \(oldA\.notes \?\? null\) : null/.test(helperSrc),

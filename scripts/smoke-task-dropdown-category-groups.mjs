@@ -29,7 +29,7 @@ const MODAL = readFileSync('src/pages/Crew/tabs/TasksManagerModal.jsx',     'utf
 const STORE = readFileSync('src/utils/tasks/taskTemplateStore.js',          'utf8')
 
 // ── Module-level category helpers ─────────────────────────────────────
-section('Category label + order helpers defined at module scope')
+section('Category label helpers + cloud category order defined')
 
 assert(/const\s+TASK_CATEGORY_LABELS\s*=\s*\{/.test(DAB),
   'TASK_CATEGORY_LABELS constant defined')
@@ -45,18 +45,14 @@ for (const [key, label] of [
     `TASK_CATEGORY_LABELS includes ${key} → "${label}"`)
 }
 
-assert(/const\s+TASK_CATEGORY_ORDER\s*=\s*\[\s*['"]crew['"],\s*['"]irrigation['"],\s*['"]spray['"],\s*['"]agronomy['"],\s*['"]maintenance['"],\s*['"]other['"]\s*\]/.test(DAB),
-  "TASK_CATEGORY_ORDER pins ['crew', 'irrigation', 'spray', 'agronomy', 'maintenance', 'other'] in that exact order")
-
-// "Other" is last so it never overshadows the curated categories.
-const orderMatch = DAB.match(/const\s+TASK_CATEGORY_ORDER\s*=\s*(\[[^\]]+\])/)
-if (orderMatch) {
-  const arr = JSON.parse(orderMatch[1].replace(/'/g, '"'))
-  assert(arr[arr.length - 1] === 'other',
-    'TASK_CATEGORY_ORDER ends with "other" (catch-all is last)')
-  assert(arr[0] === 'crew',
-    'TASK_CATEGORY_ORDER leads with "crew" (most-common bucket first)')
-}
+assert(/useTaskCategoriesData/.test(DAB),
+  'DAB imports/uses cloud-backed task categories')
+assert(/const\s+taskCategoryMeta\s*=\s*useMemo/.test(DAB),
+  'taskCategoryMeta useMemo builds category ordering from saved categories')
+assert(/const order = \[\.\.\.map\.keys\(\)\]/.test(DAB),
+  'category order follows saved cloud category rows')
+assert(/order\.push\(['"]other['"]\)/.test(DAB),
+  'Other is always appended after saved categories')
 
 // ── groupedActiveTaskTemplates useMemo ────────────────────────────────
 section('groupedActiveTaskTemplates useMemo — derivation + invariants')
@@ -75,10 +71,10 @@ assert(/for \(const tmpl of activeTaskTemplates\)/.test(memoSrc),
 
 // Category normalization: trim + lowercase, fall back to "other" when
 // the result isn't in the label map.
-assert(/const raw = \(tmpl\.category \?\? ['"]['"]\)\.trim\(\)\.toLowerCase\(\)/.test(memoSrc),
-  'raw category = (tmpl.category ?? "").trim().toLowerCase()')
-assert(/const key = TASK_CATEGORY_LABELS\[raw\] \? raw : ['"]other['"]/.test(memoSrc),
-  'unknown / null / blank categories fall back to "other"')
+assert(/const raw = normalizeTaskCategorySlug\(tmpl\.category\)/.test(memoSrc),
+  'raw category normalized through taskCategoryStore helper')
+assert(/const key = taskCategoryMeta\.map\.has\(raw\) \|\| TASK_CATEGORY_LABELS\[raw\] \? raw : ['"]other['"]/.test(memoSrc),
+  'unknown / null / blank categories fall back to "other" after cloud-category lookup')
 
 // Build via Map → preserves insertion order but the consumer sort
 // happens via TASK_CATEGORY_ORDER, so insertion order doesn't matter.
@@ -87,16 +83,15 @@ assert(/buckets\.set\(key, \[\]\)/.test(memoSrc),
 assert(/buckets\.get\(key\)\.push\(tmpl\)/.test(memoSrc),
   'each template is pushed into its bucket')
 
-// Returns TASK_CATEGORY_ORDER-sorted, empty-bucket-filtered.
-assert(/return TASK_CATEGORY_ORDER\s*\n?\s*\.filter\(key => buckets\.has\(key\)\)/.test(memoSrc),
-  'returns TASK_CATEGORY_ORDER filtered to only buckets that have templates (empty groups omitted)')
-assert(/\.map\(key => \(\{[\s\S]{0,200}label:\s*TASK_CATEGORY_LABELS\[key\][\s\S]{0,100}templates:\s*buckets\.get\(key\)/.test(memoSrc),
-  'each group exposes { key, label, templates } — label from TASK_CATEGORY_LABELS')
+// Returns cloud-category order, empty-bucket-filtered.
+assert(/return taskCategoryMeta\.order\s*\n?\s*\.filter\(key => buckets\.has\(key\)\)/.test(memoSrc),
+  'returns cloud-category order filtered to only buckets that have templates (empty groups omitted)')
+assert(/\.map\(key => \(\{[\s\S]{0,300}label:\s*key === ['"]other['"] \? ['"]Other['"] : taskCategoryMeta\.map\.get\(key\)\?\.name \?\? TASK_CATEGORY_LABELS\[key\] \?\? ['"]Other['"][\s\S]{0,120}templates:\s*buckets\.get\(key\)/.test(memoSrc),
+  'each group exposes { key, label, templates } with cloud labels and safe fallback labels')
 
-// useMemo deps: only activeTaskTemplates (which itself depends on
-// taskTemplates). Anything else would invalidate too often.
-assert(/\}, \[activeTaskTemplates\]\)/.test(memoSrc),
-  'groupedActiveTaskTemplates deps list: [activeTaskTemplates]')
+// useMemo deps include the sorted templates and the category metadata.
+assert(/\}, \[activeTaskTemplates, taskCategoryMeta\]\)/.test(memoSrc),
+  'groupedActiveTaskTemplates deps list includes activeTaskTemplates and taskCategoryMeta')
 
 // ── Dropdown JSX — <optgroup> per category ────────────────────────────
 section('Dropdown JSX — <optgroup> rendered per category')
@@ -199,14 +194,16 @@ for (const fn of [
 }
 
 // ── No D1 migration ───────────────────────────────────────────────────
-section('No new D1 migration — 0051 ceiling preserved')
+section('Task category migration recorded')
 
 const migrationFiles = readdirSync('worker/migrations').filter(f => f.endsWith('.sql')).sort()
 assert(migrationFiles.includes('0051_task_templates.sql'),
   '0051_task_templates.sql still in the migration ledger')
-const past0051 = migrationFiles.filter(f => /^00(5[6-9]|[6-9]\d|\d{3,})/.test(f))
-assert(past0051.length === 0,
-  `no migration past 0055 (found: ${past0051.join(', ') || 'none'})`)
+assert(migrationFiles.includes('0056_task_categories.sql'),
+  '0056_task_categories.sql still in the migration ledger')
+const past0056 = migrationFiles.filter(f => /^00(5[7-9]|[6-9]\d|\d{3,})/.test(f))
+assert(past0056.length === 0,
+  `no unreviewed task-category migration past 0056 (found: ${past0056.join(', ') || 'none'})`)
 
 // task_templates schema unchanged.
 assert(!/ALTER TABLE task_templates/i.test(readFileSync('worker/migrations/0051_task_templates.sql', 'utf8')),

@@ -188,6 +188,7 @@ export default function DailyBriefingPanel() {
     if (!confirm(`Delete this briefing permanently?\n\n"${note.title || note.body.slice(0, 60)}"`)) return
     try {
       await deleteOperationsNote(note.id)
+      if (draft.id === note.id) setDraft(emptyDraft())
       toast.success('Briefing deleted')
     } catch (err) {
       toast.error(`Delete failed: ${err.message}`)
@@ -325,14 +326,24 @@ export default function DailyBriefingPanel() {
           </label>
           <div className={styles.editorActions}>
             {draft.id && (
-              <button
-                type="button"
-                className={styles.btnSecondary}
-                onClick={() => setDraft(emptyDraft())}
-                disabled={busy}
-              >
-                Cancel edit
-              </button>
+              <>
+                <button
+                  type="button"
+                  className={styles.btnSecondary}
+                  onClick={() => setDraft(emptyDraft())}
+                  disabled={busy}
+                >
+                  Cancel edit
+                </button>
+                <button
+                  type="button"
+                  className={styles.btnDanger}
+                  onClick={() => handleDelete(draft)}
+                  disabled={busy}
+                >
+                  Delete briefing
+                </button>
+              </>
             )}
             <button
               type="submit"
@@ -353,8 +364,8 @@ export default function DailyBriefingPanel() {
       <div className={styles.feedHeader}>
         <span>
           {showArchived
-            ? `${visible.length} briefing${visible.length !== 1 ? 's' : ''} (all dates)`
-            : `${todayCount} active briefing${todayCount !== 1 ? 's' : ''} for today`}
+            ? `${visible.length} briefing${visible.length !== 1 ? 's' : ''} (all dates) - edit or delete below`
+            : `${todayCount} active briefing${todayCount !== 1 ? 's' : ''} for today - edit or delete below`}
         </span>
         {error && <span className={styles.errorText}>{error}</span>}
       </div>
@@ -391,7 +402,21 @@ export default function DailyBriefingPanel() {
                     )}
                   </p>
                 </div>
-                <div className={styles.noteActions}>
+                <div className={styles.noteActions} aria-label={`Manage briefing ${note.title || note.body.slice(0, 30)}`}>
+                  <button
+                    type="button"
+                    className={styles.manageBtnPrimary}
+                    onClick={() => startEdit(note)}
+                  >
+                    Edit briefing
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.manageBtnDanger}
+                    onClick={() => handleDelete(note)}
+                  >
+                    Delete
+                  </button>
                   <button
                     type="button"
                     className={styles.iconBtn}
@@ -403,23 +428,9 @@ export default function DailyBriefingPanel() {
                   <button
                     type="button"
                     className={styles.iconBtn}
-                    onClick={() => startEdit(note)}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.iconBtn}
                     onClick={() => handleArchive(note)}
                   >
                     {note.status === 'archived' ? 'Restore' : 'Archive'}
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.iconBtnDanger}
-                    onClick={() => handleDelete(note)}
-                  >
-                    Delete
                   </button>
                 </div>
               </div>

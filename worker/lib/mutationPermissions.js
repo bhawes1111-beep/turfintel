@@ -44,6 +44,7 @@ const MUTATION_RULES = [
   ['/api/spray-training-briefs',  sprayTrainingBriefRule],
 
   ['/api/equipment-reservations', 'canEditEquipment'],
+  ['/api/equipment-issues',       'canEditEquipment'],
   ['/api/equipment',              'canEditEquipment'],
   ['/api/maintenance',            'canEditEquipment'],
   ['/api/repairs',                'canEditEquipment'],
@@ -51,9 +52,16 @@ const MUTATION_RULES = [
   ['/api/nutrition',              'canEditNutrition'],
   ['/api/cultural-practices',     'canEditCulturalPractices'],
   ['/api/disease',                'canEditDisease'],
+  ['/api/nutrient-report-imports','canEditTurfHealth'],
+  ['/api/nutrient-samples',       'canEditTurfHealth'],
 
   ['/api/calendar-events',        'canEditAssignments'],
   ['/api/task-templates',         'canEditAssignments'],   // Phase 9C.11
+  ['/api/task-categories',        'canEditAssignments'],
+  ['/api/weekly-goals',           'canEditAssignments'],
+  ['/api/weekly-goal-options',    'canEditAssignments'],
+  ['/api/yearly-goals',           'canEditAssignments'],
+  ['/api/yearly-goal-options',    'canEditAssignments'],
   ['/api/schedule-templates',     'canEditAssignments'],
   ['/api/employee-schedules',     'canEditAssignments'],
   ['/api/employee-schedule-overrides', 'canEditAssignments'],   // Phase E.2
@@ -62,8 +70,10 @@ const MUTATION_RULES = [
   // prefix match. Shift templates need their own entry since they
   // live under a separate /api/shift-templates prefix.
   ['/api/shift-templates',             'canEditAssignments'],   // Phase E.5
+  ['/api/employee-training',      'canEditAssignments'],
   ['/api/crew-employees',         'canEditAssignments'],
   ['/api/alerts',                 'canEditAssignments'],
+  ['/api/today-list',             'canEditAssignments'],
 
   ['/api/operations-notes',       'canSendCrewNotes'],
 

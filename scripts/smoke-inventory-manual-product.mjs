@@ -15,7 +15,7 @@
 //     record, does not mutate product_catalog, does not write a
 //     budget / invoice / ledger row, and does not parse PDFs /
 //     invoices / use AI extraction
-//   - the form carries the four pilot helper copy lines verbatim
+//   - the form uses the same modal shell as the edit inventory flow
 //   - InventoryProducts.jsx mounts <ManualProductForm /> behind a
 //     collapsible "+ Add product manually" toggle on the count row
 //   - the empty state copy steers the pilot toward adding real
@@ -44,14 +44,14 @@ console.log('— src/pages/Inventory/components/ManualProductForm.jsx (source)')
   assert(/export\s+default\s+function\s+ManualProductForm\s*\(/.test(src),
     'default exports ManualProductForm')
 
-  // Uses createInventory for the row save AND lazily imports
-  // setInventoryCostBasis for the cost cluster.
-  assert(/import\s*\{\s*createInventory\s*\}\s*from\s*['"]\.\.\/\.\.\/\.\.\/utils\/inventory\/inventoryStore['"]/.test(src),
+  // Uses createInventory for the row save AND setInventoryCostBasis
+  // for the cost cluster.
+  assert(/createInventory/.test(src) && /from\s*['"]\.\.\/\.\.\/\.\.\/utils\/inventory\/inventoryStore['"]/.test(src),
     'form imports createInventory from inventoryStore')
   assert(/await\s+createInventory\(/.test(src),
     'form calls createInventory(...) on submit')
-  assert(/import\(['"]\.\.\/\.\.\/\.\.\/utils\/inventory\/inventoryStore['"]\)/.test(src),
-    'form dynamically imports setInventoryCostBasis for the cost-cluster commit')
+  assert(/setInventoryCostBasis/.test(src) && /from\s*['"]\.\.\/\.\.\/\.\.\/utils\/inventory\/inventoryStore['"]/.test(src),
+    'form imports setInventoryCostBasis for the cost-cluster commit')
   assert(/setInventoryCostBasis\s*\(/.test(src),
     'form calls setInventoryCostBasis when cost is provided')
   assert(/changeSource:\s*'manual'/.test(src),
@@ -72,17 +72,13 @@ console.log('— src/pages/Inventory/components/ManualProductForm.jsx (source)')
       `kind option ${v} present`)
   }
 
-  // Pilot helper copy verbatim — all four lines from the spec.
-  const norm = src.replace(/\s+/g, ' ')
-  for (const line of [
-    'Add real Crosswinds products used in the next 30 days first.',
-    'Cost basis supports planning estimates.',
-    'Catalog links provide read-only agronomic intelligence.',
-    'Inventory stock is not deducted from planned spray programs.',
-  ]) {
-    assert(norm.includes(line),
-      `pilot helper copy verbatim: "${line}"`)
-  }
+  // Manual add now matches the edit-item modal shell.
+  assert(/\.\/EditInventoryQuantityModal\.module\.css/.test(src),
+    'manual add reuses the edit item modal styles')
+  assert(/data-modal="add-inventory-product"/.test(src),
+    'manual add renders as a modal')
+  assert(/aria-label="Inventory type"/.test(src),
+    'manual add exposes the same type picker as edit item')
 
   // Strict invariants.
   const codeOnly = src
@@ -160,8 +156,8 @@ console.log('— InventoryProducts mounts <ManualProductForm /> + improved empty
 
   // Empty state copy steers the pilot to real Crosswinds products.
   const norm = src.replace(/\s+/g, ' ')
-  assert(norm.includes('Add real Crosswinds chemicals, fertilizers'),
-    'empty state copy steers the pilot to real Crosswinds products')
+  assert(norm.includes('Add chemicals, fertilizers, parts, fuel, and other stock manually'),
+    'empty state copy steers users to manual stock entry')
 
   // Catalog Link section carries the spec's helper copy.
   assert(norm.includes('Catalog links provide read-only agronomic intelligence'),

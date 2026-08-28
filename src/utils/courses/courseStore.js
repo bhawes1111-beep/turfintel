@@ -31,6 +31,7 @@ let state = {
   error:     null,
   lastFetch: null,
 }
+const disabledState = { ...state, loading: false, error: null }
 
 const subscribers = new Set()
 let hasBooted = false
@@ -72,9 +73,15 @@ function subscribe(cb) {
 }
 
 function getSnapshot() { return state }
+function getDisabledSnapshot() { return disabledState }
+function subscribeDisabled() { return () => {} }
 
-export function useCoursesData() {
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+export function useCoursesData({ enabled = true } = {}) {
+  return useSyncExternalStore(
+    enabled ? subscribe : subscribeDisabled,
+    enabled ? getSnapshot : getDisabledSnapshot,
+    enabled ? getSnapshot : getDisabledSnapshot,
+  )
 }
 
 // ── Selected-course module state ───────────────────────────────────────────
@@ -136,9 +143,9 @@ export function useSelectedCourseId() {
 }
 
 /** Returns the full course object for the current selection (or null). */
-export function useSelectedCourse() {
+export function useSelectedCourse({ enabled = true } = {}) {
   const id      = useSelectedCourseId()
-  const { courses } = useCoursesData()
+  const { courses } = useCoursesData({ enabled })
   return courses.find(c => c.id === id) ?? null
 }
 

@@ -7,6 +7,7 @@ import {
   SECTION_TYPE,
 } from './reportSchemas.js'
 import { HEALTH_TYPE_LABELS, SEVERITY_LABELS } from '../turfHealth/healthTypes.js'
+import { buildPayrollBreakdown } from '../crew/payrollMath.js'
 // Phase S.6a — Shared needs-info heuristic for the compliance packet
 // per-record flag + summary count. Replaces the local
 // recordNeedsInfoLocal helper which duplicated the same logic.
@@ -23,7 +24,7 @@ const ISSUE_TYPE_LABELS = {
   'pop-up-failure':   'Pop-Up Failure',
 }
 
-const STANDARD_FORMATS = [EXPORT_FORMAT.PRINT, EXPORT_FORMAT.JSON, EXPORT_FORMAT.CSV]
+const STANDARD_FORMATS = [EXPORT_FORMAT.PRINT, EXPORT_FORMAT.PDF, EXPORT_FORMAT.JSON, EXPORT_FORMAT.CSV]
 
 // ── Irrigation ─────────────────────────────────────────────────────────────────
 
@@ -68,12 +69,23 @@ export function buildIrrigationRepairReport(repair, attachments = []) {
   ]
 
   if (repair.partsUsed?.length > 0) {
+    const partsCost = repair.partsUsed.reduce((sum, part) => {
+      const cost = Number(part?.cost)
+      return sum + (Number.isFinite(cost) ? cost : 0)
+    }, 0)
     sections.push(createSection({
       title: 'Parts Used',
       type:  SECTION_TYPE.TABLE,
       data: {
-        columns: ['Qty', 'Part / Material'],
-        rows:    repair.partsUsed.map(p => [p.qty, p.part]),
+        columns: ['Qty', 'Part / Material', 'Cost'],
+        rows:    [
+          ...repair.partsUsed.map(p => [
+            p.qty,
+            p.part,
+            p.cost != null ? `$${Number(p.cost).toFixed(2)}` : '-',
+          ]),
+          ['', 'Parts Total', `$${partsCost.toFixed(2)}`],
+        ],
       },
     }))
   }
@@ -666,9 +678,10 @@ export function buildMaintenanceLogReport(equipment, logs, options = {}) {
       title: 'Maintenance Records',
       type:  SECTION_TYPE.TABLE,
       data: {
-        columns: ['Date', 'Type', 'Description', 'Technician', 'Cost'],
+        columns: ['Date', 'Stage', 'Type', 'Description', 'Technician', 'Cost'],
         rows: logs.map(l => [
           l.date        ?? '—',
+          l.stage       ?? '—',
           l.type        ?? '—',
           l.description ?? '—',
           l.technician  ?? '—',
@@ -943,6 +956,1142 @@ export function buildMorningBriefReport(brief, options = {}) {
 }
 
 // ── Agronomy: plant nutrition summary ─────────────────────────────────────────
+
+// -- Agronomy: owner progress report ---------------------------------------
+
+function reportDateKey(value) {
+  if (!value) return null
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value.toISOString().slice(0, 10)
+  }
+  const raw = String(value).trim()
+  const iso = raw.match(/\d{4}-\d{2}-\d{2}/)
+  if (iso) return iso[0]
+  const slash = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/)
+  if (slash) {
+    const [, m, d, y] = slash
+    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
+  }
+  const parsed = new Date(raw)
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString().slice(0, 10)
+}
+
+function isInReportRange(dateValue, startDate, endDate) {
+  const day = reportDateKey(dateValue)
+  if (!day) return !startDate && !endDate
+  if (startDate && day < startDate) return false
+  if (endDate && day > endDate) return false
+  return true
+}
+
+function weeklyGoalRange(dateValue) {
+  const day = reportDateKey(dateValue)
+  if (!day) return null
+  const monday = new Date(`${day}T00:00:00Z`)
+  const weekday = monday.getUTCDay()
+  monday.setUTCDate(monday.getUTCDate() - (weekday === 0 ? 6 : weekday - 1))
+  const friday = new Date(monday)
+  friday.setUTCDate(friday.getUTCDate() + 4)
+  return { start: monday.toISOString().slice(0, 10), end: friday.toISOString().slice(0, 10) }
+}
+
+function weeklyGoalOverlapsReport(dateValue, startDate, endDate) {
+  const range = weeklyGoalRange(dateValue)
+  if (!range) return !startDate && !endDate
+  if (startDate && range.end < startDate) return false
+  if (endDate && range.start > endDate) return false
+  return true
+}
+
+function weeklyGoalLabel(dateValue) {
+  const range = weeklyGoalRange(dateValue)
+  if (!range) return '-'
+  const format = value => new Intl.DateTimeFormat('en-US', {
+    month: 'numeric', day: 'numeric', year: 'numeric', timeZone: 'UTC',
+  }).format(new Date(`${value}T00:00:00Z`))
+  return `Week of ${format(range.start)} - ${format(range.end)}`
+}
+
+function reportNumber(value) {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string' && value.trim() !== '') {
+    const n = Number(value)
+    if (Number.isFinite(n)) return n
+  }
+  return null
+}
+
+function reportMoney(value) {
+  const n = reportNumber(value)
+  return n == null ? '$0.00' : `$${n.toFixed(2)}`
+}
+
+function reportHours(value) {
+  const n = reportNumber(value)
+  return n == null ? '0 hrs' : `${Number.isInteger(n) ? n : n.toFixed(2)} hrs`
+}
+
+function reportText(value, fallback = '-') {
+  if (value == null) return fallback
+  const text = String(value).trim()
+  return text === '' ? fallback : text
+}
+
+function titleText(value) {
+  return reportText(value)
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase())
+}
+
+function compactTextList(values, fallback = '-') {
+  const clean = values
+    .flatMap(v => Array.isArray(v) ? v : [v])
+    .map(v => {
+      if (v && typeof v === 'object') return v.name ?? v.area ?? v.label ?? ''
+      return v ?? ''
+    })
+    .map(v => String(v).trim())
+    .filter(Boolean)
+  return clean.length > 0 ? [...new Set(clean)].join(', ') : fallback
+}
+
+function productList(products = []) {
+  if (!Array.isArray(products) || products.length === 0) return '-'
+  return compactTextList(products.map(p => p?.name ?? p?.productName ?? p?.product))
+}
+
+function applicationDateValue(record) {
+  return record?.date ?? record?.applicationDate ?? record?.createdAt
+}
+
+function applicationDateKey(record) {
+  return reportDateKey(applicationDateValue(record))
+}
+
+function applicationAreaLabel(record) {
+  return compactTextList(record?.areas?.length ? record.areas : [record?.area])
+}
+
+function applicationAreaAcres(record) {
+  if (Array.isArray(record?.areas) && record.areas.length > 0) {
+    return record.areas.reduce((sum, area) => sum + (reportNumber(area?.acreage) ?? 0), 0)
+  }
+  return reportNumber(record?.areaAcres ?? record?.acreage ?? record?.acres) ?? 0
+}
+
+function applicationIsGranular(record) {
+  const explicitType = String(record?.applicationType ?? record?.application_type ?? '').trim().toLowerCase()
+  if (explicitType === 'granular' || explicitType === 'dry') return true
+  if (explicitType === 'liquid' || explicitType === 'spray') return false
+  if (record?.isLiquidApplication === false) return true
+  if (record?.isLiquidApplication === true) return false
+  return [record?.applicationName, record?.carrierVolume, record?.type]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+    .includes('granular')
+}
+
+function applicationProductType(product) {
+  return String(product?.type ?? product?.productType ?? product?.category ?? '').toLowerCase()
+}
+
+function applicationProductIsFertilizer(product) {
+  const type = applicationProductType(product)
+  return type.includes('fertilizer') || type.includes('nutrient')
+}
+
+function fertilizerProductsForApplication(record) {
+  const products = Array.isArray(record?.products) ? record.products : []
+  const fertilizerProducts = products.filter(applicationProductIsFertilizer)
+  if (fertilizerProducts.length > 0) return fertilizerProducts
+  return applicationIsGranular(record) ? products : []
+}
+
+function applicationIsFertilizer(record) {
+  return applicationIsGranular(record) || fertilizerProductsForApplication(record).length > 0
+}
+
+function applicationIsSpray(record) {
+  const products = Array.isArray(record?.products) ? record.products : []
+  if (products.some(product => !applicationProductIsFertilizer(product))) return true
+  return !applicationIsFertilizer(record)
+}
+
+function applicationRecordStatus(record) {
+  const raw = String(record?.status ?? 'completed').trim().toLowerCase()
+  if (raw === 'complete' || raw === 'done') return 'completed'
+  if (raw === 'in progress' || raw === 'in_progress') return 'in-progress'
+  if (raw === 'pending review' || raw === 'pending_review') return 'pending-review'
+  if (raw === 'pending' || raw === 'assigned') return 'planned'
+  return raw || 'completed'
+}
+
+function applicationIsCompleted(record) {
+  return applicationRecordStatus(record) === 'completed'
+}
+
+function applicationHasStatus(status) {
+  return record => applicationRecordStatus(record) === status
+}
+
+function applicationIsOpen(record) {
+  return !applicationIsCompleted(record)
+}
+
+function fertilizerReportDate(entry) {
+  return entry?.source === 'application'
+    ? applicationDateKey(entry.record)
+    : reportDateKey(entry?.applicationDate ?? entry?.date ?? entry?.createdAt)
+}
+
+function fertilizerReportArea(entry) {
+  return entry?.source === 'application'
+    ? applicationAreaLabel(entry.record)
+    : (entry?.area ?? '-')
+}
+
+function fertilizerReportAreaAcres(entry) {
+  return entry?.source === 'application'
+    ? applicationAreaAcres(entry.record)
+    : (reportNumber(entry?.areaAcres) ?? 0)
+}
+
+function fertilizerReportProducts(entry) {
+  if (entry?.source === 'application') {
+    const products = fertilizerProductsForApplication(entry.record)
+    return productList(products)
+  }
+  return entry?.productName ?? '-'
+}
+
+function fertilizerReportRate(entry) {
+  if (entry?.source === 'application') {
+    const products = fertilizerProductsForApplication(entry.record)
+    const rates = products
+      .map(product => product?.rate)
+      .filter(value => value != null && String(value).trim() !== '')
+    return compactTextList(rates)
+  }
+  return [entry?.rate, entry?.unit].filter(v => v != null && String(v).trim() !== '').join(' ') || '-'
+}
+
+function fertilizerReportQuantity(entry) {
+  if (entry?.source === 'application') {
+    const products = fertilizerProductsForApplication(entry.record)
+    return compactTextList(products.map(product => {
+      const quantity = reportNumber(product?.quantityUsed ?? product?.quantity_used)
+      if (quantity == null) return null
+      const unit = reportText(product?.unit ?? product?.quantityUnit, '')
+      return `${Number(quantity.toFixed(4))}${unit ? ` ${unit}` : ''}`
+    }))
+  }
+  const quantity = reportNumber(entry?.quantityUsed ?? entry?.quantity)
+  if (quantity == null) return '-'
+  return `${Number(quantity.toFixed(4))} ${reportText(entry?.unit, '')}`.trim()
+}
+
+function dryQuantityLb(product) {
+  const quantity = reportNumber(product?.quantityUsed ?? product?.quantity_used)
+  if (quantity == null) return null
+  const unit = String(product?.unit ?? product?.quantityUnit ?? '').trim().toLowerCase()
+  if (['lb', 'lbs', 'pound', 'pounds'].includes(unit)) return quantity
+  if (['oz', 'ounce', 'ounces'].includes(unit)) return quantity / 16
+  return null
+}
+
+function fertilizerReportProductRate(entry) {
+  if (entry?.source !== 'application') return '-'
+  const areaK = applicationAreaAcres(entry.record) * 43.56
+  if (!(areaK > 0)) return '-'
+  return compactTextList(fertilizerProductsForApplication(entry.record).map(product => {
+    const pounds = dryQuantityLb(product)
+    if (pounds == null) return null
+    return `${Number((pounds / areaK).toFixed(4))} lb product / 1,000 sq ft`
+  }))
+}
+
+function granularProductTotals(records = []) {
+  let totalLb = 0
+  const other = new Map()
+
+  for (const record of records) {
+    for (const product of fertilizerProductsForApplication(record)) {
+      const quantity = reportNumber(product?.quantityUsed ?? product?.quantity_used)
+      if (quantity == null) continue
+      const rawUnit = String(product?.unit ?? product?.quantityUnit ?? '').trim().toLowerCase()
+      if (['lb', 'lbs', 'pound', 'pounds'].includes(rawUnit)) {
+        totalLb += quantity
+      } else if (['oz', 'ounce', 'ounces'].includes(rawUnit)) {
+        totalLb += quantity / 16
+      } else {
+        const unit = rawUnit || 'unit'
+        other.set(unit, (other.get(unit) ?? 0) + quantity)
+      }
+    }
+  }
+
+  const parts = []
+  if (totalLb > 0) {
+    parts.push(`${Number(totalLb.toFixed(4))} lb (${Number((totalLb * 16).toFixed(2))} oz)`)
+  }
+  for (const [unit, quantity] of other) {
+    parts.push(`${Number(quantity.toFixed(4))} ${unit}`)
+  }
+  return parts.join(', ') || '-'
+}
+
+function fertilizerReportNotes(entry) {
+  if (entry?.source === 'application') return entry.record?.notes ?? entry.record?.targetPest ?? '-'
+  return entry?.notes ?? '-'
+}
+
+function sprayRecordCost(record) {
+  const recordCost = reportNumber(record?.totalCostSnapshot ?? record?.totalCost)
+  if (recordCost != null) return recordCost
+  return (record?.products ?? []).reduce((sum, p) => sum + (reportNumber(p?.totalCostSnapshot ?? p?.cost) ?? 0), 0)
+}
+
+function eventDateLookup(calendarEvents = []) {
+  const map = new Map()
+  for (const event of calendarEvents) {
+    if (!event?.id) continue
+    map.set(event.id, reportDateKey(event.startDate ?? event.date ?? event.createdAt))
+  }
+  return map
+}
+
+function eventByIdLookup(calendarEvents = []) {
+  const map = new Map()
+  for (const event of calendarEvents) {
+    if (event?.id) map.set(event.id, event)
+  }
+  return map
+}
+
+function assignmentDate(assignment, dateByEvent) {
+  return dateByEvent.get(assignment?.calendarEventId)
+    ?? reportDateKey(assignment?.date ?? assignment?.assignedAt ?? assignment?.createdAt)
+}
+
+function assignmentTaskName(assignment, eventsById, taskTemplates = []) {
+  const event = eventsById.get(assignment?.calendarEventId)
+  if (event?.title) return event.title
+  const template = taskTemplates.find(t => (
+    t?.id && (t.id === assignment?.taskTemplateId || t.id === assignment?.templateId)
+  ))
+  return template?.name ?? assignment?.taskName ?? assignment?.title ?? '-'
+}
+
+const ASSIGNMENT_REPORT_STATUS_LABELS = {
+  planned:       'Planned',
+  'in-progress': 'In Progress',
+  'weather-delay': 'Weather Delay',
+  complete:      'Complete',
+}
+
+function assignmentReportStatus(value) {
+  if (value === 'assigned' || value === 'pending' || value == null || value === '') return 'planned'
+  if (value === 'completed' || value === 'done') return 'complete'
+  if (value === 'planned' || value === 'in-progress' || value === 'weather-delay' || value === 'complete') return value
+  return 'planned'
+}
+
+function assignmentReportStatusLabel(value) {
+  return ASSIGNMENT_REPORT_STATUS_LABELS[assignmentReportStatus(value)] ?? 'Planned'
+}
+
+function taskReportRows(tasks, eventsById, dateByEvent, taskTemplates) {
+  return tasks.slice(0, 50).map(a => {
+    const event = eventsById.get(a?.calendarEventId)
+    return [
+      assignmentDate(a, dateByEvent) ?? '-',
+      a?.employeeName ?? '-',
+      assignmentTaskName(a, eventsById, taskTemplates),
+      a?.area ?? event?.location ?? '-',
+      assignmentReportStatusLabel(a?.status),
+      a?.notes ?? '-',
+    ]
+  })
+}
+
+function taskReportGroupRows(tasks, eventsById, dateByEvent, taskTemplates) {
+  const groups = new Map()
+  for (const task of Array.isArray(tasks) ? tasks : []) {
+    const name = assignmentTaskName(task, eventsById, taskTemplates)
+    const status = assignmentReportStatusLabel(task?.status)
+    const key = `${name.toLowerCase()}|${status.toLowerCase()}`
+    const event = eventsById.get(task?.calendarEventId)
+    const existing = groups.get(key) ?? {
+      task: name,
+      count: 0,
+      employees: new Set(),
+      areas: new Set(),
+      dates: new Set(),
+      status,
+    }
+    existing.count += 1
+    if (task?.employeeName) existing.employees.add(task.employeeName)
+    const area = task?.area ?? event?.location
+    if (area) existing.areas.add(area)
+    const date = assignmentDate(task, dateByEvent)
+    if (date) existing.dates.add(date)
+    groups.set(key, existing)
+  }
+  return [...groups.values()]
+    .sort((a, b) => b.count - a.count || a.task.localeCompare(b.task))
+    .slice(0, 50)
+    .map(group => [
+      group.task,
+      group.count,
+      compactTextList([...group.employees]),
+      compactTextList([...group.areas]),
+      compactTextList([...group.dates]),
+      group.status,
+    ])
+}
+
+function plannedApplicationWindow(event) {
+  const start = reportDateKey(event?.plannedStartDate)
+  const end = reportDateKey(event?.plannedEndDate)
+  if (start && end) return start === end ? start : `${start} to ${end}`
+  return start ?? end ?? event?.plannedWindowLabel ?? '-'
+}
+
+function plannedApplicationProducts(event) {
+  return compactTextList((event?.items ?? []).map(item => item?.productName))
+}
+
+function plannedApplicationIsGranular(event) {
+  const type = String(event?.applicationType ?? event?.typeLabel ?? event?.type ?? '').trim().toLowerCase()
+  return type === 'granular' || type === 'dry' || type.includes('granular')
+}
+
+function applicationStatusRows(events = []) {
+  return events.slice(0, 50).map(event => [
+    plannedApplicationWindow(event),
+    event?.programName ?? '-',
+    event?.status ?? 'Planned',
+    event?.typeLabel ?? 'Spray',
+    event?.targetArea ?? '-',
+    plannedApplicationProducts(event),
+    event?.productCount ?? 0,
+    compactTextList(event?.notes ?? []),
+  ])
+}
+
+function savedStatusApplicationEvent(record) {
+  const products = Array.isArray(record?.products) ? record.products : []
+  const date = applicationDateKey(record)
+  const status = titleText(applicationRecordStatus(record))
+  return {
+    source:           'saved-record',
+    id:               record?.id,
+    programName:      'Saved Plan',
+    status,
+    typeLabel:        applicationIsGranular(record) ? 'Granular' : 'Liquid',
+    targetArea:       applicationAreaLabel(record),
+    plannedStartDate: date,
+    plannedEndDate:   date,
+    plannedWindowLabel: date,
+    productCount:     products.length,
+    items:            products.map(product => ({
+      productName: product?.productName ?? product?.name ?? product?.product,
+    })),
+    notes: [
+      status,
+      record?.targetPest,
+      record?.notes,
+    ].filter(Boolean),
+  }
+}
+
+function employeeLookup(employees = []) {
+  const map = new Map()
+  for (const emp of employees) {
+    const keys = [emp?.id, emp?.employeeId, emp?.name, emp?.fullName]
+    for (const key of keys) {
+      if (key != null && String(key).trim() !== '') map.set(String(key).trim().toLowerCase(), emp)
+    }
+  }
+  return map
+}
+
+function employeeFromLookup(lookup, ...refs) {
+  for (const ref of refs) {
+    if (ref == null || String(ref).trim() === '') continue
+    const match = lookup.get(String(ref).trim().toLowerCase())
+    if (match) return match
+  }
+  return null
+}
+
+function employeeDisplayName(employee, fallback = 'Unassigned') {
+  return reportText(employee?.name ?? employee?.fullName ?? fallback, fallback)
+}
+
+function addActivityCount(rowsByEmployee, employeeName, taskCount = 0, ticketCount = 0) {
+  const key = reportText(employeeName, 'Unassigned')
+  const existing = rowsByEmployee.get(key)
+  if (!existing) return
+  existing.taskCount += taskCount
+  existing.ticketCount += ticketCount
+  rowsByEmployee.set(key, existing)
+}
+
+/**
+ * Build an owner-facing agronomy progress report from existing operational
+ * data. Sections are selected by the caller so the superintendent can tailor
+ * the packet before printing or saving it.
+ *
+ * @param {Object} data
+ * @param {Object[]} [data.crewAssignments]
+ * @param {Object[]} [data.calendarEvents]
+ * @param {Object[]} [data.taskTemplates]
+ * @param {Object[]} [data.sprays]
+ * @param {Object[]} [data.programs]
+ * @param {Object} [data.itemsByProgramId]
+ * @param {Object[]} [data.nutritionApplications]
+ * @param {Object[]} [data.maintenanceLogs]
+ * @param {Object[]} [data.employees]
+ * @param {Object[]} [data.weeklySchedules]
+ * @param {Object[]} [data.scheduleOverrides]
+ * @param {Object[]} [data.irrigationRepairs]
+ * @param {Object[]} [data.weeklyGoals]
+ * @param {Object[]} [data.yearlyGoals]
+ * @param {Object} options
+ * @param {string} [options.startDate]
+ * @param {string} [options.endDate]
+ * @param {Object} [options.include]
+ * @param {string} [options.ownerNotes]
+ * @param {Object[]} [options.ownerPhotos]
+ * @param {string} [options.courseName]
+ */
+export function buildAgronomyProgressReport(data = {}, options = {}) {
+  const {
+    crewAssignments = [],
+    calendarEvents = [],
+    taskTemplates = [],
+    sprays = [],
+    nutritionApplications = [],
+    maintenanceLogs = [],
+    employees = [],
+    weeklySchedules = [],
+    scheduleOverrides = [],
+    irrigationRepairs = [],
+    weeklyGoals = [],
+    yearlyGoals = [],
+  } = data
+  const {
+    startDate = null,
+    endDate = null,
+    ownerNotes = '',
+    ownerPhotos = [],
+    courseName = '',
+    include = {},
+  } = options
+
+  const selected = {
+    tasks:       include.tasks !== false,
+    weeklyGoals: include.weeklyGoals !== false,
+    yearlyGoals: include.yearlyGoals !== false,
+    plannedApplications: include.plannedApplications !== false,
+    sprays:      include.sprays !== false,
+    fertilizer:  include.fertilizer !== false,
+    maintenance: include.maintenance !== false,
+    irrigation:  include.irrigation !== false,
+    labor:       include.labor !== false,
+    hours:       include.hours !== false,
+  }
+
+  const rangeLabel = startDate && endDate
+    ? `${startDate} to ${endDate}`
+    : (startDate ? `${startDate} forward` : (endDate ? `through ${endDate}` : 'All time'))
+
+  const dateByEvent = eventDateLookup(calendarEvents)
+  const eventsById = eventByIdLookup(calendarEvents)
+  const employeesByKey = employeeLookup(employees)
+
+  const filteredTasks = crewAssignments
+    .filter(a => a?.status !== 'cancelled')
+    .filter(a => isInReportRange(assignmentDate(a, dateByEvent), startDate, endDate))
+    .sort((a, b) => (assignmentDate(b, dateByEvent) ?? '').localeCompare(assignmentDate(a, dateByEvent) ?? ''))
+
+  const filteredApplicationRecords = sprays
+    .filter(r => r?.deletedAt == null)
+    .filter(r => isInReportRange(applicationDateValue(r), startDate, endDate))
+    .sort((a, b) => (applicationDateKey(b) ?? '').localeCompare(applicationDateKey(a) ?? ''))
+
+  const filteredApplications = filteredApplicationRecords.filter(applicationIsCompleted)
+  const filteredLiquidApplications = filteredApplications.filter(record => !applicationIsGranular(record))
+  const filteredSprays = filteredLiquidApplications
+  const plannedApplicationRecords = filteredApplicationRecords
+    .filter(applicationHasStatus('planned'))
+    .map(savedStatusApplicationEvent)
+  const inProgressApplicationRecords = filteredApplicationRecords
+    .filter(applicationHasStatus('in-progress'))
+    .map(savedStatusApplicationEvent)
+  const pendingReviewApplicationRecords = filteredApplicationRecords
+    .filter(applicationHasStatus('pending-review'))
+    .map(savedStatusApplicationEvent)
+  const filteredPlannedApplications = plannedApplicationRecords
+    .sort((a, b) => (reportDateKey(a?.plannedStartDate) ?? '').localeCompare(reportDateKey(b?.plannedStartDate) ?? ''))
+  const filteredInProgressApplications = inProgressApplicationRecords
+    .sort((a, b) => (reportDateKey(a?.plannedStartDate) ?? '').localeCompare(reportDateKey(b?.plannedStartDate) ?? ''))
+  const filteredPendingReviewApplications = pendingReviewApplicationRecords
+    .sort((a, b) => (reportDateKey(a?.plannedStartDate) ?? '').localeCompare(reportDateKey(b?.plannedStartDate) ?? ''))
+  const plannedLiquidApplications = filteredPlannedApplications.filter(event => !plannedApplicationIsGranular(event))
+  const plannedGranularApplications = filteredPlannedApplications.filter(plannedApplicationIsGranular)
+  const inProgressLiquidApplications = filteredInProgressApplications.filter(event => !plannedApplicationIsGranular(event))
+  const inProgressGranularApplications = filteredInProgressApplications.filter(plannedApplicationIsGranular)
+  const pendingReviewLiquidApplications = filteredPendingReviewApplications.filter(event => !plannedApplicationIsGranular(event))
+  const pendingReviewGranularApplications = filteredPendingReviewApplications.filter(plannedApplicationIsGranular)
+  const filteredOpenApplications = [
+    ...filteredPlannedApplications,
+    ...filteredInProgressApplications,
+    ...filteredPendingReviewApplications,
+  ]
+
+  const filteredGranularApplications = filteredApplications.filter(applicationIsGranular)
+  const filteredFertilizerApplications = filteredGranularApplications.map(record => ({ source: 'application', record }))
+
+  const filteredMaintenance = maintenanceLogs
+    .filter(l => isInReportRange(l?.completedDate ?? l?.date ?? l?.createdAt, startDate, endDate))
+    .sort((a, b) => (reportDateKey(b?.completedDate ?? b?.date) ?? '').localeCompare(reportDateKey(a?.completedDate ?? a?.date) ?? ''))
+
+  const filteredIrrigationRepairs = irrigationRepairs
+    .filter(r => isInReportRange(r?.dateReported ?? r?.dateCompleted ?? r?.createdAt, startDate, endDate))
+    .sort((a, b) => (reportDateKey(b?.dateReported ?? b?.dateCompleted) ?? '').localeCompare(reportDateKey(a?.dateReported ?? a?.dateCompleted) ?? ''))
+
+  const filteredWeeklyGoals = weeklyGoals
+      .filter(goal => weeklyGoalOverlapsReport(goal?.date ?? goal?.createdAt, startDate, endDate))
+    .sort((a, b) => (reportDateKey(b?.date) ?? '').localeCompare(reportDateKey(a?.date) ?? ''))
+  const doneWeeklyGoals = filteredWeeklyGoals.filter(goal => goal?.status === 'done')
+  const inProgressWeeklyGoals = filteredWeeklyGoals.filter(goal => goal?.status === 'in-progress')
+  const notDoneWeeklyGoals = filteredWeeklyGoals.filter(goal => goal?.status === 'not-done')
+
+  const startYear = Number(String(startDate ?? '').slice(0, 4)) || null
+  const endYear = Number(String(endDate ?? '').slice(0, 4)) || null
+  const filteredYearlyGoals = yearlyGoals
+    .filter(goal => {
+      const year = Number(goal?.year)
+      if (!Number.isInteger(year)) return false
+      if (startYear && year < startYear) return false
+      if (endYear && year > endYear) return false
+      return true
+    })
+    .sort((a, b) => Number(b?.year ?? 0) - Number(a?.year ?? 0))
+  const doneYearlyGoals = filteredYearlyGoals.filter(goal => goal?.status === 'done')
+  const inProgressYearlyGoals = filteredYearlyGoals.filter(goal => goal?.status === 'in-progress')
+  const notDoneYearlyGoals = filteredYearlyGoals.filter(goal => goal?.status === 'not-done')
+
+  const maintenanceHours = filteredMaintenance.reduce((sum, l) =>
+    sum + (reportNumber(l?.laborHours) ?? 0), 0)
+  const irrigationRepairHours = filteredIrrigationRepairs.reduce((sum, r) =>
+    sum + (reportNumber(r?.laborHours) ?? 0), 0)
+  const sprayCost = filteredSprays.reduce((sum, r) => sum + sprayRecordCost(r), 0)
+  const maintenanceCost = filteredMaintenance.reduce((sum, l) => sum + (reportNumber(l?.cost) ?? 0), 0)
+  const granularArea = filteredFertilizerApplications.reduce((sum, a) => sum + fertilizerReportAreaAcres(a), 0)
+  const granularCost = filteredGranularApplications.reduce((sum, r) => sum + sprayRecordCost(r), 0)
+  const granularProductUsed = granularProductTotals(filteredGranularApplications)
+
+  const payrollBreakdown = buildPayrollBreakdown({
+    employees,
+    weeklySchedules,
+    scheduleOverrides,
+    startDate,
+    endDate,
+  })
+  const laborRowsByEmployee = new Map(payrollBreakdown.rows.map(row => [row.name, {
+    name: row.name,
+    hours: row.scheduledHours,
+    regularHours: row.regularHours,
+    overtimeHours: row.overtimeHours,
+    payroll: row.totalPay,
+    rate: row.hourlyRate,
+    scheduledDays: row.scheduledDays,
+    taskCount: 0,
+    ticketCount: 0,
+  }]))
+
+  for (const task of filteredTasks) {
+    const emp = employeeFromLookup(employeesByKey, task?.employeeId, task?.employeeName)
+    addActivityCount(laborRowsByEmployee, task?.employeeName ?? employeeDisplayName(emp), 1, 0)
+  }
+  for (const log of filteredMaintenance) {
+    const emp = employeeFromLookup(employeesByKey, log?.technicianEmployeeId, log?.technician)
+    addActivityCount(laborRowsByEmployee, log?.technician ?? employeeDisplayName(emp), 0, 1)
+  }
+  const laborRows = [...laborRowsByEmployee.values()]
+    .sort((a, b) => b.hours - a.hours || a.name.localeCompare(b.name))
+  const scheduleHours = payrollBreakdown.totals.scheduledHours
+  const regularHours = payrollBreakdown.totals.regularHours
+  const overtimeHours = payrollBreakdown.totals.overtimeHours
+  const payrollTotal = payrollBreakdown.totals.totalPay
+
+  const plannedTasks = filteredTasks.filter(a => assignmentReportStatus(a?.status) === 'planned')
+  const inProgressTasks = filteredTasks.filter(a => assignmentReportStatus(a?.status) === 'in-progress')
+  const weatherDelayedTasks = filteredTasks.filter(a => assignmentReportStatus(a?.status) === 'weather-delay')
+  const completeTasks = filteredTasks.filter(a => assignmentReportStatus(a?.status) === 'complete')
+  const ownerSummaryData = {
+    'Course':     courseName || '-',
+    'Date Range': rangeLabel,
+  }
+  if (selected.tasks) {
+    ownerSummaryData['Task Assignments'] = filteredTasks.length
+    ownerSummaryData['Planned Tasks'] = plannedTasks.length
+    ownerSummaryData['In Progress Tasks'] = inProgressTasks.length
+    ownerSummaryData['Weather Delayed Tasks'] = weatherDelayedTasks.length
+    ownerSummaryData['Complete Tasks'] = completeTasks.length
+  }
+  if (selected.weeklyGoals) {
+    ownerSummaryData['Weekly Goals'] = filteredWeeklyGoals.length
+    ownerSummaryData['Goals Done'] = doneWeeklyGoals.length
+    ownerSummaryData['Goals In Progress'] = inProgressWeeklyGoals.length
+    ownerSummaryData['Goals Not Done'] = notDoneWeeklyGoals.length
+  }
+  if (selected.yearlyGoals) {
+    ownerSummaryData['Yearly Goals'] = filteredYearlyGoals.length
+    ownerSummaryData['Yearly Goals Done'] = doneYearlyGoals.length
+    ownerSummaryData['Yearly Goals In Progress'] = inProgressYearlyGoals.length
+    ownerSummaryData['Yearly Goals Not Done'] = notDoneYearlyGoals.length
+  }
+  if (selected.sprays) {
+    ownerSummaryData['Liquid Applications'] = filteredLiquidApplications.length
+    ownerSummaryData['Liquid Application Cost'] = reportMoney(sprayCost)
+  }
+  if (selected.plannedApplications) {
+    ownerSummaryData['Planned Applications'] = filteredPlannedApplications.length
+    ownerSummaryData['Planned Liquid Applications'] = plannedLiquidApplications.length
+    ownerSummaryData['Planned Granular Applications'] = plannedGranularApplications.length
+    ownerSummaryData['In Progress Applications'] = filteredInProgressApplications.length
+    ownerSummaryData['Pending Review Applications'] = filteredPendingReviewApplications.length
+  }
+  if (selected.fertilizer) {
+    ownerSummaryData['Granular Applications'] = filteredGranularApplications.length
+    ownerSummaryData['Granular Application Cost'] = reportMoney(granularCost)
+  }
+  if (selected.maintenance) {
+    ownerSummaryData['Maintenance Tickets'] = filteredMaintenance.length
+    ownerSummaryData['Equipment R&M'] = reportMoney(maintenanceCost)
+  }
+  if (selected.irrigation) ownerSummaryData['Irrigation Repairs'] = filteredIrrigationRepairs.length
+  if (selected.hours) {
+    ownerSummaryData['Schedule Hours'] = reportHours(scheduleHours)
+    ownerSummaryData['Overtime Hours'] = reportHours(overtimeHours)
+  }
+  if (selected.labor) ownerSummaryData['Estimated Payroll'] = reportMoney(payrollTotal)
+
+  const printSummary = [
+    selected.yearlyGoals ? ['Yearly Goals', filteredYearlyGoals.length] : null,
+    selected.yearlyGoals ? ['Yearly Goals Done', doneYearlyGoals.length] : null,
+    selected.weeklyGoals ? ['Weekly Goals', filteredWeeklyGoals.length] : null,
+    selected.weeklyGoals ? ['Goals Done', doneWeeklyGoals.length] : null,
+    selected.weeklyGoals ? ['Goals In Progress', inProgressWeeklyGoals.length] : null,
+    selected.weeklyGoals ? ['Goals Not Done', notDoneWeeklyGoals.length] : null,
+    selected.labor ? ['Payroll', reportMoney(payrollTotal)] : null,
+    selected.hours ? ['Schedule Hours', reportHours(scheduleHours)] : null,
+    selected.hours ? ['OT Hours', reportHours(overtimeHours)] : null,
+    selected.maintenance ? ['Equipment R&M', filteredMaintenance.length] : null,
+    selected.irrigation ? ['Irrigation Repairs', filteredIrrigationRepairs.length] : null,
+    selected.plannedApplications ? ['Planned Apps', filteredPlannedApplications.length] : null,
+    selected.plannedApplications ? ['Planned Liquid', plannedLiquidApplications.length] : null,
+    selected.plannedApplications ? ['Planned Granular', plannedGranularApplications.length] : null,
+    selected.plannedApplications ? ['In Progress Apps', filteredInProgressApplications.length] : null,
+    selected.plannedApplications ? ['Pending Review Apps', filteredPendingReviewApplications.length] : null,
+    selected.sprays ? ['Liquid Apps', filteredLiquidApplications.length] : null,
+    selected.fertilizer ? ['Granular Apps', filteredGranularApplications.length] : null,
+    selected.tasks ? ['Weather Delay', weatherDelayedTasks.length] : null,
+    selected.tasks ? ['Tasks', filteredTasks.length] : null,
+    selected.tasks ? ['Planned', plannedTasks.length] : null,
+    selected.tasks ? ['In Progress', inProgressTasks.length] : null,
+    selected.tasks ? ['Complete', completeTasks.length] : null,
+  ].filter(Boolean)
+
+  const sections = [
+    createSection({
+      title: 'Owner Summary',
+      type:  SECTION_TYPE.FIELDS,
+      data: ownerSummaryData,
+    }),
+  ]
+
+  if (ownerNotes.trim()) {
+    sections.push(createSection({
+      title: 'Owner Notes',
+      type:  SECTION_TYPE.TEXT,
+      data:  ownerNotes.trim(),
+    }))
+  }
+
+  if (selected.tasks) {
+    sections.push(createSection({
+      title: 'Tasks',
+      type:  SECTION_TYPE.FIELDS,
+      data: {
+        'Total Tasks':      filteredTasks.length,
+        'Planned Tasks':    plannedTasks.length,
+        'In Progress Tasks': inProgressTasks.length,
+        'Weather Delayed Tasks': weatherDelayedTasks.length,
+        'Complete Tasks':   completeTasks.length,
+        'Active Library':   taskTemplates.filter(t => t?.status !== 'archived').length,
+        'Employees Listed': compactTextList(filteredTasks.map(a => a?.employeeName), '-'),
+      },
+    }))
+    for (const [title, rows] of [
+      ['Planned Tasks', plannedTasks],
+      ['In Progress Tasks', inProgressTasks],
+      ['Weather Delayed Tasks', weatherDelayedTasks],
+      ['Complete Tasks', completeTasks],
+    ]) {
+      if (rows.length === 0) continue
+      sections.push(createSection({
+        title,
+        type:  SECTION_TYPE.TABLE,
+        data: {
+          columns: ['Task', 'Times', 'Employees', 'Areas', 'Dates', 'Status'],
+          rows: taskReportGroupRows(rows, eventsById, dateByEvent, taskTemplates),
+        },
+      }))
+    }
+  }
+
+  if (selected.weeklyGoals) {
+    sections.push(createSection({
+      title: 'Weekly Goals and Status',
+      type:  SECTION_TYPE.FIELDS,
+      data: {
+        'Total Goals': filteredWeeklyGoals.length,
+        'Done': doneWeeklyGoals.length,
+        'In Progress': inProgressWeeklyGoals.length,
+        'Not Done': notDoneWeeklyGoals.length,
+      },
+    }))
+    if (filteredWeeklyGoals.length > 0) {
+      sections.push(createSection({
+        title: 'Weekly Goals and Status Log',
+        type:  SECTION_TYPE.TABLE,
+        data: {
+            columns: ['Week', 'Goal / Improvement', 'Notes', 'Status'],
+          rows: filteredWeeklyGoals.map(goal => [
+              weeklyGoalLabel(goal?.date),
+            reportText(goal?.note, '-'),
+            reportText(goal?.notes, '-'),
+            titleText(goal?.status ?? 'in-progress'),
+          ]),
+        },
+      }))
+    }
+  }
+
+  if (selected.yearlyGoals) {
+    sections.push(createSection({
+      title: 'Yearly Goals and Status',
+      type: SECTION_TYPE.FIELDS,
+      data: {
+        'Total Goals': filteredYearlyGoals.length,
+        'Done': doneYearlyGoals.length,
+        'In Progress': inProgressYearlyGoals.length,
+        'Not Done': notDoneYearlyGoals.length,
+      },
+    }))
+    if (filteredYearlyGoals.length > 0) {
+      sections.push(createSection({
+        title: 'Yearly Goals and Status Log',
+        type: SECTION_TYPE.TABLE,
+        data: {
+          columns: ['Year', 'Goal / Improvement', 'Notes', 'Status'],
+          rows: filteredYearlyGoals.map(goal => [
+            String(goal?.year ?? '-'),
+            reportText(goal?.note, '-'),
+            reportText(goal?.notes, '-'),
+            titleText(goal?.status ?? 'in-progress'),
+          ]),
+        },
+      }))
+    }
+  }
+
+  if (selected.plannedApplications) {
+    sections.push(createSection({
+      title: 'Planned Applications',
+      type:  SECTION_TYPE.FIELDS,
+      data: {
+        'Applications': filteredPlannedApplications.length,
+        'Liquid':       plannedLiquidApplications.length,
+        'Granular':     plannedGranularApplications.length,
+        'Programs':     compactTextList(filteredPlannedApplications.map(event => event?.programName)),
+        'Areas':        compactTextList(filteredPlannedApplications.map(event => event?.targetArea)),
+        'Products':     compactTextList(filteredPlannedApplications.flatMap(event => (event?.items ?? []).map(item => item?.productName))),
+      },
+    }))
+    for (const [title, rows] of [
+      ['Planned Liquid Applications', plannedLiquidApplications],
+      ['Planned Granular Applications', plannedGranularApplications],
+      ['In Progress Liquid Applications', inProgressLiquidApplications],
+      ['In Progress Granular Applications', inProgressGranularApplications],
+      ['Pending Review Liquid Applications', pendingReviewLiquidApplications],
+      ['Pending Review Granular Applications', pendingReviewGranularApplications],
+    ]) {
+      if (rows.length === 0) continue
+      sections.push(createSection({
+        title,
+        type: SECTION_TYPE.TABLE,
+        data: {
+          columns: ['Window', 'Source', 'Status', 'Area', 'Products', 'Product Count', 'Notes'],
+          rows: applicationStatusRows(rows).map(row => [row[0], row[1], row[2], row[4], row[5], row[6], row[7]]),
+        },
+      }))
+    }
+  }
+
+  if (selected.sprays) {
+    sections.push(createSection({
+      title: 'Liquid Applications',
+      type:  SECTION_TYPE.FIELDS,
+      data: {
+        'Applications': filteredLiquidApplications.length,
+        'Products':     compactTextList(filteredLiquidApplications.flatMap(r => (r?.products ?? []).map(p => p?.name))),
+        'Areas':        compactTextList(filteredLiquidApplications.flatMap(r => r?.areas?.length ? r.areas : [r?.area])),
+        'Total Cost':   reportMoney(sprayCost),
+      },
+    }))
+    if (filteredLiquidApplications.length > 0) {
+      sections.push(createSection({
+        title: 'Liquid Application Log',
+        type:  SECTION_TYPE.TABLE,
+        data: {
+          columns: ['Date', 'Application', 'Products', 'Area', 'Applicator', 'Cost'],
+          rows: filteredLiquidApplications.slice(0, 50).map(r => [
+            reportDateKey(r?.date ?? r?.applicationDate) ?? '-',
+            r?.applicationName ?? r?.targetPest ?? 'Liquid application',
+            productList(r?.products),
+            compactTextList(r?.areas?.length ? r.areas : [r?.area]),
+            r?.applicator ?? '-',
+            reportMoney(sprayRecordCost(r)),
+          ]),
+        },
+      }))
+    }
+  }
+
+  if (selected.fertilizer) {
+    sections.push(createSection({
+      title: 'Granular Applications',
+      type:  SECTION_TYPE.FIELDS,
+      data: {
+        'Applications': filteredGranularApplications.length,
+        'Area Acres':   granularArea > 0 ? granularArea.toFixed(2) : '-',
+        'Total Product Used': granularProductUsed,
+        'Products':     compactTextList(filteredFertilizerApplications.map(fertilizerReportProducts)),
+        'Areas':        compactTextList(filteredFertilizerApplications.map(fertilizerReportArea)),
+        'Total Cost':   reportMoney(granularCost),
+      },
+    }))
+    if (filteredFertilizerApplications.length > 0) {
+      sections.push(createSection({
+        title: 'Granular Application Log',
+        type:  SECTION_TYPE.TABLE,
+        data: {
+          columns: ['Date', 'Products', 'Area', 'Acres', 'Nutrient / Label Rate', 'Product Rate', 'Total Product', 'Applicator', 'Cost'],
+          rows: filteredFertilizerApplications.slice(0, 50).map(a => [
+            fertilizerReportDate(a) ?? '-',
+            fertilizerReportProducts(a),
+            fertilizerReportArea(a),
+            fertilizerReportAreaAcres(a) > 0 ? fertilizerReportAreaAcres(a).toFixed(4) : '-',
+            fertilizerReportRate(a),
+            fertilizerReportProductRate(a),
+            fertilizerReportQuantity(a),
+            a?.source === 'application' ? (a.record?.applicator ?? '-') : '-',
+            a?.source === 'application' ? reportMoney(sprayRecordCost(a.record)) : '-',
+          ]),
+        },
+      }))
+    }
+  }
+
+  if (selected.maintenance) {
+    sections.push(createSection({
+      title: 'Equipment R&M',
+      type:  SECTION_TYPE.FIELDS,
+      data: {
+        'Tickets':     filteredMaintenance.length,
+        'Labor Hours': reportHours(maintenanceHours),
+        'R&M Cost':    reportMoney(maintenanceCost),
+        'Resolved':    filteredMaintenance.filter(l => String(l?.ticketStage ?? l?.status ?? '').toLowerCase() === 'resolved' || l?.status === 'completed').length,
+      },
+    }))
+    if (filteredMaintenance.length > 0) {
+      sections.push(createSection({
+        title: 'Equipment R&M Tickets',
+        type:  SECTION_TYPE.TABLE,
+        data: {
+          columns: ['Date', 'Equipment', 'Service', 'Progress', 'Technician', 'Hours', 'Cost'],
+          rows: filteredMaintenance.slice(0, 50).map(l => [
+            reportDateKey(l?.completedDate ?? l?.date) ?? '-',
+            l?.equipmentName ?? l?.equipmentId ?? '-',
+            l?.serviceType ?? '-',
+            titleText(l?.ticketStage ?? l?.status ?? '-'),
+            l?.technician ?? 'Unassigned',
+            reportHours(l?.laborHours),
+            reportMoney(l?.cost),
+          ]),
+        },
+      }))
+    }
+  }
+
+  if (selected.irrigation) {
+    const openIrrigationRepairs = filteredIrrigationRepairs.filter(r => r?.status !== 'completed')
+    sections.push(createSection({
+      title: 'Irrigation Repairs',
+      type:  SECTION_TYPE.FIELDS,
+      data: {
+        'Tickets':       filteredIrrigationRepairs.length,
+        'Open':          openIrrigationRepairs.length,
+        'Completed':     filteredIrrigationRepairs.filter(r => r?.status === 'completed').length,
+        'Parts Needed':  filteredIrrigationRepairs.filter(r => r?.status === 'parts-needed').length,
+        'High Priority': filteredIrrigationRepairs.filter(r => r?.priority === 'high').length,
+        'Repair Hours':  reportHours(irrigationRepairHours),
+      },
+    }))
+    if (filteredIrrigationRepairs.length > 0) {
+      sections.push(createSection({
+        title: 'Irrigation Repair Tickets',
+        type:  SECTION_TYPE.TABLE,
+        data: {
+          columns: ['Reported', 'Issue', 'Area', 'Status', 'Priority', 'Assigned', 'Hours'],
+          rows: filteredIrrigationRepairs.slice(0, 50).map(r => [
+            reportDateKey(r?.dateReported ?? r?.createdAt) ?? '-',
+            ISSUE_TYPE_LABELS[r?.issueType] ?? titleText(r?.issueType ?? 'Repair'),
+            [
+              r?.hole != null ? `Hole ${r.hole}` : null,
+              r?.area,
+              r?.headNumber ? `Head #${r.headNumber}` : null,
+            ].filter(Boolean).join(' / ') || '-',
+            titleText(r?.status ?? 'open'),
+            titleText(r?.priority ?? '-'),
+            r?.assignedTo ?? 'Unassigned',
+            reportHours(r?.laborHours),
+          ]),
+        },
+      }))
+    }
+  }
+
+  if (selected.hours) {
+    sections.push(createSection({
+      title: 'Hours Summary',
+      type:  SECTION_TYPE.FIELDS,
+      data: {
+        'Schedule Hours':           reportHours(scheduleHours),
+        'Regular Hours':            reportHours(regularHours),
+        'Overtime Hours':           reportHours(overtimeHours),
+        'Maintenance Ticket Hours': reportHours(maintenanceHours),
+        'Irrigation Repair Hours':  reportHours(irrigationRepairHours),
+      },
+    }))
+  }
+
+  if (selected.labor) {
+    sections.push(createSection({
+      title: 'Labor / Payroll',
+      type:  SECTION_TYPE.TABLE,
+      data: {
+        columns: ['Employee', 'Schedule Hours', 'Regular', 'OT', 'Pay Rate', 'Estimated Payroll', 'Scheduled Days', 'Tasks', 'Tickets'],
+        rows: laborRows.length > 0
+          ? laborRows.map(row => {
+            const emp = employeeFromLookup(employeesByKey, row.name)
+            return [
+              row.name,
+              reportHours(row.hours),
+              reportHours(row.regularHours),
+              reportHours(row.overtimeHours),
+               emp?.hidePayRate
+                 ? 'Hidden'
+                 : (emp?.payRate != null ? `${reportMoney(emp.payRate)} / hr` : (row.rate != null ? `${reportMoney(row.rate)} / hr` : '-')),
+              reportMoney(row.payroll),
+              row.scheduledDays,
+              row.taskCount,
+              row.ticketCount,
+            ]
+          })
+          : [['-', '0 hrs', '0 hrs', '0 hrs', '-', '$0.00', 0, 0, 0]],
+      },
+    }))
+  }
+
+  const sectionRank = title => {
+    if (title === 'Owner Summary' || title === 'Owner Notes') return 0
+    if (title.startsWith('Yearly Goals')) return 1
+    if (title.startsWith('Weekly Goals')) return 2
+    if (title === 'Hours Summary' || title === 'Labor / Payroll') return 3
+    if (title.startsWith('Equipment') || title.startsWith('Irrigation')) return 4
+    if (title.includes('Application')) return 5
+    if (title === 'Weather Delayed Tasks') return 6
+    if (title === 'Tasks' || title.endsWith('Tasks')) return 7
+    return 5
+  }
+  const orderedSections = sections
+    .map((section, index) => ({ section, index }))
+    .sort((a, b) => sectionRank(a.section.title) - sectionRank(b.section.title) || a.index - b.index)
+    .map(item => item.section)
+
+  return createReport({
+    module:        REPORT_MODULE.AGRONOMY,
+    type:          REPORT_TYPE.AGRONOMY_PROGRESS,
+    title:         `Agronomy Progress Report - ${rangeLabel}`,
+    generatedBy:   'reports-hub',
+    sections: orderedSections,
+    attachments: Array.isArray(ownerPhotos) ? ownerPhotos : [],
+    metadata: {
+      dateRange: { startDate, endDate, label: rangeLabel },
+      included:  selected,
+      printExtras: {
+        subtitle: 'Owner progress packet',
+        summary: printSummary,
+        footerLeft: courseName || 'TurfIntel Pro',
+        footerRight: 'Owner agronomy progress report',
+      },
+      totals: {
+        taskCount:        filteredTasks.length,
+        weeklyGoalCount:  filteredWeeklyGoals.length,
+        weeklyGoalDoneCount: doneWeeklyGoals.length,
+        weeklyGoalInProgressCount: inProgressWeeklyGoals.length,
+        weeklyGoalNotDoneCount: notDoneWeeklyGoals.length,
+        yearlyGoalCount: filteredYearlyGoals.length,
+        yearlyGoalDoneCount: doneYearlyGoals.length,
+        yearlyGoalInProgressCount: inProgressYearlyGoals.length,
+        yearlyGoalNotDoneCount: notDoneYearlyGoals.length,
+        plannedTaskCount: plannedTasks.length,
+        inProgressTaskCount: inProgressTasks.length,
+        completeTaskCount: completeTasks.length,
+        plannedApplicationCount: filteredPlannedApplications.length,
+        plannedLiquidApplicationCount: plannedLiquidApplications.length,
+        plannedGranularApplicationCount: plannedGranularApplications.length,
+        inProgressApplicationCount: filteredInProgressApplications.length,
+        pendingReviewApplicationCount: filteredPendingReviewApplications.length,
+        openApplicationCount: filteredOpenApplications.length,
+        sprayCount:       filteredLiquidApplications.length,
+        liquidApplicationCount: filteredLiquidApplications.length,
+        fertilizerCount:  filteredGranularApplications.length,
+        granularApplicationCount: filteredGranularApplications.length,
+        maintenanceCount: filteredMaintenance.length,
+        irrigationRepairCount: filteredIrrigationRepairs.length,
+        scheduleHours,
+        regularHours,
+        overtimeHours,
+        maintenanceHours,
+        irrigationRepairHours,
+        payrollTotal,
+        sprayCost,
+        maintenanceCost,
+        equipmentRmCost:  maintenanceCost,
+      },
+    },
+    exportFormats: STANDARD_FORMATS,
+  })
+}
 
 /**
  * Build a nutrition summary across soil/tissue/water reports + recommendations.

@@ -108,7 +108,6 @@ export default function TurfHealthPhotoViewer({ observation, attachments, onClos
   return createPortal(
     <div
       className={styles.backdrop}
-      onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-label={`Photos for ${observation.location}`}

@@ -35,7 +35,8 @@ function parseJsonArray(raw) {
 //   assignedArea, skills, certifications, courseId, createdAt, updatedAt
 //
 // Private (only included when canViewPrivate === true):
-//   phone, email, notes, payRate, hireDate, pesticideLicense, emergencyContact
+//   phone, email, notes, payRate, payType, salaryAmount, excludeFromPayroll,
+//   hireDate, pesticideLicense, emergencyContact
 //
 // Phase 9C.5a.5 — Closes the gap where /display-board/board (the public
 // kiosk route) could observe pay rates etc. over the wire even though the
@@ -67,6 +68,10 @@ function rowToEmployee(row, canViewPrivate = false) {
     out.email            = row.email
     out.notes            = row.notes
     out.payRate          = row.pay_rate
+    out.payType          = row.pay_type ?? 'hourly'
+    out.salaryAmount     = row.salary_amount
+    out.hidePayRate      = row.hide_pay_rate === 1
+    out.excludeFromPayroll = row.exclude_from_payroll === 1
     out.hireDate         = row.hire_date
     out.pesticideLicense = row.pesticide_license
     out.emergencyContact = row.emergency_contact
@@ -89,6 +94,10 @@ const CORE_COLUMNS = {
   assignedArea:      'assigned_area',
   notes:             'notes',
   payRate:           'pay_rate',
+  payType:           'pay_type',
+  salaryAmount:      'salary_amount',
+  hidePayRate:       'hide_pay_rate',
+  excludeFromPayroll: 'exclude_from_payroll',
   hireDate:          'hire_date',
   pesticideLicense:  'pesticide_license',
   emergencyContact:  'emergency_contact',
@@ -100,7 +109,7 @@ const CORE_COLUMNS = {
 // Phase 9C.5c1 — keys whose JS values need 0/1 normalization before
 // binding to a SQLite INTEGER column. Booleans, 'true'/'false' strings,
 // and JS truthy/falsy all collapse to 0 or 1.
-const BOOLEAN_COLUMNS = new Set(['autoTranslateBoardNotes'])
+const BOOLEAN_COLUMNS = new Set(['autoTranslateBoardNotes', 'excludeFromPayroll', 'hidePayRate'])
 function normalizeBoolean(v) {
   if (v === 1 || v === 0) return v
   if (v === true)  return 1
@@ -143,10 +152,10 @@ export async function createCrewEmployee(env, request) {
     INSERT INTO crew_employees (
       id, name, role, department, status, phone, email,
       assigned_area, skills_json, certifications_json, notes,
-      pay_rate, hire_date, pesticide_license, emergency_contact,
+      pay_rate, pay_type, salary_amount, hide_pay_rate, exclude_from_payroll, hire_date, pesticide_license, emergency_contact,
       auto_translate_board_notes, board_language,
       course_id
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id,
     name,
@@ -160,6 +169,10 @@ export async function createCrewEmployee(env, request) {
     body.certifications ? JSON.stringify(body.certifications) : null,
     body.notes            ?? null,
     body.payRate          ?? null,
+    body.payType          ?? 'hourly',
+    body.salaryAmount     ?? null,
+    body.hidePayRate      ? 1 : 0,
+    body.excludeFromPayroll ? 1 : 0,
     body.hireDate         ?? null,
     body.pesticideLicense ?? null,
     body.emergencyContact ?? null,

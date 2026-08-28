@@ -92,6 +92,7 @@ export default function ProgramIntelligence() {
     customStart:   '',
     customEnd:     '',
   })
+  const [showDetails, setShowDetails] = useState(false)
   function patchFilters(patch) {
     setFilters(prev => ({ ...prev, ...patch }))
   }
@@ -180,8 +181,8 @@ export default function ProgramIntelligence() {
           all user-facing copy. Internal `data-print-region` token + file
           name preserved (no callers / no schema effect). */}
       <WorkspaceSection
-        title="Spray Intelligence"
-        subtitle="Seasonal chemistry analytics from logged spray applications. Read-only — no recommendations or scheduling."
+        title="Resistance Management"
+        subtitle="A quick resistance snapshot from logged spray applications. Detailed chemistry is available when needed."
       >
         {sprayLoading ? (
           <p className={styles.empty}>Loading spray history…</p>
@@ -193,7 +194,7 @@ export default function ProgramIntelligence() {
           <>
             {/* ── Print-only header (visible only when printing) ── */}
             <header className={styles.printHeader}>
-              <h2 className={styles.printTitle}>Spray Intelligence Report</h2>
+              <h2 className={styles.printTitle}>Resistance Management Report</h2>
               <div className={styles.printMeta}>
                 {courseName && <span>Course: <strong>{courseName}</strong></span>}
                 <span>Generated: <strong>{TODAY_ISO()}</strong></span>
@@ -252,6 +253,19 @@ export default function ProgramIntelligence() {
                 </p>
               </>
             ) : (
+            <>
+            <ResistanceSnapshot summary={summary} total={total} labeledFraction={labeledFraction} />
+            <div className={styles.detailToggleRow}>
+              <button
+                type="button"
+                className={styles.actionBtn}
+                onClick={() => setShowDetails(v => !v)}
+              >
+                {showDetails ? 'Hide detailed chemistry' : 'Show detailed chemistry'}
+              </button>
+            </div>
+
+            {showDetails && (
             <>
             {/* ── Headline stats ── */}
             <div className={styles.statsRow}>
@@ -430,6 +444,8 @@ export default function ProgramIntelligence() {
             </div>
             </>
             )}
+            </>
+            )}
           </>
         )}
       </WorkspaceSection>
@@ -438,6 +454,68 @@ export default function ProgramIntelligence() {
 }
 
 // ── Small subcomponents ───────────────────────────────────────────────
+
+function ResistanceSnapshot({ summary, total, labeledFraction }) {
+  const topFrac = summary.fracUsage[0] ?? null
+  const longestStreak = summary.longestFracStreaks
+    .filter(s => s.streak >= 2)
+    .sort((a, b) => b.streak - a.streak)[0] ?? null
+  const highPressure = summary.highPressure?.[0] ?? null
+  const watchLevel = highPressure || (longestStreak?.streak ?? 0) >= 3
+    ? 'Watch'
+    : topFrac
+      ? 'Balanced'
+      : 'Needs labels'
+  const watchTone = watchLevel === 'Watch' ? 'warn' : watchLevel === 'Balanced' ? 'ok' : 'muted'
+
+  return (
+    <div className={styles.snapshot}>
+      <div className={styles.snapshotLead} data-tone={watchTone}>
+        <span className={styles.snapshotLabel}>Status</span>
+        <strong>{watchLevel}</strong>
+        <span>
+          {watchLevel === 'Watch'
+            ? 'Rotation deserves a closer look before the next application.'
+            : watchLevel === 'Balanced'
+              ? 'No obvious repeated-code issue in the current filters.'
+              : 'Import labels so the app can read FRAC/HRAC/IRAC groups.'}
+        </span>
+      </div>
+      <div className={styles.snapshotGrid}>
+        <SnapshotItem
+          label="Most used FRAC"
+          value={topFrac ? `FRAC ${topFrac.code}` : 'None resolved'}
+          detail={topFrac ? `${topFrac.applications} of ${total} applications` : 'Label data needed'}
+        />
+        <SnapshotItem
+          label="Longest repeat"
+          value={longestStreak ? `FRAC ${longestStreak.code}` : 'No repeats'}
+          detail={longestStreak ? `${longestStreak.streak} in a row on ${SURFACE_LABELS[longestStreak.surface] ?? longestStreak.surface}` : 'Within selected filters'}
+        />
+        <SnapshotItem
+          label="Multi-site partner"
+          value={fmtPct(summary.multiSite.rate)}
+          detail={`${summary.multiSite.withPartner} of ${summary.multiSite.totalApplications} applications`}
+        />
+        <SnapshotItem
+          label="Label coverage"
+          value={fmtPct(labeledFraction.share)}
+          detail={`${labeledFraction.resolved} of ${labeledFraction.total} applications`}
+        />
+      </div>
+    </div>
+  )
+}
+
+function SnapshotItem({ label, value, detail }) {
+  return (
+    <div className={styles.snapshotItem}>
+      <span className={styles.snapshotLabel}>{label}</span>
+      <strong>{value}</strong>
+      <span>{detail}</span>
+    </div>
+  )
+}
 
 function FilterStrip({ filters, patchFilters }) {
   return (
@@ -580,4 +658,3 @@ function DiversityCard({ diversity }) {
     </div>
   )
 }
-

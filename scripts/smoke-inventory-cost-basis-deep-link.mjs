@@ -243,7 +243,7 @@ console.log('— CostBasisEditor.module.css deep-link classes')
 console.log('— direct Inventory entry preserved')
 {
   // When the user opens /inventory directly (no route state) the
-  // existing flow continues to work: seedTab defaults to 'Overview',
+  // existing flow continues to work: seedTab defaults to 'Stock',
   // seedProduct = null, seedFocus = null, seedSource = null.
   // InventoryProducts receives nulls and CostBasisEditor's
   // fromReview gate stays false, so neither the banner nor the
@@ -251,13 +251,13 @@ console.log('— direct Inventory entry preserved')
   const src = readFileSync('src/pages/Inventory/Inventory.jsx', 'utf8')
   // Phase 9B.2 — the seedTab string literal was replaced by a course-
   // aware resolveSeedTabs() helper. Accept EITHER the legacy literal
-  // OR the new resolver shape with a non-Crosswinds fallback to 'Overview'.
-  const seedDefaultsToOverview =
-    /seedTab\s*=\s*TABS\.includes\(location\.state\?\.activeTab\)\s*\?\s*location\.state\.activeTab\s*:\s*['"]Overview['"]/.test(src)
+  // OR the simplified resolver shape with a fallback to 'Stock'.
+  const seedDefaultsToStock =
+    /seedTab\s*=\s*TABS\.includes\(location\.state\?\.activeTab\)\s*\?\s*location\.state\.activeTab\s*:\s*['"]Stock['"]/.test(src)
     || (/function\s+resolveSeedTabs\b/.test(src)
-        && /activeTab:\s*['"]Overview['"]/.test(src))
-  assert(seedDefaultsToOverview,
-    'seedTab/resolver still defaults to Overview when state.activeTab is absent (legacy or Crosswinds courses)')
+        && /activeTab:\s*['"]Stock['"]/.test(src))
+  assert(seedDefaultsToStock,
+    'seedTab/resolver defaults to Stock when state.activeTab is absent')
   assert(/seedProduct\s*=\s*location\.state\?\.productId\s*\?\?\s*null/.test(src),
     'seedProduct still defaults to null')
   // The new keys also default to null.

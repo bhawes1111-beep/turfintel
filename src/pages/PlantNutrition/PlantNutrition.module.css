@@ -1,4 +1,10 @@
 /* ── Shared status tokens ────────────────────────────────────────────────── */
+.labReportsHub {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
 .statusOk   { --st-color: var(--color-accent);  --st-bg: rgba(74,158,74,0.1);   --st-border: rgba(74,158,74,0.25); }
 .statusLow  { --st-color: #d4883a;              --st-bg: rgba(210,130,40,0.12); --st-border: rgba(210,130,40,0.25); }
 .statusHigh { --st-color: #e05050;              --st-bg: rgba(220,60,60,0.12);  --st-border: rgba(220,60,60,0.25); }

@@ -368,15 +368,29 @@ console.log('— /turf-health workspace (Commit 5)')
   const page = readFileSync('src/pages/TurfHealth/TurfHealth.jsx', 'utf8')
   assert(/import\s+PageShell/.test(page),       'TurfHealth uses PageShell')
   assert(/title="Turf Health"/.test(page),     'PageShell title is "Turf Health"')
-  // Three tabs declared in order.
-  assert(/TABS\s*=\s*\['Overview',\s*'Active Issues',\s*'Recent Observations'\]/.test(page),
-                                                'TABS in declared order: Overview / Active Issues / Recent Observations')
+  // Four tabs declared in order, including the permanent resolved archive.
+  assert(/TABS\s*=\s*\['Overview',\s*'Nutrients',\s*'Active Issues',\s*'Recent Observations',\s*'Resolved'\]/.test(page),
+                                                'TABS include Nutrients and the Resolved archive')
   // Hooks are the new turf-health ones, not the moisture ones.
   assert(/useTurfHealthData\b/.test(page),     'workspace consumes useTurfHealthData')
   assert(/useTurfHealthAttachments\b/.test(page),
                                                 'workspace consumes useTurfHealthAttachments')
   assert(!/useMoistureData|useMoistureAttachments/.test(page),
                                                 'workspace does NOT consume moisture hooks')
+  assert(/TurfHealthCaptureSheet/.test(page),   'workspace exposes New Observation capture')
+  assert(/TurfHealthEditModal/.test(page),      'workspace exposes full observation editing')
+  assert(/type="search"/.test(page),            'workspace provides observation search')
+  assert(/function\s+ResolvedIssues/.test(page), 'workspace preserves resolved observations')
+
+  const store = readFileSync('src/utils/turfHealth/turfHealthStore.js', 'utf8')
+  assert(/export\s+async\s+function\s+updateTurfHealthObservation/.test(store),
+                                                'store exports optimistic observation update')
+  assert(/method:\s*'PATCH'/.test(store),       'observation update persists through PATCH')
+
+  const editModal = readFileSync('src/components/turfHealth/TurfHealthEditModal.jsx', 'utf8')
+  for (const field of ['location', 'healthType', 'severity', 'status', 'observedAt', 'followUpDate', 'areaType', 'orientation', 'surfaceNote', 'notes']) {
+    assert(new RegExp(`\\b${field}\\b`).test(editModal), `edit modal includes ${field}`)
+  }
 
   // Active Issues: severity-sorted, status=active|monitoring only.
   const activeBlock = page.match(/function\s+ActiveIssues[\s\S]*?\n\}/)?.[0]

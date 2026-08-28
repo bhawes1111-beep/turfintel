@@ -1,0 +1,50 @@
+{
+  "version": "epsom-salt-guaranteed-analysis-user-supplied-2026-08-08",
+  "generatedAt": "2026-08-08",
+  "source": "Guaranteed analysis and variable-solubility data supplied by the user",
+  "notes": "Generic Epsom salt catalog record. Manufacturer and source-label URL were not supplied.",
+  "products": [
+    {
+      "product_name": "EPSOM SALT",
+      "brand_owner": null,
+      "manufacturer": null,
+      "epa_number": null,
+      "formulation": "Water-soluble magnesium sulfate heptahydrate",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Magnesium sulfate heptahydrate fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Magnesium (Mg), water soluble",
+          "percentage": 9.8
+        },
+        {
+          "name": "Sulfur (S)",
+          "percentage": 12.9
+        }
+      ],
+      "fertilizer_analysis": "0-0-0; Magnesium (Mg) 9.8% minimum, all water soluble; Sulfur (S) 12.9% minimum",
+      "rates": [],
+      "targets": [
+        "Magnesium nutrition",
+        "Sulfur nutrition"
+      ],
+      "turf_sites": [
+        "golf course turf",
+        "sports turf",
+        "lawns",
+        "landscapes"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": null,
+      "notes": "Guaranteed analysis: 9.8% minimum magnesium, all water soluble, and 12.9% minimum sulfur. Saturated solution contains approximately 5.5% Mg in 70 F water and 4.7% Mg in 60 F water. At 70 F, the supplied table lists 8.5 lb magnesium sulfate heptahydrate per gallon of water for a 5% Mg solution, 5.7 lb/gal for 4% Mg, 3.6 lb/gal for 3% Mg, and 2.1 lb/gal for 2% Mg. These values apply when mixing only water and magnesium sulfate heptahydrate; other solution inputs reduce the amount that can dissolve and the attainable Mg concentration. At any Mg solution concentration, sulfur in solution is approximately 1.3 times the Mg concentration. No turf application rate was supplied; select rates according to the current product label and agronomic need.",
+      "status": "active"
+    }
+  ]
+}

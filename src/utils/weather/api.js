@@ -20,7 +20,7 @@
 // show a subtle "Ambient Weather" / "NWS fallback" label.
 // Diagnostics logged to console.debug — no UI exposure.
 
-import { normalizeObservation, normalizeForecast, normalizeMetar, normalizeAmbient } from './normalize'
+import { normalizeObservation, normalizeForecast, normalizeMetar, normalizeAmbient } from './normalize.js'
 
 const CACHE_KEY      = 'turfintel-weather-cache'
 const CACHE_TTL_MS   = 10 * 60 * 1000
@@ -32,6 +32,7 @@ const NWS_HEADERS    = { 'User-Agent': 'TurfIntelPro/1.0 (bhawes1111@gmail.com)'
 
 // Module-level cache — shared across hook instances; survives multiple calls within one session
 let _forecastUrl = null
+let _forecastHourlyUrl = null
 
 async function safeJson(url, init = {}) {
   try {
@@ -62,7 +63,8 @@ function readCache(allowStale = false) {
 function writeCache(bundle) {
   try {
     // _cacheAgeMs is ephemeral — strip it before writing
-    const { _cacheAgeMs, ...rest } = bundle
+    const rest = { ...bundle }
+    delete rest._cacheAgeMs
     localStorage.setItem(CACHE_KEY, JSON.stringify({ ...rest, timestamp: Date.now() }))
   } catch { /* storage quota — silently skip */ }
 }
@@ -77,16 +79,134 @@ async function resolveForecastUrl() {
   return url
 }
 
+async function resolveForecastHourlyUrl() {
+  if (_forecastHourlyUrl) return _forecastHourlyUrl
+  const points = await safeJson(NWS_POINTS_URL, { headers: NWS_HEADERS })
+  const url = points?.properties?.forecastHourly ?? null
+  if (url) _forecastHourlyUrl = url
+  return url
+}
+
+function validApplicationDate(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(value ?? ''))
+}
+
+function applicationTargetMs(date, time) {
+  if (!validApplicationDate(date)) return null
+  const parsed = new Date(`${date}T${time || '12:00'}:00`)
+  return Number.isNaN(parsed.getTime()) ? null : parsed.getTime()
+}
+
+function localDateKey(value) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+function nearestNwsObservation(features, targetMs, date) {
+  let nearest = null
+  let nearestDiff = Infinity
+  for (const feature of features ?? []) {
+    const timestamp = feature?.properties?.timestamp
+    const observedMs = Date.parse(timestamp)
+    if (!Number.isFinite(observedMs) || localDateKey(observedMs) !== date) continue
+    const diff = Math.abs(observedMs - targetMs)
+    if (diff < nearestDiff) {
+      nearest = feature
+      nearestDiff = diff
+    }
+  }
+  return nearest
+}
+
+function forecastWindMph(value) {
+  const values = String(value ?? '').match(/\d+(?:\.\d+)?/g)?.map(Number).filter(Number.isFinite) ?? []
+  return values.length ? Math.max(...values) : null
+}
+
+function hourlyForecastCurrent(period) {
+  if (!period) return null
+  const temperature = Number(period.temperature)
+  const humidity = Number(period.relativeHumidity?.value)
+  const wind = forecastWindMph(period.windSpeed)
+  return {
+    currentTemp: Number.isFinite(temperature) ? temperature : null,
+    humidity: Number.isFinite(humidity) ? humidity : null,
+    wind,
+    windDir: period.windDirection || '',
+    soilTemp: null,
+    timestamp: period.startTime || null,
+    observedAt: period.startTime || null,
+    source: 'nws-forecast',
+    sourceLabel: 'NWS hourly forecast',
+  }
+}
+
+function matchingHourlyForecast(periods, targetMs) {
+  let nearest = null
+  let nearestDiff = Infinity
+  for (const period of periods ?? []) {
+    const startMs = Date.parse(period?.startTime)
+    const endMs = Date.parse(period?.endTime)
+    if (!Number.isFinite(startMs)) continue
+    if (targetMs >= startMs && (!Number.isFinite(endMs) || targetMs < endMs)) return period
+    const diff = Math.abs(startMs - targetMs)
+    if (diff < nearestDiff) {
+      nearest = period
+      nearestDiff = diff
+    }
+  }
+  return nearest
+}
+
+// Returns date-aware weather for the application builder. Historical station
+// observations and future hourly forecasts remain separate from live weather
+// so a selected date can never silently receive today's conditions.
+export async function fetchApplicationDateWeather({ date, time } = {}) {
+  const targetMs = applicationTargetMs(date, time)
+  if (!Number.isFinite(targetMs)) return null
+
+  if (targetMs < Date.now()) {
+    const windowMs = 18 * 60 * 60 * 1000
+    const url = `${NWS_OBS_URL.replace('/latest', '')}`
+      + `?start=${encodeURIComponent(new Date(targetMs - windowMs).toISOString())}`
+      + `&end=${encodeURIComponent(new Date(targetMs + windowMs).toISOString())}`
+      + '&limit=500'
+    const payload = await safeJson(url, { headers: NWS_HEADERS })
+    const matched = nearestNwsObservation(payload?.features, targetMs, date)
+    const current = normalizeObservation(matched)
+    return current ? {
+      current,
+      observedAt: current.timestamp ?? matched?.properties?.timestamp ?? null,
+      sourceLabel: 'NWS historical observation',
+      kind: 'historical',
+    } : null
+  }
+
+  const url = await resolveForecastHourlyUrl()
+  if (!url) return null
+  const payload = await safeJson(url, { headers: NWS_HEADERS })
+  const period = matchingHourlyForecast(payload?.properties?.periods, targetMs)
+  if (!period || localDateKey(period.startTime) !== date) return null
+  const current = hourlyForecastCurrent(period)
+  return current ? {
+    current,
+    observedAt: period.startTime ?? null,
+    sourceLabel: 'NWS hourly forecast',
+    kind: 'forecast',
+  } : null
+}
+
 // ── Ambient Weather (primary) ──────────────────────────────────────────────────
 // Hits the worker proxy, which holds the API keys. Reads the JSON body
 // even on non-2xx so it can tell "keys not configured" (503) apart from
 // "Ambient API failed" (502) — both fall back to NWS, but with distinct
 // console diagnostics.
 
-async function fetchAmbientCurrent() {
+async function fetchAmbientCurrent(ambientPath = '/api/weather/ambient/current') {
   let payload
   try {
-    const res = await fetch('/api/weather/ambient/current', {
+    const res = await fetch(ambientPath, {
       signal: AbortSignal.timeout(8000),
     })
     payload = await res.json().catch(() => null)
@@ -121,8 +241,8 @@ async function fetchAmbientCurrent() {
 // Ambient first, then NWS, then METAR. Each result carries source +
 // sourceLabel + observedAt.
 
-async function fetchCurrentWithSource() {
-  const ambient = await fetchAmbientCurrent()
+async function fetchCurrentWithSource({ ambientPath } = {}) {
+  const ambient = await fetchAmbientCurrent(ambientPath)
   if (ambient) return ambient
 
   const nwsObs = await safeJson(NWS_OBS_URL, { headers: NWS_HEADERS })
@@ -152,8 +272,8 @@ async function fetchCurrentWithSource() {
 
 // ── Public: individual fetchers ────────────────────────────────────────────────
 
-export async function fetchCurrentWeather() {
-  const { data } = await fetchCurrentWithSource()
+export async function fetchCurrentWeather(options = {}) {
+  const { data } = await fetchCurrentWithSource(options)
   return data
 }
 
@@ -168,7 +288,7 @@ export async function fetchForecast() {
 // Returns { current, forecast, source, timestamp } or null if all sources fail.
 // Diagnostics: source used, cache age, stale status, fetch timestamp — console.debug only.
 
-export async function fetchWeatherBundle() {
+export async function fetchWeatherBundle(options = {}) {
   // 1. Fresh cache
   const fresh = readCache(false)
   if (fresh) {
@@ -182,7 +302,7 @@ export async function fetchWeatherBundle() {
   }
 
   // 2. Live fetch — current and forecast in parallel
-  const [currentResult, forecast] = await Promise.all([fetchCurrentWithSource(), fetchForecast()])
+  const [currentResult, forecast] = await Promise.all([fetchCurrentWithSource(options), fetchForecast()])
   const { data: current, source, sourceLabel, observedAt } = currentResult
 
   if (current) {

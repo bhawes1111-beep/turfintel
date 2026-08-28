@@ -55,8 +55,8 @@ const RATE_UNITS       = ['oz/1000 sq ft', 'oz/acre', 'fl oz/1000 sq ft', 'fl oz
 const CARRIER_UNITS    = ['gal/acre', 'gal/1000 sq ft']
 
 const PLANNING_BOUNDARY_COPY = [
-  'Planned programs do not deduct inventory.',
-  'Planned items do not create completed spray records.',
+  'E.O.P programs do not deduct inventory.',
+  'E.O.P items stay isolated from application calendars and records.',
   'Catalog links are for read-only intelligence.',
 ]
 
@@ -245,7 +245,7 @@ export default function SprayProgramPlanner({ onCreateTrainingBrief }) {
   async function handleArchive() {
     if (!selected) return
     const ok = typeof window !== 'undefined'
-      ? window.confirm(`Archive "${selected.name}"? Planned sprays can be reactivated later.`)
+      ? window.confirm(`Archive "${selected.name}"? E.O.P programs can be reactivated later.`)
       : true
     if (!ok) return
     try {
@@ -377,33 +377,33 @@ export default function SprayProgramPlanner({ onCreateTrainingBrief }) {
   return (
     <div className={styles.tabContent}>
       <WorkspaceSection
-        title="Planned Sprays"
-        subtitle="Plan upcoming sprays. Planned sprays hold intent only — they do not deduct inventory or create spray records."
+        title="E.O.P"
+        subtitle="Build long-range application intent. E.O.P stays separate from calendars, inventory deductions, and application records."
       >
         <PlanningBoundaryNote />
 
         {error && (
           <EmptyState
-            title="Could not load planned sprays."
+            title="Could not load E.O.P."
             description={error}
           />
         )}
 
         {!error && loading && programs.length === 0 && (
-          <EmptyState compact title="Loading planned sprays…" />
+          <EmptyState compact title="Loading E.O.P..." />
         )}
 
         {!error && !loading && programs.length === 0 && !creatingProgram && (
           <EmptyState
-            title="No planned sprays yet."
-            description="Create a planned spray to lay out future applications."
+            title="No E.O.P programs yet."
+            description="Create an E.O.P program to lay out future applications."
           >
             <button
               type="button"
               className={styles.btnPrimary}
               onClick={() => setCreatingProgram(true)}
             >
-              + Create planned spray
+              + Create E.O.P
             </button>
           </EmptyState>
         )}
@@ -414,7 +414,7 @@ export default function SprayProgramPlanner({ onCreateTrainingBrief }) {
             <div className={styles.master}>
               <div className={styles.toolbarRow}>
                 <span className={styles.countLabel}>
-                  {programs.length} planned spray{programs.length !== 1 ? 's' : ''}
+                  {programs.length} E.O.P program{programs.length !== 1 ? 's' : ''}
                 </span>
                 {!creatingProgram && (
                   <button
@@ -433,7 +433,7 @@ export default function SprayProgramPlanner({ onCreateTrainingBrief }) {
 
               {creatingProgram && (
                 <ProgramForm
-                  title="New planned spray"
+                  title="New E.O.P program"
                   form={programForm}
                   setForm={setProgramForm}
                   onSubmit={submitNewProgram}
@@ -485,8 +485,8 @@ export default function SprayProgramPlanner({ onCreateTrainingBrief }) {
               {!selected ? (
                 <EmptyState
                   compact
-                  title="Select a planned spray"
-                  description="Choose a program from the list to view planned items."
+                  title="Select an E.O.P program"
+                  description="Choose a program from the list to view E.O.P items."
                 />
               ) : editingProgram ? (
                 <ProgramForm
@@ -551,7 +551,7 @@ export default function SprayProgramPlanner({ onCreateTrainingBrief }) {
                           type="button"
                           className={styles.btnDanger}
                           onClick={handleArchive}
-                          title="Planned sprays can be reactivated later."
+                          title="E.O.P programs can be reactivated later."
                         >
                           Archive
                         </button>
@@ -561,7 +561,7 @@ export default function SprayProgramPlanner({ onCreateTrainingBrief }) {
 
                   <div className={styles.itemsSection}>
                     <div className={styles.toolbarRow}>
-                      <span className={styles.sectionLabel}>Planned items</span>
+                      <span className={styles.sectionLabel}>E.O.P items</span>
                       {editingItemId == null && (
                         <button
                           type="button"
@@ -575,7 +575,7 @@ export default function SprayProgramPlanner({ onCreateTrainingBrief }) {
 
                     {editingItemId != null && (
                       <ItemForm
-                        title={editingItemId === 'new' ? 'New planned item' : 'Edit planned item'}
+                        title={editingItemId === 'new' ? 'New E.O.P item' : 'Edit E.O.P item'}
                         form={itemForm}
                         setForm={setItemForm}
                         onSubmit={submitItem}
@@ -595,7 +595,7 @@ export default function SprayProgramPlanner({ onCreateTrainingBrief }) {
                     {!itemsLoading && items.length === 0 && editingItemId == null && (
                       <EmptyState
                         compact
-                        title="No planned items yet."
+                        title="No E.O.P items yet."
                         description="Add the first product or application window."
                       />
                     )}
@@ -787,7 +787,7 @@ function CompletedLinkSummary({ item, linkedSpray, onClear }) {
             {productCount > 0 && ` · ${productCount} product${productCount !== 1 ? 's' : ''}`}
           </div>
           <p className={styles.completedLinkBoundary}>
-            Linking connects this planned item to an existing completed spray record. This does not create a spray record. This does not deduct inventory. Completed records remain unchanged.
+            Linking connects this E.O.P item to an existing completed application record. This does not create an application record. This does not deduct inventory. Completed records remain unchanged.
           </p>
           <PlanVsActualBlock item={item} linkedSpray={linkedSpray} />
         </div>
@@ -878,11 +878,11 @@ function ProgramForm({ title, form, setForm, onSubmit, onCancel, submitting, sub
     <form className={styles.createForm} onSubmit={onSubmit}>
       <h4 className={styles.createTitle}>{title}</h4>
       <p className={styles.createHint}>
-        Programs hold intent only. No inventory will be deducted and no spray records will be created.
+        E.O.P programs hold intent only. No inventory will be deducted and no application records will be created.
       </p>
       <div className={styles.formRow}>
         <label className={styles.formLabel}>
-          Planned spray name <span aria-hidden className={styles.req}>*</span>
+          E.O.P program name <span aria-hidden className={styles.req}>*</span>
           <input
             type="text"
             className={styles.formInput}
@@ -984,7 +984,7 @@ function ItemForm({
     <form className={styles.createForm} onSubmit={onSubmit}>
       <h4 className={styles.createTitle}>{title}</h4>
       <p className={styles.createHint}>
-        Planned items do not create spray records and do not deduct inventory. Optional links are typed by id for now (picker UX lands later).
+        E.O.P items do not create application records and do not deduct inventory. Optional links are typed by id for now.
       </p>
       <div className={styles.formRow}>
         <label className={styles.formLabel}>
@@ -1242,8 +1242,8 @@ function PlanVsActualBlock({ item, linkedSpray }) {
 // against the planner-provided context only.
 const COST_BOUNDARY_COPY = [
   'Cost awareness is an estimate.',
-  'Planning estimates do not create budget entries.',
-  'Inventory is not deducted from planned items.',
+  'E.O.P estimates do not create budget entries.',
+  'Inventory is not deducted from E.O.P items.',
   'Missing cost basis means no inventory cost is available.',
 ]
 function ProgramCostHeader({ summary }) {
@@ -1329,7 +1329,7 @@ function labelForStatus(status) {
 const COST_BASIS_BOUNDARY_COPY = [
   'Cost basis review helps explain missing estimates.',
   'This does not create budget entries.',
-  'Inventory is not deducted from planned items.',
+  'Inventory is not deducted from E.O.P items.',
   'Product Catalog is not used as a price source.',
 ]
 const COST_BASIS_STATUS_LABEL = {
@@ -1375,7 +1375,7 @@ function CostBasisReviewPanel({ review, summary, onOpenInventoryItem }) {
           </span>
         )}
         <span className={styles.costChip}>
-          <span className={styles.costChipLabel}>Affected planned items</span>{t.affectedPlannedItems}
+          <span className={styles.costChipLabel}>Affected E.O.P items</span>{t.affectedPlannedItems}
         </span>
       </div>
 

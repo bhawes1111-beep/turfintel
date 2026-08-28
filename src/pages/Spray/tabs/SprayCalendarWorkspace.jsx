@@ -12,7 +12,7 @@
 //     spray without switching tabs.
 //
 // Strict contract:
-//   • Read-only over existing stores (useSpraysData + useSprayPrograms +
+//   • Read-only over existing calendar records (useSpraysData +
 //     shared recordNeedsInfo helper). No new fetches, no mutations
 //     from this component itself — all writes go through the embedded
 //     BuildSpraySheet, which preserves S.5a.2 permission gating.
@@ -20,12 +20,7 @@
 //     the AnnualScheduleCalendar pattern.
 
 import { useEffect, useMemo, useState } from 'react'
-import { useSpraysData, refreshSpraysData } from '../../../utils/sprays/spraysStore'
-import {
-  useSprayPrograms,
-  refreshSprayPrograms,
-  listSprayProgramItems,
-} from '../../../utils/sprayPrograms/sprayProgramStore'
+import { useSpraysData, refreshSpraysData, patchSpray } from '../../../utils/sprays/spraysStore'
 import { recordNeedsInfo } from '../../../utils/sprays/recordNeedsInfo'
 import { useSelectedCourseId } from '../../../utils/courses/courseStore'
 import { useAuth } from '../../../context/AuthContext'
@@ -95,37 +90,66 @@ function extractAreaLabels(record) {
   return []
 }
 
-// Extract a short area label from a planned-spray item. The model
-// (Phase 7F) stores `targetArea` per item.
-function extractPlannedArea(item) {
-  return item?.targetArea ?? null
-}
-
 // Truncate an area-name list per the spec: 1-2 → all names, more → first
 // two + "+N". Always returns ≤ 3 chips.
+function recordStatus(record) {
+  return String(record?.status ?? 'completed').toLowerCase()
+}
+
+function isCompletedRecord(record) {
+  return recordStatus(record) === 'completed'
+}
+
+function isOpenApplicationRecord(record) {
+  return !isCompletedRecord(record)
+}
+
+function statusLabel(status) {
+  const normalized = String(status ?? 'completed').toLowerCase()
+  if (normalized === 'in-progress') return 'In Progress'
+  if (normalized === 'pending-review') return 'Pending Review'
+  if (normalized === 'planned') return 'Planned'
+  if (normalized === 'completed') return 'Completed'
+  return normalized
+    .split('-')
+    .filter(Boolean)
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ') || 'Planned'
+}
+
+function summarizeProducts(record) {
+  const rows = Array.isArray(record?.products) ? record.products : []
+  const names = rows
+    .map(p => p?.productName ?? p?.name ?? p?.product)
+    .filter(Boolean)
+  if (names.length === 0) return null
+  return names.join(', ')
+}
+
+function formatMoney(value) {
+  const n = Number(value)
+  if (!Number.isFinite(n) || n <= 0) return null
+  return `$${n.toFixed(2)}`
+}
+
+function formatAcres(record) {
+  const areas = Array.isArray(record?.areas) ? record.areas : []
+  const total = areas.reduce((sum, area) => sum + (Number(area?.acreage) || 0), 0)
+  if (total > 0) return `${Number(total.toFixed(2))} ac`
+  const direct = Number(record?.acres ?? record?.acreage)
+  return Number.isFinite(direct) && direct > 0 ? `${Number(direct.toFixed(2))} ac` : null
+}
+
 function truncateLabels(labels) {
   const unique = Array.from(new Set(labels.filter(Boolean)))
   if (unique.length <= 2) return unique
   return [unique[0], unique[1], `+${unique.length - 2}`]
 }
 
-// Bucket a planned-spray-item to its visible date. Prefers
-// plannedStartDate, falls back to plannedEndDate. Items without
-// either are bucketed to "unscheduled" (not rendered on the grid).
-function plannedItemDate(item) {
-  if (!item) return null
-  const s = item.plannedStartDate
-  if (typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s)) return s
-  const e = item.plannedEndDate
-  if (typeof e === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(e)) return e
-  return null
-}
-
 // ── Component ─────────────────────────────────────────────────────────
 export default function SprayCalendarWorkspace({ onStartNewSpray, onCreateTrainingBrief } = {}) {
   const courseId = useSelectedCourseId()
   const { records: sprays, loading: spraysLoading } = useSpraysData()
-  const { programs, itemsByProgramId } = useSprayPrograms()
 
   const [currentMonth, setCurrentMonth] = useState(() => todayIso().slice(0, 7))
   const [selectedDate, setSelectedDate] = useState(todayIso)
@@ -142,6 +166,7 @@ export default function SprayCalendarWorkspace({ onStartNewSpray, onCreateTraini
   // render finds the fresh record via this id lookup and the sheet
   // re-renders with the saved products — no manual sync needed.
   const [viewingRecordId, setViewingRecordId] = useState(null)
+  const [completingRecordId, setCompletingRecordId] = useState(null)
   const viewingRecord = useMemo(
     () => (Array.isArray(sprays) ? sprays.find(r => r.id === viewingRecordId) : null) ?? null,
     [sprays, viewingRecordId],
@@ -157,21 +182,7 @@ export default function SprayCalendarWorkspace({ onStartNewSpray, onCreateTraini
   // the user clicked through Workspace earlier.
   useEffect(() => {
     refreshSpraysData()
-    refreshSprayPrograms()
   }, [])
-
-  // Lazy-fetch items for every active program in the visible month
-  // so the calendar can render planned-spray chips across programs.
-  // Mirrors the SprayWorkspace pattern (S.4) — read-only fetch.
-  useEffect(() => {
-    if (!Array.isArray(programs)) return
-    const active = programs.filter(p => p && p.status !== 'archived' && (!courseId || p.courseId === courseId))
-    for (const p of active) {
-      if (!itemsByProgramId?.[p.id]) {
-        listSprayProgramItems(p.id).catch(() => {})
-      }
-    }
-  }, [programs, courseId, itemsByProgramId])
 
   const monthGrid = useMemo(() => buildMonthGrid(currentMonth), [currentMonth])
   const monthLabel = useMemo(() => formatMonthLabel(currentMonth), [currentMonth])
@@ -189,29 +200,12 @@ export default function SprayCalendarWorkspace({ onStartNewSpray, onCreateTraini
     return out
   }, [sprays, courseId])
 
-  // ── Planned items by date (current visible month + nearby) ─────────
-  const plannedByDate = useMemo(() => {
-    const out = {}
-    const safePrograms = Array.isArray(programs) ? programs : []
-    for (const p of safePrograms) {
-      if (!p || p.status === 'archived') continue
-      if (courseId && p.courseId && p.courseId !== courseId) continue
-      const items = itemsByProgramId?.[p.id]
-      if (!Array.isArray(items)) continue
-      for (const item of items) {
-        const date = plannedItemDate(item)
-        if (!date) continue
-        if (!out[date]) out[date] = []
-        out[date].push({ programName: p.name, ...item })
-      }
-    }
-    return out
-  }, [programs, itemsByProgramId, courseId])
-
   // ── Selected-day data ─────────────────────────────────────────────
   const selectedRecords = recordsByDate[selectedDate] ?? []
-  const selectedPlanned = plannedByDate[selectedDate] ?? []
-  const selectedNeedsInfo = selectedRecords.filter(recordNeedsInfo)
+  const selectedCompletedRecords = selectedRecords.filter(isCompletedRecord)
+  const selectedOpenRecords = selectedRecords.filter(isOpenApplicationRecord)
+  const selectedPlannedCount = selectedOpenRecords.length
+  const selectedNeedsInfo = selectedCompletedRecords.filter(recordNeedsInfo)
 
   const today = todayIso()
 
@@ -236,13 +230,25 @@ export default function SprayCalendarWorkspace({ onStartNewSpray, onCreateTraini
     refreshSpraysData()
   }
 
+  async function handleMarkComplete(record, e) {
+    e?.stopPropagation?.()
+    if (!record?.id || !canEditSprays || completingRecordId) return
+    setCompletingRecordId(record.id)
+    try {
+      await patchSpray(record.id, { status: 'completed' })
+      await refreshSpraysData()
+    } finally {
+      setCompletingRecordId(null)
+    }
+  }
+
   return (
     <div className={styles.workspace}>
       {/* ── Header ──────────────────────────────────────────────── */}
       <header className={styles.header}>
         <div className={styles.headerTitle}>
-          <h2 className={styles.title}>Spray Calendar</h2>
-          <p className={styles.hint}>Click a date to build, view, or plan sprays.</p>
+          <h2 className={styles.title}>Application Calendar</h2>
+          <p className={styles.hint}>Click a date to build, view, or plan applications.</p>
         </div>
         <div className={styles.headerControls}>
           <button
@@ -295,12 +301,14 @@ export default function SprayCalendarWorkspace({ onStartNewSpray, onCreateTraini
             const isSelected = date === selectedDate
 
             const recs = recordsByDate[date] ?? []
-            const plans = plannedByDate[date] ?? []
-            const needsInfoCount = recs.filter(recordNeedsInfo).length
+            const completedRecs = recs.filter(isCompletedRecord)
+            const openRecs = recs.filter(isOpenApplicationRecord)
+            const plannedCount = openRecs.length
+            const needsInfoCount = completedRecs.filter(recordNeedsInfo).length
 
             // Compact area labels (completed sprays).
-            const completedAreas = truncateLabels(recs.flatMap(extractAreaLabels))
-            const plannedAreas   = truncateLabels(plans.map(extractPlannedArea).filter(Boolean))
+            const completedAreas = truncateLabels(completedRecs.flatMap(extractAreaLabels))
+            const plannedAreas   = truncateLabels(openRecs.flatMap(extractAreaLabels).filter(Boolean))
 
             const cellClass = [
               styles.cell,
@@ -314,21 +322,21 @@ export default function SprayCalendarWorkspace({ onStartNewSpray, onCreateTraini
                 type="button"
                 className={cellClass}
                 role="gridcell"
-                aria-label={`${formatDayLabel(date)} — ${recs.length} sprayed, ${plans.length} planned`}
+                aria-label={`${formatDayLabel(date)} — ${completedRecs.length} logged, ${plannedCount} planned`}
                 aria-selected={isSelected ? 'true' : 'false'}
                 onClick={() => setSelectedDate(date)}
                 data-date={date}
               >
                 <div className={styles.cellHeader}>
                   <span className={styles.cellDayNum}>{dayNum}</span>
-                  {recs.length > 0 && (
-                    <span className={styles.countChipCompleted} title={`${recs.length} sprayed`}>
-                      {recs.length} sprayed
+                  {completedRecs.length > 0 && (
+                    <span className={styles.countChipCompleted} title={`${completedRecs.length} logged`}>
+                      {completedRecs.length} logged
                     </span>
                   )}
-                  {plans.length > 0 && (
-                    <span className={styles.countChipPlanned} title={`${plans.length} planned`}>
-                      {plans.length} planned
+                  {plannedCount > 0 && (
+                    <span className={styles.countChipPlanned} title={`${plannedCount} planned`}>
+                      {plannedCount} planned
                     </span>
                   )}
                 </div>
@@ -364,8 +372,8 @@ export default function SprayCalendarWorkspace({ onStartNewSpray, onCreateTraini
         <header className={styles.selectedDayHeader}>
           <h3 className={styles.selectedDayTitle}>{formatDayLabel(selectedDate)}</h3>
           <div className={styles.selectedDayChips}>
-            <span className={styles.summaryChip} data-tone="completed">{selectedRecords.length} sprayed</span>
-            <span className={styles.summaryChip} data-tone="planned">{selectedPlanned.length} planned</span>
+            <span className={styles.summaryChip} data-tone="completed">{selectedCompletedRecords.length} logged</span>
+            <span className={styles.summaryChip} data-tone="planned">{selectedPlannedCount} planned</span>
             {selectedNeedsInfo.length > 0 && (
               <span className={styles.summaryChip} data-tone="needs-info">
                 {selectedNeedsInfo.length} needs info
@@ -374,17 +382,20 @@ export default function SprayCalendarWorkspace({ onStartNewSpray, onCreateTraini
           </div>
         </header>
 
-        {selectedRecords.length === 0 && selectedPlanned.length === 0 ? (
-          <p className={styles.emptyState}>No sprays logged or planned for this date.</p>
+        {selectedCompletedRecords.length === 0 && selectedPlannedCount === 0 ? (
+          <p className={styles.emptyState}>No applications logged or planned for this date.</p>
         ) : (
           <div className={styles.selectedDayLists}>
-            {selectedRecords.length > 0 && (
+            {selectedCompletedRecords.length > 0 && (
               <div className={styles.selectedDayBlock}>
                 <h4 className={styles.selectedDayBlockTitle}>Completed</h4>
                 <ul className={styles.selectedDayList}>
-                  {selectedRecords.map(r => {
+                  {selectedCompletedRecords.map(r => {
                     const areas = extractAreaLabels(r)
                     const ni = recordNeedsInfo(r)
+                    const productSummary = summarizeProducts(r)
+                    const acresSummary = formatAcres(r)
+                    const costSummary = formatMoney(r.totalCost ?? r.costSnapshot?.totalCost ?? r.cost)
                     // Phase S.7a — Build a compact weather summary string
                     // ("72°F · 60% RH · NE 5mph") from the record's
                     // conditions block. Uses != null guards (S.6a) so
@@ -409,7 +420,7 @@ export default function SprayCalendarWorkspace({ onStartNewSpray, onCreateTraini
                           type="button"
                           className={styles.selectedDayRow}
                           onClick={() => setViewingRecordId(r.id)}
-                          aria-label={`View spray application sheet for ${areas.join(', ') || r.date}`}
+                          aria-label={`View application record for ${areas.join(', ') || r.date}`}
                         >
                           <div className={styles.completedRowBody}>
                             <span className={styles.rowMain}>
@@ -425,6 +436,14 @@ export default function SprayCalendarWorkspace({ onStartNewSpray, onCreateTraini
                             )}
                             {weatherBits.length > 0 && (
                               <span className={styles.rowSubMeta}>{weatherBits.join(' · ')}</span>
+                            )}
+                            {productSummary && (
+                              <span className={styles.productSummaryLine}>Products: {productSummary}</span>
+                            )}
+                            {(acresSummary || costSummary) && (
+                              <span className={styles.rowSubMeta}>
+                                {[acresSummary, costSummary].filter(Boolean).join(' · ')}
+                              </span>
                             )}
                           </div>
                           <div className={styles.completedRowActions}>
@@ -459,23 +478,85 @@ export default function SprayCalendarWorkspace({ onStartNewSpray, onCreateTraini
                 </ul>
               </div>
             )}
-            {selectedPlanned.length > 0 && (
+            {selectedPlannedCount > 0 && (
               <div className={styles.selectedDayBlock}>
                 <h4 className={styles.selectedDayBlockTitle}>Planned</h4>
                 <ul className={styles.selectedDayList}>
-                  {selectedPlanned.map((item, i) => (
-                    <li key={`${item.id ?? i}`} className={styles.selectedDayRow}>
-                      <span className={styles.rowMain}>
-                        {item.targetArea ?? '—'}
-                        {item.productName && (
-                          <span className={styles.rowMeta}> · {item.productName}</span>
-                        )}
-                        {item.programName && (
-                          <span className={styles.rowMeta}> · {item.programName}</span>
-                        )}
-                      </span>
-                    </li>
-                  ))}
+                  {selectedOpenRecords.map(r => {
+                    const areas = extractAreaLabels(r)
+                    const productSummary = summarizeProducts(r)
+                    const acresSummary = formatAcres(r)
+                    const costSummary = formatMoney(r.totalCost ?? r.costSnapshot?.totalCost ?? r.cost)
+                    const detailBits = [
+                      statusLabel(r.status),
+                      r.applicator || null,
+                      r.startTime || r.endTime ? `${r.startTime ?? '—'}${r.endTime ? ` → ${r.endTime}` : ''}` : null,
+                    ].filter(Boolean)
+                    return (
+                      <li key={r.id} className={styles.selectedDayRowItem}>
+                        <button
+                          type="button"
+                          className={`${styles.selectedDayRow} ${styles.plannedRecordRow}`}
+                          onClick={() => setViewingRecordId(r.id)}
+                          aria-label={`View planned application for ${areas.join(', ') || r.date}`}
+                        >
+                          <div className={styles.completedRowBody}>
+                            <span className={styles.rowMain}>
+                              {areas.join(', ') || 'Planned application'}
+                            </span>
+                            {productSummary && (
+                              <span className={styles.productSummaryLine}>Products: {productSummary}</span>
+                            )}
+                            {detailBits.length > 0 && (
+                              <span className={styles.rowSubMeta}>{detailBits.join(' · ')}</span>
+                            )}
+                            {(acresSummary || costSummary || r.targetPest) && (
+                              <span className={styles.rowSubMeta}>
+                                {[acresSummary, r.targetPest, costSummary].filter(Boolean).join(' · ')}
+                              </span>
+                            )}
+                          </div>
+                          <div className={styles.completedRowActions}>
+                            <span className={styles.statusPill}>{statusLabel(r.status)}</span>
+                            {canEditSprays && (
+                              <>
+                                <span
+                                  role="button"
+                                  tabIndex={0}
+                                  className={styles.editBtn}
+                                  onClick={(e) => { e.stopPropagation(); setEditingRecord(r) }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                      e.preventDefault(); e.stopPropagation(); setEditingRecord(r)
+                                    }
+                                  }}
+                                  aria-label={`Edit planned application for ${areas.join(', ') || r.date}`}
+                                >
+                                  Edit
+                                </span>
+                                <span
+                                  role="button"
+                                  tabIndex={0}
+                                  className={styles.markCompleteBtn}
+                                  aria-disabled={completingRecordId === r.id ? 'true' : 'false'}
+                                  onClick={(e) => handleMarkComplete(r, e)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                      e.preventDefault()
+                                      handleMarkComplete(r, e)
+                                    }
+                                  }}
+                                  aria-label={`Mark application complete for ${areas.join(', ') || r.date}`}
+                                >
+                                  {completingRecordId === r.id ? 'Saving...' : 'Mark Complete'}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </button>
+                      </li>
+                    )
+                  })}
                 </ul>
               </div>
             )}
@@ -493,9 +574,9 @@ export default function SprayCalendarWorkspace({ onStartNewSpray, onCreateTraini
           embedded builder pattern so existing regression couples
           remain valid. */}
       {onStartNewSpray ? (
-        <section className={styles.startNewSpray} aria-label="Start a new spray application">
+        <section className={styles.startNewSpray} aria-label="Start a new application">
           <header className={styles.embeddedBuilderHeader}>
-            <h3 className={styles.embeddedBuilderTitle}>Start a spray for this date</h3>
+            <h3 className={styles.embeddedBuilderTitle}>Start an application for this date</h3>
             <p className={styles.embeddedBuilderHint}>
               Opens the New Application form with the calendar date pre-selected.
             </p>
@@ -505,19 +586,23 @@ export default function SprayCalendarWorkspace({ onStartNewSpray, onCreateTraini
             className={styles.startNewSprayBtn}
             onClick={onStartNewSpray}
           >
-            Start New Spray →
+            Start New Application →
           </button>
         </section>
       ) : (
-        <section className={styles.embeddedBuilder} aria-label="Build a spray for the selected date">
+        <section className={styles.embeddedBuilder} aria-label="Build an application for the selected date">
           <header className={styles.embeddedBuilderHeader}>
-            <h3 className={styles.embeddedBuilderTitle}>Build a spray for this date</h3>
+            <h3 className={styles.embeddedBuilderTitle}>Build an application for this date</h3>
             <p className={styles.embeddedBuilderHint}>
               Draft date is set from the calendar selection. Commit Application saves
               the spray and refreshes the calendar chips above.
             </p>
           </header>
-          <BuildSpraySheet initialDate={selectedDate} onCommit={handleEmbeddedCommit} onCreateTrainingBrief={onCreateTrainingBrief} />
+          <BuildSpraySheet
+            initialDate={selectedDate}
+            onCommit={handleEmbeddedCommit}
+            onCreateTrainingBrief={onCreateTrainingBrief}
+          />
         </section>
       )}
 

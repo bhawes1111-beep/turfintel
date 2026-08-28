@@ -1,0 +1,2517 @@
+{
+  "version": "yara-us-fertilizer-portfolio-2026-08-17",
+  "generatedAt": "2026-08-17T22:10:36.896Z",
+  "source": "Yara United States official fertilizer portfolio, product pages, labels, and application advice",
+  "notes": "Current products listed in Yara's U.S. fertilizer portfolio. Alternate legacy URLs are deduplicated. Existing hand-verified Turf Royale and Tropicote seeds remain authoritative and are intentionally excluded.",
+  "products": [
+    {
+      "product_name": "AMMONIUM SULFATE",
+      "brand_owner": "Yara",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": null,
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 21
+        },
+        {
+          "name": "Sulfur (S)",
+          "percentage": 24
+        }
+      ],
+      "fertilizer_analysis": "21-0-0; Total Nitrogen (N) 21%; Sulfur (S) 24%",
+      "rates": [],
+      "targets": [
+        "Total Nitrogen nutrition",
+        "Sulfur nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.yara.us/contentassets/280676bbae1c466799e9d22b57225584/us-new-bulk-labels-aug-2018/ammoniumsulfate21bulk-0218pa182u000-r3.pdf",
+      "notes": "White, free-flowing granular ammoniacal nitrogen 21% chemically compounded with sulfate sulfur 24%.  Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/other-fertilizers/ammonium-sulfate/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "ANHYDROUS AMMONIA",
+      "brand_owner": "Yara",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": null,
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 82
+        }
+      ],
+      "fertilizer_analysis": "82-0-0; Total Nitrogen (N) 82%",
+      "rates": [],
+      "targets": [
+        "Total Nitrogen nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.yara.us/crop-nutrition/fertilizer-products/other-fertilizers/anhydrous-ammonia/",
+      "notes": "Anhydrous ammonia contains 82% nitrogen and is the most concentrated nitrogen fertilizer. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/other-fertilizers/anhydrous-ammonia/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "IRON SULFATE MONOHYDRATE 30%",
+      "brand_owner": "Yara",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": null,
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Sulfur (S)",
+          "percentage": 18
+        },
+        {
+          "name": "Iron (Fe)",
+          "percentage": 30
+        }
+      ],
+      "fertilizer_analysis": "0-0-0; Sulfur (S) 18%; Iron (Fe) 30%",
+      "rates": [],
+      "targets": [
+        "Sulfur nutrition",
+        "Iron nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.yara.us/contentassets/280676bbae1c466799e9d22b57225584/bulk-labels/iron-sulfate-monohydrate-label.pdf",
+      "notes": "Iron Sulfate Monohydrate 30% fertilizer is a dry material available in three-grain sizes (granular, dedusted, and fine grind) to suit the desired application. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/other-fertilizers/iron-sulfate-monohydrate-30/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "NUTRA-PHOS CALZINC",
+      "brand_owner": "Yara",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Powder",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Available Phosphate (P2O5)",
+          "percentage": 24
+        },
+        {
+          "name": "Calcium (Ca)",
+          "percentage": 20
+        },
+        {
+          "name": "Sulfur (S)",
+          "percentage": 6
+        },
+        {
+          "name": "Zinc (Zn)",
+          "percentage": 12
+        }
+      ],
+      "fertilizer_analysis": "0-24-0; Available Phosphate (P2O5) 24%; Calcium (Ca) 20%; Sulfur (S) 6%; Zinc (Zn) 12%",
+      "rates": [],
+      "targets": [
+        "Available Phosphate nutrition",
+        "Calcium nutrition",
+        "Sulfur nutrition",
+        "Zinc nutrition"
+      ],
+      "turf_sites": [
+        "Amenity turf",
+        "Golf course turf",
+        "Sports turf"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://yaravita-bucket-product-advice-prod.s3.amazonaws.com/pyp92wy8c_us_nutra-phos_calzinc_0-24-0_50lb.pdf",
+      "notes": "Nutra Phos Calzinc is a fully formulated wettable powder fertilizer containing phosphorus, calcium, sulfur and zinc. Official turf directions: 5 to 15 lb. per acre per application. Repeat as needed. Apply aerial applications in at least 5 gallons/acre and ground applications in at least 10 gallons/acre; however, when total application gallonage is 25 gallons per acre or less, DO NOT mix more than 1 lb. of this product per gallon of water. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/other-fertilizers/nutra-phos-calzinc/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "NUTRA-SPRAY MANZINC",
+      "brand_owner": "Yara",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Powder",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Manganese (Mn)",
+          "percentage": 25
+        },
+        {
+          "name": "Zinc (Zn)",
+          "percentage": 25
+        }
+      ],
+      "fertilizer_analysis": "0-0-0; Manganese (Mn) 25%; Zinc (Zn) 25%",
+      "rates": [],
+      "targets": [
+        "Manganese nutrition",
+        "Zinc nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://yaravita-bucket-product-advice-prod.s3.amazonaws.com/pyp99wy8c_us_nutra-spray_manzinc_50lb.pdf",
+      "notes": "Nutra Spray Manzinc is a fully formulated wettable powder fertilizer containing manganese and zinc. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/other-fertilizers/nutra-spray-manzinc/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "NUTRA-SPRAY ZINC 50 PLUS",
+      "brand_owner": "Yara",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Powder",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Calcium (Ca)",
+          "percentage": 7.4
+        },
+        {
+          "name": "Sulfur (S)",
+          "percentage": 6
+        },
+        {
+          "name": "Zinc (Zn)",
+          "percentage": 50
+        }
+      ],
+      "fertilizer_analysis": "0-0-0; Calcium (Ca) 7.4%; Sulfur (S) 6%; Zinc (Zn) 50%",
+      "rates": [],
+      "targets": [
+        "Calcium nutrition",
+        "Sulfur nutrition",
+        "Zinc nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://yaravita-bucket-product-advice-prod.s3.amazonaws.com/pypa1wy8c_us_nutra-spray-zinc_50_plus_50lb.pdf",
+      "notes": "Nutra Spray Zinc 50 Plus fertilizer is a fully formulated wettable powder formulation containing calcium, sulfur and zinc. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/other-fertilizers/nutra-spray-zinc-50-plus/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "REXOLIN CAEDTA",
+      "brand_owner": "Yara",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": null,
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Calcium (Ca)",
+          "percentage": 9.7
+        }
+      ],
+      "fertilizer_analysis": "0-0-0; Calcium (Ca) 9.7%",
+      "rates": [],
+      "targets": [
+        "Calcium nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.yara.us/crop-nutrition/fertilizer-products/other-fertilizers/rexolin-caedta/",
+      "notes": "Rexolin® CaEDTA is a stable, water-soluble and non-dusting calcium chelate, for agriculture and horticulture use as foliar feed. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/other-fertilizers/rexolin-caedta/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "REXOLIN CUEDTA",
+      "brand_owner": "Yara",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": null,
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Copper (Cu)",
+          "percentage": 15
+        }
+      ],
+      "fertilizer_analysis": "0-0-0; Copper (Cu) 15%",
+      "rates": [],
+      "targets": [
+        "Copper nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.yara.us/crop-nutrition/fertilizer-products/other-fertilizers/rexolin-cuedta/",
+      "notes": "Rexolin® CuEDTA is a stable, water-soluble and non-dusting copper chelate, for agriculture and horticulture use as foliar feed, in soil or in hydroponics applications. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/other-fertilizers/rexolin-cuedta/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "REXOLIN FEDTPA",
+      "brand_owner": "Yara",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Granular",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Iron (Fe)",
+          "percentage": 11.6
+        }
+      ],
+      "fertilizer_analysis": "0-0-0; Iron (Fe) 11.6%",
+      "rates": [],
+      "targets": [
+        "Iron nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.yara.us/crop-nutrition/fertilizer-products/other-fertilizers/rexolin-fedtpa/",
+      "notes": "Rexolin® FeDTPA is a stable, water-soluble iron chelate, for agriculture and horticulture use, in soil or hydroponics applications or as foliar feed. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/other-fertilizers/rexolin-fedtpa/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "REXOLIN FEDTPA-L",
+      "brand_owner": "Yara",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Iron (Fe)",
+          "percentage": 6.1
+        }
+      ],
+      "fertilizer_analysis": "0-0-0; Iron (Fe) 6.1%",
+      "rates": [],
+      "targets": [
+        "Iron nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.yara.us/crop-nutrition/fertilizer-products/other-fertilizers/rexolin-fedtpa-l/",
+      "notes": "Rexolin® FeDTPA-L is a stable, liquid iron chelate, for use in agriculture and in horticulture in hydroponics, or as foliar feed or in soil applications. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/other-fertilizers/rexolin-fedtpa-l/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "REXOLIN FEEDDHA",
+      "brand_owner": "Yara",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": null,
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Iron (Fe)",
+          "percentage": 6
+        }
+      ],
+      "fertilizer_analysis": "0-0-0; Iron (Fe) 6%",
+      "rates": [],
+      "targets": [
+        "Iron nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.yara.us/crop-nutrition/fertilizer-products/other-fertilizers/rexolin-feeddha/",
+      "notes": "Rexolin® FeEDDHA is a stable, water-soluble and non-dusting iron chelate, for agriculture and horticulture use, in soil and hydroponics applications. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/other-fertilizers/rexolin-feeddha/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "REXOLIN FEEDTA",
+      "brand_owner": "Yara",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Granular",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Iron (Fe)",
+          "percentage": 13.3
+        }
+      ],
+      "fertilizer_analysis": "0-0-0; Iron (Fe) 13.3%",
+      "rates": [],
+      "targets": [
+        "Iron nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.yara.us/crop-nutrition/fertilizer-products/other-fertilizers/rexolin-feedta/",
+      "notes": "Rexolin® FeEDTA is a stable, water-soluble iron chelate, for agriculture and horticulture use, as foliar feed or soil application.\n Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/other-fertilizers/rexolin-feedta/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "REXOLIN FEHBED",
+      "brand_owner": "Yara",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": null,
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Soluble Potash (K2O)",
+          "percentage": 23
+        },
+        {
+          "name": "Iron (Fe)",
+          "percentage": 6
+        }
+      ],
+      "fertilizer_analysis": "0-0-23; Soluble Potash (K2O) 23%; Iron (Fe) 6%",
+      "rates": [],
+      "targets": [
+        "Soluble Potash nutrition",
+        "Iron nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.yara.us/crop-nutrition/fertilizer-products/other-fertilizers/rexolin-fehbed/",
+      "notes": "Rexolin® FeHBED is a stable, water-soluble iron chelate, for agriculture and horticulture use, in soil or hydroponics applications or as foliar feed. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/other-fertilizers/rexolin-fehbed/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "REXOLIN MGEDTA",
+      "brand_owner": "Yara",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": null,
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Magnesium (Mg)",
+          "percentage": 6.2
+        }
+      ],
+      "fertilizer_analysis": "0-0-0; Magnesium (Mg) 6.2%",
+      "rates": [],
+      "targets": [
+        "Magnesium nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.yara.us/crop-nutrition/fertilizer-products/other-fertilizers/rexolin-mgedta/",
+      "notes": "Rexolin® MgEDTA is a stable, water-soluble and non-dusting magnesium chelate, for agriculture and horticulture use as foliar feed. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/other-fertilizers/rexolin-mgedta/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "REXOLIN MNEDTA",
+      "brand_owner": "Yara",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": null,
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Manganese (Mn)",
+          "percentage": 13
+        }
+      ],
+      "fertilizer_analysis": "0-0-0; Manganese (Mn) 13%",
+      "rates": [],
+      "targets": [
+        "Manganese nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.yara.us/crop-nutrition/fertilizer-products/other-fertilizers/rexolin-mnedta/",
+      "notes": "Rexolin® MnEDTA is a stable, water-soluble and non-dusting manganese chelate, for agriculture and horticulture use as foliar feed, in hydroponics or in soil applications. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/other-fertilizers/rexolin-mnedta/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "REXOLIN ZNEDTA",
+      "brand_owner": "Yara",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": null,
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Zinc (Zn)",
+          "percentage": 15
+        }
+      ],
+      "fertilizer_analysis": "0-0-0; Zinc (Zn) 15%",
+      "rates": [],
+      "targets": [
+        "Zinc nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.yara.us/crop-nutrition/fertilizer-products/other-fertilizers/rexolin-znedta/",
+      "notes": "Rexolin® ZnEDTA is a stable, water-soluble and non-dusting zinc chelate, for agriculture and horticulture use as foliar feed, in soil or in hydroponics applications. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/other-fertilizers/rexolin-znedta/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "SULFATE OF POTASH - GRANULAR 0-0-50",
+      "brand_owner": "Yara",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": null,
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Soluble Potash (K2O)",
+          "percentage": 50
+        },
+        {
+          "name": "Sulfur (S)",
+          "percentage": 18
+        }
+      ],
+      "fertilizer_analysis": "0-0-50; Soluble Potash (K2O) 50%; Sulfur (S) 18%",
+      "rates": [],
+      "targets": [
+        "Soluble Potash nutrition",
+        "Sulfur nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.yara.us/contentassets/280676bbae1c466799e9d22b57225584/potassium-sulfate-bulk.pdf",
+      "notes": "Sulfate of Potash Granular is a 0-0-50 white granule that provides 50% potash and 17% sulfur to crops. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/other-fertilizers/sulfate-of-potash---granular-0-0-50/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "UAN-28 PLUS 5.2S SOLUTION",
+      "brand_owner": "Yara",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": null,
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 28
+        },
+        {
+          "name": "Sulfur (S)",
+          "percentage": 5.2
+        }
+      ],
+      "fertilizer_analysis": "28-0-0; Total Nitrogen (N) 28%; Sulfur (S) 5.2%",
+      "rates": [],
+      "targets": [
+        "Total Nitrogen nutrition",
+        "Sulfur nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.yara.us/crop-nutrition/fertilizer-products/other-fertilizers/uan-28-plus-5.2s-solution",
+      "notes": "UAN-28 Plus 5.2S is a liquid fertilizer containing three forms of nitrogen - urea, ammonium-N and nitrate-N; and sulfur for plant amino acid synthesis. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/other-fertilizers/uan-28-plus-5.2s-solution. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "UAN-28 PLUS 5S SOLUTION",
+      "brand_owner": "Yara",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": null,
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 28
+        },
+        {
+          "name": "Sulfur (S)",
+          "percentage": 5
+        }
+      ],
+      "fertilizer_analysis": "28-0-0; Total Nitrogen (N) 28%; Sulfur (S) 5%",
+      "rates": [],
+      "targets": [
+        "Total Nitrogen nutrition",
+        "Sulfur nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.yara.us/contentassets/280676bbae1c466799e9d22b57225584/uan-28-plus5s-bulk-label.pdf",
+      "notes": "UAN-28 Plus 5S is a liquid fertilizer containing three forms of nitrogen - urea, ammonium-N and nitrate-N; and sulfur for plant amino acid synthesis where S soil fertility is limited. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/other-fertilizers/uan-28-plus-5s-solution/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "UAN-30 PLUS S SOLUTION",
+      "brand_owner": "Yara",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": null,
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 30
+        },
+        {
+          "name": "Sulfur (S)",
+          "percentage": 2.6
+        }
+      ],
+      "fertilizer_analysis": "30-0-0; Total Nitrogen (N) 30%; Sulfur (S) 2.6%",
+      "rates": [],
+      "targets": [
+        "Total Nitrogen nutrition",
+        "Sulfur nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.yara.us/crop-nutrition/fertilizer-products/other-fertilizers/uan-30-plus-s-solution/",
+      "notes": "UAN-30 Plus S is a liquid fertilizer containing three forms of nitrogen - urea, ammonium-N and nitrate-N; and sulfur for plant amino acid synthesis where S soil fertility is limited. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/other-fertilizers/uan-30-plus-s-solution/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "UAN-30 SOLUTION",
+      "brand_owner": "Yara",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": null,
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 30
+        }
+      ],
+      "fertilizer_analysis": "30-0-0; Total Nitrogen (N) 30%",
+      "rates": [],
+      "targets": [
+        "Total Nitrogen nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.yara.us/contentassets/280676bbae1c466799e9d22b57225584/uan-30-bulk-label.pdf",
+      "notes": "UAN-30 is a liquid fertilizer containing three forms of nitrogen: urea, ammonium-N and nitrate-N. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/other-fertilizers/uan-30-solution/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "UAN-32 SOLUTION",
+      "brand_owner": "Yara",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": null,
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 32
+        }
+      ],
+      "fertilizer_analysis": "32-0-0; Total Nitrogen (N) 32%",
+      "rates": [],
+      "targets": [
+        "Total Nitrogen nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.yara.us/contentassets/280676bbae1c466799e9d22b57225584/uan-32-bulk-label.pdf",
+      "notes": "UAN is a liquid fertilizer containing three forms of nitrogen: urea, ammonium-N and nitrate-N. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/other-fertilizers/uan-32-solution/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "UREA (MICRO PRILLED)",
+      "brand_owner": "Yara",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Prilled",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 46
+        }
+      ],
+      "fertilizer_analysis": "46-0-0; Total Nitrogen (N) 46%",
+      "rates": [],
+      "targets": [
+        "Total Nitrogen nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.yara.us/contentassets/280676bbae1c466799e9d22b57225584/bag-labels/micro-prilled-urea-label.jpg",
+      "notes": "Yara's Micro Prilled Urea is a solid, technically pure white micro-prill with an even round shape. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/other-fertilizers/urea-micro-prilled/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "YARABELA CAN-27",
+      "brand_owner": "YaraBela",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": null,
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 27
+        },
+        {
+          "name": "Calcium (Ca)",
+          "percentage": 4
+        },
+        {
+          "name": "Magnesium (Mg)",
+          "percentage": 1
+        }
+      ],
+      "fertilizer_analysis": "27-0-0; Total Nitrogen (N) 27%; Calcium (Ca) 4%; Magnesium (Mg) 1%",
+      "rates": [],
+      "targets": [
+        "Total Nitrogen nutrition",
+        "Calcium nutrition",
+        "Magnesium nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.yara.us/contentassets/280676bbae1c466799e9d22b57225584/yarabela-can-27-50lb-label.pdf",
+      "notes": "YaraBela CAN-27 contains 27% total Nitrogen, 50% in the nitrate form. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/yarabela/yarabela-can-27/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "YARALIVA CALCINIT K",
+      "brand_owner": "YaraLiva",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Prilled",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 14
+        },
+        {
+          "name": "Soluble Potash (K2O)",
+          "percentage": 3
+        },
+        {
+          "name": "Calcium (Ca)",
+          "percentage": 18
+        }
+      ],
+      "fertilizer_analysis": "14-0-3; Total Nitrogen (N) 14%; Soluble Potash (K2O) 3%; Calcium (Ca) 18%",
+      "rates": [],
+      "targets": [
+        "Total Nitrogen nutrition",
+        "Soluble Potash nutrition",
+        "Calcium nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.yara.us/contentassets/280676bbae1c466799e9d22b57225584/yaraliva-calcinit-k-55lb-label.pdf",
+      "notes": "YaraLiva CALCINIT K is a fully water-soluble nitrogen, potassium, and calcium fertilizer.  Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/yaraliva/yaraliva-calcinit-k/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "YARALIVA CALCINIT15.5-0-0",
+      "brand_owner": "YaraLiva",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Prilled",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 15.5
+        },
+        {
+          "name": "Calcium (Ca)",
+          "percentage": 19
+        }
+      ],
+      "fertilizer_analysis": "15.5-0-0; Total Nitrogen (N) 15.5%; Calcium (Ca) 19%",
+      "rates": [],
+      "targets": [
+        "Total Nitrogen nutrition",
+        "Calcium nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.yara.us/contentassets/280676bbae1c466799e9d22b57225584/yaraliva-calcinit-bulk-label.pdf",
+      "notes": "YaraLiva CALCINIT is a fully water-soluble nitrate N and calcium fertilizer. It's a granular or prilled material that dissolves quickly in water without any residues. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/yaraliva/yaraliva-calcinit15.5-0-0. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "YARALIVA CAN-17",
+      "brand_owner": "YaraLiva",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 17
+        },
+        {
+          "name": "Calcium (Ca)",
+          "percentage": 8.8
+        }
+      ],
+      "fertilizer_analysis": "17-0-0; Total Nitrogen (N) 17%; Calcium (Ca) 8.8%",
+      "rates": [],
+      "targets": [
+        "Total Nitrogen nutrition",
+        "Calcium nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.yara.us/contentassets/280676bbae1c466799e9d22b57225584/yaraliva-can-17-bulk-label.pdf",
+      "notes": "YaraLiva CAN-17 is a liquid calcium nitrate solution suited for application through all fertigation systems. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/yaraliva/yaraliva-can-17/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "YARALIVA CN-8",
+      "brand_owner": "YaraLiva",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 8.55
+        },
+        {
+          "name": "Calcium (Ca)",
+          "percentage": 12.1
+        }
+      ],
+      "fertilizer_analysis": "8.55-0-0; Total Nitrogen (N) 8.55%; Calcium (Ca) 12.1%",
+      "rates": [],
+      "targets": [
+        "Total Nitrogen nutrition",
+        "Calcium nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.yara.us/contentassets/280676bbae1c466799e9d22b57225584/yaraliva-cn-8-bulk-label.pdf",
+      "notes": "YaraLiva CN-8 is a clear liquid fertilizer containing 8.55% nitrogen and 12.1% calcium. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/yaraliva/yaraliva-cn-8/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "YARALIVA CN-9",
+      "brand_owner": "YaraLiva",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 9
+        },
+        {
+          "name": "Calcium (Ca)",
+          "percentage": 11
+        }
+      ],
+      "fertilizer_analysis": "9-0-0; Total Nitrogen (N) 9%; Calcium (Ca) 11%",
+      "rates": [],
+      "targets": [
+        "Total Nitrogen nutrition",
+        "Calcium nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.yara.us/contentassets/280676bbae1c466799e9d22b57225584/yaraliva-cn-9-bulk-label-us.pdf",
+      "notes": "YaraLiva CN-9 is a liquid calcium nitrate fertilizer that provides nitrate N and readily available, soluble calcium. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/yaraliva/yaraliva-cn-9/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "YARALIVA UCAN-17",
+      "brand_owner": "YaraLiva",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 17
+        },
+        {
+          "name": "Calcium (Ca)",
+          "percentage": 7.2
+        }
+      ],
+      "fertilizer_analysis": "17-0-0; Total Nitrogen (N) 17%; Calcium (Ca) 7.2%",
+      "rates": [],
+      "targets": [
+        "Total Nitrogen nutrition",
+        "Calcium nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.yara.us/contentassets/280676bbae1c466799e9d22b57225584/yaraliva-ucan-17-bulk-label.pdf",
+      "notes": "YaraLiva UCAN-17 is a liquid fertilizer containing 3 sources of nitrogen, practically 50% nitrate N for quick start and uptake, and soluble calcium, resulting in quality produce. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/yaraliva/yaraliva-ucan-17/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "YARALIVA UCAN-23",
+      "brand_owner": "YaraLiva",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 23
+        },
+        {
+          "name": "Calcium (Ca)",
+          "percentage": 4
+        }
+      ],
+      "fertilizer_analysis": "23-0-0; Total Nitrogen (N) 23%; Calcium (Ca) 4%",
+      "rates": [],
+      "targets": [
+        "Total Nitrogen nutrition",
+        "Calcium nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.yara.us/contentassets/280676bbae1c466799e9d22b57225584/yaraliva-ucan-23-bulk-label.pdf",
+      "notes": "YaraLiva UCAN-23 is a liquid fertilizer containing 3 sources of nitrogen and soluble calcium for grain crop production, suitable for application through all fertigation systems.\n Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/yaraliva/yaraliva-ucan-23/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "YARAMILA 15-15-15",
+      "brand_owner": "YaraMila",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Prilled",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 15
+        },
+        {
+          "name": "Available Phosphate (P2O5)",
+          "percentage": 15
+        },
+        {
+          "name": "Soluble Potash (K2O)",
+          "percentage": 15
+        },
+        {
+          "name": "Sulfur (S)",
+          "percentage": 5
+        }
+      ],
+      "fertilizer_analysis": "15-15-15; Total Nitrogen (N) 15%; Available Phosphate (P2O5) 15%; Soluble Potash (K2O) 15%; Sulfur (S) 5%",
+      "rates": [],
+      "targets": [
+        "Total Nitrogen nutrition",
+        "Available Phosphate nutrition",
+        "Soluble Potash nutrition",
+        "Sulfur nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.yara.us/contentassets/280676bbae1c466799e9d22b57225584/yaramila-15-15-15-bulk-label.pdf",
+      "notes": "YaraMila 15-15-15 is a combination of nitrogen (N), phosphorus (P) and potassium (K) designed to maximize crop yield and quality.  Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/yaramila/yaramila-15-15-15/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "YARAMILA 21-7-12 MINIPRILLS",
+      "brand_owner": "YaraMila",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Prilled",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 21
+        },
+        {
+          "name": "Available Phosphate (P2O5)",
+          "percentage": 7
+        },
+        {
+          "name": "Soluble Potash (K2O)",
+          "percentage": 12
+        },
+        {
+          "name": "Sulfur (S)",
+          "percentage": 5.1
+        }
+      ],
+      "fertilizer_analysis": "21-7-12; Total Nitrogen (N) 21%; Available Phosphate (P2O5) 7%; Soluble Potash (K2O) 12%; Sulfur (S) 5.1%",
+      "rates": [],
+      "targets": [
+        "Total Nitrogen nutrition",
+        "Available Phosphate nutrition",
+        "Soluble Potash nutrition",
+        "Sulfur nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.yara.us/contentassets/280676bbae1c466799e9d22b57225584/yaramila-21-7-12-miniprills-bulk.pdf",
+      "notes": "Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/yaramila/yaramila-21-7-12-miniprills/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "YARAMILA 21-7-14",
+      "brand_owner": "YaraMila",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Prilled",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 21
+        },
+        {
+          "name": "Available Phosphate (P2O5)",
+          "percentage": 7
+        },
+        {
+          "name": "Soluble Potash (K2O)",
+          "percentage": 14
+        },
+        {
+          "name": "Sulfur (S)",
+          "percentage": 5.1
+        }
+      ],
+      "fertilizer_analysis": "21-7-14; Total Nitrogen (N) 21%; Available Phosphate (P2O5) 7%; Soluble Potash (K2O) 14%; Sulfur (S) 5.1%",
+      "rates": [],
+      "targets": [
+        "Total Nitrogen nutrition",
+        "Available Phosphate nutrition",
+        "Soluble Potash nutrition",
+        "Sulfur nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.yara.us/contentassets/280676bbae1c466799e9d22b57225584/yaramila-21-7-14-bulk.pdf",
+      "notes": "Each YaraMila 21-7-14 granule contains precisely balanced amounts of NPK. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/yaramila/yaramila-21-7-14/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "YARAMILA 27-4-5",
+      "brand_owner": "YaraMila",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Granular",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 27
+        },
+        {
+          "name": "Available Phosphate (P2O5)",
+          "percentage": 4
+        },
+        {
+          "name": "Soluble Potash (K2O)",
+          "percentage": 5
+        },
+        {
+          "name": "Sulfur (S)",
+          "percentage": 4
+        }
+      ],
+      "fertilizer_analysis": "27-4-5; Total Nitrogen (N) 27%; Available Phosphate (P2O5) 4%; Soluble Potash (K2O) 5%; Sulfur (S) 4%",
+      "rates": [],
+      "targets": [
+        "Total Nitrogen nutrition",
+        "Available Phosphate nutrition",
+        "Soluble Potash nutrition",
+        "Sulfur nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.yara.us/crop-nutrition/fertilizer-products/yaramila/yaramila-27-4-5/",
+      "notes": "Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/yaramila/yaramila-27-4-5/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "YARAMILA MULTICROP 10-24-24",
+      "brand_owner": "YaraMila",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Granular",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 10
+        },
+        {
+          "name": "Available Phosphate (P2O5)",
+          "percentage": 24
+        },
+        {
+          "name": "Soluble Potash (K2O)",
+          "percentage": 24
+        },
+        {
+          "name": "Sulfur (S)",
+          "percentage": 6.7
+        }
+      ],
+      "fertilizer_analysis": "10-24-24; Total Nitrogen (N) 10%; Available Phosphate (P2O5) 24%; Soluble Potash (K2O) 24%; Sulfur (S) 6.7%",
+      "rates": [],
+      "targets": [
+        "Total Nitrogen nutrition",
+        "Available Phosphate nutrition",
+        "Soluble Potash nutrition",
+        "Sulfur nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.yara.us/contentassets/280676bbae1c466799e9d22b57225584/yaramila-multicrop-10-24-24-bulk.pdf",
+      "notes": "Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/yaramila/yaramila-multicrop-10-24-24/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "YARAREGA FLEX",
+      "brand_owner": "YaraRega",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Prilled",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 18
+        },
+        {
+          "name": "Available Phosphate (P2O5)",
+          "percentage": 4
+        },
+        {
+          "name": "Soluble Potash (K2O)",
+          "percentage": 19
+        },
+        {
+          "name": "Sulfur (S)",
+          "percentage": 6
+        },
+        {
+          "name": "Boron (B)",
+          "percentage": 0.08
+        },
+        {
+          "name": "Zinc (Zn)",
+          "percentage": 0.08
+        }
+      ],
+      "fertilizer_analysis": "18-4-19; Total Nitrogen (N) 18%; Available Phosphate (P2O5) 4%; Soluble Potash (K2O) 19%; Sulfur (S) 6%; Boron (B) 0.08%; Zinc (Zn) 0.08%",
+      "rates": [],
+      "targets": [
+        "Total Nitrogen nutrition",
+        "Available Phosphate nutrition",
+        "Soluble Potash nutrition",
+        "Sulfur nutrition",
+        "Boron nutrition",
+        "Zinc nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.yara.us/contentassets/280676bbae1c466799e9d22b57225584/yararega-flex-18-4-19-label.jpg",
+      "notes": "YaraRega FLEX is a homogeneous fertilizer that allows for consistent amounts of N, K, S,B and Zn in each particle, preventing nutrient segregation. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/yararega/yararega-flex/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "YARAREGA NK GREEN",
+      "brand_owner": "YaraRega",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Prilled",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 22
+        },
+        {
+          "name": "Soluble Potash (K2O)",
+          "percentage": 12
+        }
+      ],
+      "fertilizer_analysis": "22-0-12; Total Nitrogen (N) 22%; Soluble Potash (K2O) 12%",
+      "rates": [],
+      "targets": [
+        "Total Nitrogen nutrition",
+        "Soluble Potash nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.yara.us/contentassets/280676bbae1c466799e9d22b57225584/yararega-nk-green-bulk-label.pdf",
+      "notes": "YaraRega NK GREEN is a homogeneous formulation that allows for consistent amounts of nitrogen and potassium on each particle, preventing nutrient segregation. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/yararega/yararega-nk-green/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "YARAVERA AMIDAS 40-0-0",
+      "brand_owner": "YaraVera",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Granular",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 40
+        },
+        {
+          "name": "Sulfur (S)",
+          "percentage": 5.5
+        }
+      ],
+      "fertilizer_analysis": "40-0-0; Total Nitrogen (N) 40%; Sulfur (S) 5.5%",
+      "rates": [],
+      "targets": [
+        "Total Nitrogen nutrition",
+        "Sulfur nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.yara.us/contentassets/7b324ede14644d12be726021d13fc1bc/us-new-bulk-labels-aug-2018/yaraveraamidasbulk-0218pa421x000-r3.pdf",
+      "notes": "YaraVera AMIDAS is a homogenous nitrogen and sulfate sulfur fertilizer that has proven increased effectiveness over blends. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/yaravera/yaravera-amidas-40-0-02/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "YARAVERA GRANULAR UREA",
+      "brand_owner": "YaraVera",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Granular",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 46
+        }
+      ],
+      "fertilizer_analysis": "46-0-0; Total Nitrogen (N) 46%",
+      "rates": [],
+      "targets": [
+        "Total Nitrogen nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.yara.us/contentassets/280676bbae1c466799e9d22b57225584/us-new-bulk-labels-aug-2018/yaraveraureagranbulk_0218pa3854000-r3.pdf",
+      "notes": "YaraVera Granular Urea fertilizer contains 46% nitrogen. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/yaravera/yaravera-granular-urea/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "YARAVERA PRILLED UREA",
+      "brand_owner": "YaraVera",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Prilled",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Commercial fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 46
+        }
+      ],
+      "fertilizer_analysis": "46-0-0; Total Nitrogen (N) 46%",
+      "rates": [],
+      "targets": [
+        "Total Nitrogen nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.yara.us/contentassets/280676bbae1c466799e9d22b57225584/us-new-bulk-labels-aug-2018/yaraveraureaprillbulk-0218pa382x000-r3.pdf",
+      "notes": "YaraVera Prilled Urea contains 46% nitrogen. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/yaravera/yaravera-prilled-urea/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "YARAVITA B-MOLY",
+      "brand_owner": "YaraVita",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Foliar and micronutrient fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Boron (B)",
+          "percentage": 7.7
+        },
+        {
+          "name": "Molybdenum (Mo)",
+          "percentage": 0.8
+        }
+      ],
+      "fertilizer_analysis": "0-0-0; Boron (B) 7.7%; Molybdenum (Mo) 0.8%",
+      "rates": [],
+      "targets": [
+        "Boron nutrition",
+        "Molybdenum nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://yaravita-bucket-product-advice-prod.s3.amazonaws.com/pypctly8g_us_b-moly_2.5g.pdf",
+      "notes": "YaraVita B-MOLY is a concentrated, liquid formulation containing boron and molybdenum. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/yaravita/yaravita-b-moly/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "YARAVITA BUD BUILDER WP",
+      "brand_owner": "YaraVita",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Powder",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Foliar and micronutrient fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Available Phosphate (P2O5)",
+          "percentage": 6
+        },
+        {
+          "name": "Magnesium (Mg)",
+          "percentage": 24
+        },
+        {
+          "name": "Boron (B)",
+          "percentage": 3
+        },
+        {
+          "name": "Zinc (Zn)",
+          "percentage": 10
+        }
+      ],
+      "fertilizer_analysis": "0-6-0; Available Phosphate (P2O5) 6%; Magnesium (Mg) 24%; Boron (B) 3%; Zinc (Zn) 10%",
+      "rates": [],
+      "targets": [
+        "Available Phosphate nutrition",
+        "Magnesium nutrition",
+        "Boron nutrition",
+        "Zinc nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://yaravita-bucket-product-advice-prod.s3.amazonaws.com/pyp15wy8x_us_bud_builder_wp_22lb.pdf",
+      "notes": "YaraVita BUD BUILDER WP is a wettable fertilizer powder combining key nutrients to improve tree and vine productivity. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/yaravita/yaravita-bud-builder-wp/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "YARAVITA FERRICHEL NINETY",
+      "brand_owner": "YaraVita",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Powder",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Foliar and micronutrient fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 12
+        },
+        {
+          "name": "Available Phosphate (P2O5)",
+          "percentage": 13
+        },
+        {
+          "name": "Iron (Fe)",
+          "percentage": 9
+        }
+      ],
+      "fertilizer_analysis": "12-13-0; Total Nitrogen (N) 12%; Available Phosphate (P2O5) 13%; Iron (Fe) 9%",
+      "rates": [
+        {
+          "rate": "1 oz",
+          "unit": "oz/1,000 sq ft",
+          "interval": "1 oz./1000 sq.ft. as soon as growth commences in spring. Repeat at 10 to 14 day intervals as necessary. Water rate: 0.5 gallons/1000 sq.ft."
+        }
+      ],
+      "targets": [
+        "Total Nitrogen nutrition",
+        "Available Phosphate nutrition",
+        "Iron nutrition"
+      ],
+      "turf_sites": [
+        "Amenity turf",
+        "Golf course turf",
+        "Sports turf"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://yaravita-bucket-product-advice-prod.s3.amazonaws.com/pyp39wy8v_us_ferrichel_90_10lb.pdf",
+      "notes": "YaraVita FERRICHEL NINETY is a water-soluble powder designed for foliar application for the treatment of iron chlorosis in calcareous and high pH soils.\n Official turf directions: 1 oz./1000 sq.ft. as soon as growth commences in spring. Repeat at 10 to 14 day intervals as necessary. Water rate: 0.5 gallons/1000 sq.ft. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/yaravita/yaravita-ferrichel-ninety/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "YARAVITA GLYTREL CMZ",
+      "brand_owner": "YaraVita",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Foliar and micronutrient fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Available Phosphate (P2O5)",
+          "percentage": 14
+        },
+        {
+          "name": "Copper (Cu)",
+          "percentage": 0.7
+        },
+        {
+          "name": "Manganese (Mn)",
+          "percentage": 3.2
+        },
+        {
+          "name": "Zinc (Zn)",
+          "percentage": 3.2
+        }
+      ],
+      "fertilizer_analysis": "0-14-0; Available Phosphate (P2O5) 14%; Copper (Cu) 0.7%; Manganese (Mn) 3.2%; Zinc (Zn) 3.2%",
+      "rates": [
+        {
+          "rate": "1-3 pints",
+          "unit": "pints/acre",
+          "interval": "Apply 1-3 pints per acre. From start of new seasons leaf growth. Continue on a 14 day interval as necessary. Water rate minimum 50 gal/ac. Artichoke Artichoke: Apply 1-3 pints per acre. From start of new seasons leaf growth. Continue on a 14 day interval as necessary. May also apply post harvest before leaf senescence. Water rate minimum 50 gal/ac. Blackberries Blackberry: Apply 1-3 pints per acre. From start of new seasons leaf growth. Continue on a 14 day interval as necessary. May also apply post harvest before leaf senescence. Water rate minimum 50 gal/ac. Blueberries Blueberries: Apply 1-3 pints per acre. From start of new seasons leaf growth. Continue on a 14 day interval as necessary. May also apply post harvest before leaf senescence. Water rate minimum 50 gal/ac. Brassica V"
+        }
+      ],
+      "targets": [
+        "Available Phosphate nutrition",
+        "Copper nutrition",
+        "Manganese nutrition",
+        "Zinc nutrition"
+      ],
+      "turf_sites": [
+        "Amenity turf",
+        "Golf course turf",
+        "Sports turf"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://yaravita-bucket-product-advice-prod.s3.amazonaws.com/pyp3ely8g_us_glytrel_cmz_2.5g.pdf",
+      "notes": "YaraVita GLYTREL CMZ is specifically designed for application to GM corn; it can be co-applied with glyphosate and contains zinc and phosphorus. Official turf directions: Apply 1-3 pints per acre. From start of new seasons leaf growth. Continue on a 14 day interval as necessary. Water rate minimum 50 gal/ac. Artichoke Artichoke: Apply 1-3 pints per acre. From start of new seasons leaf growth. Continue on a 14 day interval as necessary. May also apply post harvest before leaf senescence. Water rate minimum 50 gal/ac. Blackberries Blackberry: Apply 1-3 pints per acre. From start of new seasons leaf growth. Continue on a 14 day interval as necessary. May also apply post harvest before leaf senescence. Water rate minimum 50 gal/ac. Blueberries Blueberries: Apply 1-3 pints per acre. From start of new seasons leaf growth. Continue on a 14 day interval as necessary. May also apply post harvest before leaf senescence. Water rate minimum 50 gal/ac. Brassica V Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/yaravita2/yaravita-glytrel-cmz/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "YARAVITA GLYTREL ZNP",
+      "brand_owner": "YaraVita",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Foliar and micronutrient fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Available Phosphate (P2O5)",
+          "percentage": 7
+        },
+        {
+          "name": "Zinc (Zn)",
+          "percentage": 7.5
+        }
+      ],
+      "fertilizer_analysis": "0-7-0; Available Phosphate (P2O5) 7%; Zinc (Zn) 7.5%",
+      "rates": [
+        {
+          "rate": "0.9 fl oz",
+          "unit": "fl oz/1,000 sq ft",
+          "interval": "0.9 fl oz per 1000 sq ft as soon as growth commences in spring and /or following identification of need by analysis. Repeat sprays at 10 to 14 day intervals as necessary. Water rate: 0.5 gallons per 1000 sq.ft."
+        }
+      ],
+      "targets": [
+        "Available Phosphate nutrition",
+        "Zinc nutrition"
+      ],
+      "turf_sites": [
+        "Amenity turf",
+        "Golf course turf",
+        "Sports turf"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://yaravita-bucket-product-advice-prod.s3.amazonaws.com/pyp1mly8g_us_glytrel_znp_2.5g.pdf",
+      "notes": "YaraVita GLYTREL ZnP has been specifically designed for application to GM corn. It can be co-applied with glyphosate and contains zinc and phosphorus. Official turf directions: 0.9 fl oz per 1000 sq ft as soon as growth commences in spring and /or following identification of need by analysis. Repeat sprays at 10 to 14 day intervals as necessary. Water rate: 0.5 gallons per 1000 sq.ft. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/yaravita/yaravita-glytrel-znp/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "YARAVITA MAGPHOS",
+      "brand_owner": "YaraVita",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Foliar and micronutrient fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Available Phosphate (P2O5)",
+          "percentage": 29
+        },
+        {
+          "name": "Soluble Potash (K2O)",
+          "percentage": 5
+        },
+        {
+          "name": "Magnesium (Mg)",
+          "percentage": 4.1
+        }
+      ],
+      "fertilizer_analysis": "0-29-5; Available Phosphate (P2O5) 29%; Soluble Potash (K2O) 5%; Magnesium (Mg) 4.1%",
+      "rates": [
+        {
+          "rate": "1.5 fl.oz",
+          "unit": "fl.oz/1,000 sq ft",
+          "interval": "1.5 fl.oz./1000 sq.ft. as soon as growth commences in spring. Repeat sprays at 10 to 14 day intervals as necessary. Water rate: 0.5 gallons/1000 sq.ft. Amenity Turf Turf: Apply 1 to 3 fl oz per 1000 sq ft in a water volume of 1.5 Gallons/1000 sq ft every 7 - 14 days as needed during the growing season based on nutritional requirements."
+        },
+        {
+          "rate": "1 to 3 fl oz",
+          "unit": "fl oz/1,000 sq ft",
+          "interval": "Apply 1 to 3 fl oz per 1000 sq ft in a water volume of 1.5 Gallons/1000 sq ft every 7 - 14 days as needed during the growing season based on nutritional requirements."
+        }
+      ],
+      "targets": [
+        "Available Phosphate nutrition",
+        "Soluble Potash nutrition",
+        "Magnesium nutrition"
+      ],
+      "turf_sites": [
+        "Amenity turf",
+        "Golf course turf",
+        "Sports turf"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://yaravita-bucket-product-advice-prod.s3.amazonaws.com/pyp59my8g_us_magphos_2.5g.pdf",
+      "notes": "YaraVita Magphos contains 100% soluble, plant-available phosphate and magnesium. Official turf directions: 1.5 fl.oz./1000 sq.ft. as soon as growth commences in spring. Repeat sprays at 10 to 14 day intervals as necessary. Water rate: 0.5 gallons/1000 sq.ft. Amenity Turf Turf: Apply 1 to 3 fl oz per 1000 sq ft in a water volume of 1.5 Gallons/1000 sq ft every 7 - 14 days as needed during the growing season based on nutritional requirements. Apply 1 to 3 fl oz per 1000 sq ft in a water volume of 1.5 Gallons/1000 sq ft every 7 - 14 days as needed during the growing season based on nutritional requirements. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/yaravita/yaravita-magphos/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "YARAVITA MAGTRAC",
+      "brand_owner": "YaraVita",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Foliar and micronutrient fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 4
+        },
+        {
+          "name": "Magnesium (Mg)",
+          "percentage": 20
+        }
+      ],
+      "fertilizer_analysis": "4-0-0; Total Nitrogen (N) 4%; Magnesium (Mg) 20%",
+      "rates": [
+        {
+          "rate": "1.5 fl.oz",
+          "unit": "fl.oz/1,000 sq ft",
+          "interval": "1.5 fl.oz./1000 sq.ft. as soon as growth commences in spring. Repeat sprays at 10 to 14 day intervals as necessary. Water rate: 0.5 gallons/1000 sq.ft."
+        }
+      ],
+      "targets": [
+        "Total Nitrogen nutrition",
+        "Magnesium nutrition"
+      ],
+      "turf_sites": [
+        "Amenity turf",
+        "Golf course turf",
+        "Sports turf"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://yaravita-bucket-product-advice-prod.s3.amazonaws.com/pyp58my8g_us_magtrac_2.5g.pdf",
+      "notes": "YaraVita MAGTRAC is a highly concentrated flowable formulation that contains almost 3 times more magnesium than epsom salts. Official turf directions: 1.5 fl.oz./1000 sq.ft. as soon as growth commences in spring. Repeat sprays at 10 to 14 day intervals as necessary. Water rate: 0.5 gallons/1000 sq.ft. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/yaravita/yaravita-magtrac/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "YARAVITA MANCOZIN",
+      "brand_owner": "YaraVita",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Foliar and micronutrient fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 3
+        },
+        {
+          "name": "Copper (Cu)",
+          "percentage": 6.3
+        },
+        {
+          "name": "Manganese (Mn)",
+          "percentage": 18.8
+        },
+        {
+          "name": "Zinc (Zn)",
+          "percentage": 4.8
+        }
+      ],
+      "fertilizer_analysis": "3-0-0; Total Nitrogen (N) 3%; Copper (Cu) 6.3%; Manganese (Mn) 18.8%; Zinc (Zn) 4.8%",
+      "rates": [],
+      "targets": [
+        "Total Nitrogen nutrition",
+        "Copper nutrition",
+        "Manganese nutrition",
+        "Zinc nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://yaravita-bucket-product-advice-prod.s3.amazonaws.com/pyp72my8g_us_mancozin_2.5g.pdf",
+      "notes": "YaraVita MANCOZIN is a flowable formulation containing high concentrations of Mn, Cu, and Zn, making it ideal for cereals and broadacre crops. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/yaravita/yaravita-mancozin/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "YARAVITA PENTAFLO",
+      "brand_owner": "YaraVita",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Foliar and micronutrient fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 4
+        },
+        {
+          "name": "Available Phosphate (P2O5)",
+          "percentage": 15
+        },
+        {
+          "name": "Calcium (Ca)",
+          "percentage": 12.5
+        },
+        {
+          "name": "Magnesium (Mg)",
+          "percentage": 3.7
+        },
+        {
+          "name": "Boron (B)",
+          "percentage": 1.2
+        },
+        {
+          "name": "Zinc (Zn)",
+          "percentage": 2.5
+        }
+      ],
+      "fertilizer_analysis": "4-15-0; Total Nitrogen (N) 4%; Available Phosphate (P2O5) 15%; Calcium (Ca) 12.5%; Magnesium (Mg) 3.7%; Boron (B) 1.2%; Zinc (Zn) 2.5%",
+      "rates": [],
+      "targets": [
+        "Total Nitrogen nutrition",
+        "Available Phosphate nutrition",
+        "Calcium nutrition",
+        "Magnesium nutrition",
+        "Boron nutrition",
+        "Zinc nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://yaravita-bucket-product-advice-prod.s3.amazonaws.com/pypabmy8g_us_pentaflo_2.5g.pdf",
+      "notes": "YaraVita PENTAFLO is a multi-nutrient, concentrated flowable fertilizer ideal for fruit and row crops. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/yaravita/yaravita-pentaflo/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "YARAVITA POWERBOR CA",
+      "brand_owner": "YaraVita",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Foliar and micronutrient fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 4
+        },
+        {
+          "name": "Calcium (Ca)",
+          "percentage": 15
+        },
+        {
+          "name": "Boron (B)",
+          "percentage": 3
+        },
+        {
+          "name": "Zinc (Zn)",
+          "percentage": 6
+        }
+      ],
+      "fertilizer_analysis": "4-0-0; Total Nitrogen (N) 4%; Calcium (Ca) 15%; Boron (B) 3%; Zinc (Zn) 6%",
+      "rates": [],
+      "targets": [
+        "Total Nitrogen nutrition",
+        "Calcium nutrition",
+        "Boron nutrition",
+        "Zinc nutrition"
+      ],
+      "turf_sites": [
+        "Amenity turf",
+        "Golf course turf",
+        "Sports turf"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://yaravita-bucket-product-advice-prod.s3.amazonaws.com/pype1ly8g_us_powerbor_ca_2.5g.pdf",
+      "notes": "YaraVita POWERBOR Ca is a highly concentrated flowable fertilizer containing significant levels of calcium, boron and zinc. Official turf directions: 1.5 fl ozs per 1000 sq ft as soon as growth commences in spring and /or following identification of need by analysis. Repeat sprays at 10 to 14 day intervals as necessary. Water rate: 0.5 gallons per 1000 sq.ft. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/yaravita/yaravita-powerbor-ca/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "YARAVITA PROCOTE B",
+      "brand_owner": "YaraVita",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Foliar and micronutrient fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Boron (B)",
+          "percentage": 7.1
+        }
+      ],
+      "fertilizer_analysis": "0-0-0; Boron (B) 7.1%",
+      "rates": [],
+      "targets": [
+        "Boron nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://yaravita-bucket-product-advice-prod.s3.amazonaws.com/pyp1plyk9_us_procote_b_264g.pdf",
+      "notes": "YaraVita PROCOTE B is a liquid, oil-based boron fertilizer that coats your dry granular fertilizer providing an even distribution of the micronutrient boron. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/yaravita/yaravita-procote-b/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "YARAVITA PROCOTE BCMZ",
+      "brand_owner": "YaraVita",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Foliar and micronutrient fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Boron (B)",
+          "percentage": 3.6
+        },
+        {
+          "name": "Copper (Cu)",
+          "percentage": 6
+        },
+        {
+          "name": "Manganese (Mn)",
+          "percentage": 6
+        },
+        {
+          "name": "Zinc (Zn)",
+          "percentage": 12
+        }
+      ],
+      "fertilizer_analysis": "0-0-0; Boron (B) 3.6%; Copper (Cu) 6%; Manganese (Mn) 6%; Zinc (Zn) 12%",
+      "rates": [],
+      "targets": [
+        "Boron nutrition",
+        "Copper nutrition",
+        "Manganese nutrition",
+        "Zinc nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://yaravita-bucket-product-advice-prod.s3.amazonaws.com/pypbvlyk9_us_procote_bcmz_1000l.pdf",
+      "notes": "YaraVita PROCOTE BMZ is a liquid, oil-based fertilizer that coats your dry granular fertilizer providing an even distribution of the micronutrients boron, copper, manganese and zinc. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/yaravita/yaravita-procote-bcmz/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "YARAVITA PROCOTE BMZ",
+      "brand_owner": "YaraVita",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Foliar and micronutrient fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Boron (B)",
+          "percentage": 3.8
+        },
+        {
+          "name": "Manganese (Mn)",
+          "percentage": 6.3
+        },
+        {
+          "name": "Zinc (Zn)",
+          "percentage": 12.7
+        }
+      ],
+      "fertilizer_analysis": "0-0-0; Boron (B) 3.8%; Manganese (Mn) 6.3%; Zinc (Zn) 12.7%",
+      "rates": [],
+      "targets": [
+        "Boron nutrition",
+        "Manganese nutrition",
+        "Zinc nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://yaravita-bucket-product-advice-prod.s3.amazonaws.com/pypd9lyk9_us_procote_bmz_264g.pdf",
+      "notes": "Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/yaravita/yaravita-procote-bmz/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "YARAVITA PROCOTE CU",
+      "brand_owner": "YaraVita",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Foliar and micronutrient fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Copper (Cu)",
+          "percentage": 32.8
+        }
+      ],
+      "fertilizer_analysis": "0-0-0; Copper (Cu) 32.8%",
+      "rates": [],
+      "targets": [
+        "Copper nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://yaravita-bucket-product-advice-prod.s3.amazonaws.com/pypeflyk9_us_procote_cu_1000l.pdf",
+      "notes": "Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/yaravita/yaravita-procote-cu/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "YARAVITA PROCOTE FE",
+      "brand_owner": "YaraVita",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Foliar and micronutrient fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Iron (Fe)",
+          "percentage": 2.75
+        }
+      ],
+      "fertilizer_analysis": "0-0-0; Iron (Fe) 2.75%",
+      "rates": [],
+      "targets": [
+        "Iron nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://yaravita-bucket-product-advice-prod.s3.amazonaws.com/pypdmlybq_us_procote_fe_264g.pdf",
+      "notes": "YaraVita PROCOTE Fe is a liquid, oil-based iron fertilizer that coats your dry granular fertilizer providing an even distribution of the micronutrient iron. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/yaravita/yaravita-procote-fe/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "YARAVITA PROCOTE MN",
+      "brand_owner": "YaraVita",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Foliar and micronutrient fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Manganese (Mn)",
+          "percentage": 29
+        }
+      ],
+      "fertilizer_analysis": "0-0-0; Manganese (Mn) 29%",
+      "rates": [],
+      "targets": [
+        "Manganese nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://yaravita-bucket-product-advice-prod.s3.amazonaws.com/pypbzlyk9_us_procote_mn_1000l.pdf",
+      "notes": "YaraVita PROCOTE Mn is a liquid, oil-based manganese fertilizer that coats your dry granular fertilizer providing an even distribution of the micronutrient manganese. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/yaravita/yaravita-procote-mn/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "YARAVITA PROCOTE ZN",
+      "brand_owner": "YaraVita",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Foliar and micronutrient fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Zinc (Zn)",
+          "percentage": 42.6
+        }
+      ],
+      "fertilizer_analysis": "0-0-0; Zinc (Zn) 42.6%",
+      "rates": [],
+      "targets": [
+        "Zinc nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://yaravita-bucket-product-advice-prod.s3.amazonaws.com/pyp1jlyk9_us_procote_zn_1000l.pdf",
+      "notes": "YaraVita PROCOTE Zn is a liquid, oil-based zinc fertilizer that coats your dry granular fertilizer providing an even distribution of the micronutrient zinc. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/yaravita/yaravita-procote-zn/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "YARAVITA REVIG",
+      "brand_owner": "YaraVita",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Foliar and micronutrient fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 3
+        },
+        {
+          "name": "Soluble Potash (K2O)",
+          "percentage": 34
+        }
+      ],
+      "fertilizer_analysis": "3-0-34; Total Nitrogen (N) 3%; Soluble Potash (K2O) 34%",
+      "rates": [],
+      "targets": [
+        "Total Nitrogen nutrition",
+        "Soluble Potash nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://yaravita-bucket-product-advice-prod.s3.amazonaws.com/pypahmy8u_us_revig_2.5g.pdf",
+      "notes": "YaraVita REVIG is a highly concentrated liquid potassium fertilizer designed for foliar application. YaraVita Revig is quick-acting and mobile within the plant. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/yaravita/yaravita-revig/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "YARAVITA SENIPHOS",
+      "brand_owner": "YaraVita",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Foliar and micronutrient fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 3
+        },
+        {
+          "name": "Available Phosphate (P2O5)",
+          "percentage": 23
+        },
+        {
+          "name": "Calcium (Ca)",
+          "percentage": 3
+        }
+      ],
+      "fertilizer_analysis": "3-23-0; Total Nitrogen (N) 3%; Available Phosphate (P2O5) 23%; Calcium (Ca) 3%",
+      "rates": [
+        {
+          "rate": "1.5 fl.oz",
+          "unit": "fl.oz/1,000 sq ft",
+          "interval": "1.5 fl.oz./1000 sq.ft. as soon as growth commences in spring. Repeat sprays at 10 to 14 day intervals as necessary. Water rate: 0.5 gallons/1000 sq.ft."
+        }
+      ],
+      "targets": [
+        "Total Nitrogen nutrition",
+        "Available Phosphate nutrition",
+        "Calcium nutrition"
+      ],
+      "turf_sites": [
+        "Amenity turf",
+        "Golf course turf",
+        "Sports turf"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://yaravita-bucket-product-advice-prod.s3.amazonaws.com/pypammy8s_us_seniphos_2.5g.pdf",
+      "notes": "YaraVita SENIPHOS is a foliar phosphate designed to provide a fast-acting fuel for plant energy and boost crops during rapid growth. Official turf directions: 1.5 fl.oz./1000 sq.ft. as soon as growth commences in spring. Repeat sprays at 10 to 14 day intervals as necessary. Water rate: 0.5 gallons/1000 sq.ft. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/yaravita2/yaravita-seniphos/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "YARAVITA SOLATREL",
+      "brand_owner": "YaraVita",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Foliar and micronutrient fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Available Phosphate (P2O5)",
+          "percentage": 29
+        },
+        {
+          "name": "Soluble Potash (K2O)",
+          "percentage": 5
+        },
+        {
+          "name": "Magnesium (Mg)",
+          "percentage": 2.7
+        },
+        {
+          "name": "Manganese (Mn)",
+          "percentage": 0.7
+        },
+        {
+          "name": "Zinc (Zn)",
+          "percentage": 0.3
+        }
+      ],
+      "fertilizer_analysis": "0-29-5; Available Phosphate (P2O5) 29%; Soluble Potash (K2O) 5%; Magnesium (Mg) 2.7%; Manganese (Mn) 0.7%; Zinc (Zn) 0.3%",
+      "rates": [],
+      "targets": [
+        "Available Phosphate nutrition",
+        "Soluble Potash nutrition",
+        "Magnesium nutrition",
+        "Manganese nutrition",
+        "Zinc nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://yaravita-bucket-product-advice-prod.s3.amazonaws.com/pypaqmy8a_us_solatrel_250g.pdf",
+      "notes": "YaraVita Solatrel is a balanced combination of phosphorus and other essential nutrients for potatoes. Foliar P applications are effective in increasing tuber number and size.  Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/yaravita/yaravita-solatrel/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "YARAVITA STOPIT",
+      "brand_owner": "YaraVita",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Foliar and micronutrient fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Calcium (Ca)",
+          "percentage": 12.1
+        }
+      ],
+      "fertilizer_analysis": "0-0-0; Calcium (Ca) 12.1%",
+      "rates": [],
+      "targets": [
+        "Calcium nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://yaravita-bucket-product-advice-prod.s3.amazonaws.com/pypaumyd1_us_stopit_2.5g.pdf",
+      "notes": "YaraVita STOPIT is a foliar calcium fertilizer formulated from food-grade calcium chloride to ensure crop safety and freedom from harmful impurities. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/yaravita/yaravita-stopit/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    },
+    {
+      "product_name": "YARAVITA ZINTRAC",
+      "brand_owner": "YaraVita",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Foliar and micronutrient fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 1
+        },
+        {
+          "name": "Zinc (Zn)",
+          "percentage": 40
+        }
+      ],
+      "fertilizer_analysis": "1-0-0; Total Nitrogen (N) 1%; Zinc (Zn) 40%",
+      "rates": [
+        {
+          "rate": "0.4 fl.oz",
+          "unit": "fl.oz/1,000 sq ft",
+          "interval": "0.4 fl.oz./1000 sq.ft. as soon as growth commences in spring and /or following identification of need by analysis. Repeat sprays at 10 to 14 day intervals as necessary. Water rate: 0.5 gallons/1000 sq.ft."
+        }
+      ],
+      "targets": [
+        "Total Nitrogen nutrition",
+        "Zinc nutrition"
+      ],
+      "turf_sites": [
+        "Amenity turf",
+        "Golf course turf",
+        "Sports turf"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://yaravita-bucket-product-advice-prod.s3.amazonaws.com/pyp48my8u_us_zintrac_2.5g.pdf",
+      "notes": "YaraVita ZINTRAC is a highly concentrated flowable zinc formulation containing 8-10 times more Zn than a typical liquid chelate. Official turf directions: 0.4 fl.oz./1000 sq.ft. as soon as growth commences in spring and /or following identification of need by analysis. Repeat sprays at 10 to 14 day intervals as necessary. Water rate: 0.5 gallons/1000 sq.ft. Official product page: https://www.yara.us/crop-nutrition/fertilizer-products/yaravita/yaravita-zintrac/. Use only according to the current product label and an appropriate nutrient-management recommendation.",
+      "status": "active"
+    }
+  ]
+}

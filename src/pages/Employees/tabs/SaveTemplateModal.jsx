@@ -40,6 +40,10 @@ export default function SaveTemplateModal({ schedules, onClose }) {
         dayOfWeek:  s.dayOfWeek,
         startTime:  s.startTime,
         endTime:    s.endTime,
+        lunchBreakMinutes: s.lunchBreakMinutes ?? 30,
+        lunchStartTime: s.lunchStartTime ?? null,
+        lunchEndTime: s.lunchEndTime ?? null,
+        autoLunchBreak: s.autoLunchBreak !== false,
         role:       s.role,
         status:     s.status,
       }))
@@ -61,7 +65,7 @@ export default function SaveTemplateModal({ schedules, onClose }) {
   const rowCount = schedules.length
 
   return (
-    <div className={styles.modalOverlay} onClick={onClose} role="dialog">
+    <div className={styles.modalOverlay} role="dialog">
       <form
         className={styles.modal}
         onClick={e => e.stopPropagation()}

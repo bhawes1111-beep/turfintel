@@ -1,99 +1,88 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import PageShell from '../../components/layout/PageShell'
-// Phase SPR.2 — Course-specific tab forks (LEGACY_TABS / CROSSWINDS_TABS +
-// header + New Spray / Reports buttons) removed. One tab strip for every
-// course; the tab strip is the single navigation primitive.
 import SprayCalendarWorkspace from './tabs/SprayCalendarWorkspace'
-import SprayOverview          from './tabs/SprayOverview'
-import SprayCalendar          from './tabs/SprayCalendar'
 import BuildSpraySheet        from './tabs/BuildSpraySheet'
 import SprayRecords           from './tabs/SprayRecords'
 import MixCalculator          from './tabs/MixCalculator'
 import SprayReports           from './tabs/SprayReports'
 import ProgramIntelligence    from './tabs/ProgramIntelligence'
 import SprayProgramPlanner    from './tabs/SprayProgramPlanner'
-import SprayProgramCalendar   from './tabs/SprayProgramCalendar'
 import SprayTrainingBriefs    from './tabs/SprayTrainingBriefs'
 import { createTrainingBrief } from '../../utils/sprays/trainingBriefsStore'
 import { useToast } from '../../utils/feedback/toastContext'
-import styles from './Spray.module.css'
 
-// Phase SPR.2 — Unified Spray tab strip. Every course sees the same
-// labels in the same order. Planning owns SprayProgramPlanner
-// (templates / master-detail). The planned-item calendar
-// (SprayProgramCalendar) is exposed via the More menu as
-// "Planning Calendar" so the collision with "Planned Sprays" is gone.
-export const SPRAY_TABS = [
-  'Today',
+// One clean Applications tab strip. Duplicate calendar/E.O.P labels from older
+// layouts are routed to the closest working destination below.
+const SPRAY_TABS = [
+  'Calendar',
   'New Application',
   'Records',
-  'Planning',
-  'Calendar',
+  'Resistance',
+  'E.O.P',
   'Training Briefs',
   'Calculator',
   'Reports',
-  'More',
-]
-export const SPRAY_MORE = [
-  'Overview',
-  'Planning Calendar',
-  'Season Insights',
 ]
 
-// Phase SPR.2 — Compatibility mapping for stale activeTab keys from the
-// pre-SPR.2 nav. If a user's session/router carried an old key, we map
-// to the closest new destination instead of showing a blank pane.
-// Unknown keys fall back to 'Today' via the default in resolveInitialTab.
 const LEGACY_TAB_ALIASES = {
-  // Old default landing.
-  'Workspace':               'Today',
-  // Crosswinds builder / legacy builder both point at 'New Application'.
+  'Workspace':               'Calendar',
+  'Today':                   'Calendar',
   'Build Spray':             'New Application',
-  // Legacy Records label.
   'Spray Records':           'Records',
-  // Legacy calendar labels (both mapped to the completed-record calendar).
-  'Spray Calendar':          'Calendar',
-  // The old 'Planned Sprays' label collided — it meant Planner in some
-  // courses and Program Calendar in others. Map both to Planning (the
-  // Planner), which was the more common destination.
-  'Planned Sprays':          'Planning',
-  // Legacy explicit Program Calendar tab.
-  'Planned Spray Calendar':  'More',        // reveals Planning Calendar in More
-  // Legacy Mix Calculator label.
+  'Spray Calendar':          'Records',
+  'Records Calendar':        'Records',
+  'Planned Sprays':          'E.O.P',
+  'Planned Spray Calendar':  'E.O.P',
+  'Planning Calendar':       'E.O.P',
   'Mix Calculator':          'Calculator',
-  // Legacy Spray Intelligence label → new Season Insights inside More.
-  'Spray Intelligence':      'More',
+  'Spray Intelligence':      'Resistance',
+  'Season Insights':         'Resistance',
+  'Overview':                'Calendar',
+  'Planning':                'E.O.P',
+  'EOP':                     'E.O.P',
+  'E.O.P':                   'E.O.P',
   'Spray Training':          'Training Briefs',
   'Training Briefs':         'Training Briefs',
+  'Calendar':                'Calendar',
+  'Calculator':              'Calculator',
+  'Reports':                 'Reports',
 }
 
 function resolveInitialTab(candidate) {
-  if (!candidate) return 'Today'
+  if (!candidate) return 'Calendar'
   if (SPRAY_TABS.includes(candidate)) return candidate
   if (LEGACY_TAB_ALIASES[candidate]) return LEGACY_TAB_ALIASES[candidate]
-  return 'Today'
+  return 'Calendar'
 }
 
-/**
- * Sprays workspace — canonical TurfIntel workspace pattern.
- * SPR.2 — one tab strip across courses, no header action duplication,
- * no course-specific fork. Compliance / builder / inventory / records
- * / reports code untouched.
- */
 export default function Spray() {
+  const location = useLocation()
+  const navigate = useNavigate()
   const toast = useToast()
-  const [activeTab, setActiveTab] = useState(() => resolveInitialTab('Today'))
-  const [moreTab,  setMoreTab]    = useState('Overview')
-  const [trainingBriefId, setTrainingBriefId] = useState(null)
+  const [applicationContext, setApplicationContext] = useState(() => {
+    const nutrientSampleId = location.state?.nutrientSampleId
+    return nutrientSampleId
+      ? { nutrientSampleId, area: location.state?.area ?? '' }
+      : null
+  })
+  const [activeTab, setActiveTab] = useState(() => resolveInitialTab(location.state?.activeTab))
+  const [trainingBriefId, setTrainingBriefId] = useState(location.state?.trainingBriefId ?? null)
 
-  // Phase SPR.2 — CTA on Today that jumps to New Application (replaces
-  // the previously embedded second BuildSpraySheet instance so the
-  // builder mounts in exactly one place at a time).
+  useEffect(() => {
+    if (!location.state?.nutrientSampleId && !location.state?.activeTab) return
+    navigate(`${location.pathname}${location.search}`, { replace: true, state: null })
+  }, [location.pathname, location.search, location.state, navigate])
+
+  const handleInitialContextApplied = useCallback(() => {
+    setApplicationContext(null)
+  }, [])
+
   function goToNewApplication() {
     setActiveTab('New Application')
   }
 
-  async function startTrainingBrief(source) {
+  const startTrainingBrief = useCallback(async (source) => {
     try {
       const brief = await createTrainingBrief(source)
       setTrainingBriefId(brief.id)
@@ -104,48 +93,33 @@ export default function Spray() {
       toast.error?.(error.message || 'Could not create training brief')
       throw error
     }
-  }
+  }, [toast])
 
   return (
     <PageShell
-      title="Sprays"
-      description="Spray applications, planned sprays, and labels."
+      title="Applications"
+      description="Log liquid sprays and granular applications, review records, and watch resistance."
       tabs={SPRAY_TABS}
       activeTab={activeTab}
       onTabChange={setActiveTab}
     >
-      {activeTab === 'Today'           && (
+      {activeTab === 'Calendar' && (
         <SprayCalendarWorkspace onStartNewSpray={goToNewApplication} onCreateTrainingBrief={startTrainingBrief} />
       )}
-      {activeTab === 'New Application' && <BuildSpraySheet onCreateTrainingBrief={startTrainingBrief} />}
+      {activeTab === 'New Application' && (
+        <BuildSpraySheet
+          initialNutrientSampleId={applicationContext?.nutrientSampleId}
+          initialArea={applicationContext?.area}
+          onInitialContextApplied={handleInitialContextApplied}
+          onCreateTrainingBrief={startTrainingBrief}
+        />
+      )}
       {activeTab === 'Records'         && <SprayRecords onCreateTrainingBrief={startTrainingBrief} />}
-      {activeTab === 'Planning'        && <SprayProgramPlanner onCreateTrainingBrief={startTrainingBrief} />}
-      {activeTab === 'Calendar'        && <SprayCalendar />}
+      {activeTab === 'Resistance'      && <ProgramIntelligence />}
+      {activeTab === 'E.O.P'           && <SprayProgramPlanner onCreateTrainingBrief={startTrainingBrief} />}
       {activeTab === 'Training Briefs' && <SprayTrainingBriefs initialBriefId={trainingBriefId} onBriefSelected={setTrainingBriefId} />}
       {activeTab === 'Calculator'      && <MixCalculator />}
       {activeTab === 'Reports'         && <SprayReports />}
-      {activeTab === 'More' && (
-        <div className={styles.moreInner}>
-          <div className={styles.moreNav} role="tablist" aria-label="Advanced spray surfaces">
-            {SPRAY_MORE.map(t => (
-              <button
-                key={t}
-                type="button"
-                role="tab"
-                aria-selected={moreTab === t}
-                data-active={moreTab === t ? 'true' : undefined}
-                className={styles.moreNavBtn}
-                onClick={() => setMoreTab(t)}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-          {moreTab === 'Overview'          && <SprayOverview />}
-          {moreTab === 'Planning Calendar' && <SprayProgramCalendar />}
-          {moreTab === 'Season Insights'   && <ProgramIntelligence />}
-        </div>
-      )}
     </PageShell>
   )
 }

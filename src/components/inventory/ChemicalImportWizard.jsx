@@ -254,8 +254,8 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
       manufacturer:   form.manufacturer.trim() || null,
       epaNumber:      form.epaNumber.trim() || null,
       expiryDate:     form.expiryDate.trim() || null,
-      analysis:       form.kind === 'fertilizer' ? (form.analysis.trim() || null) : null,
-      nitrogenSource: form.kind === 'fertilizer' ? (form.nitrogenSource.trim() || null) : null,
+      analysis:       ['chemical', 'fertilizer'].includes(form.kind) ? (form.analysis.trim() || null) : null,
+      nitrogenSource: ['chemical', 'fertilizer'].includes(form.kind) ? (form.nitrogenSource.trim() || null) : null,
       notes:          form.notes.trim() || null,
     }
     const label = {
@@ -320,7 +320,6 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
   return createPortal(
     <div
       className={styles.backdrop}
-      onClick={handleClose}
       role="dialog"
       aria-modal="true"
       aria-label="Chemical Import Wizard"
@@ -669,22 +668,22 @@ export default function ChemicalImportWizard({ onClose, onSaved }) {
                     placeholder="e.g. Chloronitrile"
                   />
                 </Field>
-                {form.kind === 'fertilizer' && (
+                {['chemical', 'fertilizer'].includes(form.kind) && (
                   <>
-                    <Field label="Analysis (N-P-K)">
+                    <Field label="Nutrient Analysis">
                       <input
                         className={styles.input}
                         value={form.analysis}
                         onChange={e => setField('analysis', e.target.value)}
-                        placeholder="e.g. 18-3-6"
+                        placeholder="e.g. 18-3-6, 0-0-25, micros"
                       />
                     </Field>
-                    <Field label="Nitrogen Source">
+                    <Field label="Nutrient Source">
                       <input
                         className={styles.input}
                         value={form.nitrogenSource}
                         onChange={e => setField('nitrogenSource', e.target.value)}
-                        placeholder="e.g. Urea, SCU"
+                        placeholder="e.g. Urea, potassium phosphite, iron"
                       />
                     </Field>
                   </>

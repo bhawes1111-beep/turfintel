@@ -69,7 +69,7 @@ function LogModal({ onClose }) {
   }
 
   return createPortal(
-    <div className={styles.backdrop} onClick={onClose} role="dialog" aria-modal="true" aria-label="Log cultural practice">
+    <div className={styles.backdrop} role="dialog" aria-modal="true" aria-label="Log cultural practice">
       <div className={styles.modal} onClick={e => e.stopPropagation()}>
         <div className={styles.mHeader}><span className={styles.mTitle}>Log Cultural Practice</span><button className={styles.closeBtn} onClick={onClose} aria-label="Close">✕</button></div>
         <div className={styles.mBody}>

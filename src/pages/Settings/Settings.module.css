@@ -307,6 +307,45 @@
   cursor: not-allowed;
 }
 
+.courseAreaMeasurements {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
+  gap: 8px;
+  min-width: min(420px, 48vw);
+}
+
+.courseAreaMeasurement {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.courseAreaMeasurement > span {
+  color: rgba(212, 237, 212, 0.48);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.courseAreaMeasurement .input {
+  width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 700px) {
+  .row:has(.courseAreaMeasurements) {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .courseAreaMeasurements {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
 .selectField {
   appearance: none;
   cursor: pointer;

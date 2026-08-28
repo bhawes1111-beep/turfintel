@@ -4,7 +4,7 @@
 
 .statRow {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 12px;
   margin-bottom: 18px;
 }
@@ -173,6 +173,30 @@
   color: rgba(212, 237, 212, 0.45);
 }
 
+.translationBadge {
+  align-self: flex-start;
+  border: 1px solid rgba(34, 197, 94, 0.36);
+  background: rgba(34, 197, 94, 0.1);
+  color: #86efac;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.payrollExcludedBadge {
+  align-self: flex-start;
+  border: 1px solid rgba(245, 158, 11, 0.34);
+  background: rgba(245, 158, 11, 0.1);
+  color: #fbbf24;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
 .statusBadge {
   font-size: 10px;
   font-weight: 700;
@@ -260,6 +284,193 @@
 }
 
 /* ── Modal / form ──────────────────────────────────────────────────────── */
+
+/* Training */
+
+.trainingRoot {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.trainingHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px 18px;
+  border: 1px solid rgba(74, 158, 74, 0.14);
+  border-radius: 8px;
+  background: linear-gradient(160deg, var(--color-card) 0%, var(--color-bg) 100%);
+}
+
+.trainingSub {
+  margin: 5px 0 0;
+  color: rgba(212, 237, 212, 0.55);
+  font-size: 12px;
+}
+
+.trainingStats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.trainingStat {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.025);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.trainingStat span {
+  color: #4ade80;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.trainingStat small {
+  color: rgba(212, 237, 212, 0.52);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.trainingStat[data-tone="critical"] {
+  border-color: rgba(239, 68, 68, 0.34);
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.trainingStat[data-tone="critical"] span { color: #f87171; }
+
+.trainingStat[data-tone="warn"] {
+  border-color: rgba(245, 158, 11, 0.32);
+  background: rgba(245, 158, 11, 0.07);
+}
+
+.trainingStat[data-tone="warn"] span { color: #fbbf24; }
+
+.trainingStat[data-tone="ok"] {
+  border-color: rgba(74, 222, 128, 0.3);
+  background: rgba(74, 222, 128, 0.07);
+}
+
+.trainingList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.trainingCard {
+  border: 1px solid rgba(74, 158, 74, 0.14);
+  border-left: 4px solid rgba(74, 222, 128, 0.45);
+  border-radius: 8px;
+  background: linear-gradient(160deg, var(--color-card) 0%, rgba(4, 12, 6, 0.72) 100%);
+  padding: 13px 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.trainingCard[data-tone="critical"] { border-left-color: #f87171; }
+.trainingCard[data-tone="warn"]     { border-left-color: #fbbf24; }
+.trainingCard[data-tone="info"]     { border-left-color: #38bdf8; }
+.trainingCard[data-tone="muted"]    { border-left-color: rgba(148, 163, 184, 0.7); }
+
+.trainingCardMain {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.trainingCard h4 {
+  margin: 0;
+  color: #d4edd4;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.trainingCard p {
+  margin: 4px 0 0;
+  color: rgba(212, 237, 212, 0.62);
+  font-size: 12px;
+}
+
+.trainingMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 8px;
+}
+
+.trainingMeta span {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(212, 237, 212, 0.62);
+  padding: 3px 8px;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.trainingStatus {
+  border: 1px solid rgba(74, 222, 128, 0.3);
+  border-radius: 999px;
+  background: rgba(74, 222, 128, 0.1);
+  color: #86efac;
+  padding: 4px 9px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.trainingStatus[data-tone="critical"] {
+  border-color: rgba(239, 68, 68, 0.36);
+  background: rgba(239, 68, 68, 0.12);
+  color: #fca5a5;
+}
+
+.trainingStatus[data-tone="warn"] {
+  border-color: rgba(245, 158, 11, 0.36);
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+}
+
+.trainingStatus[data-tone="info"] {
+  border-color: rgba(56, 189, 248, 0.34);
+  background: rgba(56, 189, 248, 0.12);
+  color: #7dd3fc;
+}
+
+.trainingStatus[data-tone="muted"] {
+  border-color: rgba(148, 163, 184, 0.28);
+  background: rgba(148, 163, 184, 0.1);
+  color: rgba(212, 237, 212, 0.62);
+}
+
+.trainingNotes {
+  color: rgba(212, 237, 212, 0.74) !important;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.trainingError {
+  margin: 0;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 7px;
+  background: rgba(239, 68, 68, 0.08);
+  color: #fca5a5;
+  padding: 9px 12px;
+  font-size: 12px;
+}
 
 .modalOverlay {
   position: fixed;
@@ -429,6 +640,297 @@
 
 @media (max-width: 760px) {
   .statRow { grid-template-columns: repeat(2, 1fr); }
+  .trainingHeader,
+  .trainingCardMain {
+    flex-direction: column;
+  }
+  .trainingStats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .formGrid { grid-template-columns: 1fr; }
   .formFieldWide { grid-column: span 1; }
+}
+
+/* Payroll */
+
+.payrollRoot {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.payrollSub {
+  margin: 5px 0 0;
+  color: rgba(212, 237, 212, 0.58);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.payrollToolbar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 14px 0;
+}
+
+.payrollField {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 180px;
+}
+
+.payrollField span {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: rgba(212, 237, 212, 0.55);
+}
+
+.payrollField input {
+  padding: 8px 10px;
+  background: rgba(4, 12, 6, 0.85);
+  border: 1px solid rgba(74, 158, 74, 0.22);
+  border-radius: 6px;
+  color: rgba(212, 237, 212, 0.92);
+  font: inherit;
+  font-size: 12px;
+}
+
+.payrollField input:focus {
+  outline: none;
+  border-color: rgba(74, 222, 128, 0.48);
+}
+
+.payrollSummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.payrollStat {
+  border: 1px solid rgba(74, 158, 74, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.025);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.payrollStat span {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(212, 237, 212, 0.52);
+}
+
+.payrollStat strong {
+  color: #d4edd4;
+  font-size: 19px;
+  font-variant-numeric: tabular-nums;
+}
+
+.payrollStat[data-tone="warn"] {
+  border-color: rgba(245, 158, 11, 0.36);
+  background: rgba(245, 158, 11, 0.07);
+}
+
+.payrollStat[data-tone="warn"] strong { color: #fbbf24; }
+
+.payrollWarning {
+  margin: 12px 0 0;
+  border: 1px solid rgba(245, 158, 11, 0.24);
+  border-radius: 7px;
+  background: rgba(245, 158, 11, 0.07);
+  color: #fbbf24;
+  padding: 9px 11px;
+  font-size: 12px;
+}
+
+.payrollTableWrap {
+  overflow-x: auto;
+  border: 1px solid rgba(74, 158, 74, 0.14);
+  border-radius: 8px;
+}
+
+.payrollTable {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 1040px;
+  font-size: 12px;
+}
+
+.payrollTable th {
+  background: rgba(74, 158, 74, 0.09);
+  color: rgba(212, 237, 212, 0.62);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-align: left;
+  text-transform: uppercase;
+  padding: 11px 12px;
+  white-space: nowrap;
+}
+
+.payrollTable td {
+  border-top: 1px solid rgba(255, 255, 255, 0.055);
+  color: rgba(212, 237, 212, 0.84);
+  padding: 12px;
+  vertical-align: top;
+  font-variant-numeric: tabular-nums;
+}
+
+.payrollTable td:last-child,
+.payrollTable th:last-child {
+  text-align: right;
+}
+
+.payrollEmployee {
+  color: #d4edd4;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.payrollMeta {
+  margin-top: 3px;
+  color: rgba(212, 237, 212, 0.48);
+  font-size: 11px;
+}
+
+.payrollDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 7px;
+  color: rgba(212, 237, 212, 0.56);
+  font-size: 10.5px;
+  line-height: 1.35;
+}
+
+.payrollMissing {
+  color: #fbbf24 !important;
+}
+
+.payrollNotes {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border: 1px solid rgba(74, 158, 74, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  color: rgba(212, 237, 212, 0.55);
+  padding: 12px 14px;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.payrollEmployeeList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.payrollEmployeeCard {
+  border: 1px solid rgba(74, 158, 74, 0.16);
+  border-radius: 8px;
+  background: linear-gradient(160deg, var(--color-card) 0%, rgba(4, 12, 6, 0.74) 100%);
+  overflow: hidden;
+}
+
+.payrollEmployeeHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 13px 15px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+}
+
+.payrollEmployeeTotal {
+  color: #4ade80;
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.payrollMiniTotals {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+  gap: 8px;
+  padding: 12px 15px;
+}
+
+.payrollMiniTotals span {
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.025);
+  color: rgba(212, 237, 212, 0.56);
+  padding: 8px 10px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.payrollMiniTotals b {
+  display: block;
+  color: #d4edd4;
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.payrollMiniTotals span[data-tone="warn"] {
+  border-color: rgba(245, 158, 11, 0.28);
+  background: rgba(245, 158, 11, 0.07);
+}
+
+.payrollMiniTotals span[data-tone="warn"] b { color: #fbbf24; }
+
+.payrollShiftTableWrap {
+  overflow-x: auto;
+  border-top: 1px solid rgba(255, 255, 255, 0.045);
+}
+
+.payrollShiftTable {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 680px;
+  font-size: 12px;
+}
+
+.payrollShiftTable th {
+  background: rgba(74, 158, 74, 0.08);
+  color: rgba(212, 237, 212, 0.58);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-align: left;
+  text-transform: uppercase;
+  padding: 10px 12px;
+  white-space: nowrap;
+}
+
+.payrollShiftTable td {
+  border-top: 1px solid rgba(255, 255, 255, 0.045);
+  color: rgba(212, 237, 212, 0.83);
+  padding: 10px 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.payrollShiftTable td:last-child,
+.payrollShiftTable th:last-child {
+  text-align: right;
+}
+
+@media (max-width: 760px) {
+  .payrollField { flex: 1 1 100%; }
+  .payrollSummaryGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .payrollTable { min-width: 860px; }
+  .payrollEmployeeHeader { flex-direction: column; }
+  .payrollEmployeeTotal { font-size: 16px; }
+  .payrollMiniTotals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .payrollShiftTable { min-width: 620px; }
 }

@@ -102,7 +102,7 @@ export default function LoadProgramModal({
       name:            item.productName ?? '',
       type:            '',          // builder re-derives from inventory pick
       rate:            rateStr,
-      rateUnit:        item.rateUnit ?? 'oz_per_acre',
+      rateUnit:        item.rateUnit ?? 'oz_per_1000sqft',
       unit:            'oz',        // builder re-derives from inventory pick
       rei:             0,
     }
@@ -151,7 +151,6 @@ export default function LoadProgramModal({
   return (
     <div
       className={styles.modalOverlay}
-      onClick={() => { if (!busy) onClose() }}
       role="dialog"
       aria-modal="true"
       aria-label="Load saved planned spray"

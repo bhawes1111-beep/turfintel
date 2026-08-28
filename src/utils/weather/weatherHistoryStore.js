@@ -48,15 +48,24 @@ async function fetchJSON(url, init) {
 export async function refreshWeatherHistory(opts = {}) {
   setState({ loading: true, error: null })
   try {
-    let url = withCourseScope(`${API}/history`)
-    if (opts.from)  url += `&from=${encodeURIComponent(opts.from)}`
-    if (opts.to)    url += `&to=${encodeURIComponent(opts.to)}`
-    if (opts.limit) url += `&limit=${encodeURIComponent(opts.limit)}`
-    const history = await fetchJSON(url)
+    const history = await fetchWeatherHistoryRange(opts)
     setState({ history, loading: false, error: null, lastFetch: Date.now() })
   } catch (err) {
     setState({ loading: false, error: err.message })
   }
+}
+
+export async function fetchWeatherHistoryRange(opts = {}) {
+  let url = withCourseScope(`${API}/history`)
+  const add = (key, value) => {
+    if (value == null || value === '') return
+    const sep = url.includes('?') ? '&' : '?'
+    url += `${sep}${key}=${encodeURIComponent(value)}`
+  }
+  add('from', opts.from)
+  add('to', opts.to)
+  add('limit', opts.limit)
+  return fetchJSON(url)
 }
 
 /**

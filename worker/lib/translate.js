@@ -60,6 +60,8 @@ const TURF_SYSTEM_PROMPT =
   '  "championship course" → "campo de campeonato"\n' +
   '  "dry spots on N green" → "áreas secas del green N"\n' +
   '  "debris off tees"      → "la basura de los tees"\n' +
+  '  If the English text is only a proper name, location, product name, ' +
+  'or code, return that text exactly. Never say there is nothing to translate.\n' +
   '\n' +
   'Examples:\n' +
   '\n' +
@@ -142,6 +144,27 @@ function stripStrayMarkdown(s) {
   return out.trim()
 }
 
+export function looksLikeTranslationRefusal(text) {
+  if (!text || typeof text !== 'string') return false
+  const normalized = text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+  const refusalPatterns = [
+    'no hay nada que traducir',
+    'proporciona el texto',
+    'proporciona texto',
+    'no puedo traducir',
+    'no se puede traducir',
+    'nothing to translate',
+    'please provide',
+    'provide the english text',
+    'cannot translate',
+    'i cannot translate',
+  ]
+  return refusalPatterns.some(pattern => normalized.includes(pattern))
+}
+
 // Phase 9C.5c3d — Run a single env.AI.run attempt with a specific
 // payload, parse the response via extractAiText, record the outcome
 // into the per-call `attempts` buffer for ?debug=1 visibility, and
@@ -155,6 +178,11 @@ async function runAiCall(env, model, mode, payload, sourcePrefix, attempts) {
     entry.shape = describeAiShape(response)
     const out = extractAiText(response)
     if (out) {
+      if (looksLikeTranslationRefusal(out)) {
+        console.warn(`[translate] cf-ai ${mode} returned refusal text; dropping result, model=${model}`)
+        attempts.push(entry)
+        return null
+      }
       entry.ok = true
       attempts.push(entry)
       return out

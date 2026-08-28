@@ -17,6 +17,7 @@
 //   - stagePendingPhoto(clientId, file)
 //   - retryPendingPhoto(clientId)
 //   - addPhotoToObservation(observationId, file)   (post-save direct attach)
+//   - updateTurfHealthObservation(id, updates)
 //   - deleteTurfHealthObservation(id)
 //   - deleteTurfHealthAttachment(attachmentId, observationId)
 
@@ -332,6 +333,32 @@ export async function addPhotoToObservation(observationId, file) {
 }
 
 // ── Delete (observation + attachment) ─────────────────────────────────
+
+export async function updateTurfHealthObservation(id, updates = {}) {
+  if (!id || id.startsWith('pending-')) {
+    throw new Error('Observation must finish saving before it can be edited.')
+  }
+
+  const previous = state.observations
+  setState({
+    observations: previous.map(row => row.id === id ? { ...row, ...updates } : row),
+  })
+
+  try {
+    const saved = await fetchJSON(`${API}/${encodeURIComponent(id)}`, {
+      method:  'PATCH',
+      headers: mutationHeaders(),
+      body:    JSON.stringify(updates),
+    })
+    setState({
+      observations: state.observations.map(row => row.id === id ? saved : row),
+    })
+    return saved
+  } catch (err) {
+    setState({ observations: previous, error: err.message })
+    throw err
+  }
+}
 
 export async function deleteTurfHealthObservation(id) {
   const prev = state.observations

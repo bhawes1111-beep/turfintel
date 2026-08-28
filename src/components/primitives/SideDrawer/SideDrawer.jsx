@@ -17,7 +17,7 @@ import styles from './SideDrawer.module.css'
  *   </SideDrawer>
  *
  * Modes:
- *   mode="overlay" (default) — overlays the page with a click-to-close backdrop.
+ *   mode="overlay" (default) — overlays the page with a passive backdrop.
  *   mode="push"              — reserved for future Operations Panel migration.
  *                              Falls back to overlay in Phase 3.0a.
  *
@@ -42,6 +42,7 @@ export default function SideDrawer({
   // close transition can play.
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMounted(true)
       const id = requestAnimationFrame(() => setEntered(true))
       return () => cancelAnimationFrame(id)
@@ -91,14 +92,12 @@ export default function SideDrawer({
 
   if (!mounted) return null
 
-  const backdropClick = () => onClose?.()
   const stopPropagation = e => e.stopPropagation()
 
   return createPortal(
     <>
       <div
         className={styles.backdrop}
-        onClick={backdropClick}
         aria-hidden="true"
         data-mode={mode}
       />

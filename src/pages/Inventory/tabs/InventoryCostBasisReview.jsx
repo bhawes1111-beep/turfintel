@@ -10,7 +10,6 @@ import { useSprayPrograms } from '../../../utils/sprayPrograms/sprayProgramStore
 import { buildCostBasisReview } from '../../../utils/sprayPrograms/costBasisReview'
 import {
   estimateProgramItemCost,
-  resolveProgramArea,
   buildProgramCostSummaries,
   formatEstimatedCost,
 } from '../../../utils/sprayPrograms/programCostAwareness'
@@ -122,11 +121,12 @@ function deriveCostFromDraft(draft, inventoryItem) {
   if (!Number.isFinite(tot)  || tot  <= 0) return null
   const totalUnits = qty * sz
   if (totalUnits <= 0) return null
-  let costUnit = null
-  if (packageSizeUnit === 'gal/case')     costUnit = 'gal'
-  else if (packageSizeUnit === 'lb/bag')  costUnit = 'lb'
-  else if (packageSizeUnit === 'lb/pack') costUnit = 'lb'
-  else return null  // bottles / unknown — needs standalone path instead
+  const costUnit = {
+    'gal/case': 'gal',
+    'lb/bag':   'lb',
+    'lb/pack':  'lb',
+  }[packageSizeUnit]
+  if (!costUnit) return null  // bottles / unknown — needs standalone path instead
   return {
     costPerUnit: roundCents(tot / totalUnits),
     costUnit,
@@ -289,7 +289,7 @@ export default function InventoryCostBasisReview() {
     for (const inv of inventoryItems ?? []) {
       if (!inv) continue
       // Only consider inventory rows that are actual products (not parts/fuel).
-      if (inv.kind === 'part' || inv.kind === 'fuel') continue
+      if (inv.kind === 'part' || inv.kind === 'irrigation' || inv.kind === 'fuel') continue
       const bucket = classifyInventoryItem(inv, review, perItemStatuses)
       out[bucket]?.push(inv)
     }

@@ -18,7 +18,16 @@ import {
   getMaintenance,
   createMaintenance,
   updateMaintenance,
+  deleteMaintenance,
 } from './api/maintenance.js'
+import {
+  listEquipmentIssues,
+  getEquipmentIssue,
+  createEquipmentIssue,
+  updateEquipmentIssue,
+  deleteEquipmentIssue,
+  listEquipmentBoardState,
+} from './api/equipmentIssues.js'
 import {
   listRepairs,
   getRepair,
@@ -44,7 +53,21 @@ import {
   listImportedLabels,
 } from './api/inventoryLabels.js'
 import {
+  listPurchaseInvoices,
+  uploadPurchaseInvoice,
+  approvePurchaseInvoice,
+  deletePurchaseInvoice,
+} from './api/purchaseInvoices.js'
+import {
+  listTodayItems,
+  getTodayItem,
+  createTodayItem,
+  updateTodayItem,
+  deleteTodayItem,
+} from './api/todayList.js'
+import {
   listSprays,
+  listDisplayBoardSprays,
   getSpray,
   createSpray,
   updateSpray,
@@ -102,12 +125,39 @@ import {
   deleteEquipmentReservation,
 } from './api/assignments.js'
 import {
+  listWeeklyGoals,
+  getWeeklyGoal,
+  createWeeklyGoal,
+  updateWeeklyGoal,
+  deleteWeeklyGoal,
+  listWeeklyGoalOptions,
+  createWeeklyGoalOption,
+  deleteWeeklyGoalOption,
+} from './api/weeklyGoals.js'
+import {
+  listYearlyGoals,
+  getYearlyGoal,
+  createYearlyGoal,
+  updateYearlyGoal,
+  deleteYearlyGoal,
+  listYearlyGoalOptions,
+  createYearlyGoalOption,
+  deleteYearlyGoalOption,
+} from './api/yearlyGoals.js'
+import {
   listCrewEmployees,
   getCrewEmployee,
   createCrewEmployee,
   updateCrewEmployee,
   deleteCrewEmployee,
 } from './api/crew.js'
+import {
+  listEmployeeTraining,
+  getEmployeeTraining,
+  createEmployeeTraining,
+  updateEmployeeTraining,
+  deleteEmployeeTraining,
+} from './api/employeeTraining.js'
 import {
   listCourses,
   getCourse,
@@ -133,7 +183,9 @@ import {
   listAttachments,
   getAttachment,
   streamAttachment,
+  streamBoardAssignmentPhoto,
   createAttachment,
+  updateAttachment,
   deleteAttachment,
 } from './api/attachments.js'
 import {
@@ -174,7 +226,14 @@ import {
   getTaskTemplate,
   createTaskTemplate,
   updateTaskTemplate,
+  deleteTaskTemplate,
 } from './api/taskTemplates.js'
+import {
+  listTaskCategories,
+  createTaskCategory,
+  updateTaskCategory,
+  deleteTaskCategory,
+} from './api/taskCategories.js'
 import {
   getAmbientCurrent,
   createWeatherObservation,
@@ -230,9 +289,26 @@ import {
   deleteTurfHealth,
 } from './api/turfHealth.js'
 import {
+  listNutrientSamples,
+  getNutrientSample,
+  createNutrientSample,
+  updateNutrientSample,
+  deleteNutrientSample,
+} from './api/nutrientSamples.js'
+import {
+  listNutrientReportImports,
+  uploadNutrientReportImport,
+  approveNutrientReportImport,
+  deleteNutrientReportImport,
+} from './api/nutrientReportImports.js'
+import {
   listProductCatalog,
   getProductCatalog,
 } from './api/productCatalog.js'
+import {
+  getDashboardPreferences,
+  saveDashboardPreferences,
+} from './api/dashboardPreferences.js'
 import {
   bootstrapAdmin,
   login,
@@ -311,6 +387,101 @@ export default {
   },
 }
 
+async function responseJson(response, fallback) {
+  if (!response?.ok) return fallback
+  return response.json().catch(() => fallback)
+}
+
+async function listDisplayBoardState(env, courseId, date) {
+  if (!env.DB) {
+    return {
+      events: [], sprays: [], crewAssignments: [], equipmentReservations: [],
+      alerts: [], employees: [], schedules: [], scheduleOverrides: [],
+      notes: [], moisture: [], assignmentPhotos: [],
+    }
+  }
+
+  const [
+    allEvents,
+    sprays,
+    allCrewAssignments,
+    allEquipmentReservations,
+    allAlerts,
+    employees,
+    schedules,
+    scheduleOverrides,
+    notes,
+    moisture,
+  ] = await Promise.all([
+    listCalendarEvents(env, courseId).then(res => responseJson(res, [])),
+    listDisplayBoardSprays(env, courseId, date).then(res => responseJson(res, [])),
+    listCrewAssignments(env, courseId).then(res => responseJson(res, [])),
+    listEquipmentReservations(env, courseId).then(res => responseJson(res, [])),
+    listAlerts(env, courseId).then(res => responseJson(res, [])),
+    listCrewEmployees(env, courseId, false).then(res => responseJson(res, [])),
+    listEmployeeSchedules(env, courseId).then(res => responseJson(res, [])),
+    listEmployeeScheduleOverrides(env, courseId, { date }).then(res => responseJson(res, [])),
+    listOperationsNotes(env, courseId, { date, status: 'active' }).then(res => responseJson(res, [])),
+    listMoisture(env, courseId, { days: 2, limit: 100 }).then(res => responseJson(res, [])),
+  ])
+
+  const events = Array.isArray(allEvents)
+    ? allEvents.filter(event => !date || event.startDate === date)
+    : []
+  const eventIds = new Set(events.map(event => event.id))
+  const crewAssignments = Array.isArray(allCrewAssignments)
+    ? allCrewAssignments.filter(row => row.calendarEventId && eventIds.has(row.calendarEventId))
+    : []
+
+  let assignmentPhotos = []
+  const assignmentIds = crewAssignments.map(row => row.id).filter(Boolean)
+  if (assignmentIds.length > 0) {
+    const placeholders = assignmentIds.map(() => '?').join(', ')
+    const { results } = await env.DB.prepare(
+      `SELECT id, course_id, parent_id, file_name, content_type, file_size,
+              caption, uploaded_by, status, created_at
+         FROM operational_attachments
+        WHERE parent_type = 'crew_assignment'
+          AND status = 'active'
+          AND content_type LIKE 'image/%'
+          AND parent_id IN (${placeholders})
+        ORDER BY datetime(created_at) ASC`,
+    ).bind(...assignmentIds).all()
+    assignmentPhotos = (results ?? []).map(row => ({
+      id: row.id,
+      courseId: row.course_id,
+      parentType: 'crew_assignment',
+      parentId: row.parent_id,
+      fileName: row.file_name,
+      contentType: row.content_type,
+      fileSize: row.file_size,
+      caption: row.caption,
+      uploadedBy: row.uploaded_by,
+      status: row.status,
+      createdAt: row.created_at,
+      url: `/api/display-board/assignment-photos/${encodeURIComponent(row.id)}/file?courseId=${encodeURIComponent(row.course_id)}&date=${encodeURIComponent(date ?? '')}`,
+    }))
+  }
+
+  return {
+    events,
+    sprays: Array.isArray(sprays) ? sprays : [],
+    crewAssignments,
+    equipmentReservations: Array.isArray(allEquipmentReservations)
+      ? allEquipmentReservations.filter(row => row.calendarEventId && eventIds.has(row.calendarEventId))
+      : [],
+    alerts: Array.isArray(allAlerts)
+      ? allAlerts.filter(alert => alert.status !== 'dismissed' && alert.status !== 'acknowledged').slice(0, 6)
+      : [],
+    employees: Array.isArray(employees) ? employees : [],
+    schedules: Array.isArray(schedules) ? schedules : [],
+    scheduleOverrides: Array.isArray(scheduleOverrides) ? scheduleOverrides : [],
+    notes: Array.isArray(notes) ? notes : [],
+    moisture: Array.isArray(moisture) ? moisture : [],
+    assignmentPhotos,
+  }
+}
+
 async function handleApi(request, env, url, ctx) {
   const { pathname } = url
   const method       = request.method
@@ -322,6 +493,8 @@ async function handleApi(request, env, url, ctx) {
 
   // ── /api/health ───────────────────────────────────────────────────────
   if (pathname === '/api/health') {
+    const actor = await resolveActor(request, env)
+    if (!actor) return json({ error: 'Unauthorized' }, 401)
     return json({
       ok:      true,
       db:      !!env.DB,
@@ -336,7 +509,11 @@ async function handleApi(request, env, url, ctx) {
   // works even if the database binding is ever absent. Server-side only —
   // the Ambient secrets never reach the browser.
   if (pathname === '/api/weather/ambient/current') {
-    if (method === 'GET') return getAmbientCurrent(env)
+    if (method === 'GET') {
+      const actor = await resolveActor(request, env)
+      if (!actor) return json({ error: 'Unauthorized' }, 401)
+      return getAmbientCurrent(env)
+    }
   }
 
   // ── /api/auth/* ─────────────────────────────────────────────────────
@@ -360,9 +537,43 @@ async function handleApi(request, env, url, ctx) {
   // has canManageUsers — for hand-delivering reset links pre-email-provider.
   if (pathname === '/api/auth/reset-request' && method === 'POST') return resetRequest(env, request, ctx)
 
+  // Public employee board feed. This is intentionally much narrower than
+  // /api/sprays so the no-login kiosk can show today's field conditions
+  // without exposing the full spray log.
+  if (pathname === '/api/display-board/sprays') {
+    if (method === 'GET') {
+      if (!env.DB) return json([])
+      return listDisplayBoardSprays(env, courseId, url.searchParams.get('date'))
+    }
+  }
+  if (pathname === '/api/display-board/state') {
+    if (method === 'GET') {
+      return json(await listDisplayBoardState(env, courseId, url.searchParams.get('date')))
+    }
+  }
+  if (pathname === '/api/display-board/weather/current') {
+    if (method === 'GET') return getAmbientCurrent(env)
+  }
+  if (pathname === '/api/display-board/equipment-board') {
+    if (method === 'GET') return json(await listEquipmentBoardState(env, courseId))
+  }
+  if (pathname === '/api/display-board/equipment-issues') {
+    if (method === 'POST') return createEquipmentIssue(env, request, { publicSubmission: true })
+  }
+  const publicAssignmentPhotoMatch = pathname.match(/^\/api\/display-board\/assignment-photos\/([^/]+)\/file$/)
+  if (publicAssignmentPhotoMatch && method === 'GET') {
+    return streamBoardAssignmentPhoto(
+      env,
+      decodeURIComponent(publicAssignmentPhotoMatch[1]),
+      courseId,
+      url.searchParams.get('date'),
+    )
+  }
+
   // ── Mutation auth + permission gate (Phase 2 P2) ────────────────────
   // Every POST/PATCH/DELETE must be authorized by EITHER a valid session
-  // cookie OR the x-admin-key header (401 otherwise). GETs remain public.
+  // cookie OR the x-admin-key header (401 otherwise). Regular GET reads are
+  // gated just below; public board data must use /api/display-board/* above.
   //
   // ADMIN_KEY stays fully valid (cron, internal tools, transition) and maps to
   // a synthetic owner_admin that passes every check. A session actor is now
@@ -387,13 +598,18 @@ async function handleApi(request, env, url, ctx) {
     }
   }
 
+  if (method === 'GET') {
+    const actor = await resolveActor(request, env)
+    if (!actor) return json({ error: 'Unauthorized' }, 401)
+  }
+
   // ── Course-access read scoping (Phase 2 P3) ─────────────────────────
   // For course-scoped GET reads, a RESTRICTED user requesting a course they
   // can't access (or holding an empty allow-list) gets an empty result
   // instead of another course's data. owner_admin / superintendent /
   // ADMIN_KEY and users with course_access = NULL are unrestricted, so the
-  // single-course production default is unchanged. Reads stay public (no 401
-  // added) — only the data scope narrows.
+  // single-course production default is unchanged. Anonymous display-board
+  // reads are handled above through board-specific public feeds only.
   if (method === 'GET' && isCourseScopedReadPath(pathname)) {
     const actor = await resolveActor(request, env)
     if (actor) {   // anonymous reads keep legacy behavior (no widening/narrowing)
@@ -745,6 +961,49 @@ async function handleApi(request, env, url, ctx) {
     const id = decodeURIComponent(mlMatch[1])
     if (method === 'GET')   return getMaintenance(env, id)
     if (method === 'PATCH') return updateMaintenance(env, id, request)
+    if (method === 'DELETE') return deleteMaintenance(env, id)
+  }
+
+  if (pathname === '/api/nutrient-report-imports') {
+    if (method === 'GET') return listNutrientReportImports(env, courseId)
+    if (method === 'POST') return uploadNutrientReportImport(env, request)
+  }
+  const nutrientReportApproveMatch = pathname.match(/^\/api\/nutrient-report-imports\/([^/]+)\/approve$/)
+  if (nutrientReportApproveMatch && method === 'POST') {
+    return approveNutrientReportImport(env, decodeURIComponent(nutrientReportApproveMatch[1]), courseId, request)
+  }
+  const nutrientReportMatch = pathname.match(/^\/api\/nutrient-report-imports\/([^/]+)$/)
+  if (nutrientReportMatch && method === 'DELETE') {
+    return deleteNutrientReportImport(env, decodeURIComponent(nutrientReportMatch[1]), courseId)
+  }
+
+  if (pathname === '/api/nutrient-samples') {
+    if (method === 'GET') return listNutrientSamples(env, courseId, {
+      sampleType: url.searchParams.get('sampleType') || null,
+    })
+    if (method === 'POST') return createNutrientSample(env, request)
+  }
+  const nutrientSampleMatch = pathname.match(/^\/api\/nutrient-samples\/([^/]+)$/)
+  if (nutrientSampleMatch) {
+    const id = decodeURIComponent(nutrientSampleMatch[1])
+    if (method === 'GET') return getNutrientSample(env, id)
+    if (method === 'PATCH') return updateNutrientSample(env, id, request)
+    if (method === 'DELETE') return deleteNutrientSample(env, id)
+  }
+
+  // ── /api/equipment-issues ─────────────────────────────────────────────
+  if (pathname === '/api/equipment-issues') {
+    if (method === 'GET')  return listEquipmentIssues(env, courseId, { status: url.searchParams.get('status') })
+    if (method === 'POST') return createEquipmentIssue(env, request)
+  }
+
+  // ── /api/equipment-issues/:id ─────────────────────────────────────────
+  const issueMatch = pathname.match(/^\/api\/equipment-issues\/([^/]+)$/)
+  if (issueMatch) {
+    const id = decodeURIComponent(issueMatch[1])
+    if (method === 'GET')    return getEquipmentIssue(env, id)
+    if (method === 'PATCH')  return updateEquipmentIssue(env, id, request)
+    if (method === 'DELETE') return deleteEquipmentIssue(env, id)
   }
 
   // ── /api/repairs ──────────────────────────────────────────────────────
@@ -786,6 +1045,34 @@ async function handleApi(request, env, url, ctx) {
   }
   if (pathname === '/api/inventory/import-label/labels') {
     if (method === 'GET')  return listImportedLabels(env, courseId)
+  }
+
+  if (pathname === '/api/today-list') {
+    if (method === 'GET') return listTodayItems(env, courseId, url.searchParams.get('status'))
+    if (method === 'POST') return createTodayItem(env, request)
+  }
+  const todayListMatch = pathname.match(/^\/api\/today-list\/([^/]+)$/)
+  if (todayListMatch) {
+    const id = decodeURIComponent(todayListMatch[1])
+    if (method === 'GET') return getTodayItem(env, id)
+    if (method === 'PATCH') return updateTodayItem(env, id, request)
+    if (method === 'DELETE') return deleteTodayItem(env, id)
+  }
+
+  // Purchase invoices remain staged until the explicit approve action.
+  if (pathname === '/api/inventory/purchase-invoices') {
+    if (method === 'GET')  return listPurchaseInvoices(env, courseId)
+    if (method === 'POST') return uploadPurchaseInvoice(env, request)
+  }
+  const purchaseApproveMatch = pathname.match(/^\/api\/inventory\/purchase-invoices\/([^/]+)\/approve$/)
+  if (purchaseApproveMatch) {
+    const id = decodeURIComponent(purchaseApproveMatch[1])
+    if (method === 'POST') return approvePurchaseInvoice(env, id, request)
+  }
+  const purchaseInvoiceMatch = pathname.match(/^\/api\/inventory\/purchase-invoices\/([^/]+)$/)
+  if (purchaseInvoiceMatch) {
+    const id = decodeURIComponent(purchaseInvoiceMatch[1])
+    if (method === 'DELETE') return deletePurchaseInvoice(env, id)
   }
 
   // ── /api/inventory/:id/catalog-link (Phase 7C.2) ──────────────────────
@@ -937,6 +1224,62 @@ async function handleApi(request, env, url, ctx) {
     const id = decodeURIComponent(taskTemplateMatch[1])
     if (method === 'GET')   return getTaskTemplate(env, id)
     if (method === 'PATCH') return updateTaskTemplate(env, id, request)
+    if (method === 'DELETE') return deleteTaskTemplate(env, id)
+  }
+
+  // ── /api/weekly-goals ────────────────────────────────────────────────
+  if (pathname === '/api/weekly-goals') {
+    if (method === 'GET')  return listWeeklyGoals(env, courseId)
+    if (method === 'POST') return createWeeklyGoal(env, request)
+  }
+  const weeklyGoalMatch = pathname.match(/^\/api\/weekly-goals\/([^/]+)$/)
+  if (weeklyGoalMatch) {
+    const id = decodeURIComponent(weeklyGoalMatch[1])
+    if (method === 'GET')    return getWeeklyGoal(env, id)
+    if (method === 'PATCH')  return updateWeeklyGoal(env, id, request)
+    if (method === 'DELETE') return deleteWeeklyGoal(env, id)
+  }
+
+  if (pathname === '/api/weekly-goal-options') {
+    if (method === 'GET')  return listWeeklyGoalOptions(env, courseId)
+    if (method === 'POST') return createWeeklyGoalOption(env, request)
+  }
+  const weeklyGoalOptionMatch = pathname.match(/^\/api\/weekly-goal-options\/([^/]+)$/)
+  if (weeklyGoalOptionMatch && method === 'DELETE') {
+    return deleteWeeklyGoalOption(env, decodeURIComponent(weeklyGoalOptionMatch[1]))
+  }
+
+  if (pathname === '/api/yearly-goals') {
+    if (method === 'GET')  return listYearlyGoals(env, courseId)
+    if (method === 'POST') return createYearlyGoal(env, request)
+  }
+  const yearlyGoalMatch = pathname.match(/^\/api\/yearly-goals\/([^/]+)$/)
+  if (yearlyGoalMatch) {
+    const id = decodeURIComponent(yearlyGoalMatch[1])
+    if (method === 'GET')    return getYearlyGoal(env, id)
+    if (method === 'PATCH')  return updateYearlyGoal(env, id, request)
+    if (method === 'DELETE') return deleteYearlyGoal(env, id)
+  }
+
+  if (pathname === '/api/yearly-goal-options') {
+    if (method === 'GET')  return listYearlyGoalOptions(env, courseId)
+    if (method === 'POST') return createYearlyGoalOption(env, request)
+  }
+  const yearlyGoalOptionMatch = pathname.match(/^\/api\/yearly-goal-options\/([^/]+)$/)
+  if (yearlyGoalOptionMatch && method === 'DELETE') {
+    return deleteYearlyGoalOption(env, decodeURIComponent(yearlyGoalOptionMatch[1]))
+  }
+
+  // Task Library categories.
+  if (pathname === '/api/task-categories') {
+    if (method === 'GET')  return listTaskCategories(env, courseId)
+    if (method === 'POST') return createTaskCategory(env, request)
+  }
+  const taskCategoryMatch = pathname.match(/^\/api\/task-categories\/([^/]+)$/)
+  if (taskCategoryMatch) {
+    const id = decodeURIComponent(taskCategoryMatch[1])
+    if (method === 'PATCH') return updateTaskCategory(env, id, request)
+    if (method === 'DELETE') return deleteTaskCategory(env, id)
   }
 
   // ── /api/calendar-events ──────────────────────────────────────────────
@@ -955,6 +1298,11 @@ async function handleApi(request, env, url, ctx) {
   }
 
   // ── /api/alerts ───────────────────────────────────────────────────────
+  if (pathname === '/api/dashboard-preferences') {
+    if (method === 'GET') return getDashboardPreferences(env, request)
+    if (method === 'PATCH') return saveDashboardPreferences(env, request)
+  }
+
   if (pathname === '/api/alerts') {
     if (method === 'GET')  return listAlerts(env, courseId)
     if (method === 'POST') return createAlert(env, request)
@@ -1047,6 +1395,21 @@ async function handleApi(request, env, url, ctx) {
     if (method === 'DELETE') return deleteCrewEmployee(env, id)
   }
 
+  if (pathname === '/api/employee-training') {
+    const employeeId = url.searchParams.get('employeeId') || null
+    const status = url.searchParams.get('status') || null
+    if (method === 'GET')  return listEmployeeTraining(env, courseId, { employeeId, status })
+    if (method === 'POST') return createEmployeeTraining(env, request)
+  }
+
+  const trainingMatch = pathname.match(/^\/api\/employee-training\/([^/]+)$/)
+  if (trainingMatch) {
+    const id = decodeURIComponent(trainingMatch[1])
+    if (method === 'GET')    return getEmployeeTraining(env, id)
+    if (method === 'PATCH')  return updateEmployeeTraining(env, id, request)
+    if (method === 'DELETE') return deleteEmployeeTraining(env, id)
+  }
+
   // ── /api/attachments/:id/file (must precede /api/attachments/:id) ─────
   // Row-level course scoping (Phase 4 Step 5): a restricted actor requesting
   // an attachment that belongs to a course they cannot access gets a uniform
@@ -1079,11 +1442,12 @@ async function handleApi(request, env, url, ctx) {
   const attachMatch = pathname.match(/^\/api\/attachments\/([^/]+)$/)
   if (attachMatch) {
     const id = decodeURIComponent(attachMatch[1])
-    if (method === 'GET') {
+    if (method === 'GET' || method === 'PATCH') {
       const actor = await resolveActor(request, env)
       const decision = await enforceRowCourseAccess(env, actor, 'operational_attachments', id)
       if (!decision.allow) return notFound('Attachment not found')
-      return getAttachment(env, id)
+      if (method === 'GET') return getAttachment(env, id)
+      return updateAttachment(env, id, request)
     }
     if (method === 'DELETE') return deleteAttachment(env, id)
   }

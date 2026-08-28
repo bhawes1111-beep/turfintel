@@ -22,7 +22,8 @@
 import { json, notFound } from '../lib/json.js'
 
 const ALLOWED_CATEGORIES = new Set([
-  'herbicide', 'fungicide', 'insecticide', 'pgr', 'fertilizer', 'biostimulant',
+  'herbicide', 'fungicide', 'insecticide', 'pgr', 'fertilizer', 'biostimulant', 'pigment',
+  'adjuvant', 'surfactant', 'tank_additive',
 ])
 const ALLOWED_STATUSES = new Set(['active', 'discontinued', 'unverified'])
 

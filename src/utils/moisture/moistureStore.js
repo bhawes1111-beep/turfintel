@@ -29,6 +29,13 @@ let state = {
   attachmentsLoading:  true,
   attachmentsError:    null,
 }
+const disabledState = {
+  ...state,
+  loading: false,
+  attachmentsLoading: false,
+  error: null,
+  attachmentsError: null,
+}
 
 // Phase 7A.4 — module-scope (NOT React state) staging map for photos picked
 // before the observation's server id has arrived. Keyed by clientId. File
@@ -480,13 +487,19 @@ function subscribe(cb) {
 }
 
 function getSnapshot() { return state }
+function getDisabledSnapshot() { return disabledState }
+function subscribeDisabled() { return () => {} }
 
 /**
  * useMoistureData — { observations, loading, error, lastFetch }.
  * `observations` are newest-first.
  */
-export function useMoistureData() {
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+export function useMoistureData({ enabled = true } = {}) {
+  return useSyncExternalStore(
+    enabled ? subscribe : subscribeDisabled,
+    enabled ? getSnapshot : getDisabledSnapshot,
+    enabled ? getSnapshot : getDisabledSnapshot,
+  )
 }
 
 /**

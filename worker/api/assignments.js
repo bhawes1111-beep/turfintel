@@ -17,6 +17,26 @@ import { json, badRequest, notFound, readJson } from '../lib/json.js'
 import { generateId } from '../lib/id.js'
 import { buildCourseFilter, resolveCourseId } from '../lib/scope.js'
 
+function normalizeSubJobs(value) {
+  let rows = value
+  if (typeof rows === 'string') {
+    try { rows = JSON.parse(rows) } catch { rows = [] }
+  }
+  if (!Array.isArray(rows)) return []
+  return rows
+    .map((row, index) => ({
+      id: String(row?.id ?? `sub-${index + 1}`),
+      taskTemplateId: row?.taskTemplateId ? String(row.taskTemplateId) : null,
+      name: String(row?.name ?? '').trim(),
+    }))
+    .filter(row => row.name)
+    .slice(0, 20)
+}
+
+function serializeSubJobs(value) {
+  return JSON.stringify(normalizeSubJobs(value))
+}
+
 // ── Mappers ───────────────────────────────────────────────────────────────
 
 function rowToCrewAssignment(row) {
@@ -38,6 +58,7 @@ function rowToCrewAssignment(row) {
     // etc. Legacy rows pre-migration default to 0 → render as the
     // primary slot with no UI change.
     jobOrder:        row.job_order ?? 0,
+    subJobs:         normalizeSubJobs(row.sub_jobs_json),
     createdAt:       row.created_at,
     updatedAt:       row.updated_at,
   }
@@ -72,6 +93,7 @@ const CREW_CORE_COLUMNS = {
   notesEs:         'notes_es',                              // Phase 9C.5b1
   assignedAt:      'assigned_at',
   jobOrder:        'job_order',                             // Phase DAB.10a
+  subJobs:         'sub_jobs_json',
 }
 
 const RES_CORE_COLUMNS = {
@@ -131,19 +153,20 @@ export async function createCrewAssignment(env, request) {
   await env.DB.prepare(`
     INSERT INTO crew_assignments (
       id, calendar_event_id, employee_id, employee_name, role, status,
-      notes, notes_es, course_id, job_order
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      notes, notes_es, course_id, job_order, sub_jobs_json
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id,
     calendarEventId,
     body.employeeId   ?? null,
     body.employeeName,
     body.role   ?? null,
-    body.status ?? 'assigned',
+    body.status ?? 'planned',
     body.notes    ?? null,
     body.notesEs  ?? null,                                  // Phase 9C.5b1
     resolveCourseId(body),
     jobOrder,                                               // Phase DAB.10a
+    serializeSubJobs(body.subJobs),
   ).run()
 
   return getCrewAssignment(env, id)
@@ -154,7 +177,7 @@ export async function createCrewAssignment(env, request) {
 // the editor may submit before the user types anything. A blank job
 // is NOT persisted. Definition: no notes AND no notesEs AND no role
 // AND status falls back to default. Status alone never carries
-// meaning since it defaults to 'assigned' even on a fresh row.
+// meaning since it defaults to 'planned' even on a fresh row.
 function isBlankJobPayload(j) {
   if (j == null || typeof j !== 'object') return true
   const notes   = j.notes   == null ? '' : String(j.notes).trim()
@@ -274,19 +297,20 @@ export async function bulkReplaceEmployeeDay(env, request) {
     await env.DB.prepare(`
       INSERT INTO crew_assignments (
         id, calendar_event_id, employee_id, employee_name, role, status,
-        notes, notes_es, course_id, job_order
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        notes, notes_es, course_id, job_order, sub_jobs_json
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       id,
       j.calendarEventId,
       body.employeeId ?? j.employeeId ?? null,
       body.employeeName,
       j.role    ?? body.role ?? null,
-      j.status  ?? 'assigned',
+      j.status  ?? 'planned',
       j.notes   ?? null,
       j.notesEs ?? null,
       courseId,
       i,                                                  // job_order = ordered position across events
+      serializeSubJobs(j.subJobs),
     ).run()
     insertedIds.push(id)
   }
@@ -377,19 +401,20 @@ export async function bulkReplaceEmployeeJobs(env, request) {
     await env.DB.prepare(`
       INSERT INTO crew_assignments (
         id, calendar_event_id, employee_id, employee_name, role, status,
-        notes, notes_es, course_id, job_order
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        notes, notes_es, course_id, job_order, sub_jobs_json
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       id,
       body.calendarEventId,
       body.employeeId ?? j.employeeId ?? null,
       body.employeeName,
       j.role    ?? body.role ?? null,
-      j.status  ?? 'assigned',
+      j.status  ?? 'planned',
       j.notes   ?? null,
       j.notesEs ?? null,
       resolveCourseId(body),
       i,                                                    // job_order = payload index
+      serializeSubJobs(j.subJobs),
     ).run()
     insertedIds.push(id)
   }
@@ -425,7 +450,7 @@ export async function updateCrewAssignment(env, id, request) {
   for (const [apiKey, dbCol] of Object.entries(CREW_CORE_COLUMNS)) {
     if (Object.prototype.hasOwnProperty.call(body, apiKey)) {
       sets.push(`${dbCol} = ?`)
-      binds.push(body[apiKey])
+      binds.push(apiKey === 'subJobs' ? serializeSubJobs(body[apiKey]) : body[apiKey])
     }
   }
 

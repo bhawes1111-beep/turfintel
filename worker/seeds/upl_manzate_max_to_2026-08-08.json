@@ -1,0 +1,95 @@
+{
+  "version": "upl-manzate-max-to-label-2026-08-08",
+  "generatedAt": "2026-08-08",
+  "source": "Manzate Max T&O label supplied through SiteOne; U.S. EPA PPLS registration verification",
+  "notes": "Catalog record transcribed from the supplied label and verified against active EPA registration 70506-194.",
+  "products": [
+    {
+      "product_name": "MANZATE MAX T&O FUNGICIDE",
+      "brand_owner": "UPL",
+      "manufacturer": "UPL NA, Inc.",
+      "epa_number": "70506-194",
+      "formulation": "Flowable Concentrate",
+      "category": "fungicide",
+      "frac_group": "M03",
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Ethylenebisdithiocarbamate (EBDC) contact fungicide",
+      "active_ingredients": [
+        {
+          "name": "Mancozeb",
+          "percentage": 37
+        }
+      ],
+      "fertilizer_analysis": null,
+      "rates": [
+        {
+          "rate": "5-7 fl oz",
+          "unit": "oz/1,000 sq ft",
+          "interval": "Leaf spot, Rhizoctonia brown patch, leaf rust, stem rust, and stripe rust; begin when disease appears and follow the label interval"
+        },
+        {
+          "rate": "7-10 fl oz",
+          "unit": "oz/1,000 sq ft",
+          "interval": "Copper spot, Fusarium blight, red thread, and slime molds; repeat at 7-14 day intervals"
+        },
+        {
+          "rate": "9-14 fl oz",
+          "unit": "oz/1,000 sq ft",
+          "interval": "Gray leaf spot; begin at first sign and apply at 5-day intervals or more often when conditions favor disease"
+        },
+        {
+          "rate": "10 fl oz",
+          "unit": "oz/1,000 sq ft",
+          "interval": "Algae; begin when algae appears and repeat at 7-day intervals"
+        },
+        {
+          "rate": "10-14 fl oz",
+          "unit": "oz/1,000 sq ft",
+          "interval": "Dollar spot and pink snow mold; follow the disease-specific timing and interval on the label"
+        },
+        {
+          "rate": "10-14 fl oz",
+          "unit": "oz/1,000 sq ft",
+          "interval": "Leaf spot and Rhizoctonia brown patch during favorable disease conditions; repeat at 3-5 day intervals"
+        },
+        {
+          "rate": "14 fl oz",
+          "unit": "oz/1,000 sq ft",
+          "interval": "Pythium blight; begin at first sign and repeat at 5-day intervals or more often when conditions favor disease"
+        }
+      ],
+      "targets": [
+        "Algae",
+        "Copper spot",
+        "Fusarium blight",
+        "Red thread",
+        "Slime molds",
+        "Gray leaf spot",
+        "Dollar spot",
+        "Pink snow mold",
+        "Leaf spot",
+        "Rhizoctonia brown patch",
+        "Pythium blight",
+        "Leaf rust",
+        "Stem rust",
+        "Stripe rust"
+      ],
+      "turf_sites": [
+        "golf courses",
+        "commercial sod farms",
+        "industrial lawns",
+        "municipal lawns",
+        "residential lawns"
+      ],
+      "restricted_use": false,
+      "signal_word": "Caution",
+      "rei_hours": 24,
+      "phi_hours": null,
+      "label_url": "https://www.siteone.com/medias/sys_master/PimProductImages/assets/ProductAssets/US/UPL/labelAsset/sf-6020408-updated-label-378415/sf-6020408-updated-label-378415.pdf",
+      "notes": "FRAC M03 broad-spectrum contact protectant fungicide. Professional golf-course and lawn applications are non-WPS uses; keep unprotected persons out until sprays have dried. The agricultural WPS REI is 24 hours. Apply in sufficient water for thorough coverage. Do not use on grasses grown for seed or intended for grazing, and do not graze treated areas or feed clippings to livestock. Use disease-specific rates and intervals; follow the linked label for all directions and restrictions.",
+      "status": "active"
+    }
+  ]
+}

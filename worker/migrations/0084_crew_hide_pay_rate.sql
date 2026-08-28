@@ -1,0 +1,1 @@
+ALTER TABLE crew_employees ADD COLUMN hide_pay_rate INTEGER NOT NULL DEFAULT 0;

@@ -84,10 +84,12 @@ const TIMELINE_SPAN  = TIMELINE_END - TIMELINE_START
 const TASK_TITLES = [
   'Mow Greens', 'Roll Greens', 'Blow Fairways', 'Bunker Maintenance',
   'Irrigation Repair', 'Course Setup', 'Spray Greens', 'Hand Water',
-  'Divot Repair', 'Cup Changing',
+  'Divot Repair', 'Cup Changing', 'Golf Outing', 'Tournament',
 ]
 
 const EQ_CHIPS = ['Greens Mower', 'Roller', 'Blower', 'Utility Cart', 'Spray Rig', 'Hand Tools']
+
+const GOLF_OUTING_TASK_RE = /\b(golf outing|outing|tournament|shotgun|scramble)\b/i
 
 const BLANK_TASK = {
   title:          '',
@@ -192,7 +194,7 @@ const ID_TO_LABEL = Object.fromEntries(TABS.map(t => [t.id, t.label]))
 // is unchanged; the board render shell, the "+ Task" button target,
 // and every existing 'activeTab === X' branch keep working byte-
 // for-byte. Non-Crosswinds courses see the legacy 6-tab strip.
-const CROSSWINDS_TAB_IDS = ['assignments', 'board', 'notes', 'condition', 'more']
+const CROSSWINDS_TAB_IDS = ['assignments', 'board', 'condition', 'more']
 const CROSSWINDS_MORE_IDS = ['brief', 'center']
 const CROSSWINDS_LABEL_REMAP = {
   'Operations Board': 'Tasks',
@@ -204,7 +206,6 @@ const CROSSWINDS_LABEL_REMAP = {
 const CROSSWINDS_LABEL_BY_ID = {
   assignments: ID_TO_LABEL.assignments,                                      // 'Assignments'
   board:       CROSSWINDS_LABEL_REMAP[ID_TO_LABEL.board]       ?? ID_TO_LABEL.board,        // 'Tasks'
-  notes:       CROSSWINDS_LABEL_REMAP[ID_TO_LABEL.notes]       ?? ID_TO_LABEL.notes,        // 'Briefing'
   condition:   CROSSWINDS_LABEL_REMAP[ID_TO_LABEL.condition]   ?? ID_TO_LABEL.condition,    // 'Conditions'
   more:        'More',
 }
@@ -600,16 +601,19 @@ export default function OperationsBoard() {
   // start_date) collapses repeat writes. assignEmployee can therefore
   // call ensureEventForTask() blindly without tracking event ids.
   async function ensureEventForTask(task) {
+    const isOuting = GOLF_OUTING_TASK_RE.test(`${task.title ?? ''} ${task.notes ?? ''} ${(task.tags ?? []).join(' ')}`)
     return createCalendarEvent({
       title:        task.title,
       date:         selectedDate,
-      category:     'crew',
+      category:     isOuting ? 'outing' : 'crew',
       priority:     TASK_PRIORITY_TO_EVENT[task.priority] ?? 'medium',
       status:       TASK_STATUS_TO_EVENT[task.status] ?? 'scheduled',
       location:     task.assignedArea || '',
-      tags:         Array.isArray(task.tags) ? task.tags : [],
+      tags:         isOuting
+        ? [...new Set([...(Array.isArray(task.tags) ? task.tags : []), 'golf-outing'])]
+        : (Array.isArray(task.tags) ? task.tags : []),
       notes:        task.notes || '',
-      sourceModule: 'operations-board',
+      sourceModule: isOuting ? 'golf-outings-calendar' : 'operations-board',
       sourceId:     task.id,
     })
   }
@@ -798,14 +802,6 @@ export default function OperationsBoard() {
             }}
           >
             + Task
-          </button>
-          <button
-            type="button"
-            className={`${workspace.workspaceActionBtn} ${workspace.workspaceActionBtnSecondary}`}
-            onClick={() => navigate('/employees')}
-            title="Schedule moved to Employee Management"
-          >
-            Schedule
           </button>
         </WorkspaceActions>
       }
@@ -1117,17 +1113,14 @@ export default function OperationsBoard() {
                         <button className={styles.obAddTaskClear} onClick={() => setNewTask(BLANK_TASK)}>
                           Clear
                         </button>
-                        {/* Phase 9C.3c — opens the existing TasksManagerModal so
-                            the supervisor can rename / delete tasks for today
-                            without flipping to the Assignments tab. Reuses the
-                            same modal (no new edit/delete logic). */}
+                        {/* Opens the shared Task Library used by Operations and Assignments. */}
                         <button
                           type="button"
                           className={styles.obManageTasksBtn}
                           onClick={() => setTasksModalOpen(true)}
-                          title="Rename or delete today's tasks"
+                          title="Open Task Library"
                         >
-                          Manage Tasks
+                          Task Library
                         </button>
                       </div>
                     </div>
@@ -1511,7 +1504,7 @@ export default function OperationsBoard() {
               : null
             return (
               <>
-                <div className={styles.obModalBackdrop} onClick={() => setDeleteConfirm(null)} />
+                <div className={styles.obModalBackdrop} />
                 <div className={styles.obModal} role="dialog" aria-modal="true" aria-label={a11yMessage}>
                   <div className={styles.obModalTitle}>Delete Task</div>
                   <p className={styles.obModalMsg}>
@@ -1536,7 +1529,7 @@ export default function OperationsBoard() {
           {/* ── Settings modal ───────────────────────────────────────── */}
           {settingsOpen && (
             <>
-              <div className={styles.obModalBackdrop} onClick={() => setSettingsOpen(false)} />
+              <div className={styles.obModalBackdrop} />
               <div className={styles.obSettingsModal} role="dialog" aria-modal="true">
                 <div className={styles.obSettingsHeader}>
                   <span className={styles.obSettingsTitle}>Operations Settings</span>
@@ -1613,11 +1606,7 @@ export default function OperationsBoard() {
             + Add Task
           </button>
 
-          {/* Phase 9C.3c — Manage Tasks modal. Reuses the same
-              TasksManagerModal mounted from the Assignments tab's
-              "Tasks (N)" button. Edit + delete are owned by the modal
-              (patchCalendarEvent + deleteTaskCascade); this site just
-              opens it pre-scoped to the same day events. */}
+          {/* Shared Task Library modal. */}
           {tasksModalOpen && (
             <TasksManagerModal
               selectedDate={selectedDate}

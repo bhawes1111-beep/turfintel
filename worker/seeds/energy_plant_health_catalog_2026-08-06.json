@@ -1,0 +1,1188 @@
+{
+  "version": "energy-plant-health-2026-08-06",
+  "generatedAt": "2026-08-06T22:13:10.487Z",
+  "source": "Energy Plant Health official product catalog and manufacturer resources",
+  "notes": "Current Energy Fertilizer products published by Energy Plant Health. Product groups, guaranteed analyses, labels, sales sheets, and SDS links are derived from the official manufacturer site.",
+  "products": [
+    {
+      "product_name": "GROOVEFE",
+      "brand_owner": "Energy Fertilizer",
+      "manufacturer": "Vereens",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Performance Nutrition",
+      "fertilizer_analysis": "Total Nitrogen (N) 15.0%; Iron (Fe) 6.0%",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 15
+        },
+        {
+          "name": "Iron (Fe)",
+          "percentage": 6
+        }
+      ],
+      "rates": [],
+      "targets": [],
+      "turf_sites": [
+        "Golf courses",
+        "Sports turf",
+        "Lawn care"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://energyplanthealth.com/images/labels/groovefe_label_new.png",
+      "notes": "Smooth Nitrogen, Groovy Color. GrooveFe is a supplemental nitrogen and iron fertilizer designed to achieve rapid green-up of turf. 15-0-0 6%Fe Total Nitrogen (N): 15.0%; Iron (Fe): 6.0%; Size: 2.5 Gallon Official product page: https://energyplanthealth.com/product/groovefe. Sales sheet: https://energyplanthealth.com/images/sales_sheets/groovefe_new.png. SDS: https://energyplanthealth.com/docs/sds/SDS_Groove_Fe_15-0-0_with_Iron_1775571847982.pdf. No EPA pesticide registration is listed; follow the current manufacturer directions and compatibility guidance.",
+      "status": "active"
+    },
+    {
+      "product_name": "RHYTHM",
+      "brand_owner": "Energy Fertilizer",
+      "manufacturer": "Vereens",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Performance Nutrition",
+      "fertilizer_analysis": "Total Nitrogen (N) 18.0%; Phosphate (P2O5) 3.0%; Soluble Potash 6.0%",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 18
+        },
+        {
+          "name": "Phosphate (P2O5)",
+          "percentage": 3
+        },
+        {
+          "name": "Soluble Potash",
+          "percentage": 6
+        }
+      ],
+      "rates": [],
+      "targets": [],
+      "turf_sites": [
+        "Golf courses",
+        "Sports turf",
+        "Lawn care"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://energyplanthealth.com/images/labels/rhythm_label_new.png",
+      "notes": "Feeds in Rhythm. Grows on Cue. Rhythm is a specialty liquid fertilizer designed for foliar and/or soil applications containing 50% of its total nitrogen from urea-triazone. 18-3-6 50% SRN Minors Total Nitrogen (N): 18.0%; Phosphate (P2O5): 3.0%; Soluble Potash: 6.0%; Size: 2.5 Gallon Official product page: https://energyplanthealth.com/product/rhythm. Sales sheet: https://energyplanthealth.com/images/sales_sheets/rhythm_new.png. SDS: https://energyplanthealth.com/docs/sds/SDS_Energy_Rhythm_18-3-6_with_minors_1775571847991.pdf. No EPA pesticide registration is listed; follow the current manufacturer directions and compatibility guidance.",
+      "status": "active"
+    },
+    {
+      "product_name": "BIO RHYTHM",
+      "brand_owner": "Energy Fertilizer",
+      "manufacturer": "Vereens",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Performance Nutrition",
+      "fertilizer_analysis": "Total Nitrogen (N) 18.0%; Phosphate (P2O5) 3.0%; Soluble Potash 6.0%",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 18
+        },
+        {
+          "name": "Phosphate (P2O5)",
+          "percentage": 3
+        },
+        {
+          "name": "Soluble Potash",
+          "percentage": 6
+        }
+      ],
+      "rates": [],
+      "targets": [],
+      "turf_sites": [
+        "Golf courses",
+        "Sports turf",
+        "Lawn care"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://energyplanthealth.com/images/labels/bio_rhythm_label_new.png",
+      "notes": "Balanced nutrition with a steady biological beat. A 50% SRN formulation plus minors designed for foliar and/or soil applications. 18-3-6 50% SRN Minors + BTH Total Nitrogen (N): 18.0%; Phosphate (P2O5): 3.0%; Soluble Potash: 6.0%; Size: 2.5 Gallon Official product page: https://energyplanthealth.com/product/bio-rhythm. Sales sheet: https://energyplanthealth.com/images/sales_sheets/bio_rhythm_new.png. SDS: https://energyplanthealth.com/docs/sds/SDS_Bio_Rhythem_1775571847984.pdf. No EPA pesticide registration is listed; follow the current manufacturer directions and compatibility guidance.",
+      "status": "active"
+    },
+    {
+      "product_name": "GREEN VIBE",
+      "brand_owner": "Energy Fertilizer",
+      "manufacturer": "Vereens",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Performance Nutrition",
+      "fertilizer_analysis": "Total Nitrogen (N) 4.0%; Iron (Fe) 2.0%; Magnesium (Mg) 0.5%",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 4
+        },
+        {
+          "name": "Iron (Fe)",
+          "percentage": 2
+        },
+        {
+          "name": "Magnesium (Mg)",
+          "percentage": 0.5
+        }
+      ],
+      "rates": [],
+      "targets": [],
+      "turf_sites": [
+        "Golf courses",
+        "Sports turf",
+        "Lawn care"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://energyplanthealth.com/images/labels/green_vibe_label_new.png",
+      "notes": "Stay Vibing. Stay green. GreenVibe is supplemental nitrogen, and micronutrient fertilizer with chelated minors designed to achieve sustained green-up of turf. 4-0-0 w/ Minors Total Nitrogen (N): 4.0%; Iron (Fe): 2.0%; Magnesium (Mg): 0.5%; Size: 2.5 Gallon Official product page: https://energyplanthealth.com/product/green-vibe. Sales sheet: https://energyplanthealth.com/images/sales_sheets/green_vibe_new.png. SDS: https://energyplanthealth.com/docs/sds/SDS_GREEN_Vibe_4-0-0_w_Minors_1775571847994.pdf. No EPA pesticide registration is listed; follow the current manufacturer directions and compatibility guidance.",
+      "status": "active"
+    },
+    {
+      "product_name": "BACKBONE",
+      "brand_owner": "Energy Fertilizer",
+      "manufacturer": "Vereens",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Performance Nutrition",
+      "fertilizer_analysis": "Calcium (Ca) 10.0%; Boron (B) 0.5%",
+      "active_ingredients": [
+        {
+          "name": "Calcium (Ca)",
+          "percentage": 10
+        },
+        {
+          "name": "Boron (B)",
+          "percentage": 0.5
+        }
+      ],
+      "rates": [],
+      "targets": [],
+      "turf_sites": [
+        "Golf courses",
+        "Sports turf",
+        "Lawn care"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://energyplanthealth.com/images/labels/backbone_label_new.png",
+      "notes": "The structure behind the sound. Foliar Calcium and Boron formulation designed to correct and/or prevent deficiencies of calcium and boron. Ca, B Calcium (Ca): 10.0%; Boron (B): 0.5%; Size: 2.5 Gallon Official product page: https://energyplanthealth.com/product/backbone. Sales sheet: https://energyplanthealth.com/images/sales_sheets/backbone_new.png. SDS: https://energyplanthealth.com/docs/sds/SDS_Energy_Backbone_1775571847986.pdf. No EPA pesticide registration is listed; follow the current manufacturer directions and compatibility guidance.",
+      "status": "active"
+    },
+    {
+      "product_name": "DOUBLE BASS BTH",
+      "brand_owner": "Energy Fertilizer",
+      "manufacturer": "Vereens",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "biostimulant",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Bio Stimulants",
+      "fertilizer_analysis": "Soluble Potash 1.0%",
+      "active_ingredients": [
+        {
+          "name": "Soluble Potash",
+          "percentage": 1
+        }
+      ],
+      "rates": [],
+      "targets": [],
+      "turf_sites": [
+        "Golf courses",
+        "Sports turf",
+        "Lawn care"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://energyplanthealth.com/images/labels/double_bass_label_new.png",
+      "notes": "The Groove Beneath The Green. Double Bass is a highly concentrated cold water extract of Ascophyllum nodosum providing a natural source of nutrients that improve plant stress tolerance. 0-0-1 + BTH Soluble Potash: 1.0%; Feature: Ascophyllum nodosum; Size: 2.5 Gallon Official product page: https://energyplanthealth.com/product/double-bass-bth. Sales sheet: https://energyplanthealth.com/images/sales_sheets/double_bass_new.png. SDS: https://energyplanthealth.com/docs/sds/SDS_Dual_Shield_1775571847985.pdf. No EPA pesticide registration is listed; follow the current manufacturer directions and compatibility guidance.",
+      "status": "active"
+    },
+    {
+      "product_name": "BIO TONE",
+      "brand_owner": "Energy Fertilizer",
+      "manufacturer": "Vereens",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Performance Nutrition",
+      "fertilizer_analysis": "Iron (Fe) 3.0%; Manganese (Mn) 4.0%; Magnesium (Mg) 1.0%",
+      "active_ingredients": [
+        {
+          "name": "Iron (Fe)",
+          "percentage": 3
+        },
+        {
+          "name": "Manganese (Mn)",
+          "percentage": 4
+        },
+        {
+          "name": "Magnesium (Mg)",
+          "percentage": 1
+        }
+      ],
+      "rates": [],
+      "targets": [],
+      "turf_sites": [
+        "Golf courses",
+        "Sports turf",
+        "Lawn care"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://energyplanthealth.com/images/labels/bio_tone_label_new.png",
+      "notes": "Micros and Bios in perfect pitch. Liquid micronutrient formulation specifically for turf and ornamentals designed to rapidly enhance green-up. Fe, Mn, Mg + BTH Iron (Fe): 3.0%; Manganese (Mn): 4.0%; Magnesium (Mg): 1.0%; Size: 2.5 Gallon Official product page: https://energyplanthealth.com/product/bio-tone. Sales sheet: https://energyplanthealth.com/images/sales_sheets/bio_tone_new.png. SDS: https://energyplanthealth.com/docs/sds/SDS_Bio_Tone_1775571847985.pdf. No EPA pesticide registration is listed; follow the current manufacturer directions and compatibility guidance.",
+      "status": "active"
+    },
+    {
+      "product_name": "MICRO TONE",
+      "brand_owner": "Energy Fertilizer",
+      "manufacturer": "Vereens",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Performance Nutrition",
+      "fertilizer_analysis": "Iron (Fe) 3.0%; Manganese (Mn) 4.0%; Magnesium (Mg) 1.0%",
+      "active_ingredients": [
+        {
+          "name": "Iron (Fe)",
+          "percentage": 3
+        },
+        {
+          "name": "Manganese (Mn)",
+          "percentage": 4
+        },
+        {
+          "name": "Magnesium (Mg)",
+          "percentage": 1
+        }
+      ],
+      "rates": [],
+      "targets": [],
+      "turf_sites": [
+        "Golf courses",
+        "Sports turf",
+        "Lawn care"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://energyplanthealth.com/images/labels/micro_tone_label_new.png",
+      "notes": "Micros that fine-tune color and vigor. MicroTone is a liquid micronutrient formulation specifically for turf and ornamentals to rapidly enhance green-up. Fe, Mn, Mg Iron (Fe): 3.0%; Manganese (Mn): 4.0%; Magnesium (Mg): 1.0%; Size: 2.5 Gallon Official product page: https://energyplanthealth.com/product/micro-tone. Sales sheet: https://energyplanthealth.com/images/sales_sheets/micro_tone_new.png. SDS: https://energyplanthealth.com/docs/sds/SDS_Energy_Micro_Tone_1775571847989.pdf. No EPA pesticide registration is listed; follow the current manufacturer directions and compatibility guidance.",
+      "status": "active"
+    },
+    {
+      "product_name": "KICK DRUM",
+      "brand_owner": "Energy Fertilizer",
+      "manufacturer": "Vereens",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Performance Nutrition",
+      "fertilizer_analysis": "Soluble Potash 29.0%",
+      "active_ingredients": [
+        {
+          "name": "Soluble Potash",
+          "percentage": 29
+        }
+      ],
+      "rates": [],
+      "targets": [],
+      "turf_sites": [
+        "Golf courses",
+        "Sports turf",
+        "Lawn care"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://energyplanthealth.com/images/labels/kick_drum_label_new.png",
+      "notes": "Hit Hard Stay Strong. KickDrum is a highly available liquid formulation of potassium acetate. KickDrum low salt index and superior foliar absorption quickly increase potassium levels in plants. 0-0-29 Soluble Potash: 29.0%; Feature: Potassium acetate; Size: 2.5 Gallon Official product page: https://energyplanthealth.com/product/kick-drum. Sales sheet: https://energyplanthealth.com/images/sales_sheets/kick_drum_new.png. SDS: https://energyplanthealth.com/docs/sds/SDS_Energy_Kick_Drum_1775571847988.pdf. No EPA pesticide registration is listed; follow the current manufacturer directions and compatibility guidance.",
+      "status": "active"
+    },
+    {
+      "product_name": "REMI-D",
+      "brand_owner": "Energy Fertilizer",
+      "manufacturer": "Vereens",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "tank_additive",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Tank Additives",
+      "fertilizer_analysis": null,
+      "active_ingredients": [
+        {
+          "name": "Acidifiers",
+          "percentage": 20
+        },
+        {
+          "name": "Color indicator",
+          "percentage": 1
+        }
+      ],
+      "rates": [],
+      "targets": [],
+      "turf_sites": [
+        "Golf courses",
+        "Sports turf",
+        "Lawn care"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://energyplanthealth.com/images/labels/remi_d_label_new.png",
+      "notes": "REMI-D is a spray tank acidifier that corrects the alkaline hydrolysis of pesticides and certain fertilizers, neutralizes bicarbonates, and corrects hard water conditions. Spray Tank Acidifier / Indicator Acidifiers: 20.0%; Color indicator: 1.0%; Size: 1 Gallon Official product page: https://energyplanthealth.com/product/remi-d. No EPA pesticide registration is listed; follow the current manufacturer directions and compatibility guidance.",
+      "status": "active"
+    },
+    {
+      "product_name": "ENERGY BLUE SPI",
+      "brand_owner": "Energy Fertilizer",
+      "manufacturer": "Vereens",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "tank_additive",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Tank Additives",
+      "fertilizer_analysis": null,
+      "active_ingredients": [],
+      "rates": [],
+      "targets": [],
+      "turf_sites": [
+        "Golf courses",
+        "Sports turf",
+        "Lawn care"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://energyplanthealth.com/product/energy-blue-spi",
+      "notes": "High-quality blue spray pattern indicator to ensure accurate application and prevent overlapping or missed areas during spraying operations. Spray Pattern Indicator Official product page: https://energyplanthealth.com/product/energy-blue-spi. No EPA pesticide registration is listed; follow the current manufacturer directions and compatibility guidance.",
+      "status": "active"
+    },
+    {
+      "product_name": "ENERGY GREEN SPI",
+      "brand_owner": "Energy Fertilizer",
+      "manufacturer": "Vereens",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "tank_additive",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Tank Additives",
+      "fertilizer_analysis": null,
+      "active_ingredients": [],
+      "rates": [],
+      "targets": [],
+      "turf_sites": [
+        "Golf courses",
+        "Sports turf",
+        "Lawn care"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://energyplanthealth.com/product/energy-green-spi",
+      "notes": "High-quality green spray pattern indicator designed to blend naturally with turf while still providing visible indication of spray coverage. Spray Pattern Indicator Official product page: https://energyplanthealth.com/product/energy-green-spi. No EPA pesticide registration is listed; follow the current manufacturer directions and compatibility guidance.",
+      "status": "active"
+    },
+    {
+      "product_name": "ENERGY BLUE POND DYE",
+      "brand_owner": "Energy Fertilizer",
+      "manufacturer": "Vereens",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "tank_additive",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Tank Additives",
+      "fertilizer_analysis": null,
+      "active_ingredients": [],
+      "rates": [],
+      "targets": [],
+      "turf_sites": [
+        "Golf courses",
+        "Sports turf",
+        "Lawn care"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://energyplanthealth.com/product/energy-blue-pond",
+      "notes": "Professional grade blue pond dye that enhances water appearance while providing natural protection against UV light penetration. Pond Colorant Official product page: https://energyplanthealth.com/product/energy-blue-pond. No EPA pesticide registration is listed; follow the current manufacturer directions and compatibility guidance.",
+      "status": "active"
+    },
+    {
+      "product_name": "ENERGY GREEN POND DYE",
+      "brand_owner": "Energy Fertilizer",
+      "manufacturer": "Vereens",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "tank_additive",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Tank Additives",
+      "fertilizer_analysis": null,
+      "active_ingredients": [],
+      "rates": [],
+      "targets": [],
+      "turf_sites": [
+        "Golf courses",
+        "Sports turf",
+        "Lawn care"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://energyplanthealth.com/product/energy-green-pond",
+      "notes": "Professional grade green pond dye for a natural, rich appearance in water features and ponds. Pond Colorant Official product page: https://energyplanthealth.com/product/energy-green-pond. No EPA pesticide registration is listed; follow the current manufacturer directions and compatibility guidance.",
+      "status": "active"
+    },
+    {
+      "product_name": "ENERGY BLACK POND DYE",
+      "brand_owner": "Energy Fertilizer",
+      "manufacturer": "Vereens",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "tank_additive",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Tank Additives",
+      "fertilizer_analysis": null,
+      "active_ingredients": [],
+      "rates": [],
+      "targets": [],
+      "turf_sites": [
+        "Golf courses",
+        "Sports turf",
+        "Lawn care"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://energyplanthealth.com/product/energy-black-pond",
+      "notes": "Deep black pond colorant that creates a highly reflective surface, improving the aesthetic appeal of ponds and lakes. Pond Colorant Official product page: https://energyplanthealth.com/product/energy-black-pond. No EPA pesticide registration is listed; follow the current manufacturer directions and compatibility guidance.",
+      "status": "active"
+    },
+    {
+      "product_name": "ENERGY RAIN PIGMENT",
+      "brand_owner": "Energy Fertilizer",
+      "manufacturer": "Vereens",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "pigment",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Tank Additives",
+      "fertilizer_analysis": null,
+      "active_ingredients": [],
+      "rates": [],
+      "targets": [],
+      "turf_sites": [
+        "Golf courses",
+        "Sports turf",
+        "Lawn care"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://energyplanthealth.com/product/energy-rain-pigment",
+      "notes": "Premium turf colorant designed to provide long-lasting, natural green color to dormant or stressed turfgrass. Vereens Premium Turf Colorant Official product page: https://energyplanthealth.com/product/energy-rain-pigment. No EPA pesticide registration is listed; follow the current manufacturer directions and compatibility guidance.",
+      "status": "active"
+    },
+    {
+      "product_name": "ENERGY FOAM MARKER",
+      "brand_owner": "Energy Fertilizer",
+      "manufacturer": "Vereens",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "tank_additive",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Tank Additives",
+      "fertilizer_analysis": null,
+      "active_ingredients": [],
+      "rates": [],
+      "targets": [],
+      "turf_sites": [
+        "Golf courses",
+        "Sports turf",
+        "Lawn care"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://energyplanthealth.com/product/energy-foam-marker",
+      "notes": "High-visibility foam marker that produces thick, long-lasting foam to mark treated areas and prevent spray overlaps. Vereens Suppressor Defoamer Official product page: https://energyplanthealth.com/product/energy-foam-marker. No EPA pesticide registration is listed; follow the current manufacturer directions and compatibility guidance.",
+      "status": "active"
+    },
+    {
+      "product_name": "VEREENS PURGE TANK CLEANER",
+      "brand_owner": "Energy Fertilizer",
+      "manufacturer": "Vereens",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "tank_additive",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Tank Additives",
+      "fertilizer_analysis": null,
+      "active_ingredients": [],
+      "rates": [],
+      "targets": [],
+      "turf_sites": [
+        "Golf courses",
+        "Sports turf",
+        "Lawn care"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://energyplanthealth.com/product/vereens-purge",
+      "notes": "Advanced tank cleaner designed to thoroughly clean and neutralize pesticide residues from spray equipment. Tank Equipment Cleaner Official product page: https://energyplanthealth.com/product/vereens-purge. No EPA pesticide registration is listed; follow the current manufacturer directions and compatibility guidance.",
+      "status": "active"
+    },
+    {
+      "product_name": "PURPLE RAIN",
+      "brand_owner": "Energy Fertilizer",
+      "manufacturer": "Vereens",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "tank_additive",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Tank Additives",
+      "fertilizer_analysis": null,
+      "active_ingredients": [],
+      "rates": [],
+      "targets": [],
+      "turf_sites": [
+        "Golf courses",
+        "Sports turf",
+        "Lawn care"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://energyplanthealth.com/product/purple-rain",
+      "notes": "Premium 80/20 surfactant — Let It Rain. Premium 80/20 Surfactant Official product page: https://energyplanthealth.com/product/purple-rain. No EPA pesticide registration is listed; follow the current manufacturer directions and compatibility guidance.",
+      "status": "active"
+    },
+    {
+      "product_name": "TEMPO",
+      "brand_owner": "Energy Fertilizer",
+      "manufacturer": "Vereens",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Performance Nutrition",
+      "fertilizer_analysis": "Total Nitrogen (N) 30.0%; Urea Nitrogen 12.0%",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 30
+        },
+        {
+          "name": "Urea Nitrogen",
+          "percentage": 12
+        }
+      ],
+      "rates": [],
+      "targets": [],
+      "turf_sites": [
+        "Golf courses",
+        "Sports turf",
+        "Lawn care"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://energyplanthealth.com/images/labels/tempo_label_new.png",
+      "notes": "Nitrogen that stays on beat. Tempo is an environmentally friendly supplemental liquid nitrogen formulation designed for foliar and soil applications with 60% of the total nitrogen from SRN. 30-0-0 60% SRN Total Nitrogen (N): 30.0%; Urea Nitrogen: 12.0%; Size: 2.5 Gallon Official product page: https://energyplanthealth.com/product/tempo. Sales sheet: https://energyplanthealth.com/images/sales_sheets/tempo_new.png. SDS: https://energyplanthealth.com/docs/sds/SDS_Energy_Tempo_30-0-0_SRN_1775571847993.pdf. No EPA pesticide registration is listed; follow the current manufacturer directions and compatibility guidance.",
+      "status": "active"
+    },
+    {
+      "product_name": "POWER CHORD",
+      "brand_owner": "Energy Fertilizer",
+      "manufacturer": "Vereens",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Performance Nutrition",
+      "fertilizer_analysis": "Soluble Potash 26.0%",
+      "active_ingredients": [
+        {
+          "name": "Soluble Potash",
+          "percentage": 26
+        }
+      ],
+      "rates": [],
+      "targets": [],
+      "turf_sites": [
+        "Golf courses",
+        "Sports turf",
+        "Lawn care"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://energyplanthealth.com/images/labels/power_chord_label_new.png",
+      "notes": "Deep Notes for Deep Roots. Highly concentrated soluble nutrient solution containing mono and di-potassium salts of phosphorous acid. 0-28*-26 Potassium Phosphite Soluble Potash: 26.0%; Feature: Potassium phosphite; Size: 2.5 Gallon Official product page: https://energyplanthealth.com/product/power-chord. Sales sheet: https://energyplanthealth.com/images/sales_sheets/power_chord_new.png. SDS: https://energyplanthealth.com/docs/sds/SDS_Energy_Low_End_0-0-26_1775571847989.pdf. No EPA pesticide registration is listed; follow the current manufacturer directions and compatibility guidance.",
+      "status": "active"
+    },
+    {
+      "product_name": "ROOT NOTE",
+      "brand_owner": "Energy Fertilizer",
+      "manufacturer": "Vereens",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Performance Nutrition",
+      "fertilizer_analysis": "Total Nitrogen (N) 3.0%; Phosphate (P2O5) 18.0%; Soluble Potash 18.0%",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 3
+        },
+        {
+          "name": "Phosphate (P2O5)",
+          "percentage": 18
+        },
+        {
+          "name": "Soluble Potash",
+          "percentage": 18
+        }
+      ],
+      "rates": [],
+      "targets": [],
+      "turf_sites": [
+        "Golf courses",
+        "Sports turf",
+        "Lawn care"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://energyplanthealth.com/images/labels/root_note_label_new.png",
+      "notes": "Where Strong Roots, Hit the Right Note. RootNote supplements standard fertility programs and rapidly corrects or prevents nutritional deficiencies. 3-18-18 Total Nitrogen (N): 3.0%; Phosphate (P2O5): 18.0%; Soluble Potash: 18.0%; Size: 2.5 Gallon Official product page: https://energyplanthealth.com/product/root-note. Sales sheet: https://energyplanthealth.com/images/sales_sheets/root_note_new.png. SDS: https://energyplanthealth.com/docs/sds/SDS_Energy_Root_Note_3-18-18_DKP_1775571847992.pdf. No EPA pesticide registration is listed; follow the current manufacturer directions and compatibility guidance.",
+      "status": "active"
+    },
+    {
+      "product_name": "AMPLIPHY",
+      "brand_owner": "Energy Fertilizer",
+      "manufacturer": "Vereens",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Performance Nutrition",
+      "fertilizer_analysis": "Total Nitrogen (N) 18.0%; Sulfur (S) 7.5%; Manganese (Mn) 1.2%",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 18
+        },
+        {
+          "name": "Sulfur (S)",
+          "percentage": 7.5
+        },
+        {
+          "name": "Manganese (Mn)",
+          "percentage": 1.2
+        }
+      ],
+      "rates": [],
+      "targets": [],
+      "turf_sites": [
+        "Golf courses",
+        "Sports turf",
+        "Lawn care"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://energyplanthealth.com/images/labels/ampliphy_label_new.png",
+      "notes": "Turn up the turf response. AmpliPhy is an acid-derived material designed for soil applications, either as a fertigation/injection product or as a spray-applied product. 18-0-0 Minors Total Nitrogen (N): 18.0%; Sulfur (S): 7.5%; Manganese (Mn): 1.2%; Size: 2.5 Gallon Official product page: https://energyplanthealth.com/product/ampliphy. Sales sheet: https://energyplanthealth.com/images/sales_sheets/ampliphy_new.png. SDS: https://energyplanthealth.com/docs/sds/SDS_Energy_AmplipHy_18_1775571847986.pdf. No EPA pesticide registration is listed; follow the current manufacturer directions and compatibility guidance.",
+      "status": "active"
+    },
+    {
+      "product_name": "HIGHNOTE",
+      "brand_owner": "Energy Fertilizer",
+      "manufacturer": "Vereens",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Performance Nutrition",
+      "fertilizer_analysis": "Total Nitrogen (N) 32.0%; Urea Nitrogen 16.5%; Nitrate Nitrogen 7.75%",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 32
+        },
+        {
+          "name": "Urea Nitrogen",
+          "percentage": 16.5
+        },
+        {
+          "name": "Nitrate Nitrogen",
+          "percentage": 7.75
+        }
+      ],
+      "rates": [],
+      "targets": [],
+      "turf_sites": [
+        "Golf courses",
+        "Sports turf",
+        "Lawn care"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://energyplanthealth.com/images/labels/high_note_label_new.png",
+      "notes": "Lead with N, Finish on a HighNote. HighNote is a clear liquid fertilizer formulation containing 32% Nitrogen. Blend of urea, ammonia and nitrate nitrogen. 32-0-0 Total Nitrogen (N): 32.0%; Urea Nitrogen: 16.5%; Nitrate Nitrogen: 7.75%; Size: 2.5 Gallon Official product page: https://energyplanthealth.com/product/highnote. Sales sheet: https://energyplanthealth.com/images/sales_sheets/high_note_new.png. SDS: https://energyplanthealth.com/docs/sds/SDS_Energy_High_Note_UAN_32-0-0_1775571847987.pdf. No EPA pesticide registration is listed; follow the current manufacturer directions and compatibility guidance.",
+      "status": "active"
+    },
+    {
+      "product_name": "RESONANCE",
+      "brand_owner": "Energy Fertilizer",
+      "manufacturer": "Vereens",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Performance Nutrition",
+      "fertilizer_analysis": "Soluble Potash 8.0%; Iron (Fe) 1.5%; Humic Acid 6.0%",
+      "active_ingredients": [
+        {
+          "name": "Soluble Potash",
+          "percentage": 8
+        },
+        {
+          "name": "Iron (Fe)",
+          "percentage": 1.5
+        },
+        {
+          "name": "Humic Acid",
+          "percentage": 6
+        }
+      ],
+      "rates": [],
+      "targets": [],
+      "turf_sites": [
+        "Golf courses",
+        "Sports turf",
+        "Lawn care"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://energyplanthealth.com/images/labels/resonance_label_new.png",
+      "notes": "Deep tone, lasting turf energy. Resonance fruit sizing and green-up in crops, ornamentals and turf. Potassium derived from potassium acetate. 0-0-8 Soluble Potash: 8.0%; Iron (Fe): 1.5%; Humic Acid: 6.0%; Size: 2.5 Gallon Official product page: https://energyplanthealth.com/product/resonance. Sales sheet: https://energyplanthealth.com/images/sales_sheets/resonance_new.png. SDS: https://energyplanthealth.com/docs/sds/SDS_Energy_Resonance_1775571847990.pdf. No EPA pesticide registration is listed; follow the current manufacturer directions and compatibility guidance.",
+      "status": "active"
+    },
+    {
+      "product_name": "HARMONY",
+      "brand_owner": "Energy Fertilizer",
+      "manufacturer": "Vereens",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "biostimulant",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Bio Stimulants",
+      "fertilizer_analysis": "Humic Acid 4.0%; Kelp 7.0%; Molasses 12.0%",
+      "active_ingredients": [
+        {
+          "name": "Humic Acid",
+          "percentage": 4
+        },
+        {
+          "name": "Kelp",
+          "percentage": 7
+        },
+        {
+          "name": "Molasses",
+          "percentage": 12
+        }
+      ],
+      "rates": [],
+      "targets": [],
+      "turf_sites": [
+        "Golf courses",
+        "Sports turf",
+        "Lawn care"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://energyplanthealth.com/images/labels/harmony_label_new.png",
+      "notes": "Derived from: Leonardite Ore, Molasses, Ascophyllum Nodosum. Promotes the rhythm of healthy soil ecosystems. The rhythm of soil health Humic Acid: 4.0%; Kelp: 7.0%; Molasses: 12.0%; Size: 2.5 Gallon Official product page: https://energyplanthealth.com/product/harmony. Sales sheet: https://energyplanthealth.com/images/sales_sheets/harmony_new.png. SDS: https://energyplanthealth.com/docs/sds/SDS_Harmony_1775571847994.pdf. No EPA pesticide registration is listed; follow the current manufacturer directions and compatibility guidance.",
+      "status": "active"
+    },
+    {
+      "product_name": "BIO-RESONANCE",
+      "brand_owner": "Energy Fertilizer",
+      "manufacturer": "Vereens",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "biostimulant",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Bio Stimulants",
+      "fertilizer_analysis": "Humic Acid 6.0%; Iron (Fe) 1.5%; K2O 8.0%",
+      "active_ingredients": [
+        {
+          "name": "Humic Acid",
+          "percentage": 6
+        },
+        {
+          "name": "Iron (Fe)",
+          "percentage": 1.5
+        },
+        {
+          "name": "K2O",
+          "percentage": 8
+        }
+      ],
+      "rates": [],
+      "targets": [],
+      "turf_sites": [
+        "Golf courses",
+        "Sports turf",
+        "Lawn care"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://energyplanthealth.com/images/labels/bio_resonance_label_new.png",
+      "notes": "Deeper Tone Stronger Turf. Foliar & Soil Liquid Iron, Humic Acid & Kelp Fertilizer. Organically complexed iron is used for sustained response with little cell reaction and increases multiple enzyme systems. 0-0-8 + BTH Humic Acid: 6.0%; Iron (Fe): 1.5%; K2O: 8.0%; Size: 2.5 Gallon Official product page: https://energyplanthealth.com/product/bio-resonance. Sales sheet: https://energyplanthealth.com/images/sales_sheets/bio_resonance_new.png. SDS: https://energyplanthealth.com/docs/sds/SDS_Bio_Resonance_1775571847983.pdf. No EPA pesticide registration is listed; follow the current manufacturer directions and compatibility guidance.",
+      "status": "active"
+    },
+    {
+      "product_name": "KEY",
+      "brand_owner": "Energy Fertilizer",
+      "manufacturer": "Vereens",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "adjuvant",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Adjuvants",
+      "fertilizer_analysis": null,
+      "active_ingredients": [],
+      "rates": [],
+      "targets": [],
+      "turf_sites": [
+        "Golf courses",
+        "Sports turf",
+        "Lawn care"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://energyplanthealth.com/product/key-adjuvant",
+      "notes": "Premium agricultural adjuvant designed to enhance the performance and effectiveness of spray applications. Adjuvant Official product page: https://energyplanthealth.com/product/key-adjuvant. No EPA pesticide registration is listed; follow the current manufacturer directions and compatibility guidance.",
+      "status": "active"
+    },
+    {
+      "product_name": "TWIN BILL MSO",
+      "brand_owner": "Energy Fertilizer",
+      "manufacturer": "Vereens",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "adjuvant",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Adjuvants",
+      "fertilizer_analysis": null,
+      "active_ingredients": [],
+      "rates": [],
+      "targets": [],
+      "turf_sites": [
+        "Golf courses",
+        "Sports turf",
+        "Lawn care"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://energyplanthealth.com/product/twin-bill-mso",
+      "notes": "High-quality methylated seed oil adjuvant that improves penetration and wetting of agricultural chemicals. Methylated Seed Oil Official product page: https://energyplanthealth.com/product/twin-bill-mso. No EPA pesticide registration is listed; follow the current manufacturer directions and compatibility guidance.",
+      "status": "active"
+    },
+    {
+      "product_name": "ENERGY 80/20",
+      "brand_owner": "Energy Fertilizer",
+      "manufacturer": "Vereens",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "adjuvant",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Adjuvants",
+      "fertilizer_analysis": null,
+      "active_ingredients": [],
+      "rates": [],
+      "targets": [],
+      "turf_sites": [
+        "Golf courses",
+        "Sports turf",
+        "Lawn care"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://energyplanthealth.com/product/energy-80-20",
+      "notes": "Premium 80/20 non-ionic surfactant formulated to increase coverage, penetration, and overall efficacy of spray solutions. Non-Ionic Surfactant Official product page: https://energyplanthealth.com/product/energy-80-20. No EPA pesticide registration is listed; follow the current manufacturer directions and compatibility guidance.",
+      "status": "active"
+    },
+    {
+      "product_name": "AMS DRIFT CONTROL",
+      "brand_owner": "Energy Fertilizer",
+      "manufacturer": "Vereens",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "adjuvant",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Adjuvants",
+      "fertilizer_analysis": null,
+      "active_ingredients": [],
+      "rates": [],
+      "targets": [],
+      "turf_sites": [
+        "Golf courses",
+        "Sports turf",
+        "Lawn care"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://energyplanthealth.com/product/ams-drift-control",
+      "notes": "Advanced drift control and water conditioning agent containing ammonium sulfate to optimize spray droplet size and prevent off-target movement. Drift Reduction Agent Official product page: https://energyplanthealth.com/product/ams-drift-control. No EPA pesticide registration is listed; follow the current manufacturer directions and compatibility guidance.",
+      "status": "active"
+    },
+    {
+      "product_name": "TSUNAMI",
+      "brand_owner": "Energy Fertilizer",
+      "manufacturer": "Vereens",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "surfactant",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Surfactants",
+      "fertilizer_analysis": null,
+      "active_ingredients": [],
+      "rates": [],
+      "targets": [],
+      "turf_sites": [
+        "Golf courses",
+        "Sports turf",
+        "Lawn care"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://energyplanthealth.com/product/tsunami",
+      "notes": "Premium surfactant formulation for superior spreading and wetting capabilities. Surfactant Official product page: https://energyplanthealth.com/product/tsunami. No EPA pesticide registration is listed; follow the current manufacturer directions and compatibility guidance.",
+      "status": "active"
+    },
+    {
+      "product_name": "WAVE",
+      "brand_owner": "Energy Fertilizer",
+      "manufacturer": "Vereens",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "surfactant",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Surfactants",
+      "fertilizer_analysis": null,
+      "active_ingredients": [],
+      "rates": [],
+      "targets": [],
+      "turf_sites": [
+        "Golf courses",
+        "Sports turf",
+        "Lawn care"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://energyplanthealth.com/product/wave",
+      "notes": "High-performance surfactant designed for optimal coverage and penetration of spray applications. Surfactant Official product page: https://energyplanthealth.com/product/wave. No EPA pesticide registration is listed; follow the current manufacturer directions and compatibility guidance.",
+      "status": "active"
+    },
+    {
+      "product_name": "SURF",
+      "brand_owner": "Energy Fertilizer",
+      "manufacturer": "Vereens",
+      "epa_number": null,
+      "formulation": "Liquid",
+      "category": "surfactant",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Surfactants",
+      "fertilizer_analysis": null,
+      "active_ingredients": [],
+      "rates": [],
+      "targets": [],
+      "turf_sites": [
+        "Golf courses",
+        "Sports turf",
+        "Lawn care"
+      ],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://energyplanthealth.com/product/surf",
+      "notes": "Reliable surfactant that reduces surface tension to improve the efficacy of agricultural chemicals. Advanced Spray Adjuvant with Kelp Official product page: https://energyplanthealth.com/product/surf. SDS: https://energyplanthealth.com/docs/sds/SDS_Energy_Surf_1775571847992.pdf. No EPA pesticide registration is listed; follow the current manufacturer directions and compatibility guidance.",
+      "status": "active"
+    }
+  ]
+}

@@ -16,7 +16,7 @@
 // exercises that helper as a pure function — no env.AI needed.
 
 import { readFileSync, readdirSync } from 'fs'
-import { extractAiText, getTranslateProvider, translateText } from '../worker/lib/translate.js'
+import { extractAiText, getTranslateProvider, looksLikeTranslationRefusal, translateText } from '../worker/lib/translate.js'
 
 let passed = 0, failed = 0
 function assert(cond, label, ctx) {
@@ -110,6 +110,15 @@ assert(extractAiText({ response: '```\nCortar greens\n```' }) === 'Cortar greens
 assert(extractAiText({ response: '```spanish\nCortar greens\n```' }) === 'Cortar greens',
   'strips triple-backtick code fence with language tag')
 
+section('translation refusal filter')
+
+assert(looksLikeTranslationRefusal('No hay nada que traducir. Por favor, proporciona el texto en ingles.') === true,
+  'Spanish refusal text is detected')
+assert(looksLikeTranslationRefusal('Please provide the English text so I can translate it.') === true,
+  'English refusal text is detected')
+assert(looksLikeTranslationRefusal('Corta greens y rough') === false,
+  'normal Spanish operations note is not treated as a refusal')
+
 // ── cf-ai provider integration ─────────────────────────────────────────
 section('cf-ai provider — messages payload + prompt fallback + extractAiText')
 
@@ -174,6 +183,23 @@ const missingOut = await missingAi.translate('hello')
 assert(missingOut === null,
   'cf-ai provider with missing env.AI returns null (graceful no-op)')
 
+let refusalCalls = 0
+const refusalEnv = {
+  TRANSLATE_PROVIDER: 'cf-ai',
+  TRANSLATE_MODEL: 'test-model',
+  AI: {
+    async run() {
+      refusalCalls++
+      return { response: 'No hay nada que traducir. Por favor, proporciona el texto en ingles.' }
+    },
+  },
+}
+const refusalOut = await translateText(refusalEnv, 'Wessex', { from: 'en', to: 'es' })
+assert(refusalOut === null,
+  'cf-ai provider drops refusal/helper text instead of returning it for storage')
+assert(refusalCalls === 2,
+  'cf-ai provider tries messages and prompt before giving up on refusal text')
+
 // ── Failure logging never leaks private fields ────────────────────────
 section('Failure logging — no private employee fields referenced')
 
@@ -224,9 +250,11 @@ section('No D1 schema change — migrations ledger preserved')
 const migrationFiles = readdirSync('worker/migrations').filter(f => f.endsWith('.sql')).sort()
 assert(migrationFiles.includes('0050_crew_employee_translation_prefs.sql'),
   '0050_crew_employee_translation_prefs.sql still in the migration ledger')
-const newMigrations = migrationFiles.filter(f => /^00(5[6-9]|[6-9]\d|\d{3,})/.test(f))
+assert(migrationFiles.includes('0056_task_categories.sql'),
+  '0056_task_categories.sql still in the migration ledger')
+const newMigrations = migrationFiles.filter(f => /^00(5[7-9]|[6-9]\d|\d{3,})/.test(f))
 assert(newMigrations.length === 0,
-  `no migration past 0055 (0054_shift_templates accepted) (found: ${newMigrations.join(', ') || 'none'})`)
+  `no migration past 0056 (task categories accepted) (found: ${newMigrations.join(', ') || 'none'})`)
 
 // ── Provider config / kiosk render unchanged ──────────────────────────
 section('Provider config + kiosk render unchanged')

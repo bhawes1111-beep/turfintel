@@ -68,38 +68,25 @@ assert(/export async function createSpray\b/.test(SPRAYS_W),
 assert(/inventory_item_id/.test(SPRAYS_W),
   'worker createSpray still wires inventory_item_id (deduction unchanged)')
 
-// ── Phase SPR.2 — Unified SPRAY_TABS + SPRAY_MORE (no CROSSWINDS/LEGACY fork) ─
-section('SPRAY_TABS + SPRAY_MORE — zero "Program" labels in visible nav')
+// -- Flat SPRAY_TABS with no visible Program labels --
+section('SPRAY_TABS - zero Program labels in visible nav')
 
-const tabsMatch = SP.match(/export\s+const\s+SPRAY_TABS\s*=\s*\[([^\]]+)\]/)
-const moreMatch = SP.match(/export\s+const\s+SPRAY_MORE\s*=\s*\[([^\]]+)\]/)
+const tabsMatch = SP.match(/const\s+SPRAY_TABS\s*=\s*\[([^\]]+)\]/)
 assert(tabsMatch != null, 'SPRAY_TABS declared in Spray.jsx')
-assert(moreMatch != null, 'SPRAY_MORE declared in Spray.jsx')
 const tabsPayload = tabsMatch ? tabsMatch[1] : ''
-const morePayload = moreMatch ? moreMatch[1] : ''
 
-// SPR.2 unified primary tabs.
-for (const expected of ['Today', 'New Application', 'Records', 'Planning',
-                        'Calendar', 'Calculator', 'Reports', 'More']) {
-  assert(new RegExp(`'${expected}'`).test(tabsPayload),
+for (const expected of ['Calendar', 'New Application', 'Records', 'Resistance', 'Planning', 'Calculator', 'Reports']) {
+  assert(new RegExp("'" + expected + "'").test(tabsPayload),
     `SPRAY_TABS contains '${expected}'`)
 }
+assert(!/SPRAY_MORE/.test(SP), 'SPRAY_MORE removed from Spray.jsx')
 
-// SPR.2 More group.
-for (const expected of ['Overview', 'Planning Calendar', 'Season Insights']) {
-  assert(new RegExp(`'${expected}'`).test(morePayload),
-    `SPRAY_MORE contains '${expected}'`)
-}
-
-// Negative pins — no "Program" labels anywhere in the visible nav.
-const anyTabPayload = tabsPayload + ' ' + morePayload
-const programHits = anyTabPayload.match(/'[^']*Program[^']*'/g) ?? []
+const programHits = tabsPayload.match(/'[^']*Program[^']*'/g) ?? []
 assert(programHits.length === 0,
-  `SPR.2: ZERO 'Program' labels in tab arrays (found: ${programHits.join(', ') || 'none'})`)
+  `ZERO Program labels in tab array (found: ${programHits.join(', ') || 'none'})`)
 
-// No "Planned Sprays" collision (SPR.2 renamed to Planning + Planning Calendar).
-assert(!/'Planned Sprays'/.test(anyTabPayload),
-  "SPR.2: 'Planned Sprays' collision label removed from visible nav")
+assert(!/'Planned Sprays'/.test(tabsPayload),
+  'Planned Sprays collision label removed from visible nav')
 
 // Negative pins — no course-conditional forks survive.
 assert(!/const\s+CROSSWINDS_TABS/.test(SP),
@@ -125,13 +112,13 @@ import { existsSync } from 'fs'
 assert(!existsSync('src/pages/Spray/tabs/PlannedPrograms.jsx'),
   'PlannedPrograms.jsx removed by SPR.2 (was legacy dead code)')
 
-// ── ProgramIntelligence renders "Spray Intelligence" user copy ──────
-section('ProgramIntelligence — renders "Spray Intelligence" user-facing')
+// ── ProgramIntelligence renders Resistance Management user copy ──────
+section('ProgramIntelligence — renders Resistance Management user-facing')
 
-assert(/<WorkspaceSection\s+title="Spray Intelligence"/.test(INTEL),
-  'WorkspaceSection title = "Spray Intelligence"')
-assert(/<h2 className=\{styles\.printTitle\}>Spray Intelligence Report<\/h2>/.test(INTEL),
-  'print header = "Spray Intelligence Report"')
+assert(/<WorkspaceSection\s+title="Resistance Management"/.test(INTEL),
+  'WorkspaceSection title = "Resistance Management"')
+assert(/<h2 className=\{styles\.printTitle\}>Resistance Management Report<\/h2>/.test(INTEL),
+  'print header = "Resistance Management Report"')
 assert(/populate spray analytics/.test(INTEL),
   'empty-state copy says "populate spray analytics" (S.6c rename)')
 
@@ -150,12 +137,10 @@ assert(/data-print-region="program-intel"/.test(INTEL),
   'data-print-region token unchanged (internal — no caller dependency)')
 
 // ── Main Spray.jsx tab → component wiring ───────────────────────────
-section('Spray.jsx — Spray Intelligence routes to ProgramIntelligence')
+section('Spray.jsx — Resistance routes to ProgramIntelligence')
 
-// Phase SPR.2 — 'Spray Intelligence' user-facing label renamed to
-// 'Season Insights' and moved under More. Component mount unchanged.
-assert(/moreTab === 'Season Insights'\s*&&\s*<ProgramIntelligence \/>/.test(SP),
-  "SPR.2: More 'Season Insights' → <ProgramIntelligence /> (mount unchanged)")
+assert(/activeTab === 'Resistance'\s*&&\s*<ProgramIntelligence \/>/.test(SP),
+  "Resistance tab mounts <ProgramIntelligence />")
 
 // Old route checks are gone (negative pins).
 assert(!/moreTab === 'Program Intelligence'/.test(SP),

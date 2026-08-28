@@ -1,0 +1,707 @@
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.addServiceTopBtn,
+.filters button,
+.boardLink,
+.issueActions button {
+  border: 1px solid rgba(74, 158, 74, 0.35);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 8px 12px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.addServiceTopBtn {
+  background: rgba(34, 197, 94, 0.16);
+  border-color: rgba(34, 197, 94, 0.48);
+  color: #65e58f;
+}
+
+.filters span {
+  color: var(--color-accent);
+  margin-left: 6px;
+}
+
+.activeFilter {
+  background: rgba(74, 158, 74, 0.18) !important;
+  border-color: rgba(74, 158, 74, 0.7) !important;
+  color: var(--color-accent) !important;
+}
+
+.issueControls {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.servicePanel {
+  width: 100%;
+  border: var(--card-border);
+  border-left: 4px solid rgba(91, 168, 160, 0.72);
+  border-radius: var(--card-radius);
+  background: rgba(91, 168, 160, 0.07);
+  padding: 14px;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.servicePanelHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.servicePanelHeader h3 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 1rem;
+}
+
+.servicePanelHeader p {
+  margin: 4px 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+}
+
+.servicePanelHeader button {
+  flex: 0 0 auto;
+  border: 1px solid rgba(34, 197, 94, 0.42);
+  border-radius: 7px;
+  background: rgba(34, 197, 94, 0.16);
+  color: #65e58f;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.servicePanelHeader button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.serviceGrid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.9fr 1.3fr 0.8fr 0.9fr 0.8fr 1fr;
+  gap: 10px;
+}
+
+.serviceGrid label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.serviceGrid span {
+  color: var(--color-text-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.serviceGrid input,
+.serviceGrid select,
+.serviceGrid textarea {
+  width: 100%;
+  border: var(--card-border);
+  border-radius: 7px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font: inherit;
+  padding: 9px 10px;
+  outline: none;
+}
+
+.serviceGrid textarea {
+  resize: vertical;
+}
+
+.serviceNotes {
+  grid-column: 1 / -1;
+}
+
+.serviceListPanel {
+  width: 100%;
+  border: var(--card-border);
+  border-radius: var(--card-radius);
+  background: rgba(255, 255, 255, 0.025);
+  padding: 12px;
+}
+
+.serviceListHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.serviceListHeader h3 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 0.95rem;
+}
+
+.serviceListHeader p,
+.serviceEmpty {
+  margin: 4px 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+}
+
+.serviceList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.serviceItem {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  border: 1px solid rgba(74, 158, 74, 0.2);
+  border-left: 4px solid rgba(74, 158, 74, 0.55);
+  border-radius: 7px;
+  background: rgba(4, 12, 6, 0.42);
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease, transform 0.16s ease;
+}
+
+.serviceItem:hover {
+  background: rgba(8, 24, 11, 0.58);
+  border-color: rgba(74, 158, 74, 0.42);
+}
+
+.serviceItem:focus-visible {
+  outline: 2px solid rgba(101, 229, 143, 0.72);
+  outline-offset: 2px;
+}
+
+.serviceItem[data-tone='warn'] {
+  border-left-color: #d4883a;
+}
+
+.serviceItem[data-tone='critical'] {
+  border-left-color: #e05050;
+}
+
+.serviceItem h4 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 0.94rem;
+}
+
+.serviceItem p {
+  margin: 4px 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+}
+
+.serviceItemNotes {
+  color: var(--color-text) !important;
+}
+
+.serviceStageLine strong {
+  color: #79d6cb;
+  font-weight: 900;
+}
+
+.serviceItemActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.serviceItemActions span {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  color: var(--color-text-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 3px 8px;
+  text-transform: uppercase;
+}
+
+.serviceItemActions button {
+  border: 1px solid rgba(74, 158, 74, 0.35);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 7px 10px;
+  cursor: pointer;
+}
+
+.stageSelect {
+  min-width: 132px;
+  border: 1px solid rgba(91, 168, 160, 0.38);
+  border-radius: 999px;
+  background: rgba(91, 168, 160, 0.11);
+  color: #bfeee8;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 6px 9px;
+  cursor: pointer;
+}
+
+.issueList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.issueCard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  border: var(--card-border);
+  border-left: 4px solid rgba(74, 158, 74, 0.55);
+  border-radius: var(--card-radius);
+  background: var(--color-card);
+  padding: 14px;
+}
+
+.issueCard[data-tone='warn'] {
+  border-left-color: #d4883a;
+}
+
+.issueCard[data-tone='critical'] {
+  border-left-color: #e05050;
+}
+
+.issueMain {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.issueHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.issueHeader h3 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 1rem;
+}
+
+.issueHeader p,
+.description,
+.meta,
+.empty,
+.error {
+  margin: 0;
+}
+
+.issueHeader p,
+.meta,
+.empty {
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+}
+
+.description {
+  color: var(--color-text);
+  font-size: 0.92rem;
+}
+
+.error {
+  color: #e07070;
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.badges span {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  color: var(--color-text-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 3px 8px;
+  text-transform: uppercase;
+}
+
+.noteBox {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.noteBox span {
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.noteBox textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 54px;
+  border: var(--card-border);
+  border-radius: 7px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font: inherit;
+  padding: 9px 10px;
+}
+
+.issueActions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 130px;
+}
+
+.approve {
+  background: rgba(34, 197, 94, 0.16) !important;
+  border-color: rgba(34, 197, 94, 0.42) !important;
+  color: #65e58f !important;
+}
+
+.reject,
+.delete {
+  background: rgba(220, 60, 60, 0.12) !important;
+  border-color: rgba(220, 60, 60, 0.38) !important;
+  color: #ff9f9f !important;
+}
+
+.resolve {
+  background: rgba(91, 168, 160, 0.14) !important;
+  border-color: rgba(91, 168, 160, 0.38) !important;
+  color: #79d6cb !important;
+}
+
+.ticketBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(0, 0, 0, 0.64);
+  backdrop-filter: blur(4px);
+}
+
+.ticketModal {
+  width: min(880px, 100%);
+  max-height: min(880px, calc(100vh - 28px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(91, 168, 160, 0.48);
+  border-radius: 10px;
+  background: var(--color-card);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.62);
+}
+
+.ticketHeader,
+.ticketFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: var(--card-border);
+}
+
+.ticketFooter {
+  justify-content: flex-end;
+  border-top: var(--card-border);
+  border-bottom: 0;
+}
+
+.ticketHeader h3 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 1.05rem;
+}
+
+.ticketHeader p {
+  margin: 4px 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+}
+
+.ticketHeader button,
+.ticketFooter button,
+.ticketSectionHeader button,
+.partRow button {
+  border: 1px solid rgba(74, 158, 74, 0.35);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.ticketFooter button[type='submit'],
+.ticketSectionHeader button {
+  background: rgba(34, 197, 94, 0.16);
+  border-color: rgba(34, 197, 94, 0.48);
+  color: #65e58f;
+}
+
+.ticketFooter button:disabled,
+.ticketHeader button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.ticketBody {
+  overflow-y: auto;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ticketGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.ticketWide {
+  grid-column: 1 / -1;
+}
+
+.ticketGrid label,
+.ticketNotes,
+.partRow label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ticketGrid span,
+.ticketNotes span,
+.partRow span {
+  color: var(--color-text-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.ticketGrid input,
+.ticketGrid select,
+.ticketNotes textarea,
+.partRow input {
+  width: 100%;
+  border: var(--card-border);
+  border-radius: 7px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font: inherit;
+  padding: 9px 10px;
+  outline: none;
+}
+
+.ticketNotes textarea {
+  resize: vertical;
+}
+
+.ticketLaborSummary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  border: 1px solid rgba(91, 168, 160, 0.34);
+  border-radius: 8px;
+  background: rgba(91, 168, 160, 0.08);
+  padding: 12px;
+}
+
+.ticketProgressSummary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  border: 1px solid rgba(91, 168, 160, 0.34);
+  border-radius: 8px;
+  background: rgba(91, 168, 160, 0.08);
+  padding: 12px;
+}
+
+.ticketProgressSummary span {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.ticketProgressSummary strong {
+  display: block;
+  margin-top: 4px;
+  color: #79d6cb;
+  font-size: 1.1rem;
+}
+
+.ticketProgressSummary p {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+}
+
+.ticketLaborSummary div {
+  min-width: 0;
+}
+
+.ticketLaborSummary span {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.ticketLaborSummary strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--color-text);
+  font-size: 1rem;
+}
+
+.ticketLaborSummary p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #f5c16c;
+  font-size: 0.82rem;
+}
+
+.ticketParts {
+  border: var(--card-border);
+  border-radius: 8px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.ticketSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.ticketSectionHeader h4 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 0.95rem;
+}
+
+.partRow {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) 90px 110px auto;
+  gap: 8px;
+  align-items: end;
+  margin-top: 8px;
+}
+
+.partRow button {
+  color: #ff9f9f;
+  border-color: rgba(220, 60, 60, 0.38);
+  background: rgba(220, 60, 60, 0.12);
+}
+
+@media (max-width: 760px) {
+  .servicePanelHeader {
+    flex-direction: column;
+  }
+
+  .servicePanelHeader button {
+    width: 100%;
+  }
+
+  .serviceGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .serviceItem {
+    grid-template-columns: 1fr;
+  }
+
+  .serviceItemActions {
+    justify-content: flex-start;
+  }
+
+  .issueCard {
+    grid-template-columns: 1fr;
+  }
+
+  .issueHeader {
+    flex-direction: column;
+  }
+
+  .badges {
+    justify-content: flex-start;
+  }
+
+  .issueActions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+
+  .ticketBackdrop {
+    align-items: stretch;
+    padding: 10px;
+  }
+
+  .ticketGrid,
+  .ticketLaborSummary,
+  .partRow {
+    grid-template-columns: 1fr;
+  }
+
+  .ticketHeader,
+  .ticketFooter,
+  .ticketSectionHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

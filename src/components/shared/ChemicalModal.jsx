@@ -38,7 +38,6 @@ export default function ChemicalModal({ chemical, onClose }) {
   return createPortal(
     <div
       className={styles.backdrop}
-      onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-label={`Details for ${chemical.name}`}

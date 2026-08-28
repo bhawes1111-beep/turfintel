@@ -18,7 +18,7 @@
 //     and warning banner when 0.
 //   • Draft seed parses "4 oz / acre" string back to rate + rateUnit
 //     so existing records edit cleanly.
-//   • addDraftRow seeds with rateUnit: 'oz_per_acre' + unit: 'oz' +
+//   • addDraftRow seeds with rateUnit: 'oz_per_1000sqft' + unit: 'oz' +
 //     lastEdited: null + totalUsed: '' (no silent default).
 //   • editTotalUsed, editRate, editRateUnit all defined + use
 //     sprayedAcres > 0 guard.
@@ -51,9 +51,8 @@ section('No D1 migration / permission unchanged / worker pipeline intact')
 const migrationFiles = readdirSync('worker/migrations').filter(f => f.endsWith('.sql')).sort()
 assert(migrationFiles.includes('0054_shift_templates.sql'),
   '0054_shift_templates.sql still in the ledger')
-const past0055 = migrationFiles.filter(f => /^00(5[6-9]|[6-9]\d|\d{3,})/.test(f))
-assert(past0055.length === 0,
-  `no migration past 0055 (found: ${past0055.join(', ') || 'none'})`)
+assert(migrationFiles.includes('0068_inventory_nematode_targets.sql'),
+  'newer inventory/equipment migrations remain in the ledger')
 
 assert(/\['\/api\/sprays',\s*'canEditSprays'\]/.test(PERM),
   '/api/sprays still gated by canEditSprays')
@@ -172,8 +171,16 @@ assert(math.sumAcresFromRecord(null) === 0,
 // normalizeRateUnit fallback.
 assert(math.normalizeRateUnit('oz_per_acre') === 'oz_per_acre',
   'normalizeRateUnit passes through known values')
-assert(math.normalizeRateUnit('foo') === 'oz_per_acre',
-  'normalizeRateUnit collapses unknown to oz_per_acre default')
+assert(math.normalizeRateUnit('foo') === 'oz_per_1000sqft',
+  'normalizeRateUnit collapses unknown to oz per 1,000 sq ft default')
+assert(math.defaultRateUnitForInventory(null) === 'oz_per_1000sqft',
+  'regular products default to oz per 1,000 sq ft')
+assert(math.defaultRateUnitForInventory({ analysis: '18-3-18' }) === 'lb_n_nutrient_per_1000sqft',
+  'N-P-K analysis defaults to lb N per 1,000 sq ft')
+assert(math.defaultRateUnitForInventory({ analysis: '0-0-26' }) === 'lb_k_nutrient_per_1000sqft',
+  'potassium-only analysis defaults to lb K per 1,000 sq ft')
+assert(math.defaultRateUnitForInventory({ nutrientSources: [{ nutrient: 'Fe', percent: 6 }] }) === 'lb_fe_nutrient_per_1000sqft',
+  'a minor nutrient defaults to its own nutrient rate per 1,000 sq ft')
 
 // ── Sheet imports + wiring ────────────────────────────────────────
 section('Sheet — imports rateMath helpers + uses sprayedAcres anchor')
@@ -192,26 +199,26 @@ assert(/chemAcresBanner/.test(SHEET) && /chemAcresBanner\s*\{/.test(SHEET_CSS),
   'chemAcresBanner class rendered + styled (positive state)')
 assert(/chemAcresBannerWarn/.test(SHEET) && /chemAcresBannerWarn\s*\{/.test(SHEET_CSS),
   'chemAcresBannerWarn class rendered + styled (zero-acres warning)')
-assert(/Total area sprayed:/.test(SHEET),
-  'banner copy: "Total area sprayed: …"')
+assert(/Total area applied:/.test(SHEET),
+  'banner copy: "Total area applied: ..."')
 assert(/Area acreage unavailable — rate math cannot auto-calculate/.test(SHEET),
   'zero-acres warning copy: "Area acreage unavailable — rate math cannot auto-calculate"')
 
 // ── Draft seed parsing ────────────────────────────────────────────
 section('startEditingChemicals — parses existing rate label back to rate + rateUnit')
 
-assert(/let parsedRate    = ''/.test(SHEET),
-  'seed declares parsedRate (extracts numeric portion of "4 oz / acre")')
-assert(/let parsedRateUnit = 'oz_per_acre'/.test(SHEET),
-  'seed declares parsedRateUnit with safe default')
+assert(/const parsedRateInfo = parseSavedRate\(p\.rate\)/.test(SHEET),
+  'seed parses saved rate into numeric rate + rate unit')
+assert(/rateUnit:\s+parsedRateInfo\.rateUnit/.test(SHEET),
+  'seed applies parsed rate unit with safe default')
 assert(/s\.match\(\/\^\(\[\\d\.\]\+\)\\s\*\(\.\*\)\$\/\)/.test(SHEET),
   'seed regex extracts number + tail from rate string')
 assert(/RATE_UNIT_OPTS\.find\(o => o\.label\.toLowerCase\(\) === tail\)/.test(SHEET),
   'seed matches parsed tail against RATE_UNIT_OPTS labels')
 
 // addDraftRow seeds new schema.
-assert(/function addDraftRow\(\)[\s\S]{0,500}rateUnit: 'oz_per_acre'/.test(SHEET),
-  'addDraftRow seeds rateUnit: oz_per_acre')
+assert(/function addDraftRow\(\)[\s\S]{0,500}rateUnit: 'oz_per_1000sqft'/.test(SHEET),
+  'addDraftRow seeds rateUnit: oz per 1,000 sq ft')
 assert(/function addDraftRow\(\)[\s\S]{0,500}totalUsed: ''/.test(SHEET),
   'addDraftRow seeds totalUsed empty')
 assert(/function addDraftRow\(\)[\s\S]{0,500}lastEdited: null/.test(SHEET),
@@ -251,25 +258,25 @@ assert(/r\.lastEdited === 'totalUsed'/.test(editUnitBody),
   'editRateUnit rebases rate when lastEdited === "totalUsed"')
 
 // Math wired through rateMath helpers, not inline.
-assert(/totalUsedToRate\(num, next\.rateUnit, sprayedAcres\)/.test(SHEET),
-  'editTotalUsed delegates to totalUsedToRate(num, rateUnit, sprayedAcres)')
-assert(/rateToTotalUsed\(num, next\.rateUnit, sprayedAcres\)/.test(SHEET),
-  'editRate delegates to rateToTotalUsed(num, rateUnit, sprayedAcres)')
+assert(/totalUsedToRateWithUnit\(num, next\.unit, next\.rateUnit, sprayedAcres, inv\)/.test(SHEET),
+  'editTotalUsed delegates through the shared total-used-to-rate math')
+assert(/rateToTotalUsedWithUnit\(num, next\.rateUnit, next\.unit, sprayedAcres, inv\)/.test(SHEET),
+  'editRate delegates through the shared rate-to-total-used math')
 
 // ── Dropdowns rendered for rate unit + total used unit ────────────
 section('Dropdowns — Rate unit + Total unit selects rendered')
 
 assert(/RATE_UNIT_OPTS\.map\(o => \(\s*\n?\s*<option key=\{o\.value\}/.test(SHEET),
   'Rate unit <select> maps RATE_UNIT_OPTS to <option>')
-assert(/TOTAL_USED_UNIT_OPTS\.map\(u => \(\s*\n?\s*<option key=\{u\.value\}/.test(SHEET),
-  'Total unit <select> maps TOTAL_USED_UNIT_OPTS to <option>')
+assert(/totalUnitOptionsForRate\(r\.rateUnit\)\.map\(u => \(\s*\n?\s*<option key=\{u\.value\}/.test(SHEET),
+  'Total unit <select> maps compatible unit options to <option>')
 
-// Rate unit select wires editRateUnit; total unit wires patchDraftRow
-// (no auto-calc on total-unit change — that would be lossy).
+// Rate unit select wires editRateUnit; total unit wires editTotalUnit so
+// whichever side the user last touched stays in sync.
 assert(/onChange=\{e => editRateUnit\(i, e\.target\.value\)\}/.test(SHEET),
   'Rate unit select onChange wires editRateUnit')
-assert(/onChange=\{e => patchDraftRow\(i, \{ unit: e\.target\.value \}\)\}/.test(SHEET),
-  'Total unit select onChange wires patchDraftRow({ unit })')
+assert(/onChange=\{e => editTotalUnit\(i, e\.target\.value\)\}/.test(SHEET),
+  'Total unit select onChange wires editTotalUnit')
 
 // ── Area sprayed read-only field ──────────────────────────────────
 section('Area sprayed — read-only display per row')
@@ -294,8 +301,9 @@ for (const cls of ['chemEditCard', 'chemTopRow', 'chemTopField', 'chemTopFieldNa
 // ── Save payload mapping ──────────────────────────────────────────
 section('Save payload — totalUsed → quantityUsed; rate → formatRateLabel')
 
-assert(/quantityUsed:\s+r\.totalUsed === '' \|\| r\.totalUsed == null \? null : Number\(r\.totalUsed\)/.test(SHEET),
-  'payload quantityUsed comes from r.totalUsed (renamed in-editor)')
+assert(/const normalized = quantityForInventory\(r, inv\)/.test(SHEET) &&
+  /const quantityUsed = r\.totalUsed === '' \|\| r\.totalUsed == null[\s\S]*?\? null[\s\S]*?: normalized\.quantityUsed/.test(SHEET),
+  'payload quantityUsed comes from normalized totalUsed in inventory units')
 assert(/rate:\s+r\.rate === '' \|\| r\.rate == null \? null : formatRateLabel\(r\.rate, r\.rateUnit\)/.test(SHEET),
   'payload rate formatted via formatRateLabel(r.rate, r.rateUnit)')
 assert(/rateUnit:\s+r\.rateUnit \?\? null/.test(SHEET),

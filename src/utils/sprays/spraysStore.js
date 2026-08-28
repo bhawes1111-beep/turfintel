@@ -7,8 +7,10 @@
 import { useSyncExternalStore } from 'react'
 import { withCourseScope, subscribeCourseChange, getSelectedCourseId } from '../courses/courseStore'
 import { mutationHeaders } from '../auth/mutationAuth'
+import { refreshInventoryData } from '../inventory/inventoryStore'
 
 const API = '/api/sprays'
+const BOARD_API = '/api/display-board/sprays'
 
 
 let state = {
@@ -36,6 +38,14 @@ async function fetchJSON(url, init) {
     throw new Error(`${init?.method ?? 'GET'} ${url} → ${res.status} ${text}`)
   }
   return res.json()
+}
+
+export async function fetchDisplayBoardSprays({ courseId = null, date = null } = {}) {
+  const params = new URLSearchParams()
+  if (courseId) params.set('courseId', courseId)
+  if (date) params.set('date', date)
+  const query = params.toString()
+  return fetchJSON(`${BOARD_API}${query ? `?${query}` : ''}`)
 }
 
 export async function refreshSpraysData() {
@@ -71,6 +81,7 @@ export async function patchSpray(id, updates) {
     // joined products + areas), so this single setState is enough —
     // useSpraysData() subscribers re-render with the saved data.
     setState({ records: state.records.map(r => r.id === id ? saved : r) })
+    await refreshInventoryData()
     // Phase S.7b.4 — Belt-and-suspenders refresh when products were
     // edited. If the worker's hydrated response ever drifts from the
     // canonical list response (e.g. soft-delete state, snapshot
@@ -98,6 +109,7 @@ export async function createSpray(payload) {
       body:    JSON.stringify({ courseId: getSelectedCourseId(), ...payload }),
     })
     setState({ records: [saved, ...state.records] })
+    await refreshInventoryData()
     return saved
   } catch (err) {
     setState({ error: err.message })
@@ -113,6 +125,7 @@ export async function deleteSpray(id) {
       method:  'DELETE',
       headers: mutationHeaders(),
     })
+    await refreshInventoryData()
   } catch (err) {
     setState({ error: err.message })
     refreshSpraysData()
@@ -131,6 +144,10 @@ function subscribe(cb) {
   return () => subscribers.delete(cb)
 }
 
+function subscribeDisabled() {
+  return () => {}
+}
+
 function getSnapshot() { return state }
 
 /**
@@ -142,6 +159,10 @@ function getSnapshot() { return state }
  * exposed pre-5.3 (with one addition: products[].inventoryItemId for the
  * cross-module deduction link).
  */
-export function useSpraysData() {
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+export function useSpraysData({ enabled = true } = {}) {
+  return useSyncExternalStore(
+    enabled ? subscribe : subscribeDisabled,
+    getSnapshot,
+    getSnapshot,
+  )
 }

@@ -25,6 +25,10 @@ import styles   from './InventoryCatalog.module.css'
 
 const ALL = 'All'
 
+const formatCategory = value => String(value ?? '')
+  .replace(/_/g, ' ')
+  .replace(/\b\w/g, character => character.toUpperCase())
+
 export default function InventoryCatalog({ initialSelectedId = null, onConsumeSeed } = {}) {
   const { products, loading, error } = useProductCatalog()
 
@@ -151,7 +155,7 @@ export default function InventoryCatalog({ initialSelectedId = null, onConsumeSe
               .filter(Boolean)
               .filter((v, i, a) => a.indexOf(v) === i)   // dedupe brand==mfr
               .join(' · ') || null}
-            status={<span className={styles.categoryPill}>{selected.category}</span>}
+            status={<span className={styles.categoryPill}>{formatCategory(selected.category)}</span>}
             onClose={() => setSelectedId(null)}
           />
           <SideDrawer.Body>
@@ -175,7 +179,7 @@ function FilterRow({ label, options, value, onChange }) {
           className={`${inv.filterBtn} ${value === opt ? inv.filterBtnActive : ''}`}
           onClick={() => onChange(opt)}
         >
-          {opt}
+          {opt === ALL ? opt : formatCategory(opt)}
         </button>
       ))}
     </div>

@@ -155,3 +155,11 @@ export async function updateTaskTemplate(env, id, request) {
 // Hard delete would orphan historical assignments that pointed at the
 // template's generated calendar_event; we intentionally preserve the
 // row so the supervisor can reactivate or rename rather than recreate.
+
+export async function deleteTaskTemplate(env, id) {
+  const result = await env.DB.prepare(
+    'DELETE FROM task_templates WHERE id = ?',
+  ).bind(id).run()
+  if (!result.success || result.meta.changes === 0) return notFound('Task template not found')
+  return json({ ok: true, id })
+}

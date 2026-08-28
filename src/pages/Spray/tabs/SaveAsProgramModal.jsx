@@ -154,7 +154,6 @@ export default function SaveAsProgramModal({
   return (
     <div
       className={styles.modalOverlay}
-      onClick={() => { if (!busy) onClose() }}
       role="dialog"
       aria-modal="true"
       aria-label="Save spray sheet as planned spray"

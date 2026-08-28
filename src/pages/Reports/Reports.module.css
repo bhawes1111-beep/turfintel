@@ -4,6 +4,375 @@
   gap: 20px;
 }
 
+.ownerReportCard {
+  background: linear-gradient(180deg, rgba(74,158,74,0.08), rgba(74,158,74,0.035));
+  border: 1px solid rgba(74,158,74,0.28);
+  border-radius: 8px;
+  padding: 18px;
+  margin-bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ownerReportHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.ownerReportTitle {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--color-text);
+  margin-top: 8px;
+}
+
+.ownerReportBtn {
+  background: rgba(34,197,94,0.14);
+  border: 1px solid rgba(34,197,94,0.42);
+  border-radius: 6px;
+  color: var(--color-accent);
+  font-size: 0.78rem;
+  font-weight: 750;
+  padding: 9px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ownerReportBtn:hover:not(:disabled) {
+  background: rgba(34,197,94,0.22);
+  border-color: rgba(34,197,94,0.65);
+}
+
+.ownerReportBtn:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+
+.ownerReportControls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(180px, 240px));
+  gap: 12px;
+}
+
+.ownerField,
+.ownerNotes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--color-text-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ownerField input,
+.ownerNotes textarea {
+  width: 100%;
+  background: rgba(2, 13, 6, 0.72);
+  border: 1px solid rgba(74,158,74,0.28);
+  border-radius: 6px;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  padding: 9px 11px;
+}
+
+.ownerField input:focus,
+.ownerNotes textarea:focus {
+  outline: none;
+  border-color: rgba(34,197,94,0.75);
+  box-shadow: 0 0 0 2px rgba(34,197,94,0.12);
+}
+
+.ownerNotes textarea {
+  min-height: 82px;
+  resize: vertical;
+}
+
+.ownerPhotosPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 2px;
+}
+
+.ownerPhotosHeader,
+.ownerPhotoGroupHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ownerPhotosHeader {
+  color: var(--color-text-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ownerPhotoGroups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.ownerPhotoGroup {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(74,158,74,0.24);
+  border-radius: 7px;
+  background: rgba(0,18,8,0.3);
+}
+
+.ownerPhotoGroupHeader strong {
+  color: var(--color-text);
+  font-size: 0.78rem;
+}
+
+.ownerPhotoAdd {
+  position: relative;
+  overflow: hidden;
+  padding: 6px 9px;
+  border: 1px solid rgba(34,197,94,0.42);
+  border-radius: 5px;
+  color: var(--color-accent);
+  font-size: 0.68rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.ownerPhotoAdd input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.ownerPhotoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.ownerPhotoCard {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  padding: 7px;
+  border: 1px solid rgba(74,158,74,0.2);
+  border-radius: 6px;
+  background: rgba(255,255,255,0.025);
+}
+
+.ownerPhotoCard img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.ownerPhotoCard input {
+  min-width: 0;
+  width: 100%;
+  padding: 6px 7px;
+  border: 1px solid rgba(74,158,74,0.25);
+  border-radius: 4px;
+  background: rgba(2,13,6,0.72);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.7rem;
+}
+
+.ownerPhotoCard button {
+  border: 1px solid rgba(239,68,68,0.45);
+  border-radius: 4px;
+  background: rgba(239,68,68,0.1);
+  color: #fca5a5;
+  padding: 5px 7px;
+  font: inherit;
+  font-size: 0.66rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ownerPhotoEmpty {
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+  padding: 8px 2px;
+}
+
+.ownerPhotoError {
+  color: #fca5a5;
+  font-size: 0.72rem;
+}
+
+.ownerPhotoLibrary {
+  display: grid;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(74,158,74,0.2);
+}
+
+.ownerPhotoLibraryHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ownerPhotoLibraryHeader > div {
+  display: grid;
+  gap: 3px;
+}
+
+.ownerPhotoLibraryHeader strong {
+  color: var(--color-text);
+  font-size: 0.78rem;
+}
+
+.ownerPhotoLibraryHeader span {
+  color: var(--color-text-muted);
+  font-size: 0.68rem;
+}
+
+.ownerPhotoLibraryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 8px;
+}
+
+.ownerPhotoLibraryItem {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid rgba(74,158,74,0.22);
+  border-radius: 6px;
+  background: rgba(255,255,255,0.025);
+}
+
+.ownerPhotoLibraryItem img {
+  width: 64px;
+  height: 64px;
+  grid-row: span 2;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.ownerPhotoLibraryBody {
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  gap: 3px;
+}
+
+.ownerPhotoLibraryBody input,
+.ownerPhotoLibraryBody span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ownerPhotoLibraryBody input {
+  min-width: 0;
+  width: 100%;
+  padding: 5px 6px;
+  border: 1px solid rgba(74,158,74,0.25);
+  border-radius: 4px;
+  background: rgba(2,13,6,0.72);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.7rem;
+}
+
+.ownerPhotoLibraryBody input:focus {
+  outline: none;
+  border-color: rgba(34,197,94,0.75);
+  box-shadow: 0 0 0 2px rgba(34,197,94,0.1);
+}
+
+.ownerPhotoLibraryBody span {
+  color: var(--color-text-muted);
+  font-size: 0.64rem;
+}
+
+.ownerPhotoLibraryActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+}
+
+.ownerPhotoLibraryActions button {
+  min-height: 28px;
+  padding: 4px 7px;
+  border-radius: 4px;
+  font: inherit;
+  font-size: 0.62rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.ownerPhotoLibraryActions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.ownerPhotoUse {
+  border: 1px solid rgba(34,197,94,0.42);
+  background: rgba(34,197,94,0.1);
+  color: var(--color-accent);
+}
+
+.ownerPhotoRename {
+  border: 1px solid rgba(105,183,239,0.42);
+  background: rgba(105,183,239,0.09);
+  color: #8dcbf4;
+}
+
+.ownerPhotoDelete {
+  border: 1px solid rgba(239,68,68,0.4);
+  background: transparent;
+  color: #fca5a5;
+}
+
+.ownerSectionPicker {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 8px;
+}
+
+.ownerCheckTile {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid rgba(74,158,74,0.24);
+  border-radius: 6px;
+  background: rgba(0, 18, 8, 0.36);
+  color: var(--color-text);
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 9px 11px;
+}
+
+.ownerCheckTile input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-accent);
+}
+
 .reportsGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -80,4 +449,10 @@
 
 @media (max-width: 600px) {
   .reportsGrid { grid-template-columns: 1fr; }
+  .ownerReportHeader { flex-direction: column; }
+  .ownerReportBtn { width: 100%; }
+  .ownerReportControls { grid-template-columns: 1fr; }
+  .ownerSectionPicker { grid-template-columns: 1fr; }
+  .ownerPhotoGroups { grid-template-columns: 1fr; }
+  .ownerPhotoLibraryGrid { grid-template-columns: 1fr; }
 }

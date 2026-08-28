@@ -248,6 +248,162 @@
   background: var(--color-card-hover);
 }
 
+.partsValueSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(74, 222, 128, 0.28);
+  border-left: 3px solid #4ade80;
+  border-radius: 6px;
+  background: rgba(34, 197, 94, 0.07);
+}
+
+.partsValueSummary > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.partsValueLabel {
+  color: var(--color-text-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.partsValueAmount {
+  color: #86efac;
+  font-size: 1.35rem;
+  line-height: 1.1;
+}
+
+.partsValueCoverage {
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  text-align: right;
+}
+
+.moneyHeader,
+.moneyCell {
+  text-align: right !important;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.moneyCell {
+  font-weight: 700;
+}
+
+.auditSetupHeader,
+.auditGenerateBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border: 1px solid rgba(74, 158, 74, 0.2);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.auditSetupHeader strong { color: #4ade80; font-size: 20px; }
+.auditSetupHeader span,
+.auditGenerateBar span { color: var(--color-text-muted); font-size: 12px; }
+
+.auditSetupActions { display: flex; gap: 7px; }
+.auditSetupActions button,
+.auditGenerateBar button {
+  min-height: 32px;
+  padding: 6px 12px;
+  border: 1px solid rgba(74, 222, 128, 0.34);
+  border-radius: 6px;
+  background: rgba(34, 197, 94, 0.1);
+  color: #86efac;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.auditGenerateBar button { background: #2f8a43; color: #fff; }
+.auditGenerateBar button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.auditOptionGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.auditOption {
+  min-width: 0;
+  min-height: 76px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  padding: 12px;
+  border: 1px solid rgba(74, 158, 74, 0.18);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+}
+
+.auditOption[data-selected='true'] {
+  border-color: rgba(74, 222, 128, 0.42);
+  background: rgba(34, 197, 94, 0.09);
+}
+
+.auditOption input { width: 17px; height: 17px; accent-color: #35a84f; }
+.auditOptionText { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.auditOptionText strong { color: var(--color-text); font-size: 13px; }
+.auditOptionText small { color: var(--color-text-muted); font-size: 10.5px; line-height: 1.35; }
+.auditOptionCount {
+  min-width: 30px;
+  padding: 5px 7px;
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.18);
+  color: #4ade80;
+  font-weight: 800;
+  text-align: center;
+}
+
+.auditError { color: #fca5a5; }
+
+@media (max-width: 640px) {
+  .auditSetupHeader,
+  .auditGenerateBar { align-items: stretch; flex-direction: column; }
+  .auditGenerateBar button { width: 100%; }
+  .partsValueSummary { align-items: flex-start; flex-direction: column; }
+  .partsValueCoverage { text-align: left; }
+}
+
+.chemicalTable {
+  min-width: 440px;
+}
+
+.chemicalRow {
+  cursor: pointer;
+}
+
+.chemicalRow:focus {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.chemicalName {
+  color: var(--color-text);
+  font-size: 0.86rem;
+}
+
+.chemicalUnit {
+  color: var(--color-text-muted);
+  font-size: 0.76rem;
+}
+
 .partNumber {
   font-family: monospace;
   font-size: 0.78rem;
@@ -641,6 +797,17 @@
   margin-right: 10px;
 }
 
+.ipCardContainer {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  opacity: 0.85;
+}
+
+.ipCardContainer::before {
+  content: '·';
+  margin-right: 10px;
+}
+
 /* ── Stock bar (inline on card) ───────────────────────────────────────────── */
 
 .ipBarWrap {
@@ -920,57 +1087,11 @@
   .ipModalHeaderRight { gap: 6px; }
 }
 
-/* ── Phase 9B.2 — Crosswinds Inventory "More" inner secondary tab row ────
-   Pill-row mounted inside the More tab body. Non-Crosswinds courses
-   never see these classes (the legacy 11-tab branch never renders
-   the More tab). Mirrors the Phase 9B.1 Spray pattern so both
-   workspaces feel consistent on phones and TVs. */
-
-.moreInner {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.moreNav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 6px 0 10px 0;
-  border-bottom: 1px solid rgba(74, 158, 74, 0.18);
-}
-
-.moreNavBtn {
-  appearance: none;
-  background: rgba(4, 12, 6, 0.6);
-  color: rgba(212, 237, 212, 0.78);
-  border: 1px solid rgba(74, 158, 74, 0.22);
-  border-radius: 999px;
-  padding: 6px 14px;
-  font-size: 13px;
-  font-family: inherit;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
-}
-.moreNavBtn:hover {
-  background: rgba(74, 158, 74, 0.12);
-  color: rgba(212, 237, 212, 0.95);
-}
-.moreNavBtn[data-active='true'] {
-  background: rgba(74, 222, 128, 0.16);
-  border-color: rgba(74, 222, 128, 0.55);
-  color: #4ade80;
-}
-
-@media (max-width: 600px) {
-  .moreNavBtn { font-size: 12px; padding: 5px 11px; }
-  .moreNav    { gap: 5px; }
-}
-
 /* Phase I.1 — Edit inventory quantity affordance (drawer + cards). */
 .ipModalEditRow {
   display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
   justify-content: flex-end;
   margin-bottom: 10px;
 }
@@ -990,8 +1111,20 @@
   border-color: rgba(74, 222, 128, 0.85);
 }
 
+.ipModalDeleteBtn {
+  background: rgba(239, 68, 68, 0.14);
+  border-color: rgba(239, 68, 68, 0.55);
+  color: rgba(254, 226, 226, 1);
+}
+
+.ipModalDeleteBtn:hover {
+  background: rgba(239, 68, 68, 0.24);
+  border-color: rgba(239, 68, 68, 0.85);
+}
+
 .cardEditBtnRow {
   display: flex;
+  gap: 8px;
   justify-content: flex-end;
   margin-top: 6px;
 }
@@ -1009,4 +1142,172 @@
 .cardEditBtn:hover {
   background: rgba(74, 222, 128, 0.32);
   border-color: rgba(74, 222, 128, 0.85);
+}
+
+.cardDeleteBtn {
+  background: rgba(239, 68, 68, 0.14);
+  border-color: rgba(239, 68, 68, 0.55);
+  color: rgba(254, 226, 226, 1);
+}
+
+.cardDeleteBtn:hover {
+  background: rgba(239, 68, 68, 0.24);
+  border-color: rgba(239, 68, 68, 0.85);
+}
+
+/* Purchase invoice intake and approval */
+.invoiceToolbar,
+.invoiceSectionHeading,
+.invoiceCard > div,
+.invoiceCardFooter,
+.invoiceReviewHeader,
+.invoiceLinesHeader,
+.invoiceLineTop,
+.invoiceReviewFooter,
+.invoiceReviewFooter > div {
+  display: flex;
+  align-items: center;
+}
+
+.invoiceToolbar {
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  background: rgba(74, 158, 74, 0.05);
+  border-radius: 6px;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.invoicePrimaryBtn {
+  border: 1px solid rgba(74, 222, 128, 0.55) !important;
+  background: rgba(34, 197, 94, 0.2) !important;
+  color: #dcfce7 !important;
+  font-weight: 700;
+}
+
+.invoicePrimaryBtn:hover { background: rgba(34, 197, 94, 0.34) !important; }
+.invoicePrimaryBtn:disabled { opacity: 0.55; cursor: wait; }
+
+.invoiceError,
+.invoiceNotice {
+  padding: 10px 12px;
+  border-radius: 5px;
+  font-size: 0.78rem;
+}
+
+.invoiceError { color: #fecaca; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.35); }
+.invoiceNotice { color: #bfdbfe; background: rgba(59, 130, 246, 0.09); border: 1px solid rgba(59, 130, 246, 0.25); }
+
+.invoiceSection { margin-top: 24px; }
+.invoiceSectionHeading { justify-content: space-between; margin-bottom: 10px; }
+.invoiceSectionHeading h3 { margin: 0; font-size: 0.9rem; color: var(--color-text); }
+.invoiceSectionHeading p { margin: 3px 0 0; font-size: 0.72rem; color: var(--color-text-muted); }
+.invoiceSectionHeading > strong {
+  min-width: 30px;
+  padding: 5px 9px;
+  text-align: center;
+  border: 1px solid var(--color-border);
+  border-radius: 5px;
+  color: var(--color-accent);
+}
+
+.invoiceEmpty {
+  margin: 0;
+  padding: 28px;
+  text-align: center;
+  color: var(--color-text-muted);
+  border: 1px dashed var(--color-border);
+  border-radius: 6px;
+}
+
+.invoiceCardGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(265px, 1fr)); gap: 10px; }
+.invoiceCard {
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  background: rgba(255, 255, 255, 0.025);
+  border-radius: 6px;
+}
+.invoiceCard > div { justify-content: space-between; gap: 12px; }
+.invoiceCard > div + div { margin-top: 8px; }
+.invoiceCard b { color: var(--color-text); font-size: 0.85rem; }
+.invoiceCard span { color: var(--color-text-muted); font-size: 0.72rem; }
+.invoiceCard strong { color: var(--color-accent); }
+.invoiceCardFooter { border-top: 1px solid var(--color-border); padding-top: 10px; }
+.invoiceCardFooter button,
+.invoiceLinesHeader button,
+.invoiceReviewFooter button,
+.invoiceLineTop button {
+  border: 1px solid var(--color-border);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--color-text);
+  border-radius: 5px;
+  padding: 7px 11px;
+  cursor: pointer;
+}
+
+.invoiceReviewShell {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(0, 8, 2, 0.78);
+}
+.invoiceReviewPanel {
+  width: min(1100px, 100%);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(74, 222, 128, 0.35);
+  border-radius: 7px;
+  background: #0b1d0f;
+  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.55);
+}
+.invoiceReviewHeader { justify-content: space-between; gap: 12px; padding: 16px 18px; border-bottom: 1px solid var(--color-border); }
+.invoiceReviewHeader h2 { margin: 0; font-size: 1rem; color: var(--color-text); }
+.invoiceReviewHeader p { margin: 3px 0 0; font-size: 0.72rem; color: var(--color-text-muted); }
+.invoiceReviewHeader > button { width: 32px; height: 32px; border: 1px solid var(--color-border); border-radius: 5px; background: rgba(255,255,255,.05); color: var(--color-text); font-size: 1.2rem; cursor: pointer; }
+.invoiceReviewBody { overflow-y: auto; padding: 16px 18px; }
+.invoiceMetaGrid,
+.invoiceLineGrid { display: grid; grid-template-columns: repeat(4, minmax(130px, 1fr)); gap: 10px; }
+.invoiceMetaGrid { margin-top: 14px; }
+.invoiceMetaGrid label,
+.invoiceLineGrid label { display: flex; flex-direction: column; gap: 5px; color: var(--color-text-muted); font-size: 0.66rem; font-weight: 700; text-transform: uppercase; }
+.invoiceMetaGrid input,
+.invoiceLineGrid input,
+.invoiceLineGrid select {
+  min-width: 0;
+  width: 100%;
+  padding: 9px;
+  border: 1px solid var(--color-border);
+  border-radius: 5px;
+  background: #06120a;
+  color: var(--color-text);
+  font: inherit;
+  text-transform: none;
+}
+.invoicePdfLink { display: inline-block; margin-top: 12px; color: #86efac; font-size: 0.78rem; }
+.invoiceLinesHeader { justify-content: space-between; margin: 20px 0 8px; }
+.invoiceLinesHeader h3 { margin: 0; color: var(--color-text); font-size: 0.9rem; }
+.invoiceLineList { display: flex; flex-direction: column; gap: 10px; }
+.invoiceLine { padding: 12px; border: 1px solid var(--color-border); border-radius: 6px; background: rgba(255,255,255,.025); }
+.invoiceLineTop { justify-content: space-between; margin-bottom: 10px; }
+.invoiceInclude { display: flex; align-items: center; gap: 7px; color: #bbf7d0; font-size: 0.75rem; font-weight: 700; }
+.invoiceWide { grid-column: span 2; }
+.invoiceReviewFooter { justify-content: space-between; gap: 12px; padding: 12px 18px; border-top: 1px solid var(--color-border); }
+.invoiceReviewFooter > div { gap: 8px; }
+.invoiceDeleteBtn { color: #fecaca !important; border-color: rgba(239,68,68,.45) !important; }
+
+@media (max-width: 760px) {
+  .invoiceToolbar { align-items: flex-start; flex-direction: column; }
+  .invoiceReviewShell { padding: 0; place-items: stretch; }
+  .invoiceReviewPanel { width: 100%; max-height: 100dvh; height: 100dvh; border-radius: 0; }
+  .invoiceMetaGrid,
+  .invoiceLineGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .invoiceWide { grid-column: 1 / -1; }
+  .invoiceReviewFooter { align-items: stretch; flex-direction: column-reverse; }
+  .invoiceReviewFooter > div { display: grid; grid-template-columns: 1fr 2fr; }
 }

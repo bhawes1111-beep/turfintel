@@ -27,10 +27,15 @@ function parseCustomAreas(raw) {
     const parsed = JSON.parse(raw)
     if (!Array.isArray(parsed)) return []
     return parsed
-      .map(entry => ({
-        name:  typeof entry?.name === 'string' ? entry.name : '',
-        acres: Number.isFinite(entry?.acres) ? entry.acres : null,
-      }))
+      .map(entry => {
+        const acres = entry?.acres === '' || entry?.acres == null
+          ? null
+          : Number(entry.acres)
+        return {
+          name:  typeof entry?.name === 'string' ? entry.name : '',
+          acres: Number.isFinite(acres) ? acres : null,
+        }
+      })
       .filter(entry => entry.name.trim() !== '')
   } catch {
     return []

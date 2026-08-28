@@ -97,6 +97,8 @@ function EmployeeCard({ employee, onEdit, onDeactivate, onReactivate }) {
     employee.status === 'active'   ? styles.statusActive   :
     employee.status === 'on-leave' ? styles.statusOnLeave  :
                                      styles.statusInactive
+  const spanishEnabled = Boolean(employee.autoTranslateBoardNotes) && employee.boardLanguage === 'es'
+  const payLabel = formatPayLabel(employee)
 
   return (
     <div className={styles.card} role="group">
@@ -111,9 +113,15 @@ function EmployeeCard({ employee, onEdit, onDeactivate, onReactivate }) {
       {employee.hireDate && (
         <span className={styles.cardDept}>Hired {employee.hireDate}</span>
       )}
+      {spanishEnabled && (
+        <span className={styles.translationBadge}>Display Board Spanish</span>
+      )}
+      {employee.excludeFromPayroll && (
+        <span className={styles.payrollExcludedBadge}>Excluded from payroll</span>
+      )}
       <div className={styles.cardFooter}>
-        {typeof employee.payRate === 'number'
-          ? <span className={styles.payRate}>${employee.payRate.toFixed(2)}/hr<span className={styles.privateTag}>private</span></span>
+        {payLabel
+          ? <span className={styles.payRate}>{payLabel}<span className={styles.privateTag}>private</span></span>
           : <span className={styles.payRateMissing}>Pay rate not set</span>}
         <div style={{ display: 'flex', gap: 6 }}>
           <button type="button" className={styles.btnSecondary} onClick={onEdit}>Edit</button>
@@ -124,4 +132,13 @@ function EmployeeCard({ employee, onEdit, onDeactivate, onReactivate }) {
       </div>
     </div>
   )
+}
+
+function formatPayLabel(employee) {
+  if (employee?.hidePayRate) return 'Pay rate hidden'
+  if (employee?.payType === 'salary' && typeof employee.salaryAmount === 'number') {
+    return `$${employee.salaryAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })}/yr`
+  }
+  if (typeof employee?.payRate === 'number') return `$${employee.payRate.toFixed(2)}/hr`
+  return ''
 }

@@ -60,6 +60,7 @@ import {
 } from '../../../utils/schedules/shiftTemplatesStore'
 import { useToast } from '../../../utils/feedback/toastContext'
 import { buildScheduleByEmployeeForDate } from '../../../utils/schedules/dailyScheduleMerge'
+import { paidScheduleHoursForShift } from '../../../utils/schedules/scheduleHours'
 import styles from './AnnualScheduleCalendar.module.css'
 
 const STATUS_OPTS = [
@@ -107,20 +108,16 @@ function formatDayLabel(yyyymmdd) {
   const [y, m, d] = yyyymmdd.split('-').map(Number)
   return DAY_FORMATTER.format(new Date(y, m - 1, d, 12))
 }
+function formatApplyTargetLabel(dates) {
+  if (!dates || dates.length === 0) return 'selected day'
+  if (dates.length === 1) return formatDayLabel(dates[0])
+  return `${dates.length} selected days`
+}
 // Day-of-week from an ISO string (avoids constructing a UTC Date that
 // could shift the day across timezones).
 function dayOfWeek(yyyymmdd) {
   const [y, m, d] = yyyymmdd.split('-').map(Number)
   return new Date(y, m - 1, d, 12).getDay()
-}
-
-function diffHours(s, e) {
-  if (!s || !e) return 0
-  const [sh, sm] = s.split(':').map(Number)
-  const [eh, em] = e.split(':').map(Number)
-  if (![sh, sm, eh, em].every(Number.isFinite)) return 0
-  const a = sh * 60 + sm, b = eh * 60 + em
-  return b > a ? (b - a) / 60 : 0
 }
 
 // Build the 6-week month grid. Cells before the 1st and after the last
@@ -148,7 +145,7 @@ function summarizeRows(rows) {
   for (const r of rows ?? []) {
     if (r.status === 'scheduled') {
       scheduled++
-      hours += diffHours(r.startTime, r.endTime)
+      hours += paidScheduleHoursForShift(r)
     } else {
       off++
     }
@@ -165,6 +162,8 @@ export default function AnnualScheduleCalendar() {
 
   const [currentMonth, setCurrentMonth] = useState(() => todayIso().slice(0, 7))
   const [selectedDate, setSelectedDate] = useState(todayIso)
+  const [multiSelectMode, setMultiSelectMode] = useState(false)
+  const [selectedDates, setSelectedDates] = useState([])
   const [busy, setBusy]                 = useState(false)
   const [dragSource, setDragSource]     = useState(null)
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false)
@@ -200,7 +199,7 @@ export default function AnnualScheduleCalendar() {
         if (!eff) continue
         if (eff.status === 'scheduled') {
           scheduled += 1
-          hours += diffHours(eff.startTime, eff.endTime)
+          hours += paidScheduleHoursForShift(eff)
         } else {
           off += 1
         }
@@ -226,6 +225,10 @@ export default function AnnualScheduleCalendar() {
         status:       eff?.status ?? 'scheduled',
         startTime:    eff?.startTime ?? null,
         endTime:      eff?.endTime   ?? null,
+        lunchBreakMinutes: eff?.lunchBreakMinutes ?? 30,
+        lunchStartTime: eff?.lunchStartTime ?? null,
+        lunchEndTime: eff?.lunchEndTime ?? null,
+        autoLunchBreak: eff?.autoLunchBreak !== false,
         notes:        eff?.notes     ?? '',
         source:       eff?.source ?? 'none',
         overrideId:   eff?.overrideId ?? null,
@@ -233,13 +236,27 @@ export default function AnnualScheduleCalendar() {
     })
   }, [activeEmployees, weeklySchedules, scheduleOverrides, selectedDate])
 
+  const applyTargetDates = useMemo(() => (
+    selectedDates.length > 0 ? [...selectedDates].sort() : [selectedDate]
+  ), [selectedDate, selectedDates])
+
+  const applyTargetDateSet = useMemo(() => new Set(applyTargetDates), [applyTargetDates])
+  const applyTargetLabel = useMemo(() => formatApplyTargetLabel(applyTargetDates), [applyTargetDates])
+  const targetDatesHaveOverrides = useMemo(() => (
+    scheduleOverrides.some(o => applyTargetDateSet.has(o.effectiveDate))
+  ), [scheduleOverrides, applyTargetDateSet])
+
   // ── Day editor row mutations ────────────────────────────────────────
   async function applyEdit(row, patch) {
     setBusy(true)
     try {
       const payload = {
-        startTime: patch.startTime ?? row.startTime ?? null,
-        endTime:   patch.endTime   ?? row.endTime   ?? null,
+        startTime: Object.hasOwn(patch, 'startTime') ? patch.startTime : (row.startTime ?? null),
+        endTime: Object.hasOwn(patch, 'endTime') ? patch.endTime : (row.endTime ?? null),
+        lunchBreakMinutes: Object.hasOwn(patch, 'lunchBreakMinutes') ? patch.lunchBreakMinutes : (row.lunchBreakMinutes ?? 30),
+        lunchStartTime: Object.hasOwn(patch, 'lunchStartTime') ? patch.lunchStartTime : (row.lunchStartTime ?? null),
+        lunchEndTime: Object.hasOwn(patch, 'lunchEndTime') ? patch.lunchEndTime : (row.lunchEndTime ?? null),
+        autoLunchBreak: patch.autoLunchBreak ?? row.autoLunchBreak ?? true,
         role:      patch.role      ?? row.role      ?? null,
         status:    patch.status    ?? row.status    ?? 'scheduled',
         notes:     patch.notes     ?? row.notes     ?? null,
@@ -295,13 +312,33 @@ export default function AnnualScheduleCalendar() {
   }
 
   // ── Calendar tile interactions ──────────────────────────────────────
-  function handleSelectDate(date) {
+  function focusCalendarDate(date) {
     if (!date) return
     setSelectedDate(date)
     // Phase E.6 — Snap to the month of the clicked date so picking a
     // day on a leading/trailing blank actually navigates the calendar.
     const month = date.slice(0, 7)
     if (month !== currentMonth) setCurrentMonth(month)
+  }
+
+  function handleSelectDate(date) {
+    focusCalendarDate(date)
+    if (multiSelectMode) {
+      setSelectedDates(prev => {
+        if (prev.includes(date)) return prev.filter(d => d !== date)
+        return [...prev, date].sort()
+      })
+    }
+  }
+
+  function handleToggleMultiSelect() {
+    const next = !multiSelectMode
+    setMultiSelectMode(next)
+    if (next) {
+      setSelectedDates(prev => (prev.includes(selectedDate) ? prev : [...prev, selectedDate].sort()))
+    } else {
+      setSelectedDates([])
+    }
   }
 
   function handleDragStart(date) {
@@ -383,12 +420,21 @@ export default function AnnualScheduleCalendar() {
     // browser confirm() per click. Keeps the modal flow snappy.
     setBusy(true)
     try {
-      const result = await applyShiftTemplate(templateId, { effectiveDate: selectedDate, replace: replaceConfirmed })
+      const dates = applyTargetDates
+      const totals = { templateName: '', applied: 0, replaced: 0, skipped: 0 }
+      for (const effectiveDate of dates) {
+        const result = await applyShiftTemplate(templateId, { effectiveDate, replace: replaceConfirmed })
+        totals.templateName = result.templateName || totals.templateName
+        totals.applied += Number(result.applied ?? 0)
+        totals.replaced += Number(result.replaced ?? 0)
+        totals.skipped += Number(result.skipped ?? 0)
+      }
       await refreshScheduleOverridesData()
+      const targetLabel = formatApplyTargetLabel(dates)
       toast.success(
-        `Applied "${result.templateName}" to ${selectedDate}: ${result.applied} applied${
-          result.replaced ? ` · ${result.replaced} replaced` : ''
-        }${result.skipped ? ` · ${result.skipped} skipped` : ''}`,
+        `Applied "${totals.templateName}" to ${targetLabel}: ${totals.applied} applied${
+          totals.replaced ? ` · ${totals.replaced} replaced` : ''
+        }${totals.skipped ? ` · ${totals.skipped} skipped` : ''}`,
       )
       setTemplatePickerOpen(false)
     } catch (err) {
@@ -430,21 +476,27 @@ export default function AnnualScheduleCalendar() {
           status:     r.status,
           startTime:  r.startTime,
           endTime:    r.endTime,
+          lunchBreakMinutes: r.lunchBreakMinutes ?? 30,
+          lunchStartTime: r.lunchStartTime ?? null,
+          lunchEndTime: r.lunchEndTime ?? null,
+          autoLunchBreak: r.autoLunchBreak !== false,
           role:       r.role,
           notes:      r.notes || null,
           sortOrder:  i * 10,
-        }))
+      }))
       if (mode === 'update' && targetId) {
-        await patchShiftTemplate(targetId, { rows })
+        const saved = await patchShiftTemplate(targetId, { rows })
+        const propagatedCount = saved?.propagatedDates?.length ?? 0
+        toast.success(
+          propagatedCount > 0
+            ? `Updated "${trimmed}" and refreshed ${propagatedCount} applied date${propagatedCount !== 1 ? 's' : ''}`
+            : `Updated "${trimmed}" with ${rows.length} row(s) from ${selectedDate}`,
+        )
       } else {
         await createShiftTemplate({ name: trimmed, rows })
+        toast.success(`Saved "${trimmed}" shift (${rows.length} rows)`)
       }
       await refreshShiftTemplatesData()
-      toast.success(
-        mode === 'update'
-          ? `Updated "${trimmed}" with ${rows.length} row(s) from ${selectedDate}`
-          : `Saved "${trimmed}" shift (${rows.length} rows)`,
-      )
       setShowSaveAsOpen(false)
     } catch (err) {
       toast.error(`Save shift failed: ${err.message}`)
@@ -491,6 +543,10 @@ export default function AnnualScheduleCalendar() {
           status:     'scheduled',
           startTime:  def.startTime,
           endTime:    def.endTime,
+          lunchBreakMinutes: 30,
+          lunchStartTime: null,
+          lunchEndTime: null,
+          autoLunchBreak: true,
           role:       emp.role ?? null,
           notes:      null,
           sortOrder:  i * 10,
@@ -570,7 +626,7 @@ export default function AnnualScheduleCalendar() {
           <button type="button" onClick={() => setCurrentMonth(m => shiftMonth(m, -1))} className={styles.navBtn} aria-label="Previous month">‹</button>
           <span className={styles.currentMonth} title={currentMonth}>{formatMonthLabel(currentMonth)}</span>
           <button type="button" onClick={() => setCurrentMonth(m => shiftMonth(m, 1))} className={styles.navBtn} aria-label="Next month">›</button>
-          <button type="button" onClick={() => { setCurrentMonth(todayIso().slice(0, 7)); setSelectedDate(todayIso()) }} className={styles.todayBtn}>Today</button>
+          <button type="button" onClick={() => focusCalendarDate(todayIso())} className={styles.todayBtn}>Today</button>
           {/* Phase E.6 — Jump-to-date input. Beats prev/next clicks
               when navigating months apart. Snaps both currentMonth
               AND selectedDate to whatever the user picks. */}
@@ -582,14 +638,33 @@ export default function AnnualScheduleCalendar() {
               onChange={e => {
                 const next = e.target.value
                 if (!next) return
-                setSelectedDate(next)
-                setCurrentMonth(next.slice(0, 7))
+                focusCalendarDate(next)
               }}
               aria-label="Jump to date"
             />
           </label>
         </div>
       </header>
+
+      <div className={styles.batchToolbar}>
+        <button
+          type="button"
+          className={styles.actionBtn}
+          data-active={multiSelectMode ? 'true' : undefined}
+          onClick={handleToggleMultiSelect}
+          disabled={busy}
+        >
+          {multiSelectMode ? 'Multi-select On' : 'Select Multiple Days'}
+        </button>
+        <span className={styles.batchTarget} title={applyTargetDates.join(', ')}>
+          {selectedDates.length > 0 ? `${selectedDates.length} days selected` : `Applies to ${formatDayLabel(selectedDate)}`}
+        </span>
+        {selectedDates.length > 0 && (
+          <button type="button" className={styles.actionBtn} onClick={() => setSelectedDates([])} disabled={busy}>
+            Clear Selection
+          </button>
+        )}
+      </div>
 
       {/* ── Calendar grid ── */}
       <div className={styles.calendarGrid} role="grid" aria-label="Month calendar">
@@ -600,6 +675,7 @@ export default function AnnualScheduleCalendar() {
           if (!cell.date) return <div key={`blank-${i}`} className={styles.blankTile} />
           const summary = summaryByDate.get(cell.date)
           const isSelected = cell.date === selectedDate
+          const isMultiSelected = selectedDates.includes(cell.date)
           const isToday    = cell.date === todayIso()
           const isDragSource = dragSource === cell.date
           const dow        = dayOfWeek(cell.date)
@@ -611,6 +687,7 @@ export default function AnnualScheduleCalendar() {
               key={cell.date}
               className={styles.dayTile}
               data-selected={isSelected ? 'true' : undefined}
+              data-selected-multi={isMultiSelected ? 'true' : undefined}
               data-today={isToday ? 'true' : undefined}
               data-weekend={isWeekend ? 'true' : undefined}
               data-drag-source={isDragSource ? 'true' : undefined}
@@ -621,6 +698,7 @@ export default function AnnualScheduleCalendar() {
               onDragOver={handleDragOver}
               onDrop={() => handleDrop(cell.date)}
               onClick={() => handleSelectDate(cell.date)}
+              aria-pressed={multiSelectMode ? isMultiSelected : isSelected}
             >
               <div className={styles.dayNumber}>{dayNum}</div>
               {summary && (
@@ -631,7 +709,7 @@ export default function AnnualScheduleCalendar() {
                     <span className={styles.dayCountScheduled}>{summary.scheduledCount} working</span>
                   )}
                   {summary.totalHours > 0 && (
-                    <span className={styles.dayHours}>{summary.totalHours} hrs</span>
+                    <span className={styles.dayHours}>{summary.totalHours} paid hrs</span>
                   )}
                   {summary.offCount > 0 && (
                     <span className={styles.dayCountOff}>{summary.offCount} out</span>
@@ -710,6 +788,9 @@ export default function AnnualScheduleCalendar() {
               <th>Status</th>
               <th>Start</th>
               <th>End</th>
+              <th>Lunch Out</th>
+              <th>Lunch In</th>
+              <th>Auto 30</th>
               <th>Notes</th>
               <th>Source</th>
             </tr>
@@ -717,7 +798,7 @@ export default function AnnualScheduleCalendar() {
           <tbody>
             {selectedDayRows.length === 0 ? (
               <tr>
-                <td colSpan={7} className={styles.editorEmpty}>
+                <td colSpan={10} className={styles.editorEmpty}>
                   No active employees. Add crew in Employee Management to start scheduling.
                 </td>
               </tr>
@@ -739,19 +820,35 @@ export default function AnnualScheduleCalendar() {
                   <input
                     type="time"
                     className={styles.editorTimeInput}
-                    value={row.startTime ?? ''}
+                    key={`${selectedDate}:${row.employeeId}:start`}
+                    defaultValue={row.startTime ?? ''}
                     disabled={busy || row.status !== 'scheduled'}
-                    onChange={e => applyEdit(row, { startTime: e.target.value || null })}
+                    onBlur={e => {
+                      const next = e.target.value || null
+                      if (next !== (row.startTime ?? null)) applyEdit(row, { startTime: next })
+                    }}
                   />
                 </td>
                 <td>
                   <input
                     type="time"
                     className={styles.editorTimeInput}
-                    value={row.endTime ?? ''}
+                    key={`${selectedDate}:${row.employeeId}:end`}
+                    defaultValue={row.endTime ?? ''}
                     disabled={busy || row.status !== 'scheduled'}
-                    onChange={e => applyEdit(row, { endTime: e.target.value || null })}
+                    onBlur={e => {
+                      const next = e.target.value || null
+                      if (next !== (row.endTime ?? null)) applyEdit(row, { endTime: next })
+                    }}
                   />
+                </td>
+                <td><input key={`${selectedDate}:${row.employeeId}:lunch-out`} type="time" className={styles.editorTimeInput} defaultValue={row.lunchStartTime ?? ''} disabled={busy || row.status !== 'scheduled' || row.autoLunchBreak !== false} onBlur={e => { const next = e.target.value || null; if (next !== (row.lunchStartTime ?? null)) applyEdit(row, { lunchStartTime: next }) }} aria-label={`Lunch out for ${row.employeeName}`} /></td>
+                <td><input key={`${selectedDate}:${row.employeeId}:lunch-in`} type="time" className={styles.editorTimeInput} defaultValue={row.lunchEndTime ?? ''} disabled={busy || row.status !== 'scheduled' || row.autoLunchBreak !== false} onBlur={e => { const next = e.target.value || null; if (next !== (row.lunchEndTime ?? null)) applyEdit(row, { lunchEndTime: next }) }} aria-label={`Lunch in for ${row.employeeName}`} /></td>
+                <td>
+                  <label className={styles.lunchToggle}>
+                    <input type="checkbox" checked={row.autoLunchBreak !== false} disabled={busy || row.status !== 'scheduled'} onChange={e => applyEdit(row, { autoLunchBreak: e.target.checked, lunchBreakMinutes: e.target.checked ? 30 : 0 })} />
+                    <span>30 min</span>
+                  </label>
                 </td>
                 <td>
                   <input
@@ -786,8 +883,9 @@ export default function AnnualScheduleCalendar() {
         <TemplatePickerModal
           templates={shiftTemplates}
           activeEmployees={activeEmployees}
-          selectedDate={selectedDate}
-          destHasOverrides={scheduleOverrides.some(o => o.effectiveDate === selectedDate)}
+          targetDateLabel={applyTargetLabel}
+          targetDateCount={applyTargetDates.length}
+          destHasOverrides={targetDatesHaveOverrides}
           busy={busy}
           onClose={() => setTemplatePickerOpen(false)}
           onApply={handleApplyTemplate}
@@ -859,7 +957,8 @@ export default function AnnualScheduleCalendar() {
 function TemplatePickerModal({
   templates,
   activeEmployees,
-  selectedDate,
+  targetDateLabel,
+  targetDateCount,
   destHasOverrides,
   busy,
   onClose,
@@ -901,10 +1000,10 @@ function TemplatePickerModal({
   const canApply       = !!activeId && !busy && !isEmpty && !loadingPreview
 
   return (
-    <div className={styles.modalOverlay} onClick={onClose}>
+    <div className={styles.modalOverlay}>
       <div className={`${styles.modal} ${styles.modalWide}`} onClick={e => e.stopPropagation()}>
         <header className={styles.modalHeader}>
-          <h3 className={styles.modalTitle}>Apply Shift to {selectedDate}</h3>
+          <h3 className={styles.modalTitle}>Apply Shift to {targetDateLabel}</h3>
           <button type="button" className={styles.modalClose} onClick={onClose}>×</button>
         </header>
 
@@ -973,7 +1072,7 @@ function TemplatePickerModal({
                         <dd>{preview.off}</dd>
                       </div>
                       <div>
-                        <dt>Total hours</dt>
+                        <dt>Paid hours</dt>
                         <dd>{preview.totalHours}h</dd>
                       </div>
                     </dl>
@@ -1031,8 +1130,8 @@ function TemplatePickerModal({
                           disabled={busy}
                         />
                         <span>
-                          <strong>{selectedDate} already has overrides.</strong>{' '}
-                          Replace them with this shift (existing overrides for that date will be deleted first).
+                          <strong>{targetDateCount > 1 ? 'One or more selected days already have overrides.' : `${targetDateLabel} already has overrides.`}</strong>{' '}
+                          Replace them with this shift (existing overrides for those dates will be deleted first).
                         </span>
                       </label>
                     )}
@@ -1044,7 +1143,7 @@ function TemplatePickerModal({
                         disabled={!canApply}
                         onClick={() => onApply(activeId, replace)}
                       >
-                        {busy ? 'Applying…' : 'Apply to ' + selectedDate}
+                        {busy ? 'Applying...' : targetDateCount > 1 ? `Apply to ${targetDateCount} days` : 'Apply to ' + targetDateLabel}
                       </button>
                     </div>
                   </>
@@ -1066,7 +1165,7 @@ function SaveAsModal({ date, rowCount, onClose, onSave, busy }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
   return (
-    <div className={styles.modalOverlay} onClick={onClose}>
+    <div className={styles.modalOverlay}>
       <div className={styles.modal} onClick={e => e.stopPropagation()}>
         <header className={styles.modalHeader}>
           <h3 className={styles.modalTitle}>Save {date} as Shift</h3>
@@ -1150,7 +1249,7 @@ function ShiftManagerModal({
   }, [templates])
 
   return (
-    <div className={styles.modalOverlay} onClick={onClose}>
+    <div className={styles.modalOverlay}>
       <div className={`${styles.modal} ${styles.modalWide}`} onClick={e => e.stopPropagation()}>
         <header className={styles.modalHeader}>
           <h3 className={styles.modalTitle}>Manage Shifts</h3>
@@ -1158,7 +1257,7 @@ function ShiftManagerModal({
         </header>
         <div className={styles.modalBody}>
           <p className={styles.modalHint}>
-            Saved shifts apply to any calendar date. Edit a shift to change which employees are scheduled, off, sick, or on vacation.
+            Saved shifts apply to any calendar date. Edit a shift to change the crew and hours. Auto 30 is checked by default; uncheck it to enter Lunch Out and Lunch In times.
           </p>
 
           {templates.length === 0 ? (
@@ -1186,7 +1285,7 @@ function ShiftManagerModal({
                   <th>Rows</th>
                   <th>Scheduled</th>
                   <th>Off / Sick / Vac</th>
-                  <th>Hours</th>
+                  <th>Paid Hours</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -1236,9 +1335,9 @@ function ShiftManagerModal({
 // Saving PATCHes the template via patchShiftTemplate({ rows }) which
 // the worker translates to a rows-replace (DELETE + INSERT).
 //
-// CRITICAL: edits stay within shift_template_rows. They DO NOT touch
-// employee_schedule_overrides or employee_schedules — those only get
-// written when the supervisor explicitly applies the shift to a date.
+// Shift edits update shift_template_rows and the worker refreshes any
+// calendar dates still linked to that shift. Manually edited/copied
+// dates are unlinked before that propagation can touch them.
 function EditShiftModal({ shiftId, activeEmployees, onClose, onSaved }) {
   const toast = useToast()
   const [shift, setShift]   = useState(null)
@@ -1272,6 +1371,10 @@ function EditShiftModal({ shiftId, activeEmployees, onClose, onSaved }) {
             status:     existing?.status    ?? 'scheduled',
             startTime:  existing?.startTime ?? '',
             endTime:    existing?.endTime   ?? '',
+            lunchBreakMinutes: existing?.lunchBreakMinutes ?? 30,
+            lunchStartTime: existing?.lunchStartTime ?? '',
+            lunchEndTime: existing?.lunchEndTime ?? '',
+            autoLunchBreak: existing?.autoLunchBreak !== false,
             role:       existing?.role      ?? emp.role ?? '',
             notes:      existing?.notes     ?? '',
             sortOrder:  existing?.sortOrder ?? i * 10,
@@ -1304,14 +1407,23 @@ function EditShiftModal({ shiftId, activeEmployees, onClose, onSaved }) {
         status:     r.status,
         startTime:  r.startTime || null,
         endTime:    r.endTime   || null,
+        lunchBreakMinutes: r.lunchBreakMinutes ?? 30,
+        lunchStartTime: r.lunchStartTime || null,
+        lunchEndTime: r.lunchEndTime || null,
+        autoLunchBreak: r.autoLunchBreak !== false,
         role:       r.role      || null,
         notes:      r.notes     || null,
         sortOrder:  i * 10,
-      }))
+    }))
     setBusy(true)
     try {
-      await patchShiftTemplate(shiftId, { rows: payload })
-      toast.success(`Saved "${shift?.name ?? 'shift'}" with ${payload.length} row(s)`)
+      const saved = await patchShiftTemplate(shiftId, { rows: payload })
+      const propagatedCount = saved?.propagatedDates?.length ?? 0
+      toast.success(
+        propagatedCount > 0
+          ? `Saved "${shift?.name ?? 'shift'}" and refreshed ${propagatedCount} applied date${propagatedCount !== 1 ? 's' : ''}`
+          : `Saved "${shift?.name ?? 'shift'}" with ${payload.length} row(s)`,
+      )
       onSaved?.()
     } catch (err) {
       toast.error(`Save failed: ${err.message}`)
@@ -1322,7 +1434,7 @@ function EditShiftModal({ shiftId, activeEmployees, onClose, onSaved }) {
 
   if (loading || !rows) {
     return (
-      <div className={styles.modalOverlay} onClick={onClose}>
+      <div className={styles.modalOverlay}>
         <div className={`${styles.modal} ${styles.modalWide}`} onClick={e => e.stopPropagation()}>
           <header className={styles.modalHeader}>
             <h3 className={styles.modalTitle}>Edit Shift</h3>
@@ -1337,7 +1449,7 @@ function EditShiftModal({ shiftId, activeEmployees, onClose, onSaved }) {
   }
 
   return (
-    <div className={styles.modalOverlay} onClick={onClose}>
+    <div className={styles.modalOverlay}>
       <div className={`${styles.modal} ${styles.modalWide}`} onClick={e => e.stopPropagation()}>
         <header className={styles.modalHeader}>
           <h3 className={styles.modalTitle}>Edit Shift — {shift?.name}</h3>
@@ -1345,7 +1457,7 @@ function EditShiftModal({ shiftId, activeEmployees, onClose, onSaved }) {
         </header>
         <div className={styles.modalBody}>
           <p className={styles.modalHint}>
-            Set who works (or who is off), their hours, role, and notes for this shift. The shift can then be applied to any date.
+            Set who works (or who is off), their hours, role, and notes. Auto 30 is checked by default; uncheck it to enter Lunch Out and Lunch In times.
           </p>
           <table className={styles.editorTable}>
             <thead>
@@ -1354,6 +1466,9 @@ function EditShiftModal({ shiftId, activeEmployees, onClose, onSaved }) {
                 <th>Status</th>
                 <th>Start</th>
                 <th>End</th>
+                <th>Lunch Out</th>
+                <th>Lunch In</th>
+                <th>Auto 30</th>
                 <th>Role</th>
                 <th>Notes</th>
               </tr>
@@ -1361,7 +1476,7 @@ function EditShiftModal({ shiftId, activeEmployees, onClose, onSaved }) {
             <tbody>
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className={styles.editorEmpty}>
+                  <td colSpan={9} className={styles.editorEmpty}>
                     No active employees. Add crew in Employee Management before editing a shift.
                   </td>
                 </tr>
@@ -1395,6 +1510,14 @@ function EditShiftModal({ shiftId, activeEmployees, onClose, onSaved }) {
                       disabled={busy || row.status !== 'scheduled'}
                       onChange={e => patchRow(row.employeeId, { endTime: e.target.value })}
                     />
+                  </td>
+                  <td><input type="time" className={styles.editorTimeInput} value={row.lunchStartTime} disabled={busy || row.status !== 'scheduled' || row.autoLunchBreak} onChange={e => patchRow(row.employeeId, { lunchStartTime: e.target.value })} aria-label={`Lunch out for ${row.employeeName}`} /></td>
+                  <td><input type="time" className={styles.editorTimeInput} value={row.lunchEndTime} disabled={busy || row.status !== 'scheduled' || row.autoLunchBreak} onChange={e => patchRow(row.employeeId, { lunchEndTime: e.target.value })} aria-label={`Lunch in for ${row.employeeName}`} /></td>
+                  <td>
+                    <label className={styles.lunchToggle}>
+                      <input type="checkbox" checked={row.autoLunchBreak} disabled={busy || row.status !== 'scheduled'} onChange={e => patchRow(row.employeeId, { autoLunchBreak: e.target.checked, lunchBreakMinutes: e.target.checked ? 30 : 0 })} />
+                      <span>30 min</span>
+                    </label>
                   </td>
                   <td>
                     <input
@@ -1455,7 +1578,7 @@ function CopyDayModal({ destinationDate, destHasOverrides, busy, onClose, onCopy
 
   const sameDay = sourceDate === destinationDate
   return (
-    <div className={styles.modalOverlay} onClick={onClose}>
+    <div className={styles.modalOverlay}>
       <div className={styles.modal} onClick={e => e.stopPropagation()}>
         <header className={styles.modalHeader}>
           <h3 className={styles.modalTitle}>Copy Day → {destinationDate}</h3>

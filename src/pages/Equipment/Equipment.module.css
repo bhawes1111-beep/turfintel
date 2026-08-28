@@ -141,6 +141,17 @@
   white-space: nowrap;
 }
 
+.eqHeightBadge {
+  font-size: 0.62rem;
+  font-weight: 800;
+  padding: 2px 7px;
+  border: 1px solid rgba(74, 222, 128, 0.3);
+  border-radius: 4px;
+  background: rgba(34, 197, 94, 0.1);
+  color: #86efac;
+  white-space: nowrap;
+}
+
 /* ── Service warning badges ───────────────────────────────────────────────── */
 
 .eqServiceBadge {
@@ -531,6 +542,79 @@
   border-radius: 0 5px 5px 0;
 }
 
+/* Form controls used by manual equipment and service drawers */
+.eqFormGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.eqFormField {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.eqFormInput,
+.eqFormTextarea {
+  width: 100%;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 7px;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.84rem;
+  padding: 8px 10px;
+  outline: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.eqFormInput:focus,
+.eqFormTextarea:focus {
+  background: rgba(255,255,255,0.06);
+  border-color: var(--color-accent);
+}
+
+.eqFormInput:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.eqFormHint {
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.eqFormTextarea {
+  min-height: 92px;
+  resize: vertical;
+}
+
+.eqDangerBtn {
+  appearance: none;
+  border: 1px solid rgba(220,80,80,0.35);
+  background: rgba(220,80,80,0.08);
+  color: #e07070;
+  border-radius: 7px;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.eqDangerBtn:hover:not(:disabled) {
+  background: rgba(220,80,80,0.14);
+  border-color: rgba(220,80,80,0.55);
+}
+
+.eqDangerBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 /* ── Mobile ───────────────────────────────────────────────────────────────── */
 
 @media (max-width: 768px) {
@@ -659,6 +743,17 @@
 .mlStatusInProgress { background: rgba(91,168,160,0.14); color: #5ba8a0; border: 1px solid rgba(91,168,160,0.3); }
 .mlStatusOverdue    { background: rgba(220,60,60,0.15);  color: #e05050; border: 1px solid rgba(220,60,60,0.3);  }
 
+.mlStageBadge {
+  border: 1px solid rgba(91,168,160,0.34);
+  border-radius: 999px;
+  background: rgba(91,168,160,0.11);
+  color: #79d6cb;
+  font-size: 0.62rem;
+  font-weight: 800;
+  padding: 3px 8px;
+  text-transform: uppercase;
+}
+
 /* ── Small icon badges on card footer ────────────────────────────────────── */
 
 .mlPartsBadge {
@@ -693,6 +788,24 @@
 }
 
 .mlCostPending { color: var(--color-text-muted); opacity: 0.5; }
+
+.mlPdfButton {
+  appearance: none;
+  border: 1px solid rgba(91, 168, 160, 0.45);
+  border-radius: 6px;
+  background: rgba(91, 168, 160, 0.12);
+  color: #9ed7cf;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 6px 9px;
+  cursor: pointer;
+}
+
+.mlPdfButton:hover {
+  border-color: rgba(91, 168, 160, 0.75);
+  background: rgba(91, 168, 160, 0.2);
+}
 
 /* ── Parts table in modal ─────────────────────────────────────────────────── */
 

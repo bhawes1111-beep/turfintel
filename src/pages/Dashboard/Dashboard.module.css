@@ -11,6 +11,10 @@
 /* ── Header ─────────────────────────────────────────────────────────────── */
 
 .header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
   padding: 16px var(--grid-padding) 12px;
   border-bottom: 1px solid var(--color-border);
 }
@@ -19,6 +23,22 @@
   font-size: 20px;
   font-weight: 600;
   color: var(--color-text);
+}
+
+.customizeButton {
+  min-height: 34px;
+  padding: 7px 12px;
+  border: 1px solid rgba(74, 158, 74, 0.48);
+  background: rgba(74, 158, 74, 0.09);
+  color: #6bd789;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.customizeButton:hover,
+.customizeButton[aria-expanded="true"] {
+  background: rgba(74, 158, 74, 0.18);
+  border-color: rgba(86, 201, 109, 0.7);
 }
 
 /* Phase 32 — mobile quick-actions wrapper. The inner row is itself
@@ -47,6 +67,15 @@
   order: 2;
 }
 
+.moduleRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--grid-gap);
+  padding: var(--grid-padding);
+  border-bottom: 1px solid var(--color-border);
+  align-items: start;
+}
+
 @media (max-width: 1100px) {
   .commandRow { grid-template-columns: 1fr; }
 }
@@ -62,7 +91,7 @@
 
 .readinessRow {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--grid-gap);
   padding: var(--grid-padding);
   border-bottom: 1px solid var(--color-border);
@@ -80,6 +109,11 @@
     padding: var(--grid-padding-mobile);
     gap: 10px;
   }
+}
+
+@media (max-width: 768px) {
+  .header { padding-inline: var(--grid-padding-mobile); }
+  .moduleRow { padding: var(--grid-padding-mobile); gap: 10px; }
 }
 
 /* ── Intelligence row — weather (2fr) + agronomy cards (1fr) ─────────────

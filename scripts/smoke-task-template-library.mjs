@@ -70,7 +70,7 @@ assert(/ON CONFLICT\(course_id, name\) DO NOTHING/.test(MIG),
 // ── Worker API — taskTemplates.js ─────────────────────────────────────
 section('Worker API — taskTemplates.js')
 
-for (const fn of ['listTaskTemplates', 'getTaskTemplate', 'createTaskTemplate', 'updateTaskTemplate']) {
+for (const fn of ['listTaskTemplates', 'getTaskTemplate', 'createTaskTemplate', 'updateTaskTemplate', 'deleteTaskTemplate']) {
   assert(new RegExp(`export\\s+async\\s+function\\s+${fn}\\b`).test(API),
     `API exports async function ${fn}`)
 }
@@ -94,15 +94,17 @@ assert(/updated_at = datetime\('now'\)/.test(API),
   "updateTaskTemplate stamps updated_at = datetime('now')")
 
 // No DELETE handler — archive only.
-assert(!/export\s+async\s+function\s+deleteTaskTemplate\b/.test(API),
-  'no deleteTaskTemplate export (archive-only contract)')
+assert(/export\s+async\s+function\s+deleteTaskTemplate\b/.test(API),
+  'deleteTaskTemplate export exists for manual library cleanup')
+assert(/DELETE FROM task_templates WHERE id = \?/.test(API),
+  'deleteTaskTemplate hard-deletes the selected template row')
 assert(/Archive is just a PATCH/.test(API),
   'archive-only contract documented in source')
 
 // ── worker/index.js — route registration ──────────────────────────────
 section('worker/index.js — route registration')
 
-assert(/import\s*\{\s*[\s\S]*?listTaskTemplates,\s*\n\s*getTaskTemplate,\s*\n\s*createTaskTemplate,\s*\n\s*updateTaskTemplate,\s*\n\}\s*from\s*['"]\.\/api\/taskTemplates\.js['"]/.test(IDX),
+assert(/import\s*\{\s*[\s\S]*?listTaskTemplates,\s*\n\s*getTaskTemplate,\s*\n\s*createTaskTemplate,\s*\n\s*updateTaskTemplate,\s*\n\s*deleteTaskTemplate,\s*\n\}\s*from\s*['"]\.\/api\/taskTemplates\.js['"]/.test(IDX),
   'worker/index.js imports task-templates handlers')
 
 assert(/pathname === '\/api\/task-templates'/.test(IDX),
@@ -116,6 +118,8 @@ assert(/\/\^\\\/api\\\/task-templates\\\/\(\[\^\/\]\+\)\$\//.test(IDX),
   'router matches /api/task-templates/:id via regex')
 assert(/updateTaskTemplate\(env,\s*id,\s*request\)/.test(IDX),
   'PATCH /api/task-templates/:id wires to updateTaskTemplate')
+assert(/deleteTaskTemplate\(env,\s*id\)/.test(IDX),
+  'DELETE /api/task-templates/:id wires to deleteTaskTemplate')
 
 // ── worker/lib/mutationPermissions.js — canEditAssignments gate ───────
 section('mutationPermissions — canEditAssignments gates task-templates')
@@ -129,7 +133,7 @@ section('Client store — useTaskTemplatesData hook + CRUD helpers')
 for (const fn of [
   'useTaskTemplatesData', 'refreshTaskTemplatesData',
   'createTaskTemplate',  'patchTaskTemplate',
-  'archiveTaskTemplate', 'unarchiveTaskTemplate',
+  'archiveTaskTemplate', 'unarchiveTaskTemplate', 'deleteTaskTemplate',
 ]) {
   assert(new RegExp(`export\\s+(?:async\\s+)?function\\s+${fn}\\b`).test(STORE),
     `store exports ${fn}`)
@@ -174,6 +178,8 @@ assert(/archiveTaskTemplate\(t\.id\)/.test(MODAL),
   'TasksManagerModal calls archiveTaskTemplate for the Archive button')
 assert(/unarchiveTaskTemplate\(t\.id\)/.test(MODAL),
   'TasksManagerModal calls unarchiveTaskTemplate for the Reactivate button')
+assert(/deleteTaskTemplate\(t\.id\)/.test(MODAL),
+  'TasksManagerModal calls deleteTaskTemplate for the Delete button')
 
 // Auto-translate sweep still wired post-save (regression couple from 9C.8).
 assert(/scheduleTranslationSweep\(\)/.test(MODAL),
@@ -299,14 +305,16 @@ assert(/\(notes_es IS NULL OR TRIM\(notes_es\) = ''\)/.test(AT),
   'race-safe crew_assignments.notes_es UPDATE guard still intact')
 
 // ── No new D1 columns or other migrations past 0051 ───────────────────
-section('Migrations ledger — 0051 is the new ceiling')
+section('Migrations ledger — task library migrations recorded')
 
 const migrationFiles = readdirSync('worker/migrations').filter(f => f.endsWith('.sql')).sort()
 assert(migrationFiles.includes('0051_task_templates.sql'),
   '0051_task_templates.sql present in worker/migrations')
-const past0051 = migrationFiles.filter(f => /^00(5[6-9]|[6-9]\d|\d{3,})/.test(f))
-assert(past0051.length === 0,
-  `no migrations past 0054 (Phase E.5 shift_templates accepted) (found: ${past0051.join(', ') || 'none'})`)
+assert(migrationFiles.includes('0056_task_categories.sql'),
+  '0056_task_categories.sql present in worker/migrations')
+const past0056 = migrationFiles.filter(f => /^00(5[7-9]|[6-9]\d|\d{3,})/.test(f))
+assert(past0056.length === 0,
+  `no unreviewed task-library migrations past 0056 (found: ${past0056.join(', ') || 'none'})`)
 
 // ── Cross-file negatives ──────────────────────────────────────────────
 section('Cross-file negatives — surfaces not in scope')

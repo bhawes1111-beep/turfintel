@@ -31,6 +31,7 @@
   min-height: 100%;
 }
 
+
 /* Board mode: cover the viewport, scale type up. */
 .rootBoard {
   --db-base: 16px;
@@ -395,14 +396,14 @@
 
 /* Phase 6B.1 — card-level progress escalation. Source-order overrides the
    priority left-edge above so blocked/delayed visibility wins at distance. */
-.taskCard[data-card-progress="delayed"] {
+.taskCard[data-card-progress="in-progress"] {
   border-left: 6px solid #fbbf24;
 }
-.taskCard[data-card-progress="blocked"] {
-  border-left: 6px solid #ef4444;
-  background: linear-gradient(165deg, rgba(239, 68, 68, 0.10) 0%, var(--db-card) 100%);
+.taskCard[data-card-progress="weather-delay"] {
+  border-left: 6px solid #60a5fa;
+  background: linear-gradient(165deg, rgba(59, 130, 246, 0.08) 0%, var(--db-card) 100%);
 }
-.taskCard[data-card-progress="completed"] {
+.taskCard[data-card-progress="complete"] {
   opacity: 0.55;
 }
 
@@ -690,30 +691,42 @@
 }
 
 /* High-contrast progress colors — readable in sunlight on the dark board. */
-.progressChip[data-progress="completed"],
-.progressOption[data-progress="completed"] {
+.progressChip[data-progress="complete"],
+.progressOption[data-progress="complete"] {
   color: #052e16;
   background: #4ade80;
   border-color: #4ade80;
 }
-.progressChip[data-progress="delayed"],
-.progressOption[data-progress="delayed"] {
+.progressChip[data-progress="in-progress"],
+.progressOption[data-progress="in-progress"] {
   color: #3a2a05;
   background: #fbbf24;
   border-color: #fbbf24;
 }
-.progressChip[data-progress="blocked"],
-.progressOption[data-progress="blocked"] {
-  color: #fff;
-  background: #ef4444;
-  border-color: #ef4444;
+.progressChip[data-progress="weather-delay"],
+.progressOption[data-progress="weather-delay"] {
+  color: #eff6ff;
+  background: #2563eb;
+  border-color: #60a5fa;
 }
 
 /* Crew row tint by progress so the whole line reads at a glance. */
-.crewRow[data-progress="completed"] { opacity: 0.7; }
-.crewRow[data-progress="completed"] .crewName { text-decoration: line-through; }
-.crewRow[data-progress="blocked"]  .crewName { color: #fca5a5; }
-.crewRow[data-progress="delayed"]  .crewName { color: #fcd34d; }
+.crewRow[data-progress="complete"] { opacity: 0.7; }
+.crewRow[data-progress="complete"] .crewName { text-decoration: line-through; }
+.crewRow[data-progress="in-progress"]  .crewName { color: #fcd34d; }
+.crewRow[data-progress="weather-delay"] .crewName { color: #93c5fd; }
+
+/* Assignment notes remain visible in the legacy task-card board. */
+.crewAssignmentNotes {
+  flex: 1 0 100%;
+  margin: 2px 0 4px 19px;
+  color: rgba(212, 237, 212, 0.8);
+  font-size: 0.92em;
+  font-style: italic;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 
 .progressPicker {
   position: absolute;
@@ -1199,9 +1212,9 @@
 .rootPrint .taskCard,
 .rootPrint .taskCard[data-priority="high"],
 .rootPrint .taskCard[data-priority="medium"],
-.rootPrint .taskCard[data-card-progress="blocked"],
-.rootPrint .taskCard[data-card-progress="delayed"],
-.rootPrint .taskCard[data-card-progress="completed"] {
+.rootPrint .taskCard[data-card-progress="in-progress"],
+.rootPrint .taskCard[data-card-progress="weather-delay"],
+.rootPrint .taskCard[data-card-progress="complete"] {
   background: white !important;
   color: #111 !important;
   border: 1px solid #888 !important;
@@ -1213,16 +1226,16 @@
 
 /* B&W escalation glyph on the card's left edge. Thicker bar for
    blocked/delayed so it still reads at distance on a toner print. */
-.rootPrint .taskCard[data-card-progress="blocked"] { border-left-width: 6px !important; }
-.rootPrint .taskCard[data-card-progress="delayed"] { border-left-width: 5px !important; }
+.rootPrint .taskCard[data-card-progress="in-progress"] { border-left-width: 5px !important; }
+.rootPrint .taskCard[data-card-progress="weather-delay"] { border-left-width: 5px !important; }
 
 @media print {
   .taskCard,
   .taskCard[data-priority="high"],
   .taskCard[data-priority="medium"],
-  .taskCard[data-card-progress="blocked"],
-  .taskCard[data-card-progress="delayed"],
-  .taskCard[data-card-progress="completed"] {
+  .taskCard[data-card-progress="in-progress"],
+  .taskCard[data-card-progress="weather-delay"],
+  .taskCard[data-card-progress="complete"] {
     background: white !important;
     color: #111 !important;
     border: 1px solid #888 !important;
@@ -1231,8 +1244,8 @@
     break-inside: avoid;
     page-break-inside: avoid;
   }
-  .taskCard[data-card-progress="blocked"] { border-left-width: 6px !important; }
-  .taskCard[data-card-progress="delayed"] { border-left-width: 5px !important; }
+  .taskCard[data-card-progress="in-progress"] { border-left-width: 5px !important; }
+  .taskCard[data-card-progress="weather-delay"] { border-left-width: 5px !important; }
 }
 
 /* Card type — black, slightly smaller for paper. */
@@ -1326,64 +1339,70 @@
    only shows a colored glyph; in print we need the WORD too so a
    black-and-white photocopy is unambiguous. */
 .rootPrint .crewRow,
-.rootPrint .crewRow[data-progress="completed"],
-.rootPrint .crewRow[data-progress="blocked"],
-.rootPrint .crewRow[data-progress="delayed"] {
+.rootPrint .crewRow[data-progress="complete"],
+.rootPrint .crewRow[data-progress="in-progress"] {
   color: #111;
   opacity: 1;
   font-size: 12px;
 }
+.rootPrint .crewRow[data-progress="weather-delay"] { color: #111; opacity: 1; }
 .rootPrint .crewRow::before { color: #111; }
 .rootPrint .crewName { color: #111 !important; text-decoration: none !important; }
-.rootPrint .crewRow[data-progress="completed"] .crewName { text-decoration: line-through !important; }
+.rootPrint .crewRow[data-progress="complete"] .crewName { text-decoration: line-through !important; }
 
 /* Outlined progress chip + injected status label after the glyph. */
 .rootPrint .progressChip,
-.rootPrint .progressChip[data-progress="completed"],
-.rootPrint .progressChip[data-progress="delayed"],
-.rootPrint .progressChip[data-progress="blocked"] {
+.rootPrint .progressChip[data-progress="complete"],
+.rootPrint .progressChip[data-progress="in-progress"] {
   background: white !important;
   color: #111 !important;
   border: 1px solid #555 !important;
   font-weight: 700;
 }
-.rootPrint .progressChip[data-progress="blocked"] { border-width: 2px !important; }
-.rootPrint .progressChip[data-progress="delayed"] { border-width: 2px !important; }
+.rootPrint .progressChip[data-progress="weather-delay"] {
+  background: white !important;
+  color: #111 !important;
+  border: 2px solid #555 !important;
+}
+.rootPrint .progressChip[data-progress="in-progress"] { border-width: 2px !important; }
 /* Append the status label after the glyph so toner output is unambiguous. */
-.rootPrint .progressChip[data-progress="completed"]::after { content: ' DONE'; font-size: 9px; letter-spacing: 0.06em; }
-.rootPrint .progressChip[data-progress="delayed"]::after   { content: ' DELAYED'; font-size: 9px; letter-spacing: 0.06em; }
-.rootPrint .progressChip[data-progress="blocked"]::after   { content: ' BLOCKED'; font-size: 9px; letter-spacing: 0.06em; }
-.rootPrint .progressChip[data-progress="assigned"]::after  { content: ' OPEN'; font-size: 9px; letter-spacing: 0.06em; color: #555; }
+.rootPrint .progressChip[data-progress="complete"]::after    { content: ' COMPLETE'; font-size: 9px; letter-spacing: 0.06em; }
+.rootPrint .progressChip[data-progress="in-progress"]::after { content: ' IN PROGRESS'; font-size: 9px; letter-spacing: 0.06em; }
+.rootPrint .progressChip[data-progress="weather-delay"]::after { content: ' WEATHER DELAY'; font-size: 9px; letter-spacing: 0.06em; }
+.rootPrint .progressChip[data-progress="planned"]::after     { content: ' PLANNED'; font-size: 9px; letter-spacing: 0.06em; color: #555; }
 /* Picker UI never shows in print. */
 .rootPrint .progressPicker { display: none !important; }
 
 @media print {
   .crewRow,
-  .crewRow[data-progress="completed"],
-  .crewRow[data-progress="blocked"],
-  .crewRow[data-progress="delayed"] {
+  .crewRow[data-progress="complete"],
+  .crewRow[data-progress="in-progress"] {
     color: #111;
     opacity: 1;
     font-size: 12px;
   }
+  .crewRow[data-progress="weather-delay"] { color: #111; opacity: 1; }
   .crewRow::before { color: #111; }
   .crewName { color: #111 !important; text-decoration: none !important; }
-  .crewRow[data-progress="completed"] .crewName { text-decoration: line-through !important; }
+  .crewRow[data-progress="complete"] .crewName { text-decoration: line-through !important; }
   .progressChip,
-  .progressChip[data-progress="completed"],
-  .progressChip[data-progress="delayed"],
-  .progressChip[data-progress="blocked"] {
+  .progressChip[data-progress="complete"],
+  .progressChip[data-progress="in-progress"] {
     background: white !important;
     color: #111 !important;
     border: 1px solid #555 !important;
     font-weight: 700;
   }
-  .progressChip[data-progress="blocked"] { border-width: 2px !important; }
-  .progressChip[data-progress="delayed"] { border-width: 2px !important; }
-  .progressChip[data-progress="completed"]::after { content: ' DONE'; font-size: 9px; letter-spacing: 0.06em; }
-  .progressChip[data-progress="delayed"]::after   { content: ' DELAYED'; font-size: 9px; letter-spacing: 0.06em; }
-  .progressChip[data-progress="blocked"]::after   { content: ' BLOCKED'; font-size: 9px; letter-spacing: 0.06em; }
-  .progressChip[data-progress="assigned"]::after  { content: ' OPEN'; font-size: 9px; letter-spacing: 0.06em; color: #555; }
+  .progressChip[data-progress="weather-delay"] {
+    background: white !important;
+    color: #111 !important;
+    border: 2px solid #555 !important;
+  }
+  .progressChip[data-progress="in-progress"] { border-width: 2px !important; }
+  .progressChip[data-progress="complete"]::after    { content: ' COMPLETE'; font-size: 9px; letter-spacing: 0.06em; }
+  .progressChip[data-progress="in-progress"]::after { content: ' IN PROGRESS'; font-size: 9px; letter-spacing: 0.06em; }
+  .progressChip[data-progress="weather-delay"]::after { content: ' WEATHER DELAY'; font-size: 9px; letter-spacing: 0.06em; }
+  .progressChip[data-progress="planned"]::after     { content: ' PLANNED'; font-size: 9px; letter-spacing: 0.06em; color: #555; }
   .progressPicker { display: none !important; }
 }
 
@@ -1795,9 +1814,9 @@
   border-radius: 4px;
 }
 
-.operatorAssignRow[data-progress="completed"] { border-left-color: #4ade80; opacity: 0.78; }
-.operatorAssignRow[data-progress="delayed"]   { border-left-color: #fbbf24; }
-.operatorAssignRow[data-progress="blocked"]   { border-left-color: #ef4444; }
+.operatorAssignRow[data-progress="complete"]    { border-left-color: #4ade80; opacity: 0.78; }
+.operatorAssignRow[data-progress="in-progress"] { border-left-color: #fbbf24; }
+.operatorAssignRow[data-progress="weather-delay"] { border-left-color: #60a5fa; }
 
 .operatorAssignTop {
   display: flex;
@@ -1835,6 +1854,33 @@
   background: rgba(74, 222, 128, 0.06);
   border-left: 2px solid rgba(74, 222, 128, 0.3);
   border-radius: 3px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+
+.operatorSubJobs,
+.boardSubJobs {
+  margin: 5px 0 0 22px;
+  padding: 0;
+  list-style: none;
+  color: rgba(190, 225, 190, 0.78);
+  font-size: 0.82em;
+}
+
+.operatorSubJobs li,
+.boardSubJobs li {
+  position: relative;
+  padding: 2px 0 2px 12px;
+}
+
+.operatorSubJobs li::before,
+.boardSubJobs li::before {
+  content: '+';
+  position: absolute;
+  left: 0;
+  color: #4ade80;
+  font-weight: 800;
 }
 
 .operatorAssignChips {
@@ -1921,6 +1967,36 @@
   grid-template-areas: none;
   grid-template-columns: none;
   grid-template-rows: none;
+}
+
+.boardMobileActionRow {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.boardMobileActionBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 9px 14px;
+  border: 1px solid rgba(74, 222, 128, 0.42);
+  border-radius: 7px;
+  background: rgba(17, 78, 35, 0.72);
+  color: #dff5df;
+  text-decoration: none;
+  font-size: clamp(0.82rem, 1.6vw, 1rem);
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.boardMobileActionBtn:hover,
+.boardMobileActionBtn:focus-visible {
+  border-color: rgba(134, 239, 172, 0.76);
+  background: rgba(22, 101, 52, 0.86);
+  outline: none;
 }
 
 .boardBars {
@@ -2066,6 +2142,51 @@
   line-height: 1.2;
 }
 
+.boardTaskLine {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.boardTaskEquipment {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+}
+
+.boardTaskEquipmentChip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 28ch;
+  border: 1px solid rgba(74, 222, 128, 0.32);
+  border-radius: 999px;
+  padding: 1px 7px;
+  color: rgba(187, 247, 208, 0.9);
+  background: rgba(34, 197, 94, 0.08);
+  font-size: clamp(10px, 0.9vw, calc(13px * var(--board-bar-scale, 1)));
+  font-weight: 700;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.boardTaskEquipmentChip[data-status="in-use"] {
+  border-color: rgba(96, 165, 250, 0.45);
+  color: rgba(191, 219, 254, 0.95);
+  background: rgba(37, 99, 235, 0.12);
+}
+
+.boardTaskEquipmentChip[data-status="cancelled"],
+.boardTaskEquipmentChip[data-status="released"] {
+  border-color: rgba(148, 163, 184, 0.28);
+  color: rgba(203, 213, 225, 0.7);
+  background: rgba(148, 163, 184, 0.08);
+}
+
 .boardNotesText {
   margin: 0;
   /* Phase DAB.10g.1 — Derived from --board-name-size × 5/8. */
@@ -2094,6 +2215,27 @@
 .boardNotesTextEs {
   color: rgba(187, 247, 208, 0.82);
   font-style: italic;
+}
+
+.boardAssignmentPhotoButton {
+  align-self: flex-start;
+  min-height: 34px;
+  padding: 6px 11px;
+  border: 1px solid rgba(96, 165, 250, 0.58);
+  border-radius: 6px;
+  background: rgba(30, 64, 175, 0.26);
+  color: #dbeafe;
+  font: inherit;
+  font-size: clamp(11px, 0.9vw, 14px);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.boardAssignmentPhotoButton:hover,
+.boardAssignmentPhotoButton:focus-visible {
+  border-color: #93c5fd;
+  background: rgba(30, 64, 175, 0.48);
+  outline: none;
 }
 
 /* ── Phase E.9 — Out-status cards (off / vacation / sick) ──
@@ -2512,6 +2654,81 @@
   font-size: 0.9em;
 }
 
+.boardGolfOutings {
+  flex: 0 0 auto;
+  background: rgba(8, 47, 73, 0.62);
+  color: #ecfeff;
+  border: 1px solid rgba(56, 189, 248, 0.34);
+  border-radius: 6px;
+  padding: calc(8px * var(--board-bar-scale, 1)) calc(14px * var(--board-bar-scale, 1));
+  max-height: 24vh;
+  overflow-y: auto;
+  font-size: clamp(13px, 1.35vw, calc(18px * var(--board-bar-scale, 1)));
+  line-height: 1.25;
+}
+
+.boardGolfOutingsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: clamp(10px, 1.05vw, 13px);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(186, 230, 253, 0.9);
+  margin: 0 0 5px 0;
+}
+
+.boardGolfOutingsList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: calc(6px * var(--board-bar-scale, 1));
+}
+
+.boardGolfOutingItem {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 4px 10px;
+  padding: calc(5px * var(--board-bar-scale, 1)) calc(8px * var(--board-bar-scale, 1));
+  border-left: 3px solid rgba(148, 163, 184, 0.65);
+  background: rgba(12, 36, 52, 0.58);
+  border-radius: 4px;
+  min-width: 0;
+}
+
+.boardGolfOutingItem[data-priority="high"]   { border-left-color: #f87171; }
+.boardGolfOutingItem[data-priority="medium"] { border-left-color: #38bdf8; }
+.boardGolfOutingItem[data-priority="low"]    { border-left-color: #94a3b8; }
+
+.boardGolfOutingTime {
+  color: #7dd3fc;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.boardGolfOutingTitle {
+  color: #ffffff;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.boardGolfOutingMeta {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: rgba(207, 250, 254, 0.78);
+  font-size: 0.86em;
+}
+
 .boardAlertMarquee {
   flex: 0 0 auto;
   background: #b91c1c;            /* deep red, sunlight-readable from across a shop bay */
@@ -2605,6 +2822,17 @@
     height: auto;
     min-height: 100dvh;
     overflow: visible;
+  }
+  .boardMobileActionRow {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .boardMobileActionBtn {
+    width: 100%;
+    min-height: 44px;
+    padding: 9px 8px;
+    text-align: center;
   }
   .boardBars {
     /* Phase DAB.10d — Inner container can also expand on mobile
@@ -2948,4 +3176,19 @@
   .boardDailyNotesHeader {
     font-size: clamp(9px, 0.95vw, 11px);
   }
+}
+
+/* Final visibility rule: operational notes must never be shortened by the
+   density, fit-mode, short-screen, mobile, or legacy board variants. */
+.boardNotesText,
+.boardBars[data-density='comfortable'] .boardNotesText,
+.boardBars[data-density='compact'] .boardNotesText,
+.boardBars[data-fit-mode='compact'] .boardNotesText,
+.boardBars[data-fit-mode='ultra'] .boardNotesText {
+  display: block;
+  -webkit-line-clamp: unset;
+  -webkit-box-orient: initial;
+  overflow: visible;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }

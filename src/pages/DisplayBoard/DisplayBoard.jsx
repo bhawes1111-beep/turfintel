@@ -19,10 +19,14 @@
 //   spray_records, operations_daily_notes, operational_attachments,
 //   crew_employees (name only — no payRate / private fields).
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useCalendarData,    refreshCalendarData }    from '../../utils/calendar/calendarStore'
-import { useSpraysData,      refreshSpraysData }      from '../../utils/sprays/spraysStore'
+import {
+  useSpraysData,
+  refreshSpraysData,
+} from '../../utils/sprays/spraysStore'
+import { fetchDisplayBoardState, emptyDisplayBoardState } from '../../utils/displayBoardStore'
 import { useAssignmentsData, refreshAssignmentsData, patchCrewAssignment } from '../../utils/assignments/assignmentsStore'
 import { useAlertsData,      refreshAlertsData }      from '../../utils/alerts/alertsStore'
 import { useCrewData,        refreshCrewData }        from '../../utils/crew/crewStore'
@@ -34,11 +38,12 @@ import { useCrewData,        refreshCrewData }        from '../../utils/crew/cre
 // authoritative surface, just narrows what it shows.
 import { useEmployeeSchedulesData, refreshEmployeeSchedulesData } from '../../utils/schedules/schedulesStore'
 import { useScheduleOverridesData, refreshScheduleOverridesData } from '../../utils/schedules/scheduleOverridesStore'
-import { isEmployeeAssignableForDate, hasAnyScheduleData, getScheduleStatusForEmployee } from '../../utils/schedules/dailyScheduleMerge'
+import { hasAnyScheduleData, getScheduleStatusForEmployee } from '../../utils/schedules/dailyScheduleMerge'
 import { useWeather }         from '../../utils/weather/useWeather'
 import { useSelectedCourse, useSelectedCourseId } from '../../utils/courses/courseStore'
 import { useOperationsNotesData, refreshOperationsNotesData } from '../../utils/operations/notesStore'
 import { useAttachmentsForParent } from '../../utils/attachments/attachmentsStore'
+import AssignmentPhotoViewer from '../../components/assignments/AssignmentPhotoViewer'
 import { useToast } from '../../utils/feedback/toastContext'
 import { deleteTaskCascade, buildDeleteConfirmMessage } from '../../utils/tasks/deleteTaskCascade'
 import { routingChipsFromTags } from '../../utils/routing/routingTags'
@@ -54,13 +59,20 @@ import styles from './DisplayBoard.module.css'
 // crew_assignments.status column (default 'assigned'). 'cancelled' is
 // reserved for the clear/unassign flow and isn't a progress state here.
 const PROGRESS_STATUSES = [
-  { key: 'assigned',  label: 'Assigned',  short: '○' },
-  { key: 'completed', label: 'Complete',  short: '✓' },
-  { key: 'delayed',   label: 'Delayed',   short: '◷' },
-  { key: 'blocked',   label: 'Blocked',   short: '⚠' },
+  { key: 'planned',     label: 'Planned',     short: '○' },
+  { key: 'in-progress', label: 'In Progress', short: '◷' },
+  { key: 'weather-delay', label: 'Weather Delay', short: 'WX' },
+  { key: 'complete',    label: 'Complete',    short: '✓' },
 ]
 const PROGRESS_SHORT = Object.fromEntries(PROGRESS_STATUSES.map(s => [s.key, s.short]))
 const PROGRESS_LABEL = Object.fromEntries(PROGRESS_STATUSES.map(s => [s.key, s.label]))
+
+function normalizeCrewProgressStatus(value) {
+  if (value === 'assigned' || value === 'pending' || value == null || value === '') return 'planned'
+  if (value === 'completed' || value === 'done') return 'complete'
+  if (value === 'planned' || value === 'in-progress' || value === 'weather-delay' || value === 'complete') return value
+  return 'planned'
+}
 
 // The board is meant to live on a TV all morning — re-pull the
 // operational verticals every few minutes so a task added at 6 AM
@@ -103,11 +115,30 @@ const EVENT_TYPE_LABEL = {
   maintenance: 'Maintenance',
   agronomy:    'Agronomy',
   irrigation:  'Irrigation',
+  outing:      'Outing',
+  tournament:  'Tournament',
+  'cultural-practice': 'Cultural Practice',
+  'course-closure': 'Course Closure',
+  'member-event': 'Member Event',
+  'staff-event': 'Staff Event',
+  vendor: 'Vendor / Delivery',
+  'weather-watch': 'Weather Watch',
+  other: 'Event',
 }
 
 const PRIORITY_LABEL = {
   high: 'HIGH', medium: 'MED', routine: 'ROUTINE', low: 'LOW',
 }
+
+const LEGACY_OUTING_KEYWORDS = [
+  'golf outing',
+  'outing',
+  'tournament',
+  'shotgun',
+  'member guest',
+  'member-guest',
+  'scramble',
+]
 
 function isoToday() { return new Date().toISOString().slice(0, 10) }
 
@@ -125,6 +156,30 @@ function prettyDate(iso) {
   })
 }
 
+function isBoardEventCalendarEvent(event) {
+  if (!event) return false
+  const eventType = event.eventType ?? event.category
+  const sourceModule = event.sourceModule ?? event.metadata?.sourceModule ?? event.sourceType
+  const tags = Array.isArray(event.tags) ? event.tags : []
+  if (sourceModule === 'events-calendar' || sourceModule === 'golf-outings-calendar') return true
+  if (tags.includes('event-calendar') || tags.includes('golf-outing')) return true
+  if (eventType === 'outing' || eventType === 'tournament') return true
+
+  const haystack = [
+    eventType,
+    event.title,
+    event.description,
+    event.notes,
+    event.location,
+    ...tags,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+
+  return LEGACY_OUTING_KEYWORDS.some(keyword => haystack.includes(keyword))
+}
+
 function fmtTime(t) {
   if (!t) return ''
   const [h, m] = t.split(':')
@@ -132,6 +187,12 @@ function fmtTime(t) {
   const am   = hour < 12
   const h12  = ((hour + 11) % 12) + 1
   return `${h12}:${m} ${am ? 'AM' : 'PM'}`
+}
+
+function displayEventTypeLabel(eventType) {
+  if (!eventType) return 'Event'
+  return EVENT_TYPE_LABEL[eventType]
+    ?? String(eventType).replace(/-/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase())
 }
 
 function weekOf(iso) {
@@ -211,18 +272,21 @@ function employeeNeedsSpanish(employee) {
 
 export default function DisplayBoard({ boardMode = false, printMode = false }) {
   const navigate                                    = useNavigate()
-  const { events, loading: eventsLoading }          = useCalendarData()
-  const { records: sprays }                         = useSpraysData()
-  const { crewAssignments, equipmentReservations }  = useAssignmentsData()
-  const { alerts }                                  = useAlertsData()
-  const { employees }                               = useCrewData()
+  const { events: protectedEvents, loading: protectedEventsLoading } = useCalendarData({ enabled: !boardMode })
+  const { records: protectedSprays }                 = useSpraysData({ enabled: !boardMode })
+  const {
+    crewAssignments: protectedCrewAssignments,
+    equipmentReservations: protectedEquipmentReservations,
+  } = useAssignmentsData({ enabled: !boardMode })
+  const { alerts: protectedAlerts }                 = useAlertsData({ enabled: !boardMode })
+  const { employees: protectedEmployees }           = useCrewData({ enabled: !boardMode })
   // Phase E.4 — Public-safe schedule + override stores. Both endpoints
   // return only schedule grid fields (no payRate, no contact info, no
   // private notes), so the kiosk's no-login contract is preserved.
-  const { schedules: weeklySchedules }              = useEmployeeSchedulesData()
-  const { overrides: scheduleOverrides }            = useScheduleOverridesData()
-  const { current, forecast, sourceLabel: weatherSource } = useWeather()
-  const selectedCourse                              = useSelectedCourse()
+  const { schedules: protectedWeeklySchedules }     = useEmployeeSchedulesData({ enabled: !boardMode })
+  const { overrides: protectedScheduleOverrides }   = useScheduleOverridesData({ enabled: !boardMode })
+  const { current, forecast, sourceLabel: weatherSource } = useWeather({ publicBoard: boardMode })
+  const selectedCourse                              = useSelectedCourse({ enabled: !boardMode })
   // Phase 8B.1a — Crosswinds shop-style Display Board layout shell.
   // Drives `data-shop-layout="true"` on the root, which CSS uses to
   // re-arrange the existing sidebar / taskBoard / notesColumn /
@@ -230,8 +294,8 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
   // bottom). No iteration model change yet — that's Phase 8B.1b.
   const courseId       = useSelectedCourseId()
   const isCrosswinds   = courseId === 'crossroads-gc'
-  const { notes: dailyNotes }                       = useOperationsNotesData()
-  const { observations: moistureObs }               = useMoistureData()
+  const { notes: protectedDailyNotes }              = useOperationsNotesData({ enabled: !boardMode })
+  const { observations: protectedMoistureObs }      = useMoistureData({ enabled: !boardMode })
   const toast                                       = useToast()
 
   // Phase 9C.3b — task delete handler. Reuses the Phase 9C.3a cascade
@@ -254,6 +318,57 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
 
   // Display date — defaults to today, can shift via the date selector.
   const [selectedDate, setSelectedDate] = useState(isoToday)
+  const [boardState, setBoardState] = useState(() => emptyDisplayBoardState())
+  const [boardLoading, setBoardLoading] = useState(true)
+
+  // The consolidated display-board feed is also the fallback for the legacy
+  // screen. Its older vertical caches can briefly be empty after navigation
+  // or a course change; valid tasks must not disappear while they catch up.
+  const mergeBoardRows = (protectedRows, boardRows) => {
+    if (boardMode) return boardRows ?? []
+
+    const merged = new Map()
+    for (const row of (boardRows ?? [])) {
+      const key = row?.id ?? row?._id
+      merged.set(key ?? `board-${merged.size}`, row)
+    }
+    for (const row of (protectedRows ?? [])) {
+      const key = row?.id ?? row?._id
+      merged.set(key ?? `protected-${merged.size}`, row)
+    }
+    return [...merged.values()]
+  }
+  const events = mergeBoardRows(protectedEvents, boardState.events)
+  const eventsLoading = events.length === 0 && (boardLoading || (!boardMode && protectedEventsLoading))
+  const sprays = mergeBoardRows(protectedSprays, boardState.sprays)
+  const crewAssignments = mergeBoardRows(protectedCrewAssignments, boardState.crewAssignments)
+  const equipmentReservations = mergeBoardRows(protectedEquipmentReservations, boardState.equipmentReservations)
+  const alerts = mergeBoardRows(protectedAlerts, boardState.alerts)
+  const employees = mergeBoardRows(protectedEmployees, boardState.employees)
+  const weeklySchedules = mergeBoardRows(protectedWeeklySchedules, boardState.schedules)
+  const scheduleOverrides = mergeBoardRows(protectedScheduleOverrides, boardState.scheduleOverrides)
+  const dailyNotes = mergeBoardRows(protectedDailyNotes, boardState.notes)
+  const moistureObs = mergeBoardRows(protectedMoistureObs, boardState.moisture)
+  const assignmentPhotosById = useMemo(() => {
+    const grouped = new Map()
+    for (const attachment of (boardState.assignmentPhotos ?? [])) {
+      const list = grouped.get(attachment.parentId) ?? []
+      list.push(attachment)
+      grouped.set(attachment.parentId, list)
+    }
+    return grouped
+  }, [boardState.assignmentPhotos])
+
+  useEffect(() => {
+    let ignore = false
+    fetchDisplayBoardState({ courseId, date: selectedDate })
+      .then(data => {
+        if (!ignore) setBoardState({ ...emptyDisplayBoardState(), ...(data ?? {}) })
+      })
+      .catch(() => { if (!ignore) setBoardState(emptyDisplayBoardState()) })
+      .finally(() => { if (!ignore) setBoardLoading(false) })
+    return () => { ignore = true }
+  }, [courseId, selectedDate])
 
   // Phase 9C.6 — Kiosk date navigation arrows. Tracks whether the
   // user manually shifted the board date (via ‹ / › on the kiosk).
@@ -356,7 +471,15 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
   useEffect(() => {
     if (intervalMs == null) return
     const id = setInterval(() => {
-      Promise.allSettled([
+      if (boardMode) {
+        fetchDisplayBoardState({ courseId, date: selectedDate })
+          .then(data => setBoardState({ ...emptyDisplayBoardState(), ...(data ?? {}) }))
+          .catch(() => setBoardState(emptyDisplayBoardState()))
+          .finally(() => setLastSync(new Date()))
+      } else {
+        Promise.allSettled([
+        fetchDisplayBoardState({ courseId, date: selectedDate })
+          .then(data => setBoardState({ ...emptyDisplayBoardState(), ...(data ?? {}) })),
         refreshCalendarData(),
         refreshSpraysData(),
         refreshAssignmentsData(),
@@ -371,7 +494,8 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
         // profile fields. Auto-refresh interval itself unchanged.
         refreshEmployeeSchedulesData(),
         refreshScheduleOverridesData(),
-      ]).then(() => setLastSync(new Date()))
+        ]).then(() => setLastSync(new Date()))
+      }
       // Phase 9C.4a — midnight rollover for the public kiosk view.
       // If the kiosk has been up since yesterday, snap selectedDate
       // forward to today so the bars show the current day's work.
@@ -389,7 +513,7 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
       }
     }, intervalMs)
     return () => clearInterval(id)
-  }, [intervalMs, boardMode, selectedDate, boardDateTouched])
+  }, [intervalMs, boardMode, courseId, selectedDate, boardDateTouched])
 
   // First-paint guard — before the calendar store resolves, every
   // section would otherwise render its empty state ("No tasks…"),
@@ -455,26 +579,42 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
   // Resolver: employeeId first, normalized name as fallback. Returns
   // null when neither locates a live employee record so callers still
   // get a safe default (showSpanishNotes → false → English).
-  const resolveEmployee = (a) => {
+  const resolveEmployee = useCallback((a) => {
     if (a.employeeId) {
       const byId = employeeById.get(a.employeeId)
       if (byId) return byId
     }
     const norm = normalizeEmployeeName(a.employeeName)
     return norm ? (employeeByNormalizedName.get(norm) ?? null) : null
-  }
+  }, [employeeById, employeeByNormalizedName])
 
   // ── Date-scoped derivations ───────────────────────────────────────────
   const dayEvents = useMemo(() => {
     return events
       .filter(e => e.startDate === selectedDate)
+      // Weather-delayed work stays in Assignments and reporting, but is
+      // intentionally removed from the employee-facing display board.
+      // Mixed-status tasks remain visible for employees who are still
+      // working them; tasks where every live assignment is delayed hide.
+      .filter(e => {
+        const linkedAssignments = crewAssignments.filter(a => (
+          a.calendarEventId === e.id && a.status !== 'cancelled'
+        ))
+        return linkedAssignments.length === 0 || linkedAssignments.some(
+          a => normalizeCrewProgressStatus(a.status) !== 'weather-delay',
+        )
+      })
       .sort((a, b) => {
         const pa = PRIORITY_ORDER[a.priority] ?? 9
         const pb = PRIORITY_ORDER[b.priority] ?? 9
         if (pa !== pb) return pa - pb
         return (a.startTime ?? '').localeCompare(b.startTime ?? '')
       })
-  }, [events, selectedDate])
+  }, [events, crewAssignments, selectedDate])
+
+  const dayOutings = useMemo(() => (
+    dayEvents.filter(isBoardEventCalendarEvent)
+  ), [dayEvents])
 
   const dayEventIds = useMemo(
     () => new Set(dayEvents.map(e => e.id)),
@@ -497,6 +637,7 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
     return crewAssignments
       .filter(a => a.calendarEventId && dayEventIds.has(a.calendarEventId))
       .filter(a => a.status !== 'cancelled')
+      .filter(a => normalizeCrewProgressStatus(a.status) !== 'weather-delay')
   }, [crewAssignments, dayEventIds])
 
   const liveAlerts = useMemo(() => {
@@ -546,6 +687,7 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
   // to avoid duplication across multiple operators on the same event;
   // they remain visible in the EquipmentStatusPanel in the sidebar.
   const operatorCards = useMemo(() => {
+    const firstJobsOnly = selectedDate === isoToday() && now.getHours() < 7
     const eventsById = new Map(dayEvents.map(e => [e.id, e]))
     const byOperator = new Map()
     for (const a of dayCrew) {
@@ -599,7 +741,7 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
         location:  event.location  ?? null,
         eventType: event.eventType ?? null,
         priority:  event.priority  ?? null,
-        status:    a.status ?? 'assigned',
+        status:    normalizeCrewProgressStatus(a.status),
         notes:     a.notes   ?? '',
         // Phase 9C.5b3 — manual Spanish translation surfaced on the
         // kiosk underneath the English note. Empty string when not
@@ -612,6 +754,7 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
         // + sort order below. Legacy rows have jobOrder=0; ties
         // break by startTime ASC.
         jobOrder:  a.jobOrder ?? 0,
+        subJobs:   Array.isArray(a.subJobs) ? a.subJobs : [],
       })
     }
     for (const op of byOperator.values()) {
@@ -627,6 +770,9 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
         if (t !== 0) return t
         return (PRIORITY_ORDER[x.priority] ?? 9) - (PRIORITY_ORDER[y.priority] ?? 9)
       })
+      if (firstJobsOnly && op.assignments.length > 1) {
+        op.assignments = op.assignments.slice(0, 1)
+      }
     }
     // Phase E.9 — Off / sick / vacation employees are no longer hidden
     // from the kiosk. Two changes:
@@ -688,10 +834,10 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
     })
     return cards
   }, [
-    dayCrew, dayEvents, equipByEvent, employeeNameLookup, employeeById,
-    employeeByNormalizedName, employees,
+    dayCrew, dayEvents, equipByEvent, employeeNameLookup,
+    employees, resolveEmployee,
     // Phase E.4 / E.9 — re-bucket when schedules / overrides / selectedDate change
-    weeklySchedules, scheduleOverrides, selectedDate,
+    weeklySchedules, scheduleOverrides, selectedDate, now,
   ])
 
   // ── Crew-facing weather impacts (rule-based, from existing weather) ─────
@@ -822,6 +968,14 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
             three controls + the E.10 swipe gesture mutate the same
             selectedDate state, so the kiosk stays no-login + side-
             effect-free. */}
+        <nav className={styles.boardMobileActionRow} aria-label="Equipment shortcuts">
+          <Link to="/equipment/board" className={styles.boardMobileActionBtn}>
+            Mechanic Board
+          </Link>
+          <Link to="/equipment/report-issue" className={styles.boardMobileActionBtn}>
+            Report Equipment
+          </Link>
+        </nav>
         <header className={styles.boardDateTop}>
           <button
             type="button"
@@ -865,8 +1019,12 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
             priority-sorted). Renders null when empty so the kiosk stays
             clean on calm mornings — no wasted TV real-estate. */}
         <BoardModeDailyNotes notes={dayNotes} />
+        <BoardModeGolfOutings outings={dayOutings} />
         <BoardModeAlertMarquee alerts={kioskAlerts} />
-        <BoardModeCrewBars operatorCards={operatorCards} />
+        <BoardModeCrewBars
+          operatorCards={operatorCards}
+          assignmentPhotosById={assignmentPhotosById}
+        />
       </div>
     )
   }
@@ -1261,6 +1419,11 @@ function OperatorCard({ operator, canDeleteTasks = false, onDeleteEvent }) {
               {a.notes && (
                 <p className={styles.operatorAssignNotes}>{a.notes}</p>
               )}
+              {a.subJobs.length > 0 && (
+                <ul className={styles.operatorSubJobs} aria-label="Sub-jobs">
+                  {a.subJobs.map(subJob => <li key={subJob.id}>{subJob.name}</li>)}
+                </ul>
+              )}
               {a.chips.length > 0 && (
                 <div className={styles.operatorAssignChips}>
                   {a.chips.map(chip => (
@@ -1353,6 +1516,42 @@ function BoardModeDailyNotes({ notes }) {
  * clear separator so accessibility tools and reduced-motion viewers can
  * still read each alert distinctly.
  */
+function BoardModeGolfOutings({ outings }) {
+  if (!outings || outings.length === 0) return null
+  return (
+    <section className={styles.boardGolfOutings} aria-label="Today events">
+      <div className={styles.boardGolfOutingsHeader}>
+        <span>Events</span>
+        <span>{outings.length} event{outings.length !== 1 ? 's' : ''}</span>
+      </div>
+      <ul className={styles.boardGolfOutingsList}>
+        {outings.map(event => {
+          const typeLabel = displayEventTypeLabel(event.eventType ?? event.category)
+          const priorityLabel = PRIORITY_LABEL[event.priority] ?? event.priority ?? 'Task'
+          return (
+            <li
+              key={event.id}
+              className={styles.boardGolfOutingItem}
+              data-priority={event.priority}
+            >
+              <span className={styles.boardGolfOutingTime}>
+                {event.startTime ? fmtTime(event.startTime) : 'All day'}
+              </span>
+              <span className={styles.boardGolfOutingTitle}>{event.title}</span>
+              <span className={styles.boardGolfOutingMeta}>
+                {typeLabel && <span>{typeLabel}</span>}
+                {event.location && <span>{event.location}</span>}
+                <span>{priorityLabel}</span>
+                {event.description && <span>{event.description}</span>}
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+    </section>
+  )
+}
+
 function BoardModeAlertMarquee({ alerts }) {
   if (!alerts || alerts.length === 0) return null
   return (
@@ -1387,7 +1586,32 @@ function BoardModeAlertMarquee({ alerts }) {
  * only when the trimmed string is non-empty. When no operators have
  * assignments today, the empty-state copy is centered. */
 
-function BoardModeCrewBars({ operatorCards }) {
+function BoardAssignmentPhotos({ attachments, title }) {
+  const [viewerOpen, setViewerOpen] = useState(false)
+
+  if (attachments.length === 0) return null
+
+  return (
+    <>
+      <button
+        type="button"
+        className={styles.boardAssignmentPhotoButton}
+        onClick={() => setViewerOpen(true)}
+      >
+        {attachments.length === 1 ? 'Photo' : `Photos (${attachments.length})`}
+      </button>
+      {viewerOpen && (
+        <AssignmentPhotoViewer
+          attachments={attachments}
+          title={title || 'Assignment photos'}
+          onClose={() => setViewerOpen(false)}
+        />
+      )}
+    </>
+  )
+}
+
+function BoardModeCrewBars({ operatorCards, assignmentPhotosById }) {
   // Phase DAB.10e — Measured fit-to-screen. The 9C.4c/d/e density
   // system tightens spacing + clamps notes, but with multi-job rows +
   // per-job notes (DAB.10b/c) some rosters still overflow the
@@ -1632,7 +1856,23 @@ function BoardModeCrewBars({ operatorCards }) {
               {jobLabel && (
                 <span className={styles.boardJobOrdinal}>{jobLabel}</span>
               )}
-              <p className={styles.boardTaskText}>{a.title}</p>
+              <div className={styles.boardTaskLine}>
+                <p className={styles.boardTaskText}>{a.title}</p>
+                {a.chips.length > 0 && (
+                  <span className={styles.boardTaskEquipment} aria-label="Assigned equipment">
+                    {a.chips.map(chip => (
+                      <span
+                        key={chip.id}
+                        className={styles.boardTaskEquipmentChip}
+                        data-status={chip.status}
+                        title={chip.status ? `${chip.name} - ${chip.status}` : chip.name}
+                      >
+                        {chip.name}
+                      </span>
+                    ))}
+                  </span>
+                )}
+              </div>
               {trimmedNotes.length > 0 && (
                 <p className={styles.boardNotesText} lang="en">
                   {trimmedNotes}
@@ -1645,6 +1885,15 @@ function BoardModeCrewBars({ operatorCards }) {
                 >
                   {trimmedNotesEs}
                 </p>
+              )}
+              <BoardAssignmentPhotos
+                attachments={assignmentPhotosById.get(a.id) ?? []}
+                title={`${op.name} - ${a.title}`}
+              />
+              {a.subJobs.length > 0 && (
+                <ul className={styles.boardSubJobs} aria-label="Sub-jobs">
+                  {a.subJobs.map(subJob => <li key={subJob.id}>{subJob.name}</li>)}
+                </ul>
               )}
             </div>
           )
@@ -1728,7 +1977,7 @@ function TaskCard({ event, equipment, crew, resolveName, canDeleteTasks = false,
     name:     a.employeeId ? (resolveName(a.employeeId) ?? a.employeeName) : a.employeeName,
     role:     a.role,
     chips:    linkedByAssign.get(a.id) ?? [],
-    status:   a.status ?? 'assigned',
+    status:   normalizeCrewProgressStatus(a.status),
     notes:    a.notes ?? '',
     real:     true,   // backed by a crew_assignment row → status is patchable
   }))
@@ -1736,7 +1985,7 @@ function TaskCard({ event, equipment, crew, resolveName, canDeleteTasks = false,
   // exist for the event. These fallback rows can't carry linked chips
   // (no row id to match on) and aren't status-patchable.
   const fallbackNames = crewRows.length === 0
-    ? (event.assignedStaff ?? []).map((name, i) => ({ id: `fb-${i}`, name, role: null, chips: [], status: 'assigned', notes: '', real: false }))
+    ? (event.assignedStaff ?? []).map((name, i) => ({ id: `fb-${i}`, name, role: null, chips: [], status: 'planned', notes: '', real: false }))
     : crewRows
 
   // Phase 34 — routing/mowing visual chips from existing event.tags[].
@@ -1746,9 +1995,9 @@ function TaskCard({ event, equipment, crew, resolveName, canDeleteTasks = false,
   // contribute; fallback name-only rows have no patchable status.
   const cardProgress =
     crewRows.length === 0 ? null
-    : crewRows.some(r => r.status === 'blocked')    ? 'blocked'
-    : crewRows.some(r => r.status === 'delayed')    ? 'delayed'
-    : crewRows.every(r => r.status === 'completed') ? 'completed'
+    : crewRows.some(r => r.status === 'weather-delay') ? 'weather-delay'
+    : crewRows.some(r => r.status === 'in-progress') ? 'in-progress'
+    : crewRows.every(r => r.status === 'complete')   ? 'complete'
     : null
 
   return (
@@ -1856,6 +2105,9 @@ function TaskCard({ event, equipment, crew, resolveName, canDeleteTasks = false,
                   status={c.status}
                   notes={c.notes}
                 />
+              )}
+              {c.notes?.trim() && (
+                <p className={styles.crewAssignmentNotes}>{c.notes.trim()}</p>
               )}
             </li>
           ))}

@@ -20,6 +20,7 @@ export const REPORT_TYPE = {
   OPERATIONAL_SUMMARY:  'operational-summary',
   DISEASE_SUMMARY:      'disease-summary',
   MORNING_BRIEF:        'morning-brief',
+  AGRONOMY_PROGRESS:    'agronomy-progress',
   NUTRITION_SUMMARY:    'nutrition-summary',
   CULTURAL_HISTORY:     'cultural-history',
   DISEASE_LOG:          'disease-log',

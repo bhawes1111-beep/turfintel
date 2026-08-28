@@ -1,0 +1,92 @@
+{
+  "version": "yara-turf-royale-21-7-14-siteone-label",
+  "generatedAt": "2026-08-08",
+  "source": "SiteOne-hosted Yara Turf Royale 21-7-14 label supplied by the user; verified against Yara's current official product page and bag label",
+  "notes": "Catalog record transcribed from the supplied label. Current product status, composition, warning, and phosphorus-use limitation were checked against Yara's official U.S. materials.",
+  "products": [
+    {
+      "product_name": "YARAMILA TURF ROYALE 21-7-14",
+      "brand_owner": "YaraMila",
+      "manufacturer": "Yara North America, Inc.",
+      "epa_number": null,
+      "formulation": "Homogeneous, dust-free prilled granular fertilizer",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Compound N-P-K-S fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Total Nitrogen (N)",
+          "percentage": 21
+        },
+        {
+          "name": "Ammoniacal Nitrogen",
+          "percentage": 11.1
+        },
+        {
+          "name": "Nitrate Nitrogen",
+          "percentage": 9.9
+        },
+        {
+          "name": "Available Phosphate (P2O5)",
+          "percentage": 7
+        },
+        {
+          "name": "Soluble Potash (K2O)",
+          "percentage": 14
+        },
+        {
+          "name": "Combined Sulfur (S)",
+          "percentage": 5.1
+        }
+      ],
+      "fertilizer_analysis": "21-7-14; Total Nitrogen (N) 21.0%: 11.1% ammoniacal nitrogen and 9.9% nitrate nitrogen; Available Phosphate (P2O5) 7.0%; Soluble Potash (K2O) 14.0%; Combined Sulfur (S) 5.1%",
+      "rates": [
+        {
+          "rate": "6 lb",
+          "unit": "lb/1,000 sq ft",
+          "interval": "Preplant turf establishment; incorporate into topsoil and irrigate after planting"
+        },
+        {
+          "rate": "5 lb",
+          "unit": "lb/1,000 sq ft",
+          "interval": "Established turf; irrigate after application"
+        },
+        {
+          "rate": "4 lb",
+          "unit": "lb/1,000 sq ft",
+          "interval": "Overseeding; water immediately after seeding"
+        },
+        {
+          "rate": "4-5 lb",
+          "unit": "lb/1,000 sq ft",
+          "interval": "Broadleaf groundcover; apply at the beginning and midpoint of the growing season"
+        }
+      ],
+      "targets": [
+        "Turf establishment",
+        "Turf nitrogen nutrition",
+        "Turf phosphorus nutrition",
+        "Turf potassium nutrition",
+        "Turf sulfur nutrition",
+        "Turf stress support"
+      ],
+      "turf_sites": [
+        "professional turf",
+        "newly established turf",
+        "repaired or renovated turf",
+        "overseeded turf",
+        "landscapes and ornamentals"
+      ],
+      "restricted_use": false,
+      "signal_word": "Warning",
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.siteone.com/medias/sys_master/PimProductImages/assets/ProductAssets/US/Yara/labelAsset/rb-ue-labels-6363_36455_label_21-7-14tr-162384/rb-ue-labels-6363-36455-label-21-7-14tr-162384.pdf",
+      "notes": "50 lb professional turf and landscape fertilizer with a 3-1-2 ratio and sulfur. Derived from ammonium nitrate, monoammonium phosphate, diammonium phosphate, calcium phosphate, and sulfate of potash. The supplied label lists turf rates of 6 lb/1,000 sq ft preplant, 5 lb/1,000 sq ft established turf, and 4 lb/1,000 sq ft overseeding. A 50 lb bag covers about 8,300 sq ft at the preplant rate or 10,000 sq ft at the established-turf rate. Apply to dry foliage and moist soil, spread evenly, then irrigate. Current Yara labeling limits phosphorus-containing turf use to the first growing season, repaired or renovated turf, or turf where a soil test within the last three years indicates phosphorus deficiency; it is not intended for routine turf maintenance. Follow the current product label and applicable state nutrient rules.",
+      "status": "active"
+    }
+  ]
+}

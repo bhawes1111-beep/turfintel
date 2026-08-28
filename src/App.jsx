@@ -8,6 +8,7 @@ import Login from './pages/Login/Login'
 import AcceptInvitePage from './pages/Auth/AcceptInvitePage'
 import ResetPasswordPage from './pages/Auth/ResetPasswordPage'
 import Dashboard from './pages/Dashboard/Dashboard'
+import TodayList from './pages/TodayList/TodayList'
 import MorningBrief from './pages/MorningBrief/MorningBrief'
 import OperationsBoard from './pages/Operations/OperationsBoard'
 import Employees from './pages/Employees/Employees'
@@ -20,6 +21,8 @@ import CulturalPractices from './pages/CulturalPractices/CulturalPractices'
 import Budget from './pages/Budget/Budget'
 import Inventory from './pages/Inventory/Inventory'
 import Equipment  from './pages/Equipment/Equipment'
+import EquipmentMechanicBoard from './pages/Equipment/EquipmentMechanicBoard'
+import EquipmentIssueReport from './pages/Equipment/EquipmentIssueReport'
 import Irrigation from './pages/Irrigation/Irrigation'
 import TurfHealth from './pages/TurfHealth/TurfHealth'
 import Settings   from './pages/Settings/Settings'
@@ -54,6 +57,8 @@ export default function App() {
             route in the app. Every other route (including normal
             /display-board and the print fallback below) requires a session. */}
         <Route path="/display-board/board" element={<DisplayBoard boardMode />} />
+        <Route path="/equipment/board" element={<EquipmentMechanicBoard />} />
+        <Route path="/equipment/report-issue" element={<EquipmentIssueReport />} />
 
         {/* Phase 6B.3 — printable fallback. Same data path as Board Mode,
             but emits a paper-friendly layout and auto-opens the print
@@ -74,6 +79,8 @@ export default function App() {
         <Route path="/" element={<RequireAuth><Layout /></RequireAuth>}>
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
+          <Route path="to-do-list" element={<TodayList />} />
+          <Route path="today-list" element={<Navigate to="/to-do-list" replace />} />
           <Route path="morning-brief" element={<MorningBrief />} />
           <Route path="crew/*" element={<OperationsBoard />} />
           <Route path="employees/*" element={<Employees />} />
@@ -111,3 +118,6 @@ export default function App() {
     </CourseProvider>
   )
 }
+
+
+

@@ -22,6 +22,7 @@ let state = {
   error:     null,
   lastFetch: null,
 }
+const disabledState = { ...state, loading: false, error: null }
 
 const subscribers = new Set()
 let hasBooted = false
@@ -116,11 +117,17 @@ function subscribe(cb) {
 }
 
 function getSnapshot() { return state }
+function getDisabledSnapshot() { return disabledState }
+function subscribeDisabled() { return () => {} }
 
 /**
  * useEmployeeSchedulesData — read-only subscription.
  * Returns { schedules, loading, error, lastFetch }.
  */
-export function useEmployeeSchedulesData() {
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+export function useEmployeeSchedulesData({ enabled = true } = {}) {
+  return useSyncExternalStore(
+    enabled ? subscribe : subscribeDisabled,
+    enabled ? getSnapshot : getDisabledSnapshot,
+    enabled ? getSnapshot : getDisabledSnapshot,
+  )
 }

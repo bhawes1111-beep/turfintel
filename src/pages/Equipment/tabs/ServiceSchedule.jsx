@@ -58,12 +58,45 @@ function hoursPerDay(category) {
   return HOURS_PER_DAY_BY_CATEGORY[category] ?? 4
 }
 
+function text(value) {
+  return value == null ? '' : String(value)
+}
+
+function numberValue(value) {
+  const n = Number(value)
+  return Number.isFinite(n) ? n : null
+}
+
+function formatHours(value) {
+  const n = numberValue(value)
+  return n == null ? '-' : `${n.toLocaleString()} hrs`
+}
+
+function normalizeUnit(unit, index = 0) {
+  const category = text(unit?.category || unit?.type || 'Equipment') || 'Equipment'
+  return {
+    ...unit,
+    id: unit?.id || unit?.name || `equipment-${index}`,
+    name: text(unit?.name) || 'Equipment',
+    category,
+    status: text(unit?.status) || 'available',
+    hours: numberValue(unit?.hours ?? unit?.currentHours ?? unit?.current_hours),
+    nextServiceHours: numberValue(unit?.nextServiceHours ?? unit?.next_service_hours),
+  }
+}
+
 function projectedDays(unit) {
-  return (unit.nextServiceHours - unit.hours) / hoursPerDay(unit.category)
+  const current = numberValue(unit.hours)
+  const next = numberValue(unit.nextServiceHours)
+  if (current == null || next == null) return null
+  return (next - current) / hoursPerDay(unit.category)
 }
 
 function serviceStatus(unit) {
-  const remaining = unit.nextServiceHours - unit.hours
+  const current = numberValue(unit.hours)
+  const next = numberValue(unit.nextServiceHours)
+  if (current == null || next == null) return null
+  const remaining = next - current
   if (remaining <= 0)             return 'overdue'
   if (remaining <= DUE_SOON_HOURS) return 'due-soon'
   return 'upcoming'
@@ -95,16 +128,19 @@ function formatTickDate(offset) {
  */
 export default function ServiceSchedule({ onJumpToUnit, onJumpToMaintenance } = {}) {
   const { equipment, serviceLog } = useEquipmentData()
+  const safeEquipment = useMemo(() => Array.isArray(equipment) ? equipment : [], [equipment])
+  const safeServiceLog = useMemo(() => Array.isArray(serviceLog) ? serviceLog : [], [serviceLog])
 
   const rows = useMemo(() => {
-    return equipment
-      .map(unit => {
+    return safeEquipment
+      .map((rawUnit, index) => {
+        const unit = normalizeUnit(rawUnit, index)
         const status      = serviceStatus(unit)
         const projDays    = projectedDays(unit)
         const serviceType = SERVICE_TYPE_BY_CATEGORY[unit.category] ?? 'PM'
 
         // Latest completed log entry within range, if any
-        const recentLog = serviceLog
+        const recentLog = safeServiceLog
           .filter(l =>
             l.equipmentId === unit.id &&
             l.status === 'completed' &&
@@ -116,27 +152,28 @@ export default function ServiceSchedule({ onJumpToUnit, onJumpToMaintenance } = 
 
         return { unit, status, projDays, serviceType, recentLog }
       })
+      .filter(r => r.status && Number.isFinite(r.projDays))
       // Skip out-of-service units that have no projection (they aren't
       // accumulating hours; the schedule is meaningless).
       .filter(r => r.unit.status !== 'out-of-service' || r.status === 'overdue')
       .sort((a, b) =>
-        STATUS_SORT[a.status] - STATUS_SORT[b.status] ||
+        (STATUS_SORT[a.status] ?? 9) - (STATUS_SORT[b.status] ?? 9) ||
         a.projDays - b.projDays
       )
-  }, [equipment, serviceLog])
+  }, [safeEquipment, safeServiceLog])
 
   const counts = useMemo(() => {
     let overdue = 0, dueSoon = 0, upcoming30 = 0, recentlyServiced = 0
     rows.forEach(r => {
       if (r.status === 'overdue')      overdue++
       else if (r.status === 'due-soon') dueSoon++
-      else if (r.projDays <= 30)        upcoming30++
+      else if (r.projDays != null && r.projDays <= 30) upcoming30++
       if (r.recentLog)                  recentlyServiced++
     })
     return { overdue, dueSoon, upcoming30, recentlyServiced }
   }, [rows])
 
-  const hasUnits = equipment.length > 0
+  const hasUnits = safeEquipment.length > 0
 
   return (
     <div className={styles.eqRoot}>
@@ -161,7 +198,7 @@ export default function ServiceSchedule({ onJumpToUnit, onJumpToMaintenance } = 
           <EmptyState
             compact
             title="No active service projections."
-            description="All units are either out of service or have no upcoming maintenance within the visible window."
+            description="Add current hours and next service hours on your equipment records to see upcoming maintenance."
           />
         ) : (
           <Timeline
@@ -185,7 +222,7 @@ export default function ServiceSchedule({ onJumpToUnit, onJumpToMaintenance } = 
                 RANGE_START_DAYS,
                 Math.min(RANGE_END_DAYS - 2, r.projDays),
               )
-              const nextTitle = `${r.serviceType} — ${r.unit.name} · ${r.unit.hours.toLocaleString()} / ${r.unit.nextServiceHours.toLocaleString()} hrs`
+              const nextTitle = `${r.serviceType} - ${r.unit.name} - ${formatHours(r.unit.hours)} / ${formatHours(r.unit.nextServiceHours)}`
               return (
                 <Timeline.Row key={r.unit.id} label={r.unit.name} ariaLabel={`${r.unit.name} schedule`}>
                   {r.recentLog && (

@@ -27,6 +27,7 @@ let state = {
   error:                 null,
   lastFetch:             null,
 }
+const disabledState = { ...state, loading: false, error: null }
 
 const subscribers = new Set()
 let hasBooted = false
@@ -346,6 +347,8 @@ function subscribe(cb) {
 }
 
 function getSnapshot() { return state }
+function getDisabledSnapshot() { return disabledState }
+function subscribeDisabled() { return () => {} }
 
 /**
  * useAssignmentsData — read-only subscription to the assignments vertical.
@@ -356,6 +359,10 @@ function getSnapshot() { return state }
  * equipmentId, status, notes, assignedAt | reservedAt, createdAt,
  * updatedAt }.
  */
-export function useAssignmentsData() {
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+export function useAssignmentsData({ enabled = true } = {}) {
+  return useSyncExternalStore(
+    enabled ? subscribe : subscribeDisabled,
+    enabled ? getSnapshot : getDisabledSnapshot,
+    enabled ? getSnapshot : getDisabledSnapshot,
+  )
 }

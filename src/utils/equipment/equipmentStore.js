@@ -158,6 +158,21 @@ export async function createMaintenance(payload) {
 
 // ── React hook ────────────────────────────────────────────────────────────
 
+export async function deleteMaintenance(id) {
+  const prev = state.serviceLog
+  setState({ serviceLog: prev.filter(ml => ml.id !== id) })
+  try {
+    await fetchJSON(`${API.maintenance}/${encodeURIComponent(id)}`, {
+      method:  'DELETE',
+      headers: mutationHeaders(),
+    })
+  } catch (err) {
+    setState({ error: err.message })
+    refreshEquipmentData()
+    throw err
+  }
+}
+
 function subscribe(cb) {
   subscribers.add(cb)
   if (!hasBooted) {

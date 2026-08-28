@@ -19,6 +19,8 @@ import {
 } from '../../../utils/courses/courseStore'
 import styles from '../Settings.module.css'
 
+const SQ_FT_PER_ACRE = 43560
+
 const BUILTIN_ACREAGE_FIELDS = [
   { key: 'acresTotal',     label: 'Total Acreage',     hint: 'Whole-property footprint' },
   { key: 'acresGreens',    label: 'Greens',            hint: 'Putting surfaces' },
@@ -74,6 +76,20 @@ function toPayload(form) {
   }
 }
 
+function squareFeetFromAcres(acres) {
+  if (acres === '' || acres == null) return ''
+  const value = Number(acres)
+  if (!Number.isFinite(value)) return ''
+  return Number((value * SQ_FT_PER_ACRE).toFixed(2))
+}
+
+function acresFromSquareFeet(squareFeet) {
+  if (squareFeet === '' || squareFeet == null) return ''
+  const value = Number(squareFeet)
+  if (!Number.isFinite(value)) return ''
+  return Number((value / SQ_FT_PER_ACRE).toFixed(8))
+}
+
 export default function CourseConfigurationSection() {
   const selectedId     = useSelectedCourseId()
   const selectedCourse = useSelectedCourse()
@@ -100,6 +116,10 @@ export default function CourseConfigurationSection() {
     setStatus('idle')
   }
 
+  function setBuiltInSquareFeet(key, value) {
+    setField(key, acresFromSquareFeet(value))
+  }
+
   function updateCustomArea(index, patch) {
     setForm(prev => ({
       ...prev,
@@ -108,6 +128,10 @@ export default function CourseConfigurationSection() {
       ),
     }))
     setStatus('idle')
+  }
+
+  function updateCustomAreaSquareFeet(index, value) {
+    updateCustomArea(index, { acres: acresFromSquareFeet(value) })
   }
 
   function addCustomArea() {
@@ -155,14 +179,15 @@ export default function CourseConfigurationSection() {
 
   return (
     <>
-      {/* ── Built-in acreage ─────────────────────────────────────────────── */}
+      {/* ── Built-in course areas ────────────────────────────────────────── */}
       <div className={styles.card}>
         <div className={styles.cardHeader}>
-          <p className={styles.cardTitle}>Built-in Acreage</p>
+          <p className={styles.cardTitle}>Built-in Course Areas</p>
           <span className={styles.segmentedHint}>{selectedCourse.name}</span>
         </div>
         <p className={styles.cardDesc}>
-          Standard golf-course acreage categories. Leave any field blank to
+          Standard golf-course areas in acres and square feet. Enter either
+          measurement and the other updates automatically. Leave both blank to
           mark it as not configured.
         </p>
 
@@ -172,15 +197,32 @@ export default function CourseConfigurationSection() {
               <span className={styles.rowLabel}>{field.label}</span>
               <span className={styles.rowDesc}>{field.hint}</span>
             </div>
-            <input
-              type="number"
-              className={styles.input}
-              value={form[field.key]}
-              min="0"
-              step="0.01"
-              placeholder="acres"
-              onChange={e => setField(field.key, e.target.value)}
-            />
+            <div className={styles.courseAreaMeasurements}>
+              <label className={styles.courseAreaMeasurement}>
+                <span>Acres</span>
+                <input
+                  type="number"
+                  className={styles.input}
+                  value={form[field.key]}
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  onChange={e => setField(field.key, e.target.value)}
+                />
+              </label>
+              <label className={styles.courseAreaMeasurement}>
+                <span>Square feet</span>
+                <input
+                  type="number"
+                  className={styles.input}
+                  value={squareFeetFromAcres(form[field.key])}
+                  min="0"
+                  step="1"
+                  placeholder="0"
+                  onChange={e => setBuiltInSquareFeet(field.key, e.target.value)}
+                />
+              </label>
+            </div>
           </div>
         ))}
       </div>
@@ -232,8 +274,8 @@ export default function CourseConfigurationSection() {
         <p className={styles.cardDesc}>
           Anything outside the built-in categories — nursery, bunker sand,
           landscape beds, native areas, short course, event lawn, future
-          expansion zones. Phase 1b will surface these in the Spray
-          Application Builder.
+          expansion zones. Enter acres or square feet; both measurements are
+          shown in the Application Builder.
         </p>
 
         {form.customCourseAreas.length === 0 && (
@@ -252,16 +294,32 @@ export default function CourseConfigurationSection() {
               onChange={e => updateCustomArea(index, { name: e.target.value })}
               style={{ flex: 2, minWidth: 0 }}
             />
-            <input
-              type="number"
-              className={styles.input}
-              value={area.acres}
-              min="0"
-              step="0.01"
-              placeholder="acres"
-              onChange={e => updateCustomArea(index, { acres: e.target.value })}
-              style={{ flex: 1, minWidth: 0 }}
-            />
+            <div className={styles.courseAreaMeasurements}>
+              <label className={styles.courseAreaMeasurement}>
+                <span>Acres</span>
+                <input
+                  type="number"
+                  className={styles.input}
+                  value={area.acres}
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  onChange={e => updateCustomArea(index, { acres: e.target.value })}
+                />
+              </label>
+              <label className={styles.courseAreaMeasurement}>
+                <span>Square feet</span>
+                <input
+                  type="number"
+                  className={styles.input}
+                  value={squareFeetFromAcres(area.acres)}
+                  min="0"
+                  step="1"
+                  placeholder="0"
+                  onChange={e => updateCustomAreaSquareFeet(index, e.target.value)}
+                />
+              </label>
+            </div>
             <button
               type="button"
               className={styles.dangerBtn}

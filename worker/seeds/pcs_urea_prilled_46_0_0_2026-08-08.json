@@ -1,0 +1,40 @@
+{
+  "version": "pcs-urea-prilled-spec-2006-04",
+  "generatedAt": "2026-08-08",
+  "source": "PCS Sales (USA), Inc. Urea Prilled agricultural-grade product specification supplied through SiteOne",
+  "notes": "Catalog record transcribed from the supplied manufacturer specification sheet. This is a fertilizer product and does not have an EPA pesticide registration.",
+  "products": [
+    {
+      "product_name": "UREA PRILLED 46-0-0",
+      "brand_owner": "PCS Sales (USA), Inc.",
+      "manufacturer": "PCS Sales (USA), Inc.",
+      "epa_number": null,
+      "formulation": "Prilled Granular Fertilizer",
+      "category": "fertilizer",
+      "frac_group": null,
+      "hrac_group": null,
+      "irac_group": null,
+      "pgr_class": null,
+      "chemical_class": "Urea nitrogen fertilizer",
+      "active_ingredients": [
+        {
+          "name": "Urea Nitrogen",
+          "percentage": 46
+        }
+      ],
+      "fertilizer_analysis": "46-0-0; Total Nitrogen (N) 46.0% from urea",
+      "rates": [],
+      "targets": [
+        "Nitrogen nutrition"
+      ],
+      "turf_sites": [],
+      "restricted_use": false,
+      "signal_word": null,
+      "rei_hours": null,
+      "phi_hours": null,
+      "label_url": "https://www.siteone.com/medias/sys_master/PimProductImages/assets/ProductAssets/US/NoBrand/labelAsset/rb-ue-labels-15320_332545_label_098531-spec-sheet-523885/rb-ue-labels-15320-332545-label-098531-spec-sheet-523885.pdf",
+      "notes": "Agricultural-grade prilled urea from the Augusta, Georgia source. Guaranteed minimum total nitrogen is 46.0%. Typical SGN is 203 with a stated 185-215 range; typical bulk density is 46 lb/ft3 with a guaranteed 44-48 lb/ft3 range. The sheet lists 1.76% maximum methylenediurea conditioner, 0.5% maximum biuret, and 0.3% maximum moisture. No universal application rate is stated; calculate product rate from the desired actual-nitrogen rate and follow the current agronomic recommendation.",
+      "status": "active"
+    }
+  ]
+}

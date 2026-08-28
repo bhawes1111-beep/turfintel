@@ -159,7 +159,6 @@ export default function TurfHealthCaptureSheet({ onClose, recentLocations = [] }
   return createPortal(
     <div
       className={styles.backdrop}
-      onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-label="Log turf health observation"

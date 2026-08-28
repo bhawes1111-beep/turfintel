@@ -85,6 +85,10 @@ export default function DailyScheduleEditor() {
           status:       ov.status,
           startTime:    ov.startTime,
           endTime:      ov.endTime,
+          lunchBreakMinutes: ov.lunchBreakMinutes ?? rec?.lunchBreakMinutes ?? 30,
+          lunchStartTime: ov.lunchStartTime ?? null,
+          lunchEndTime: ov.lunchEndTime ?? null,
+          autoLunchBreak: ov.autoLunchBreak !== false,
           notes:        ov.notes ?? '',
           source:       'override',
           overrideId:   ov.id,
@@ -98,6 +102,10 @@ export default function DailyScheduleEditor() {
           status:       rec.status,
           startTime:    rec.startTime,
           endTime:      rec.endTime,
+          lunchBreakMinutes: rec.lunchBreakMinutes ?? 30,
+          lunchStartTime: rec.lunchStartTime ?? null,
+          lunchEndTime: rec.lunchEndTime ?? null,
+          autoLunchBreak: rec.autoLunchBreak !== false,
           notes:        '',
           source:       'recurring',
           overrideId:   null,
@@ -110,6 +118,10 @@ export default function DailyScheduleEditor() {
         status:       'scheduled',
         startTime:    null,
         endTime:      null,
+        lunchBreakMinutes: 30,
+        lunchStartTime: null,
+        lunchEndTime: null,
+        autoLunchBreak: true,
         notes:        '',
         source:       'none',
         overrideId:   null,
@@ -125,8 +137,12 @@ export default function DailyScheduleEditor() {
     setBusyEmpId(row.employeeId)
     try {
       const payload = {
-        startTime: patch.startTime ?? row.startTime ?? null,
-        endTime:   patch.endTime   ?? row.endTime   ?? null,
+        startTime: Object.hasOwn(patch, 'startTime') ? patch.startTime : (row.startTime ?? null),
+        endTime: Object.hasOwn(patch, 'endTime') ? patch.endTime : (row.endTime ?? null),
+        lunchBreakMinutes: Object.hasOwn(patch, 'lunchBreakMinutes') ? patch.lunchBreakMinutes : (row.lunchBreakMinutes ?? 30),
+        lunchStartTime: Object.hasOwn(patch, 'lunchStartTime') ? patch.lunchStartTime : (row.lunchStartTime ?? null),
+        lunchEndTime: Object.hasOwn(patch, 'lunchEndTime') ? patch.lunchEndTime : (row.lunchEndTime ?? null),
+        autoLunchBreak: patch.autoLunchBreak ?? row.autoLunchBreak ?? true,
         role:      patch.role      ?? row.role      ?? null,
         status:    patch.status    ?? row.status    ?? 'scheduled',
         notes:     patch.notes     ?? row.notes     ?? null,
@@ -170,7 +186,7 @@ export default function DailyScheduleEditor() {
           <h3 className={styles.dailyTitle}>Today's Schedule</h3>
           <p className={styles.dailyHint}>
             Mark someone off, sick, or vacation for this one date without changing the weekly schedule.
-            Use Reset to return them to the recurring grid.
+            Use Reset to return them to the recurring grid. Auto 30 is checked by default; uncheck it to enter Lunch Out and Lunch In times.
           </p>
         </div>
         <label className={styles.dailyDatePicker}>
@@ -192,6 +208,9 @@ export default function DailyScheduleEditor() {
             <th>Status</th>
             <th>Start</th>
             <th>End</th>
+            <th>Lunch Out</th>
+            <th>Lunch In</th>
+            <th>Auto 30</th>
             <th>Notes</th>
             <th>Source</th>
             <th aria-label="Reset" />
@@ -200,7 +219,7 @@ export default function DailyScheduleEditor() {
         <tbody>
           {mergedRows.length === 0 ? (
             <tr>
-              <td colSpan={8} className={styles.dailyEmpty}>
+              <td colSpan={11} className={styles.dailyEmpty}>
                 No active employees. Add crew in Employee Management to start scheduling.
               </td>
             </tr>
@@ -230,19 +249,69 @@ export default function DailyScheduleEditor() {
                   <input
                     type="time"
                     className={styles.dailyTimeInput}
-                    value={row.startTime ?? ''}
+                    key={`${selectedDate}:${row.employeeId}:start`}
+                    defaultValue={row.startTime ?? ''}
                     disabled={busy || row.status !== 'scheduled'}
-                    onChange={e => applyEdit(row, { startTime: e.target.value || null })}
+                    onBlur={e => {
+                      const next = e.target.value || null
+                      if (next !== (row.startTime ?? null)) applyEdit(row, { startTime: next })
+                    }}
                   />
                 </td>
                 <td>
                   <input
                     type="time"
                     className={styles.dailyTimeInput}
-                    value={row.endTime ?? ''}
+                    key={`${selectedDate}:${row.employeeId}:end`}
+                    defaultValue={row.endTime ?? ''}
                     disabled={busy || row.status !== 'scheduled'}
-                    onChange={e => applyEdit(row, { endTime: e.target.value || null })}
+                    onBlur={e => {
+                      const next = e.target.value || null
+                      if (next !== (row.endTime ?? null)) applyEdit(row, { endTime: next })
+                    }}
                   />
+                </td>
+                <td>
+                  <input
+                    type="time"
+                    className={styles.dailyTimeInput}
+                    key={`${selectedDate}:${row.employeeId}:lunch-out`}
+                    defaultValue={row.lunchStartTime ?? ''}
+                    disabled={busy || row.status !== 'scheduled' || row.autoLunchBreak !== false}
+                    onBlur={e => {
+                      const next = e.target.value || null
+                      if (next !== (row.lunchStartTime ?? null)) applyEdit(row, { lunchStartTime: next })
+                    }}
+                    aria-label={`Lunch out for ${row.employeeName}`}
+                  />
+                </td>
+                <td>
+                  <input
+                    type="time"
+                    className={styles.dailyTimeInput}
+                    key={`${selectedDate}:${row.employeeId}:lunch-in`}
+                    defaultValue={row.lunchEndTime ?? ''}
+                    disabled={busy || row.status !== 'scheduled' || row.autoLunchBreak !== false}
+                    onBlur={e => {
+                      const next = e.target.value || null
+                      if (next !== (row.lunchEndTime ?? null)) applyEdit(row, { lunchEndTime: next })
+                    }}
+                    aria-label={`Lunch in for ${row.employeeName}`}
+                  />
+                </td>
+                <td>
+                  <label className={styles.lunchToggle}>
+                    <input
+                      type="checkbox"
+                      checked={row.autoLunchBreak !== false}
+                      disabled={busy || row.status !== 'scheduled'}
+                      onChange={e => applyEdit(row, {
+                        autoLunchBreak: e.target.checked,
+                        lunchBreakMinutes: e.target.checked ? 30 : 0,
+                      })}
+                    />
+                    <span>30 min</span>
+                  </label>
                 </td>
                 <td>
                   <input

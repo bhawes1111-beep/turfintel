@@ -49,10 +49,121 @@ function rowToTemplateRow(row) {
     status:      row.status,
     startTime:   row.start_time,
     endTime:     row.end_time,
+    lunchBreakMinutes: row.lunch_break_minutes ?? 30,
+    lunchStartTime: row.lunch_start_time,
+    lunchEndTime: row.lunch_end_time,
+    autoLunchBreak: row.auto_lunch_break !== 0,
     role:        row.role,
     notes:       row.notes,
     sortOrder:   row.sort_order,
   }
+}
+
+async function loadShiftTemplatePayload(env, id, extras = {}) {
+  const row = await env.DB.prepare(
+    'SELECT * FROM shift_templates WHERE id = ?',
+  ).bind(id).first()
+  if (!row) return null
+  const { results } = await env.DB.prepare(
+    'SELECT * FROM shift_template_rows WHERE template_id = ? ORDER BY sort_order ASC, employee_id ASC',
+  ).bind(id).all()
+  return rowToTemplate(row, { rows: results.map(rowToTemplateRow), ...extras })
+}
+
+async function loadTemplateRows(env, templateId) {
+  const { results } = await env.DB.prepare(
+    'SELECT * FROM shift_template_rows WHERE template_id = ? ORDER BY sort_order ASC, employee_id ASC',
+  ).bind(templateId).all()
+  return results
+}
+
+async function loadValidEmployeeIds(env, courseId) {
+  const { results } = await env.DB.prepare(
+    'SELECT id FROM crew_employees WHERE course_id = ?',
+  ).bind(courseId).all()
+  return new Set(results.map(r => r.id))
+}
+
+async function recordShiftTemplateApplication(env, { courseId, templateId, effectiveDate }) {
+  await env.DB.prepare(`
+    INSERT INTO shift_template_applications (
+      id, course_id, template_id, effective_date
+    ) VALUES (?, ?, ?, ?)
+    ON CONFLICT(course_id, template_id, effective_date)
+    DO UPDATE SET updated_at = datetime('now')
+  `).bind(
+    generateId('shiftapp'),
+    courseId,
+    templateId,
+    effectiveDate,
+  ).run()
+}
+
+async function unlinkShiftTemplateApplicationsForDate(env, { courseId, effectiveDate }) {
+  await env.DB.prepare(
+    `DELETE FROM shift_template_applications
+      WHERE course_id = ? AND effective_date = ?`,
+  ).bind(courseId, effectiveDate).run()
+}
+
+async function writeTemplateRowsToDate(env, {
+  courseId,
+  templateId,
+  effectiveDate,
+  rows,
+  validEmpIds,
+  replace,
+  trackApplication,
+}) {
+  let replaced = 0
+  if (replace) {
+    const wipe = await env.DB.prepare(
+      `DELETE FROM employee_schedule_overrides
+        WHERE course_id = ? AND effective_date = ?`,
+    ).bind(courseId, effectiveDate).run()
+    replaced = wipe.meta?.changes ?? 0
+  }
+
+  let applied = 0, skipped = 0
+  for (const r of rows) {
+    if (!validEmpIds.has(r.employee_id)) { skipped += 1; continue }
+    try {
+      await env.DB.prepare(`
+        INSERT INTO employee_schedule_overrides (
+          id, course_id, employee_id, effective_date,
+          start_time, end_time, role, status, notes
+          , lunch_break_minutes
+          , lunch_start_time, lunch_end_time, auto_lunch_break
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(
+        generateId('schov'),
+        courseId,
+        r.employee_id,
+        effectiveDate,
+        r.start_time,
+        r.end_time,
+        r.role,
+        r.status,
+        r.notes,
+        r.lunch_break_minutes ?? 30,
+        r.lunch_start_time ?? null,
+        r.lunch_end_time ?? null,
+        r.auto_lunch_break ?? 1,
+      ).run()
+      applied += 1
+    } catch {
+      // UNIQUE collision on (course, employee, date) — merge semantics
+      // means we leave existing override in place.
+      skipped += 1
+    }
+  }
+
+  if (trackApplication) {
+    if (replace) await unlinkShiftTemplateApplicationsForDate(env, { courseId, effectiveDate })
+    await recordShiftTemplateApplication(env, { courseId, templateId, effectiveDate })
+  }
+
+  return { replaced, applied, skipped }
 }
 
 const ROW_CORE_COLUMNS = {
@@ -60,6 +171,10 @@ const ROW_CORE_COLUMNS = {
   status:     'status',
   startTime:  'start_time',
   endTime:    'end_time',
+  lunchBreakMinutes: 'lunch_break_minutes',
+  lunchStartTime: 'lunch_start_time',
+  lunchEndTime: 'lunch_end_time',
+  autoLunchBreak: 'auto_lunch_break',
   role:       'role',
   notes:      'notes',
   sortOrder:  'sort_order',
@@ -81,14 +196,9 @@ export async function listShiftTemplates(env, courseId = null) {
 }
 
 export async function getShiftTemplate(env, id) {
-  const row = await env.DB.prepare(
-    'SELECT * FROM shift_templates WHERE id = ?',
-  ).bind(id).first()
-  if (!row) return notFound('Shift template not found')
-  const { results } = await env.DB.prepare(
-    'SELECT * FROM shift_template_rows WHERE template_id = ? ORDER BY sort_order ASC, employee_id ASC',
-  ).bind(id).all()
-  return json(rowToTemplate(row, { rows: results.map(rowToTemplateRow) }))
+  const payload = await loadShiftTemplatePayload(env, id)
+  if (!payload) return notFound('Shift template not found')
+  return json(payload)
 }
 
 // ── Create + Update + Delete ──────────────────────────────────────────────
@@ -132,7 +242,9 @@ export async function createShiftTemplate(env, request) {
         INSERT INTO shift_template_rows (
           id, template_id, employee_id, status,
           start_time, end_time, role, notes, sort_order
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          , lunch_break_minutes
+          , lunch_start_time, lunch_end_time, auto_lunch_break
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(
         r.id ?? generateId('shiftrow'),
         id,
@@ -143,6 +255,10 @@ export async function createShiftTemplate(env, request) {
         r.role      ?? null,
         r.notes     ?? null,
         Number.isFinite(Number(r.sortOrder)) ? Number(r.sortOrder) : 0,
+        Math.max(0, Number(r.lunchBreakMinutes ?? 30) || 0),
+        r.lunchStartTime ?? null,
+        r.lunchEndTime ?? null,
+        r.autoLunchBreak === false ? 0 : 1,
       ).run()
     }
   }
@@ -187,7 +303,7 @@ export async function updateShiftTemplate(env, id, request) {
   if (willReplaceRows) {
     // Confirm template exists before we wipe (avoid orphaning rows).
     const tpl = await env.DB.prepare(
-      'SELECT id FROM shift_templates WHERE id = ?',
+      'SELECT * FROM shift_templates WHERE id = ?',
     ).bind(id).first()
     if (!tpl) return notFound('Shift template not found')
 
@@ -201,7 +317,9 @@ export async function updateShiftTemplate(env, id, request) {
         INSERT INTO shift_template_rows (
           id, template_id, employee_id, status,
           start_time, end_time, role, notes, sort_order
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          , lunch_break_minutes
+          , lunch_start_time, lunch_end_time, auto_lunch_break
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(
         r.id ?? generateId('shiftrow'),
         id,
@@ -212,11 +330,54 @@ export async function updateShiftTemplate(env, id, request) {
         r.role      ?? null,
         r.notes     ?? null,
         Number.isFinite(Number(r.sortOrder)) ? Number(r.sortOrder) : 0,
+        Math.max(0, Number(r.lunchBreakMinutes ?? 30) || 0),
+        r.lunchStartTime ?? null,
+        r.lunchEndTime ?? null,
+        r.autoLunchBreak === false ? 0 : 1,
       ).run()
+    }
+
+    const { results: linkedDates } = await env.DB.prepare(
+      `SELECT effective_date
+         FROM shift_template_applications
+        WHERE course_id = ? AND template_id = ?
+        ORDER BY effective_date ASC`,
+    ).bind(tpl.course_id, id).all()
+
+    if (linkedDates.length > 0) {
+      const rows = await loadTemplateRows(env, id)
+      const validEmpIds = await loadValidEmployeeIds(env, tpl.course_id)
+      let propagatedApplied = 0
+      let propagatedReplaced = 0
+      let propagatedSkipped = 0
+      for (const linked of linkedDates) {
+        const result = await writeTemplateRowsToDate(env, {
+          courseId: tpl.course_id,
+          templateId: id,
+          effectiveDate: linked.effective_date,
+          rows,
+          validEmpIds,
+          replace: true,
+          trackApplication: false,
+        })
+        propagatedApplied += result.applied
+        propagatedReplaced += result.replaced
+        propagatedSkipped += result.skipped
+      }
+
+      const payload = await loadShiftTemplatePayload(env, id, {
+        propagatedDates: linkedDates.map(d => d.effective_date),
+        propagatedApplied,
+        propagatedReplaced,
+        propagatedSkipped,
+      })
+      return json(payload)
     }
   }
 
-  return getShiftTemplate(env, id)
+  const payload = await loadShiftTemplatePayload(env, id)
+  if (!payload) return notFound('Shift template not found')
+  return json(payload)
 }
 
 export async function deleteShiftTemplate(env, id) {
@@ -225,6 +386,9 @@ export async function deleteShiftTemplate(env, id) {
   // default for these tables.
   await env.DB.prepare(
     'DELETE FROM shift_template_rows WHERE template_id = ?',
+  ).bind(id).run()
+  await env.DB.prepare(
+    'DELETE FROM shift_template_applications WHERE template_id = ?',
   ).bind(id).run()
   const result = await env.DB.prepare(
     'DELETE FROM shift_templates WHERE id = ?',
@@ -262,16 +426,20 @@ export async function applyShiftTemplate(env, templateId, request) {
 
   const courseId = tplRow.course_id
 
-  const { results: rows } = await env.DB.prepare(
-    'SELECT * FROM shift_template_rows WHERE template_id = ?',
-  ).bind(templateId).all()
+  const rows = await loadTemplateRows(env, templateId)
 
-  // Validate employees still exist in this course.
-  const { results: empRows } = await env.DB.prepare(
-    'SELECT id FROM crew_employees WHERE course_id = ?',
-  ).bind(courseId).all()
-  const validEmpIds = new Set(empRows.map(r => r.id))
+  const validEmpIds = await loadValidEmployeeIds(env, courseId)
 
+  const writeResult = await writeTemplateRowsToDate(env, {
+    courseId,
+    templateId,
+    effectiveDate,
+    rows,
+    validEmpIds,
+    replace,
+    trackApplication: true,
+  })
+/*
   let replaced = 0
   if (replace) {
     const wipe = await env.DB.prepare(
@@ -308,6 +476,9 @@ export async function applyShiftTemplate(env, templateId, request) {
       skipped += 1
     }
   }
+
+*/
+  const { replaced, applied, skipped } = writeResult
 
   return json({
     ok:            true,

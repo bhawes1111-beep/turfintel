@@ -42,6 +42,10 @@ function rowToTemplateRow(row) {
     dayOfWeek:   row.day_of_week,
     startTime:   row.start_time,
     endTime:     row.end_time,
+    lunchBreakMinutes: row.lunch_break_minutes ?? 30,
+    lunchStartTime: row.lunch_start_time,
+    lunchEndTime: row.lunch_end_time,
+    autoLunchBreak: row.auto_lunch_break !== 0,
     role:        row.role,
     status:      row.status,
   }
@@ -128,7 +132,9 @@ export async function createScheduleTemplate(env, request) {
           INSERT INTO schedule_template_rows (
             id, template_id, employee_id, day_of_week,
             start_time, end_time, role, status
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            , lunch_break_minutes
+            , lunch_start_time, lunch_end_time, auto_lunch_break
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).bind(
           generateId('tpr'),
           id,
@@ -138,6 +144,10 @@ export async function createScheduleTemplate(env, request) {
           r.endTime   ?? null,
           r.role      ?? null,
           coerceStatus(r.status),
+          Math.max(0, Number(r.lunchBreakMinutes ?? 30) || 0),
+          r.lunchStartTime ?? null,
+          r.lunchEndTime ?? null,
+          r.autoLunchBreak === false ? 0 : 1,
         ).run()
         rowsInserted += 1
       } catch {
@@ -236,7 +246,9 @@ export async function applyScheduleTemplate(env, templateId) {
         INSERT INTO employee_schedules (
           id, course_id, employee_id, day_of_week,
           start_time, end_time, role, status, is_recurring
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+          , lunch_break_minutes
+          , lunch_start_time, lunch_end_time, auto_lunch_break
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)
       `).bind(
         generateId('sch'),
         courseId,
@@ -246,6 +258,10 @@ export async function applyScheduleTemplate(env, templateId) {
         r.end_time,
         r.role,
         r.status,
+        r.lunch_break_minutes ?? 30,
+        r.lunch_start_time ?? null,
+        r.lunch_end_time ?? null,
+        r.auto_lunch_break ?? 1,
       ).run()
       applied += 1
     } catch {

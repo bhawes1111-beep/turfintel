@@ -9,8 +9,10 @@
 //   Active            grid of status=active employees + quick edit
 //   Inactive          grid of status=inactive employees + Reactivate
 //   Schedule          weekly schedule view (reuses CrewSchedule)
+//   Payroll           schedule-based payroll breakdown
 //   Crew Roles        distinct roles with member counts
 //   Certifications    placeholder for future credential tracking
+//   Training          employee training records and renewal tracking
 
 import { useState } from 'react'
 import PageShell from '../../components/layout/PageShell'
@@ -18,8 +20,10 @@ import WorkspaceActions from '../../components/shared/WorkspaceActions'
 import EmployeesOverview     from './tabs/EmployeesOverview'
 import EmployeeRoster        from './tabs/EmployeeRoster'
 import EmployeeScheduleTab   from './tabs/EmployeeScheduleTab'
+import EmployeePayroll       from './tabs/EmployeePayroll'
 import CrewRoles             from './tabs/CrewRoles'
 import Certifications        from './tabs/Certifications'
+import EmployeeTraining      from './tabs/EmployeeTraining'
 import EmployeeFormModal     from './components/EmployeeFormModal'
 import workspace from '../../styles/workspace.module.css'
 
@@ -28,6 +32,8 @@ const TABS = [
   'Active Employees',
   'Inactive Employees',
   'Schedule',
+  'Payroll',
+  'Training',
   'Crew Roles',
   'Certifications',
 ]
@@ -70,6 +76,8 @@ export default function Employees() {
         {activeTab === 'Active Employees'   && <EmployeeRoster filter="active"   onEdit={openEdit} />}
         {activeTab === 'Inactive Employees' && <EmployeeRoster filter="inactive" onEdit={openEdit} />}
         {activeTab === 'Schedule'           && <EmployeeScheduleTab />}
+        {activeTab === 'Payroll'            && <EmployeePayroll />}
+        {activeTab === 'Training'           && <EmployeeTraining />}
         {activeTab === 'Crew Roles'         && <CrewRoles onEdit={openEdit} />}
         {activeTab === 'Certifications'     && <Certifications />}
       </PageShell>

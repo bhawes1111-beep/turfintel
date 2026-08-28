@@ -173,7 +173,6 @@ export default function MoistureCaptureSheet({ onClose, recentLocations = [] }) 
   return createPortal(
     <div
       className={styles.backdrop}
-      onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-label="Log moisture observation"

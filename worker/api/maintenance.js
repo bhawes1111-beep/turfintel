@@ -3,6 +3,13 @@
 import { json, badRequest, notFound, readJson } from '../lib/json.js'
 import { generateId } from '../lib/id.js'
 import { resolveCourseId } from '../lib/scope.js'
+import { reconcileTicketPartInventory, reverseTicketPartInventory } from '../lib/ticketInventory.js'
+
+const RESOLVED_STATUSES = new Set(['completed', 'resolved', 'closed'])
+
+function isResolvedLog(row) {
+  return row?.ticket_stage === 'resolved' || RESOLVED_STATUSES.has(String(row?.status ?? '').toLowerCase())
+}
 
 function rowToLog(row) {
   if (!row) return null
@@ -15,15 +22,19 @@ function rowToLog(row) {
     id:               row.id,
     equipmentId:      row.equipment_id,
     equipmentName:    row.equipment_name ?? null, // join field, if present
+    equipmentStatus:  row.equipment_status ?? null,
     category:         row.category ?? null,       // join field, if present
     serviceType:      row.service_type,
     status:           row.status,
+    ticketStage:      row.ticket_stage,
     priority:         row.priority,
     date:             row.date,
     completedDate:    row.completed_date,
     hoursAtService:   row.hours_at_service,
     nextDueHours:     row.next_due_hours,
     cost:             row.cost,
+    laborHours:       row.labor_hours,
+    technicianEmployeeId: row.technician_employee_id,
     technician:       row.technician,
     notes:            row.notes,
     partsUsed,
@@ -35,12 +46,15 @@ function rowToLog(row) {
 const MUTABLE_COLUMNS = {
   serviceType:     'service_type',
   status:          'status',
+  ticketStage:     'ticket_stage',
   priority:        'priority',
   date:            'date',
   completedDate:   'completed_date',
   hoursAtService:  'hours_at_service',
   nextDueHours:    'next_due_hours',
   cost:            'cost',
+  laborHours:      'labor_hours',
+  technicianEmployeeId: 'technician_employee_id',
   technician:      'technician',
   notes:           'notes',
   partsUsed:       'parts_used', // value is serialized as JSON below
@@ -50,7 +64,8 @@ const SELECT_WITH_JOIN = `
   SELECT
     ml.*,
     e.name     AS equipment_name,
-    e.category AS category
+    e.category AS category,
+    e.status   AS equipment_status
   FROM maintenance_logs ml
   LEFT JOIN equipment e ON e.id = ml.equipment_id
 `
@@ -81,32 +96,49 @@ export async function createMaintenance(env, request) {
 
   await env.DB.prepare(`
     INSERT INTO maintenance_logs (
-      id, equipment_id, service_type, status, priority, date,
+      id, equipment_id, service_type, status, ticket_stage, priority, date,
       completed_date, hours_at_service, next_due_hours, cost,
-      technician, notes, parts_used, course_id
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      labor_hours, technician_employee_id, technician, notes, parts_used, course_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id,
     body.equipmentId,
     body.serviceType,
     body.status         ?? 'open',
+    body.ticketStage    ?? null,
     body.priority       ?? 'routine',
     body.date           ?? null,
     body.completedDate  ?? null,
     body.hoursAtService ?? null,
     body.nextDueHours   ?? null,
     body.cost           ?? 0,
+    body.laborHours     ?? null,
+    body.technicianEmployeeId ?? null,
     body.technician     ?? null,
     body.notes          ?? null,
     body.partsUsed != null ? JSON.stringify(body.partsUsed) : null,
     resolveCourseId(body),
   ).run()
 
+  const created = await env.DB.prepare('SELECT * FROM maintenance_logs WHERE id = ?').bind(id).first()
+  if (isResolvedLog(created)) {
+    await reconcileTicketPartInventory(env, {
+      sourceId: `maintenance:${id}`,
+      partsUsed: created.parts_used,
+      courseId: created.course_id,
+      date: created.completed_date ?? created.date,
+      area: created.equipment_id,
+      applicator: created.technician,
+    })
+  }
+
   return getMaintenance(env, id)
 }
 
 export async function updateMaintenance(env, id, request) {
   const body = await readJson(request)
+  const existing = await env.DB.prepare('SELECT * FROM maintenance_logs WHERE id = ?').bind(id).first()
+  if (!existing) return notFound('Maintenance log not found')
   const sets = []
   const binds = []
   for (const [apiKey, dbCol] of Object.entries(MUTABLE_COLUMNS)) {
@@ -125,5 +157,26 @@ export async function updateMaintenance(env, id, request) {
   ).bind(...binds).run()
 
   if (!result.success || result.meta.changes === 0) return notFound('Maintenance log not found')
+  const updated = await env.DB.prepare('SELECT * FROM maintenance_logs WHERE id = ?').bind(id).first()
+  if (isResolvedLog(updated)) {
+    await reconcileTicketPartInventory(env, {
+      sourceId: `maintenance:${id}`,
+      partsUsed: updated.parts_used,
+      courseId: updated.course_id,
+      date: updated.completed_date ?? updated.date,
+      area: updated.equipment_id,
+      applicator: updated.technician,
+    })
+  }
   return getMaintenance(env, id)
+}
+
+export async function deleteMaintenance(env, id) {
+  const existing = await env.DB.prepare('SELECT course_id FROM maintenance_logs WHERE id = ?').bind(id).first()
+  if (existing) await reverseTicketPartInventory(env, `maintenance:${id}`, existing.course_id)
+  const result = await env.DB.prepare(
+    'DELETE FROM maintenance_logs WHERE id = ?',
+  ).bind(id).run()
+  if (!result.success || result.meta.changes === 0) return notFound('Maintenance log not found')
+  return json({ ok: true, id })
 }

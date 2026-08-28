@@ -41,8 +41,8 @@ export const COMMANDS = [
   },
   {
     id:          'nav-spray',
-    label:       'Spray & Applications',
-    description: 'Spray records, calendar, and build sheets',
+    label:       'Applications',
+    description: 'Liquid spray and granular application records, calendar, and build sheets',
     icon:        '🌿',
     group:       'Navigate',
     keywords:    ['applications', 'fungicide', 'herbicide', 'pesticide', 'chemicals', 'apply', 'tank'],
@@ -133,8 +133,8 @@ export const COMMANDS = [
   },
   {
     id:          'wf-spray-build',
-    label:       'Build Spray Sheet',
-    description: 'Plan and schedule a spray application',
+    label:       'Build Application',
+    description: 'Plan and schedule a liquid or granular application',
     icon:        '🌿',
     group:       'Workflows',
     keywords:    ['build', 'sheet', 'plan', 'create', 'application', 'mix', 'tank'],
@@ -198,8 +198,8 @@ export const COMMANDS = [
   },
   {
     id:          'act-spray-records',
-    label:       'Spray Records History',
-    description: 'Completed and pending-review spray applications',
+    label:       'Application Records History',
+    description: 'Completed and pending-review liquid or granular applications',
     icon:        '🌿',
     group:       'Actions',
     keywords:    ['records', 'history', 'completed', 'spray', 'log', 'applications'],

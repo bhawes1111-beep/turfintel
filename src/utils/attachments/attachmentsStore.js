@@ -67,6 +67,14 @@ export async function uploadAttachment({ parentType, parentId, file, caption, up
 }
 
 /** Soft-delete metadata + hard-delete the R2 object. */
+export async function updateAttachment(id, patch) {
+  return fetchJSON(`${API}/${encodeURIComponent(id)}`, {
+    method:  'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(patch),
+  })
+}
+
 export async function deleteAttachment(id) {
   const url = `${API}/${encodeURIComponent(id)}`
   const res = await fetch(url, {
@@ -85,13 +93,13 @@ export async function deleteAttachment(id) {
  * parent. Refresh trigger exposed for upload/delete handlers to call
  * after a mutation.
  */
-export function useAttachmentsForParent(parentType, parentId) {
+export function useAttachmentsForParent(parentType, parentId, { enabled = true } = {}) {
   const [attachments, setAttachments] = useState([])
   const [loading,     setLoading]     = useState(false)
   const [error,       setError]       = useState(null)
 
   const refresh = useCallback(async () => {
-    if (!parentType || !parentId) return
+    if (!enabled || !parentType || !parentId) return
     const url = withCourseScope(
       `${API}?parentType=${encodeURIComponent(parentType)}&parentId=${encodeURIComponent(parentId)}`,
     )
@@ -105,11 +113,18 @@ export function useAttachmentsForParent(parentType, parentId) {
     } finally {
       setLoading(false)
     }
-  }, [parentType, parentId])
+  }, [enabled, parentType, parentId])
 
   useEffect(() => {
-    refresh()
-  }, [refresh])
+    if (!enabled) return
+    const timer = window.setTimeout(() => refresh(), 0)
+    return () => window.clearTimeout(timer)
+  }, [enabled, refresh])
 
-  return { attachments, loading, error, refresh }
+  return {
+    attachments: enabled ? attachments : [],
+    loading: enabled ? loading : false,
+    error: enabled ? error : null,
+    refresh,
+  }
 }

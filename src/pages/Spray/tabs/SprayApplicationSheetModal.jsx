@@ -32,8 +32,16 @@ import { patchSpray, deleteSpray } from '../../../utils/sprays/spraysStore'
 // restored on-hand quantities surface immediately in the spray
 // picker + Inventory tab without a page reload.
 import { refreshInventoryData } from '../../../utils/inventory/inventoryStore'
+import { normalizeNutrientSources } from '../../../utils/inventory/nutrientForms'
+import {
+  buildNutrientReleaseSummary,
+  buildNutrientTankRows,
+  nutrientPercentFromAnalysis,
+  parseAnalysisNPK,
+} from '../../../utils/sprays/nutrientSummary'
 import { useToast } from '../../../utils/feedback/toastContext'
 import { useAuth } from '../../../context/AuthContext'
+import { useNutrientSamplesData } from '../../../utils/turfHealth/nutrientSamplesStore'
 // Phase S.7b.3 — Real product picker. Same shared component
 // BuildSpraySheet uses, so added/edited rows carry inventoryItemId
 // + productCatalogId out of the gate (S.7b.2 backend can then
@@ -51,9 +59,11 @@ import {
   rateToTotalUsed,
   totalUsedToRate,
   formatRateLabel,
+  rateUnitSpec,
   sumAcresFromRecord,
   normalizeRateUnit,
   roundDisplay,
+  defaultRateUnitForInventory,
 } from '../../../utils/sprays/rateMath'
 
 function fmt(v, fallback = '—') {
@@ -76,6 +86,233 @@ function fmtDateTime(iso) {
   } catch { return iso }
 }
 
+function fmtAcres(v) {
+  const n = Number(v)
+  if (!Number.isFinite(n)) return '0.00'
+  return n.toFixed(2)
+}
+
+function fmtIrrigation(record) {
+  const parts = []
+  const inches = Number(record?.irrigationInches)
+  const minutes = Number(record?.irrigationMinutes)
+  if (Number.isFinite(inches) && inches > 0) parts.push(`${inches.toFixed(2).replace(/\.?0+$/, '')} in`)
+  if (Number.isFinite(minutes) && minutes > 0) parts.push(`${Math.round(minutes)} min`)
+  return parts.join(' / ') || '—'
+}
+
+function formatNutrientSample(sample, sampleId) {
+  if (sample) return `${sample.sampleDate} / ${sample.location} / ${sample.sampleType}`
+  return sampleId ? 'Linked sample is no longer available' : 'Not linked'
+}
+
+function fmtThousandsSqFt(acres) {
+  const n = Number(acres)
+  if (!Number.isFinite(n)) return '0.00'
+  return (n * 43.56).toFixed(2)
+}
+
+function fmtProductTotal(p, sprayedAcres = 0) {
+  if (p?.quantityUsed == null || p.quantityUsed === '') return '---'
+  const normalized = normalizeAppliedProductQuantity(p, sprayedAcres)
+  return `${normalized.quantityUsed}${normalized.unit ? ` ${normalized.unit}` : ''}`
+}
+
+function canonicalQuantityUnit(unit) {
+  const u = String(unit ?? '').trim().toLowerCase()
+  if (['lb', 'lbs', 'pound', 'pounds'].includes(u)) return 'lb'
+  if (['gal', 'gallon', 'gallons'].includes(u)) return 'gal'
+  if (['qt', 'quart', 'quarts'].includes(u)) return 'qt'
+  if (['pt', 'pint', 'pints'].includes(u)) return 'pt'
+  if (['oz', 'ounce', 'ounces'].includes(u)) return 'oz'
+  if (['fl oz', 'floz', 'fluid ounce', 'fluid ounces'].includes(u)) return 'fl oz'
+  return u
+}
+
+function volumeUnitToOzFactor(unit) {
+  const u = canonicalQuantityUnit(unit)
+  if (u === 'oz' || u === 'fl oz') return 1
+  if (u === 'pt') return 16
+  if (u === 'qt') return 32
+  if (u === 'gal') return 128
+  return null
+}
+
+function convertQuantityUnit(qty, fromUnit, toUnit) {
+  const amount = Number(qty)
+  if (!Number.isFinite(amount)) return null
+  const from = canonicalQuantityUnit(fromUnit)
+  const to = canonicalQuantityUnit(toUnit)
+  if (from === to) return amount
+  if (from === 'lb' && to === 'oz') return amount * 16
+  if (from === 'oz' && to === 'lb') return amount / 16
+  const fromOz = volumeUnitToOzFactor(from)
+  const toOz = volumeUnitToOzFactor(to)
+  if (fromOz != null && toOz != null) return (amount * fromOz) / toOz
+  return null
+}
+
+function quantityForInventory(row, inv) {
+  const qty = Number(row?.totalUsed)
+  if (!Number.isFinite(qty)) return { quantityUsed: null, unit: row?.unit || inv?.unit || null, ok: false }
+  if (!inv?.unit) return { quantityUsed: qty, unit: row?.unit || null, ok: true }
+  const converted = convertQuantityUnit(qty, row?.unit, inv.unit)
+  if (converted == null) {
+    return { quantityUsed: qty, unit: row?.unit || null, ok: false }
+  }
+  return { quantityUsed: converted, unit: inv.unit, ok: true }
+}
+
+function costSnapshotsForQuantity(quantityUsed, quantityUnit, inv, fallback = {}) {
+  if (quantityUsed == null || quantityUsed === '') {
+    return {
+      productCostSnapshot: fallback.productCostSnapshot ?? null,
+      productCostUnitSnapshot: fallback.productCostUnitSnapshot ?? null,
+      totalCostSnapshot: fallback.totalCostSnapshot ?? null,
+    }
+  }
+  const costPerUnit = Number(inv?.costPerUnit)
+  const costUnit = inv?.costUnit || inv?.unit || quantityUnit || null
+  if (!Number.isFinite(costPerUnit) || costPerUnit <= 0 || !costUnit) {
+    return {
+      productCostSnapshot: fallback.productCostSnapshot ?? null,
+      productCostUnitSnapshot: fallback.productCostUnitSnapshot ?? null,
+      totalCostSnapshot: fallback.totalCostSnapshot ?? null,
+    }
+  }
+  const qtyForCost = convertQuantityUnit(quantityUsed, quantityUnit, costUnit)
+  if (qtyForCost == null) {
+    return {
+      productCostSnapshot: costPerUnit,
+      productCostUnitSnapshot: costUnit,
+      totalCostSnapshot: fallback.totalCostSnapshot ?? null,
+    }
+  }
+  return {
+    productCostSnapshot: costPerUnit,
+    productCostUnitSnapshot: costUnit,
+    totalCostSnapshot: +(qtyForCost * costPerUnit).toFixed(2),
+  }
+}
+
+function parseSavedRate(rateLabel) {
+  if (rateLabel == null || rateLabel === '') return { rate: '', rateUnit: 'oz_per_1000sqft' }
+  const s = String(rateLabel).trim()
+  const m = s.match(/^([\d.]+)\s*(.*)$/)
+  if (!m) return { rate: s, rateUnit: 'oz_per_1000sqft' }
+  const tail = m[2].trim().toLowerCase()
+  const found = RATE_UNIT_OPTS.find(o => o.label.toLowerCase() === tail)
+  return { rate: m[1], rateUnit: found?.value ?? 'oz_per_1000sqft' }
+}
+
+function closeEnough(a, b) {
+  const left = Number(a)
+  const right = Number(b)
+  if (!Number.isFinite(left) || !Number.isFinite(right)) return false
+  return Math.abs(left - right) <= Math.max(0.01, Math.abs(right) * 0.002)
+}
+
+function nutrientPercentForInventory(inv, nutrient) {
+  if (!inv || !nutrient) return 0
+  const guaranteed = nutrientPercentFromAnalysis(parseAnalysisNPK(inv.analysis), nutrient)
+  if (guaranteed > 0) return guaranteed
+
+  const structured = normalizeNutrientSources(inv.nutrientSources)
+    .filter(source => source.nutrient === nutrient)
+    .reduce((sum, source) => sum + (Number(source.percent) || 0), 0)
+  if (structured > 0) return structured
+  return 0
+}
+
+function normalizeAppliedProductQuantity(product, sprayedAcres = 0, parsed = parseSavedRate(product?.rate)) {
+  const unit = product?.unit || rateUnitSpec(parsed.rateUnit).measure
+  const rawQty = Number(product?.quantityUsed)
+  if (!Number.isFinite(rawQty)) return { quantityUsed: product?.quantityUsed ?? '', unit }
+  const rate = Number(parsed.rate)
+  const acres = Number(sprayedAcres)
+  if (!Number.isFinite(rate) || !Number.isFinite(acres) || acres <= 0) {
+    return { quantityUsed: rawQty, unit }
+  }
+  const rateMeasure = rateUnitSpec(parsed.rateUnit).measure
+  const expectedNaturalQty = rateToTotalUsed(rate, parsed.rateUnit, acres)
+  if (
+    canonicalQuantityUnit(unit) !== canonicalQuantityUnit(rateMeasure) &&
+    closeEnough(rawQty, expectedNaturalQty)
+  ) {
+    const converted = convertQuantityUnit(rawQty, rateMeasure, unit)
+    if (converted != null) {
+      return { quantityUsed: roundDisplay(converted, 4), unit }
+    }
+  }
+  return { quantityUsed: rawQty, unit }
+}
+
+function totalUsedToRateWithUnit(totalUsed, totalUnit, rateUnit, acres, inv) {
+  const spec = rateUnitSpec(rateUnit)
+  if (spec.nutrientRate) {
+    const productLb = convertQuantityUnit(totalUsed, totalUnit, 'lb')
+    const percent = nutrientPercentForInventory(inv, spec.nutrient)
+    if (productLb == null || percent <= 0) return 0
+    return totalUsedToRate(productLb * (percent / 100), rateUnit, acres)
+  }
+  const naturalQty = convertQuantityUnit(totalUsed, totalUnit, spec.measure)
+  return totalUsedToRate(naturalQty ?? totalUsed, rateUnit, acres)
+}
+
+function rateToTotalUsedWithUnit(rate, rateUnit, totalUnit, acres, inv) {
+  const spec = rateUnitSpec(rateUnit)
+  let naturalQty = rateToTotalUsed(rate, rateUnit, acres)
+  if (spec.nutrientRate) {
+    const percent = nutrientPercentForInventory(inv, spec.nutrient)
+    if (percent <= 0) return 0
+    naturalQty = naturalQty / (percent / 100)
+  }
+  const converted = convertQuantityUnit(naturalQty, spec.measure, totalUnit)
+  return converted ?? naturalQty
+}
+
+function nutrientRateBasisLabel(row, inv) {
+  const spec = rateUnitSpec(row?.rateUnit)
+  if (!spec.nutrientRate) return null
+  const percent = nutrientPercentForInventory(inv, spec.nutrient)
+  if (percent > 0) return `Using ${roundDisplay(percent, 2)}% ${spec.nutrient}`
+  return `Add ${spec.nutrient}% nutrient source in Inventory`
+}
+
+function totalUnitOptionsForRate(rateUnit) {
+  const rateMeasure = rateUnitSpec(rateUnit).measure
+  return TOTAL_USED_UNIT_OPTS.filter(unit => convertQuantityUnit(1, unit.value, rateMeasure) != null)
+}
+
+function savedProductNutrientMathRow(product, sprayedAcres, inv) {
+  const parsed = parseSavedRate(product?.rate)
+  const rateUnit = normalizeRateUnit(product?.rateUnit ?? parsed.rateUnit)
+  const rate = Number(parsed.rate)
+  const spec = rateUnitSpec(rateUnit)
+
+  if (Number.isFinite(rate) && rate > 0 && sprayedAcres > 0) {
+    let qtyNeeded = rateToTotalUsed(rate, rateUnit, sprayedAcres)
+    if (spec.nutrientRate) {
+      const percent = nutrientPercentForInventory(inv, spec.nutrient)
+      qtyNeeded = percent > 0 ? qtyNeeded / (percent / 100) : 0
+    }
+    if (qtyNeeded > 0) return { inv, qtyNeeded, qtyUnit: spec.measure }
+  }
+
+  const applied = normalizeAppliedProductQuantity(product, sprayedAcres, parsed)
+  return {
+    inv,
+    qtyNeeded: Number(applied.quantityUsed) || 0,
+    qtyUnit: applied.unit,
+  }
+}
+
+function formatNutrientTotal(totalPounds) {
+  const value = Number(totalPounds)
+  if (!Number.isFinite(value) || value <= 0) return ''
+  return `${roundDisplay(value, 3)} lb total nutrient`
+}
+
 export default function SprayApplicationSheetModal({
   record,
   canEdit = false,
@@ -87,6 +324,7 @@ export default function SprayApplicationSheetModal({
   // order to be stable so the early-null return must follow hook calls.
   const toast = useToast()
   const { can } = useAuth()
+  const { samples: nutrientSamples } = useNutrientSamplesData()
   const canEditSprays = can('canEditSprays')
   const [editMode, setEditMode]   = useState(false)
   const [draftRows, setDraftRows] = useState(() => [])
@@ -102,9 +340,20 @@ export default function SprayApplicationSheetModal({
   const c  = record?.conditions ?? {}
   const products = useMemo(
     () => (Array.isArray(record?.products) ? record.products : []),
-    [record?.products],
+    [record],
   )
   const areas    = Array.isArray(record?.areas) ? record.areas : []
+  const areaLabel = areas.length > 0
+    ? areas.map(a => a?.name).filter(Boolean).join(', ')
+    : fmt(record?.area ?? record?.applicationName)
+  const isGranularApplication = record?.applicationType === 'granular' || String(record?.applicationName ?? record?.carrierVolume ?? '')
+    .toLowerCase().includes('granular')
+  const applicationTypeLabel = isGranularApplication ? 'Granular' : 'Liquid Spray'
+  const linkedNutrientSample = useMemo(
+    () => nutrientSamples.find(sample => sample.id === record?.nutrientSampleId) ?? null,
+    [nutrientSamples, record?.nutrientSampleId],
+  )
+  const nutrientSampleLabel = formatNutrientSample(linkedNutrientSample, record?.nutrientSampleId)
 
   // Phase S.7b.5 — Live inventory lookup so each draft row can show
   // the actual remaining stock for its picked product. Same hook the
@@ -121,6 +370,27 @@ export default function SprayApplicationSheetModal({
   // Sums every area's acreage on the saved record. When 0, the
   // editor disables auto-calc and shows a warning.
   const sprayedAcres = useMemo(() => sumAcresFromRecord(record), [record])
+  const nutrientSummary = useMemo(() => {
+    const nutrientRelease = buildNutrientReleaseSummary(
+      products.map(product => savedProductNutrientMathRow(
+        product,
+        sprayedAcres,
+        inventoryById.get(product.inventoryItemId),
+      )),
+    )
+    return {
+      acres: sprayedAcres,
+      nutrientSource: nutrientRelease.sourceCount,
+      nutrientReleaseTotals: nutrientRelease.totals,
+      nutrientReleaseForms: nutrientRelease.forms,
+      nutrientUnsupported: nutrientRelease.unsupported,
+      nutrientUnsupportedCount: nutrientRelease.unsupportedCount,
+    }
+  }, [products, sprayedAcres, inventoryById])
+  const nutrientRows = useMemo(
+    () => buildNutrientTankRows(nutrientSummary),
+    [nutrientSummary],
+  )
 
   if (!record) return null
 
@@ -142,13 +412,15 @@ export default function SprayApplicationSheetModal({
     if (Number.isNaN(qty)) return { kind: 'qty-invalid' }
     if (qty <= 0) return { kind: 'qty-nonpositive' }
     const inv       = inventoryById.get(r.inventoryItemId)
+    const normalized = quantityForInventory(r, inv)
+    if (!normalized.ok || normalized.quantityUsed == null) return { kind: 'unit-mismatch' }
     const available = inv?.quantity ?? null
     return {
       kind:        'ok',
-      qty,
-      unit:        r.unit || inv?.unit || '',
+      qty:         normalized.quantityUsed,
+      unit:        normalized.unit || inv?.unit || r.unit || '',
       available,
-      low:         available != null && available > 0 && available < qty,
+      low:         available != null && available > 0 && available < normalized.quantityUsed,
       outOfStock:  available != null && available <= 0,
     }
   }
@@ -160,30 +432,18 @@ export default function SprayApplicationSheetModal({
       // back to a number + rateUnit so the editor can show editable
       // fields. If the parse fails, keep whatever string was there as
       // a fallback so the data isn't lost.
-      let parsedRate    = ''
-      let parsedRateUnit = 'oz_per_acre'
-      if (p.rate != null && p.rate !== '') {
-        const s = String(p.rate).trim()
-        const m = s.match(/^([\d.]+)\s*(.*)$/)
-        if (m) {
-          parsedRate = m[1]
-          const tail = m[2].trim().toLowerCase()
-          const found = RATE_UNIT_OPTS.find(o => o.label.toLowerCase() === tail)
-          if (found) parsedRateUnit = found.value
-        } else {
-          parsedRate = s
-        }
-      }
+      const parsedRateInfo = parseSavedRate(p.rate)
+      const appliedQuantity = normalizeAppliedProductQuantity(p, sprayedAcres, parsedRateInfo)
       return {
         id:                       p.id,
         name:                     p.name ?? '',
         type:                     p.type ?? '',
-        rate:                     parsedRate,
-        rateUnit:                 parsedRateUnit,
+        rate:                     parsedRateInfo.rate,
+        rateUnit:                 parsedRateInfo.rateUnit,
         // Total used / quantity used. Renamed for the UI but the
         // payload field name stays quantityUsed (worker contract).
-        totalUsed:                p.quantityUsed ?? '',
-        unit:                     p.unit ?? '',
+        totalUsed:                appliedQuantity.quantityUsed ?? '',
+        unit:                     appliedQuantity.unit ?? '',
         inventoryItemId:          p.inventoryItemId ?? null,
         productCatalogId:         p.productCatalogId ?? null,
         epaNumberSnapshot:        p.epaNumberSnapshot ?? null,
@@ -209,6 +469,10 @@ export default function SprayApplicationSheetModal({
     setEditReason('')
   }
 
+  function handlePrint() {
+    window.print()
+  }
+
   function patchDraftRow(i, patch) {
     setDraftRows(prev => prev.map((r, idx) => idx === i ? { ...r, ...patch } : r))
   }
@@ -226,8 +490,9 @@ export default function SprayApplicationSheetModal({
         if (value === '' || !Number.isFinite(num) || num <= 0) {
           next.rate = ''
         } else {
+          const inv = inventoryById.get(next.inventoryItemId)
           next.rate = String(roundDisplay(
-            totalUsedToRate(num, next.rateUnit, sprayedAcres),
+            totalUsedToRateWithUnit(num, next.unit, next.rateUnit, sprayedAcres, inv),
             3,
           ))
         }
@@ -245,8 +510,9 @@ export default function SprayApplicationSheetModal({
         if (value === '' || !Number.isFinite(num) || num <= 0) {
           next.totalUsed = ''
         } else {
+          const inv = inventoryById.get(next.inventoryItemId)
           next.totalUsed = String(roundDisplay(
-            rateToTotalUsed(num, next.rateUnit, sprayedAcres),
+            rateToTotalUsedWithUnit(num, next.rateUnit, next.unit, sprayedAcres, inv),
             2,
           ))
         }
@@ -262,27 +528,54 @@ export default function SprayApplicationSheetModal({
   function editRateUnit(i, newUnit) {
     setDraftRows(prev => prev.map((r, idx) => {
       if (idx !== i) return r
-      const next = { ...r, rateUnit: newUnit }
+      const spec = rateUnitSpec(newUnit)
+      const next = {
+        ...r,
+        rateUnit: newUnit,
+        unit: spec.nutrientRate ? 'lb' : r.unit,
+      }
       if (sprayedAcres > 0) {
+        const inv = inventoryById.get(next.inventoryItemId)
         if (r.lastEdited === 'rate' && r.rate !== '' && Number.isFinite(Number(r.rate))) {
           next.totalUsed = String(roundDisplay(
-            rateToTotalUsed(Number(r.rate), newUnit, sprayedAcres), 2,
+            rateToTotalUsedWithUnit(Number(r.rate), newUnit, next.unit, sprayedAcres, inv), 2,
           ))
         } else if (r.lastEdited === 'totalUsed' && r.totalUsed !== '' && Number.isFinite(Number(r.totalUsed))) {
           next.rate = String(roundDisplay(
-            totalUsedToRate(Number(r.totalUsed), newUnit, sprayedAcres), 3,
+            totalUsedToRateWithUnit(Number(r.totalUsed), next.unit, newUnit, sprayedAcres, inv), 3,
           ))
         }
       }
       return next
     }))
   }
+
+  function editTotalUnit(i, newUnit) {
+    setDraftRows(prev => prev.map((r, idx) => {
+      if (idx !== i) return r
+      const next = { ...r, unit: newUnit }
+      if (sprayedAcres > 0) {
+        const inv = inventoryById.get(next.inventoryItemId)
+        if (r.lastEdited === 'rate' && r.rate !== '' && Number.isFinite(Number(r.rate))) {
+          next.totalUsed = String(roundDisplay(
+            rateToTotalUsedWithUnit(Number(r.rate), r.rateUnit, newUnit, sprayedAcres, inv), 2,
+          ))
+        } else if (r.lastEdited === 'totalUsed' && r.totalUsed !== '' && Number.isFinite(Number(r.totalUsed))) {
+          next.rate = String(roundDisplay(
+            totalUsedToRateWithUnit(Number(r.totalUsed), newUnit, r.rateUnit, sprayedAcres, inv), 3,
+          ))
+        }
+      }
+      return next
+    }))
+  }
+
   function addDraftRow() {
     setDraftRows(prev => [...prev, {
       // Phase S.7b.6 — New rows seed empty. quantityUsed is renamed
       // to totalUsed in-editor; payload still sends quantityUsed.
       name: '', type: '',
-      rate: '', rateUnit: 'oz_per_acre',
+      rate: '', rateUnit: 'oz_per_1000sqft',
       totalUsed: '', unit: 'oz',
       inventoryItemId: null, productCatalogId: null,
       epaNumberSnapshot: null, activeIngredientsSnapshot: null,
@@ -296,7 +589,10 @@ export default function SprayApplicationSheetModal({
   }
 
   async function handleSaveChemicals() {
-    if (draftRows.length === 0) {
+    const completedApplication = ['completed', 'complete', 'done'].includes(
+      String(record.status ?? '').trim().toLowerCase(),
+    )
+    if (completedApplication && draftRows.length === 0) {
       toast.info?.('Completed spray must have at least one product row.')
       return
     }
@@ -324,21 +620,36 @@ export default function SprayApplicationSheetModal({
         toast.error?.(`Select a rate unit for "${r.name}".`)
         return
       }
+      const spec = rateUnitSpec(r.rateUnit)
+      if (
+        spec.nutrientRate
+        && (Number(r.rate) > 0 || Number(r.totalUsed) > 0)
+        && nutrientPercentForInventory(inventoryById.get(r.inventoryItemId), spec.nutrient) <= 0
+      ) {
+        toast.error?.(
+          `Add ${spec.nutrient}% nutrient source in Inventory for "${r.name}" before using lb nutrient / 1,000 sq ft.`,
+        )
+        return
+      }
       const status = rowStatus(r)
       if (status.kind === 'qty-invalid') {
         toast.error?.(`Total used for "${r.name}" must be a number.`)
         return
       }
-      if (status.kind === 'qty-blank') {
+      if (completedApplication && status.kind === 'qty-blank') {
         toast.error?.(`Enter total used or rate for "${r.name}" (linked to inventory).`)
         return
       }
-      if (status.kind === 'qty-nonpositive') {
+      if (completedApplication && status.kind === 'qty-nonpositive') {
         toast.error?.(`Total used for "${r.name}" must be greater than 0.`)
         return
       }
+      if (completedApplication && status.kind === 'unit-mismatch') {
+        toast.error?.(`Total used unit for "${r.name}" cannot be converted to the inventory unit.`)
+        return
+      }
     }
-    if (!editReason.trim()) {
+    if (completedApplication && !editReason.trim()) {
       const proceed = window.confirm(
         'No reason for chemical change provided. Continue without an audit note?',
       )
@@ -347,10 +658,20 @@ export default function SprayApplicationSheetModal({
     setBusy(true)
     try {
       const payload = {
-        products: draftRows.map(r => ({
-          id:                       r.id,
-          name:                     String(r.name).trim(),
-          type:                     r.type || null,
+        products: draftRows.map(r => {
+          const inv = inventoryById.get(r.inventoryItemId)
+          const normalized = quantityForInventory(r, inv)
+          const quantityUsed = r.totalUsed === '' || r.totalUsed == null
+            ? null
+            : normalized.quantityUsed
+          const quantityUnit = quantityUsed == null
+            ? (r.unit || null)
+            : (normalized.unit || r.unit || null)
+          const costSnapshots = costSnapshotsForQuantity(quantityUsed, quantityUnit, inv, r)
+          return {
+            id:                       r.id,
+            name:                     String(r.name).trim(),
+            type:                     r.type || null,
           // Phase S.7b.6 — Save the rate as a formatted label string
           // ("4 oz / acre") to match BuildSpraySheet's commit-time
           // shape (formatRateLabel). The worker writes spray_products.rate
@@ -358,16 +679,15 @@ export default function SprayApplicationSheetModal({
           rate:                     r.rate === '' || r.rate == null ? null : formatRateLabel(r.rate, r.rateUnit),
           rateUnit:                 r.rateUnit ?? null,
           // totalUsed → quantityUsed mapping (worker contract unchanged).
-          quantityUsed:             r.totalUsed === '' || r.totalUsed == null ? null : Number(r.totalUsed),
-          unit:                     r.unit || null,
+            quantityUsed,
+            unit:                     quantityUnit,
           inventoryItemId:          r.inventoryItemId,
           productCatalogId:         r.productCatalogId,
           epaNumberSnapshot:        r.epaNumberSnapshot,
           activeIngredientsSnapshot: r.activeIngredientsSnapshot,
-          productCostSnapshot:      r.productCostSnapshot == null ? null : Number(r.productCostSnapshot),
-          productCostUnitSnapshot:  r.productCostUnitSnapshot,
-          totalCostSnapshot:        r.totalCostSnapshot == null ? null : Number(r.totalCostSnapshot),
-        })),
+            ...costSnapshots,
+          }
+        }),
       }
       if (editReason.trim()) payload.editReason = editReason.trim()
       await patchSpray(record.id, payload)
@@ -410,24 +730,19 @@ export default function SprayApplicationSheetModal({
     }
   }
 
-  function handleBackdrop(e) {
-    if (e.target === e.currentTarget && !busy) onClose?.()
-  }
-
   return (
     <div
       className={styles.backdrop}
       role="dialog"
       aria-modal="true"
-      aria-label="Spray application sheet"
-      onClick={handleBackdrop}
+      aria-label="Application record sheet"
     >
       <div className={styles.modal} data-modal="spray-application-sheet">
         {/* ── Header ─────────────────────────────────────────────── */}
         <header className={styles.header}>
           <div className={styles.headerMain}>
             <h2 className={styles.headerTitle}>
-              {fmt(record.area, 'Spray application')}
+              {fmt(record.area, 'Application record')}
             </h2>
             <p className={styles.headerSub}>
               <span>{fmt(record.date)}</span>
@@ -463,15 +778,20 @@ export default function SprayApplicationSheetModal({
                 Edit
               </button>
             )}
-              {canEdit && !editMode && onCreateTrainingBrief && (
-                <button
-                  type="button"
-                  className={styles.btnSecondary}
-                  onClick={() => onCreateTrainingBrief(record)}
-                >
-                  Training Brief
-                </button>
-              )}
+            {!editMode && (
+              <button type="button" className={styles.btnSecondary} onClick={handlePrint}>
+                Print
+              </button>
+            )}
+            {canEdit && !editMode && onCreateTrainingBrief && (
+              <button
+                type="button"
+                className={styles.btnSecondary}
+                onClick={() => onCreateTrainingBrief(record)}
+              >
+                Training Brief
+              </button>
+            )}
             {/* Phase S.7b.2 — Chemical edit mode. Hidden for read-only
                 users; disabled while a save is in flight. */}
             {canEdit && canEditSprays && !editMode && (
@@ -479,9 +799,9 @@ export default function SprayApplicationSheetModal({
                 type="button"
                 className={styles.btnSecondary}
                 onClick={startEditingChemicals}
-                aria-label="Edit chemicals on this spray"
+                aria-label="Edit products on this application"
               >
-                Edit chemicals
+                Edit products
               </button>
             )}
             {/* Phase S.7c — Delete Spray. Gated behind canEditSprays;
@@ -491,9 +811,9 @@ export default function SprayApplicationSheetModal({
                 type="button"
                 className={styles.btnDanger}
                 onClick={() => setDeleteConfirmOpen(true)}
-                aria-label="Delete this spray record"
+                aria-label="Delete this application record"
               >
-                Delete Spray
+                Delete Application
               </button>
             )}
             <button
@@ -515,10 +835,15 @@ export default function SprayApplicationSheetModal({
             <h3 className={styles.sectionTitle}>Application details</h3>
             <dl className={styles.kvGrid}>
               <KV label="Applicator license" value={fmt(record.applicatorLicense)} />
-              <KV label="Target pest"        value={fmt(record.target ?? record.targetPest)} />
-              <KV label="Carrier volume"     value={fmt(record.carrierVolume)} />
-              <KV label="Total volume"       value={fmt(record.totalVolume)} />
+              <KV label="Type"               value={applicationTypeLabel} />
+              <KV label="Nutrient sample"    value={nutrientSampleLabel} />
+              <KV label="Equipment"          value={fmt(record.equipmentName)} />
+              <KV label="Tank capacity"      value={record.tankCapacity != null ? `${record.tankCapacity} gal` : 'â€”'} />
+              <KV label="Target treatment"   value={fmt(record.target ?? record.targetPest)} />
+              <KV label="Carrier volume"     value={isGranularApplication ? '—' : fmt(record.carrierVolume)} />
+              <KV label="Total volume"       value={isGranularApplication ? '—' : fmt(record.totalVolume)} />
               <KV label="Total cost"         value={fmtMoney(record.totalCostSnapshot)} />
+              <KV label="Irrigation"         value={fmtIrrigation(record)} />
               <KV label="REI"                value={record.rei != null ? `${record.rei} h` : '—'} />
               <KV label="PHI"                value={record.phi != null ? `${record.phi} d` : '—'} />
               <KV label="Holes"              value={fmt(record.holes)} />
@@ -546,7 +871,7 @@ export default function SprayApplicationSheetModal({
 
           {/* Areas */}
           <section className={styles.section}>
-            <h3 className={styles.sectionTitle}>Sprayed areas ({areas.length})</h3>
+            <h3 className={styles.sectionTitle}>Applied areas ({areas.length})</h3>
             {areas.length === 0 ? (
               <p className={styles.emptyMsg}>No area rows recorded.</p>
             ) : (
@@ -563,6 +888,29 @@ export default function SprayApplicationSheetModal({
             )}
           </section>
 
+          {nutrientRows.length > 0 && (
+            <section className={styles.section}>
+              <h3 className={styles.sectionTitle}>Nutrient breakdown</h3>
+              <div className={styles.nutrientGrid}>
+                {nutrientRows.map(row => (
+                  <article key={row.key} className={styles.nutrientRow}>
+                    <div className={styles.nutrientHeader}>
+                      <span className={styles.nutrientBadge}>{row.key}</span>
+                      <strong className={styles.nutrientName}>{row.label}</strong>
+                    </div>
+                    <div className={styles.nutrientRate}>{row.value}</div>
+                    {row.totalPounds > 0 && (
+                      <div className={styles.nutrientTotal}>{formatNutrientTotal(row.totalPounds)}</div>
+                    )}
+                    {row.forms.length > 0 && (
+                      <div className={styles.nutrientForms}>{row.forms.join(', ')}</div>
+                    )}
+                  </article>
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* Products — view OR edit mode */}
           <section className={styles.section}>
             <h3 className={styles.sectionTitle}>
@@ -575,8 +923,8 @@ export default function SprayApplicationSheetModal({
                     inventory reversal+reapply + snapshot resolution +
                     total_cost_snapshot recompute. */}
                 <div className={styles.chemEditWarn}>
-                  Editing chemicals will reverse the inventory for the previous
-                  product mix, apply the new mix, refresh snapshots, and
+                  Editing products will reverse the inventory for the previous
+                  product list, apply the new products, refresh snapshots, and
                   recalculate the record total cost. This change is logged in
                   the record's notes.
                 </div>
@@ -585,7 +933,7 @@ export default function SprayApplicationSheetModal({
                     sourced from the saved record's areas. */}
                 <div className={sprayedAcres > 0 ? styles.chemAcresBanner : styles.chemAcresBannerWarn} role="status">
                   {sprayedAcres > 0
-                    ? <>Total area sprayed: <strong>{roundDisplay(sprayedAcres, 2)} acres</strong> · enter Total Used OR Rate; the other auto-calculates.</>
+                    ? <>Total area applied: <strong>{roundDisplay(sprayedAcres, 2)} acres</strong> · enter Total Used OR Rate; the other auto-calculates.</>
                     : <>Area acreage unavailable — rate math cannot auto-calculate. Enter Total Used directly.</>
                   }
                 </div>
@@ -607,9 +955,28 @@ export default function SprayApplicationSheetModal({
                                   // Selecting a new inventory item resets per-row
                                   // snapshots so the S.7b.2 worker re-enriches them.
                                   // Also seed totalUsed unit from inventory unit.
+                                  const nextRateUnit = defaultRateUnitForInventory(inv)
+                                  const spec = rateUnitSpec(nextRateUnit)
+                                  const nextUnit = spec.nutrientRate
+                                    ? 'lb'
+                                    : (patch.unit || r.unit || 'oz')
+                                  const recalcPatch = {}
+                                  if (sprayedAcres > 0 && r.lastEdited === 'rate' && r.rate !== '' && Number.isFinite(Number(r.rate))) {
+                                    recalcPatch.totalUsed = String(roundDisplay(
+                                      rateToTotalUsedWithUnit(Number(r.rate), nextRateUnit, nextUnit, sprayedAcres, inv),
+                                      2,
+                                    ))
+                                  } else if (sprayedAcres > 0 && r.lastEdited === 'totalUsed' && r.totalUsed !== '' && Number.isFinite(Number(r.totalUsed))) {
+                                    recalcPatch.rate = String(roundDisplay(
+                                      totalUsedToRateWithUnit(Number(r.totalUsed), nextUnit, nextRateUnit, sprayedAcres, inv),
+                                      3,
+                                    ))
+                                  }
                                   patchDraftRow(i, {
                                     ...patch,
-                                    unit: patch.unit || r.unit || 'oz',
+                                    rateUnit: nextRateUnit,
+                                    unit: nextUnit,
+                                    ...recalcPatch,
                                     epaNumberSnapshot:        null,
                                     activeIngredientsSnapshot: null,
                                     productCostSnapshot:      null,
@@ -660,10 +1027,10 @@ export default function SprayApplicationSheetModal({
                             <span className={styles.chemEditLabel}>Total unit</span>
                             <select
                               value={r.unit ?? 'oz'}
-                              onChange={e => patchDraftRow(i, { unit: e.target.value })}
+                              onChange={e => editTotalUnit(i, e.target.value)}
                               aria-label={`Product ${i + 1} total used unit`}
                             >
-                              {TOTAL_USED_UNIT_OPTS.map(u => (
+                              {totalUnitOptionsForRate(r.rateUnit).map(u => (
                                 <option key={u.value} value={u.value}>{u.label}</option>
                               ))}
                             </select>
@@ -693,12 +1060,12 @@ export default function SprayApplicationSheetModal({
                             </select>
                           </label>
                           <label className={styles.chemCalcField}>
-                            <span className={styles.chemEditLabel}>Area sprayed</span>
+                            <span className={styles.chemEditLabel}>Area applied</span>
                             <input
                               type="text"
                               value={sprayedAcres > 0 ? `${roundDisplay(sprayedAcres, 2)} ac` : '—'}
                               readOnly
-                              aria-label="Total area sprayed (read-only)"
+                              aria-label="Total area applied (read-only)"
                               className={styles.chemReadOnly}
                             />
                           </label>
@@ -711,6 +1078,19 @@ export default function SprayApplicationSheetModal({
                               Area acreage unavailable — enter total used directly; rate math is disabled.
                             </span>
                           )}
+                          {(() => {
+                            const inv = inventoryById.get(r.inventoryItemId)
+                            const label = nutrientRateBasisLabel(r, inv)
+                            if (!label) return null
+                            const spec = rateUnitSpec(r.rateUnit)
+                            const missing = spec.nutrientRate
+                              && nutrientPercentForInventory(inv, spec.nutrient) <= 0
+                            return (
+                              <span className={missing ? styles.chemBlockingWarn : styles.chemStatusHint} role="status">
+                                {label}
+                              </span>
+                            )
+                          })()}
                           {(() => {
                             const s = rowStatus(r)
                             if (s.kind === 'no-link') {
@@ -738,6 +1118,13 @@ export default function SprayApplicationSheetModal({
                               return (
                                 <span className={styles.chemBlockingWarn} role="status">
                                   Total used must be greater than 0 to deduct inventory.
+                                </span>
+                              )
+                            }
+                            if (s.kind === 'unit-mismatch') {
+                              return (
+                                <span className={styles.chemBlockingWarn} role="status">
+                                  Total used unit cannot be converted to this product's inventory unit.
                                 </span>
                               )
                             }
@@ -769,20 +1156,20 @@ export default function SprayApplicationSheetModal({
                     type="button"
                     className={styles.btnSecondary}
                     onClick={addDraftRow}
-                    aria-label="Add another chemical row"
+                    aria-label="Add another product row"
                   >
-                    + Add chemical
+                    + Add product
                   </button>
                 </div>
 
                 <label className={styles.chemReasonField}>
-                  <span className={styles.chemReasonLabel}>Reason for chemical change</span>
+                  <span className={styles.chemReasonLabel}>Reason for product change</span>
                   <textarea
                     rows={2}
                     value={editReason}
                     onChange={e => setEditReason(e.target.value)}
                     placeholder="e.g. corrected rate for Daconil"
-                    aria-label="Reason for chemical change"
+                    aria-label="Reason for product change"
                   />
                 </label>
 
@@ -793,7 +1180,7 @@ export default function SprayApplicationSheetModal({
                     onClick={handleSaveChemicals}
                     disabled={busy}
                   >
-                    {busy ? 'Saving…' : 'Save chemicals'}
+                    {busy ? 'Saving…' : 'Save products'}
                   </button>
                   <button
                     type="button"
@@ -818,7 +1205,7 @@ export default function SprayApplicationSheetModal({
                     <dl className={styles.productKvGrid}>
                       <KV label="Rate"     value={p.rate != null ? `${p.rate}` : '—'} />
                       <KV label="Rate unit" value={fmt(p.unit)} />
-                      <KV label="Quantity used" value={p.quantityUsed != null ? p.quantityUsed : '—'} />
+                      <KV label="Quantity used" value={fmtProductTotal(p, sprayedAcres)} />
                       <KV label="EPA #"   value={fmt(p.epaNumberSnapshot)} />
                       <KV label="Active ingredients" value={fmt(p.activeIngredientsSnapshot)} />
                       <KV label="Product cost"
@@ -850,22 +1237,32 @@ export default function SprayApplicationSheetModal({
       {/* Phase S.7c — Delete confirmation dialog. Nested inside the
           sheet's backdrop element so it sits above the sheet visually
           while reusing the dialog stacking context. */}
+      <SprayPrintSheet
+        record={record}
+        products={products}
+        areas={areas}
+        areaLabel={areaLabel}
+        sprayedAcres={sprayedAcres}
+        conditions={c}
+        nutrientRows={nutrientRows}
+        nutrientSampleLabel={nutrientSampleLabel}
+      />
+
       {deleteConfirmOpen && (
         <div
           className={styles.deleteConfirmBackdrop}
           role="dialog"
           aria-modal="true"
-          aria-label="Confirm delete spray"
-          onClick={(e) => { if (e.target === e.currentTarget && !deleteBusy) setDeleteConfirmOpen(false) }}
+          aria-label="Confirm delete application"
         >
           <div className={styles.deleteConfirmModal} data-modal="delete-spray-confirm">
-            <h3 className={styles.deleteConfirmTitle}>Delete this spray record?</h3>
+            <h3 className={styles.deleteConfirmTitle}>Delete this application record?</h3>
             <p className={styles.deleteConfirmBody}>
-              Inventory used by this spray will be restored to on-hand quantities.
-              This will remove the spray from the calendar and Records tab.
+              Inventory used by this application will be restored to on-hand quantities.
+              This will remove the application from the calendar and Records tab.
               <br />
               <strong>This action cannot be undone easily</strong> — re-creating the
-              record requires a fresh Build Spray commit.
+              record requires a fresh application entry.
             </p>
             <div className={styles.deleteConfirmActions}>
               <button
@@ -881,9 +1278,9 @@ export default function SprayApplicationSheetModal({
                 className={styles.btnDanger}
                 onClick={handleDeleteSpray}
                 disabled={deleteBusy}
-                aria-label="Confirm delete this spray record"
+                aria-label="Confirm delete this application record"
               >
-                {deleteBusy ? 'Deleting…' : 'Delete spray + restore inventory'}
+                {deleteBusy ? 'Deleting…' : 'Delete application + restore inventory'}
               </button>
             </div>
           </div>
@@ -898,6 +1295,135 @@ function KV({ label, value }) {
     <div className={styles.kvRow}>
       <dt className={styles.kvLabel}>{label}</dt>
       <dd className={styles.kvValue}>{value}</dd>
+    </div>
+  )
+}
+
+function SprayPrintSheet({ record, products, areas, areaLabel, sprayedAcres, conditions, nutrientRows, nutrientSampleLabel }) {
+  const target = record?.target ?? record?.targetPest ?? '---'
+  const isGranularApplication = String(record?.applicationName ?? record?.carrierVolume ?? '')
+    .toLowerCase()
+    .includes('granular')
+  const weatherSummary = [
+    conditions?.temp != null ? `${conditions.temp} F` : null,
+    conditions?.humidity != null ? `RH ${conditions.humidity}%` : null,
+  ].filter(Boolean).join('; ') || '---'
+  const windSummary = [
+    conditions?.windDirection,
+    conditions?.windSpeedMph != null ? `${conditions.windSpeedMph} mph` : null,
+    conditions?.wind,
+  ].filter(Boolean).join(' - ') || '---'
+  const areasText = areas.length > 0
+    ? areas.map(a => `${fmt(a.name)}${a.acreage != null ? ` (${a.acreage} ac)` : ''}`).join(', ')
+    : fmt(areaLabel)
+
+  return (
+    <article className={styles.printSheet} aria-hidden="true">
+      <header className={styles.printHeader}>
+        <h1>Crosswinds Golf Club - Application Record</h1>
+      </header>
+
+      <section className={styles.printInfoGrid}>
+        <PrintField label="Application Date" value={fmt(record?.date)} />
+        <PrintField label="Location" value={fmt(record?.course, 'Crosswinds Golf Club')} />
+        <PrintField label="Target Site" value={fmt(areaLabel)} />
+        <PrintField
+          label="Area Treated"
+          value={`${fmtAcres(sprayedAcres)} acres (${fmtThousandsSqFt(sprayedAcres)} thousand sq ft)`}
+        />
+        <PrintField label="Application Type" value={isGranularApplication ? 'Granular' : 'Liquid Spray'} />
+        <PrintField label="Nutrient Sample" value={nutrientSampleLabel} />
+        <PrintField label="Carrier Volume" value={isGranularApplication ? '---' : fmt(record?.carrierVolume)} />
+        <PrintField label="Target Treatment / Purpose" value={fmt(target)} />
+      </section>
+
+      <table className={styles.printProductTable}>
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Rate</th>
+            <th>Total Amount Applied</th>
+          </tr>
+        </thead>
+        <tbody>
+          {products.length > 0 ? products.map(p => (
+            <tr key={p.id ?? p.name}>
+              <td>{fmt(p.name)}</td>
+              <td>{fmt(p.rate)}</td>
+              <td>{fmtProductTotal(p, sprayedAcres)}</td>
+            </tr>
+          )) : (
+            <tr>
+              <td colSpan={3}>No products recorded.</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+
+      {nutrientRows.length > 0 && (
+        <>
+          <h2 className={styles.printSectionTitle}>Nutrient Breakdown</h2>
+          <table className={styles.printProductTable}>
+            <thead>
+              <tr>
+                <th>Nutrient</th>
+                <th>Rate per 1,000 sq ft</th>
+                <th>Total Nutrient</th>
+                <th>Forms</th>
+              </tr>
+            </thead>
+            <tbody>
+              {nutrientRows.map(row => (
+                <tr key={row.key}>
+                  <td>{row.label}</td>
+                  <td>{row.value}</td>
+                  <td>{formatNutrientTotal(row.totalPounds) || 'Not quantified'}</td>
+                  <td>{row.forms.join(', ') || 'Not specified'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+
+      <h2 className={styles.printSectionTitle}>Application and Weather Record</h2>
+      <section className={styles.printInfoGrid}>
+        <PrintField label="Applicator" value={fmt(record?.applicator)} />
+        <PrintField label="Certification #" value={fmt(record?.applicatorLicense)} />
+        <PrintField label="Start Time" value={fmt(record?.startTime)} />
+        <PrintField label="Finish Time" value={fmt(record?.endTime)} />
+        <PrintField label="Temperature / RH" value={weatherSummary} />
+        <PrintField label="Sky / Weather" value={fmt(conditions?.wind)} />
+        <PrintField label="Wind" value={windSummary} />
+        <PrintField label="Weather Source" value="Live weather / field observation" />
+        <PrintField label="Application Equipment" value={fmt(record?.equipment ?? record?.sprayRig)} />
+        <PrintField label="Equipment ID" value="________________________" />
+        <PrintField label="Irrigation After Application" value={fmtIrrigation(record)} />
+        <PrintField label="Unexpected Occurrences" value="None / ________________" />
+      </section>
+
+      <section className={styles.printNotes}>
+        <p><strong>Applied Areas:</strong> {areasText}</p>
+        <p><strong>Application Notes:</strong> {fmt(record?.notes, '')}</p>
+        <p><strong>Follow-up Observations:</strong></p>
+      </section>
+
+      <footer className={styles.printFooter}>
+        <span>Applicator Signature ____________________________________</span>
+        <span>Date Reviewed ________________</span>
+      </footer>
+      <div className={styles.printPageFoot}>
+        Crosswinds Golf Club - Application Record Page 1
+      </div>
+    </article>
+  )
+}
+
+function PrintField({ label, value }) {
+  return (
+    <div className={styles.printField}>
+      <span>{label}</span>
+      <strong>{value}</strong>
     </div>
   )
 }

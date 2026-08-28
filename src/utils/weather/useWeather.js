@@ -7,7 +7,7 @@ import {
   PLACEHOLDER_ET_TREND,
 } from '../../components/shared/weather/weatherTokens'
 
-export function useWeather() {
+export function useWeather({ publicBoard = false } = {}) {
   const [current,     setCurrent]     = useState(null)
   const [forecast,    setForecast]    = useState([])
   const [etTrend,     setEtTrend]     = useState([])
@@ -24,7 +24,9 @@ export function useWeather() {
     setLoading(true)
     setError(null)
     try {
-      const bundle = await fetchWeatherBundle()
+      const bundle = await fetchWeatherBundle({
+        ambientPath: publicBoard ? '/api/display-board/weather/current' : undefined,
+      })
       if (bundle?.current) {
         setCurrent(bundle.current)
         const fc = bundle.forecast ?? []
@@ -44,7 +46,7 @@ export function useWeather() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [publicBoard])
 
   useEffect(() => {
     load()

@@ -117,6 +117,21 @@ export async function unarchiveTaskTemplate(id) {
   return patchTaskTemplate(id, { status: 'active' })
 }
 
+export async function deleteTaskTemplate(id) {
+  const prev = state.templates
+  setState({ templates: prev.filter(t => t.id !== id) })
+  try {
+    await fetchJSON(`${API}/${encodeURIComponent(id)}`, {
+      method:  'DELETE',
+      headers: mutationHeaders(),
+    })
+  } catch (err) {
+    setState({ error: err.message })
+    refreshTaskTemplatesData({ includeArchived: state.includeArchived })
+    throw err
+  }
+}
+
 // ── Subscription hook ──────────────────────────────────────────────────
 
 function subscribe(cb) {

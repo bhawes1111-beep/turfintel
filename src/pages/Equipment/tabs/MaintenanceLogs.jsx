@@ -1,5 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useEquipmentData, patchMaintenance } from '../../../utils/equipment/equipmentStore'
+import { useInventoryData } from '../../../utils/inventory/inventoryStore'
+import { openMechanicWorkOrder } from '../../../utils/equipment/maintenanceTicketPdf'
 import { useToast } from '../../../utils/feedback/toastContext'
 import { createEquipmentReservation } from '../../../utils/assignments/assignmentsStore'
 import { createCalendarEvent } from '../../../utils/calendar/calendarStore'
@@ -17,7 +19,199 @@ import SideDrawer from '../../../components/primitives/SideDrawer'
 import StatusBoard from '../../../components/primitives/StatusBoard'
 import styles from '../Equipment.module.css'
 
-const THIS_MONTH = '2026-05'
+function currentMonthKey() {
+  return new Date().toISOString().slice(0, 7)
+}
+
+function text(value) {
+  return value == null ? '' : String(value)
+}
+
+function safeLower(value) {
+  return text(value).toLowerCase()
+}
+
+function numberValue(value) {
+  const n = Number(value)
+  return Number.isFinite(n) ? n : null
+}
+
+function formatHours(value) {
+  const n = numberValue(value)
+  return n == null ? '-' : `${n.toLocaleString()} hrs`
+}
+
+function formatMoney(value) {
+  const n = numberValue(value)
+  return n == null ? '$0' : `$${n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+}
+
+function formatMoneyFixed(value) {
+  const n = numberValue(value)
+  return n == null ? '$0.00' : `$${n.toFixed(2)}`
+}
+
+function ticketStageLabel(value, status) {
+  const stage = text(value || '').toLowerCase()
+  const labels = {
+    needs_service:  'Needs service',
+    parts_ordered:  'Parts ordered',
+    being_repaired: 'Being repaired',
+    resolved:       'Resolved',
+  }
+  if (labels[stage]) return labels[stage]
+  if (String(status || '').toLowerCase() === 'completed') return 'Resolved'
+  return 'Needs service'
+}
+
+function partsFor(log) {
+  return Array.isArray(log?.partsUsed) ? log.partsUsed : []
+}
+
+function normalizePartUsed(part) {
+  const quantity = numberValue(part?.quantity) ?? numberValue(part?.qty) ?? 0
+  const savedTotal = numberValue(part?.cost)
+  const unitCost = numberValue(part?.unitCost) ?? (savedTotal != null && quantity > 0 ? savedTotal / quantity : 0)
+  return {
+    ...part,
+    part:      part?.part || part?.name || 'Part',
+    partNumber: part?.partNumber || '-',
+    quantity,
+    unitCost,
+    totalCost: savedTotal ?? quantity * unitCost,
+  }
+}
+
+function partCost(part) {
+  const normalized = normalizePartUsed(part)
+  return numberValue(normalized.totalCost) ?? 0
+}
+
+function escapeHtml(value) {
+  return text(value).replace(/[&<>"']/g, char => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  }[char]))
+}
+
+function printableTicketHtml(log, unit) {
+  const parts = partsFor(log).map(normalizePartUsed)
+  const partsCost = parts.reduce((sum, part) => sum + partCost(part), 0)
+  const totalCost = numberValue(log.cost) ?? 0
+  const laborCost = Math.max(0, totalCost - partsCost)
+  const date = log.completedDate || log.date || ''
+  const equipmentName = log.equipmentName || unit?.name || 'Equipment'
+  const ticketId = `${equipmentName} - ${date || 'No date'}`
+  const stageLabel = ticketStageLabel(log.ticketStage, log.status)
+  const partsRows = parts.length
+    ? parts.map(part => `
+      <tr>
+        <td>${escapeHtml(part.part)}</td>
+        <td>${escapeHtml(part.partNumber)}</td>
+        <td class="num">${escapeHtml(part.quantity)}</td>
+        <td class="num">${formatMoneyFixed(part.unitCost)}</td>
+        <td class="num">${formatMoneyFixed(partCost(part))}</td>
+      </tr>
+    `).join('')
+    : '<tr><td colspan="5" class="empty">No parts recorded.</td></tr>'
+
+  return `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Maintenance Ticket - ${escapeHtml(equipmentName)}</title>
+  <style>
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #eef3ec; color: #1d2a22; font: 14px/1.45 Arial, sans-serif; }
+    .toolbar { position: sticky; top: 0; display: flex; justify-content: flex-end; gap: 8px; padding: 12px; background: #0f2f1b; border-bottom: 1px solid #274e2f; }
+    .toolbar button { border: 1px solid #78b878; border-radius: 6px; background: #2f7d3f; color: white; font-weight: 700; padding: 8px 12px; cursor: pointer; }
+    .page { width: min(880px, calc(100% - 32px)); margin: 24px auto; background: #fffdf8; border: 1px solid #d6dfd2; box-shadow: 0 12px 40px rgba(29,42,34,.12); padding: 34px; }
+    header { display: flex; justify-content: space-between; gap: 20px; border-bottom: 4px solid #cfae5b; padding-bottom: 18px; }
+    h1 { margin: 0; font-size: 25px; color: #16361f; }
+    h2 { margin: 24px 0 10px; font-size: 13px; color: #286b38; letter-spacing: .08em; text-transform: uppercase; }
+    .muted { color: #637361; }
+    .ticketId { text-align: right; font-size: 12px; color: #637361; }
+    .progress { margin-top: 18px; border: 1px solid #c7d7c2; background: #f4f8f0; padding: 14px 16px; }
+    .progress .label { color: #286b38; }
+    .progress strong { display: block; margin-top: 4px; color: #16361f; font-size: 18px; }
+    .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 18px; }
+    .field { border-bottom: 1px solid #e4eadd; padding-bottom: 8px; }
+    .label { display: block; color: #667764; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+    .value { display: block; margin-top: 4px; font-weight: 700; color: #1d2a22; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    th, td { border: 1px solid #e4eadd; padding: 9px 10px; text-align: left; vertical-align: top; }
+    th { background: #eef4eb; color: #38503b; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .empty { color: #667764; text-align: center; }
+    .totals { margin-left: auto; width: min(360px, 100%); }
+    .totals div { display: flex; justify-content: space-between; border-bottom: 1px solid #e4eadd; padding: 8px 0; }
+    .totals strong { font-size: 17px; color: #16361f; }
+    .notes { white-space: pre-wrap; border: 1px solid #e4eadd; background: #f9fbf5; padding: 12px; min-height: 72px; }
+    @media print {
+      body { background: white; }
+      .toolbar { display: none; }
+      .page { width: auto; margin: 0; border: 0; box-shadow: none; padding: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <button onclick="window.print()">Print</button>
+    <button onclick="window.print()">Save as PDF</button>
+  </div>
+  <main class="page">
+    <header>
+      <div>
+        <h1>Maintenance Ticket</h1>
+        <div class="muted">${escapeHtml(equipmentName)} - ${escapeHtml(log.serviceType || 'Maintenance')}</div>
+      </div>
+      <div class="ticketId">
+        <div>Ticket ID</div>
+        <strong>${escapeHtml(ticketId)}</strong>
+      </div>
+    </header>
+
+    <section class="progress">
+      <span class="label">Ticket progress</span>
+      <strong>${escapeHtml(stageLabel)}</strong>
+    </section>
+
+    <section class="grid">
+      <div class="field"><span class="label">Equipment</span><span class="value">${escapeHtml(equipmentName)}</span></div>
+      <div class="field"><span class="label">Type</span><span class="value">${escapeHtml(log.category || unit?.type || unit?.category || 'Equipment')}</span></div>
+      <div class="field"><span class="label">Status</span><span class="value">${escapeHtml(log.status || '-')}</span></div>
+      <div class="field"><span class="label">Date</span><span class="value">${escapeHtml(date || '-')}</span></div>
+      <div class="field"><span class="label">Technician</span><span class="value">${escapeHtml(log.technician || 'Unassigned')}</span></div>
+      <div class="field"><span class="label">Labor hours</span><span class="value">${escapeHtml(log.laborHours ?? '-')}</span></div>
+      <div class="field"><span class="label">Hours at service</span><span class="value">${escapeHtml(log.hoursAtService ?? '-')}</span></div>
+      <div class="field"><span class="label">Priority</span><span class="value">${escapeHtml(log.priority || '-')}</span></div>
+    </section>
+
+    <h2>Parts Used</h2>
+    <table>
+      <thead>
+        <tr><th>Part</th><th>Part #</th><th class="num">Qty</th><th class="num">Unit Cost</th><th class="num">Total</th></tr>
+      </thead>
+      <tbody>${partsRows}</tbody>
+    </table>
+
+    <h2>Cost Summary</h2>
+    <div class="totals">
+      <div><span>Labor / Other</span><span>${formatMoneyFixed(laborCost)}</span></div>
+      <div><span>Parts</span><span>${formatMoneyFixed(partsCost)}</span></div>
+      <div><strong>Total</strong><strong>${formatMoneyFixed(totalCost)}</strong></div>
+    </div>
+
+    <h2>Notes</h2>
+    <div class="notes">${escapeHtml(log.notes || 'No notes recorded.')}</div>
+  </main>
+</body>
+</html>`
+}
 
 const STATUS_FILTERS   = ['All', 'Open', 'In Progress', 'Overdue', 'Completed']
 const PRIORITY_FILTERS = ['All', 'Critical', 'High', 'Routine']
@@ -57,6 +251,7 @@ const FILTER_STATUS_KEY = {
 
 export default function MaintenanceLogs({ initialSearch = null } = {}) {
   const { equipment, serviceLog }    = useEquipmentData()
+  const { items: inventoryItems }    = useInventoryData()
   const toast                        = useToast()
   // Seed search filter when arriving via Phase 3.4 click-through.
   const [search,      setSearch]    = useState(initialSearch ?? '')
@@ -91,12 +286,13 @@ export default function MaintenanceLogs({ initialSearch = null } = {}) {
     e.stopPropagation()
     const isCompleted = log.status === 'completed'
     if (isCompleted) {
-      patchMaintenance(log.id, { status: 'open', completedDate: null })
+      patchMaintenance(log.id, { status: 'open', ticketStage: 'needs_service', completedDate: null })
         .then(() => toast.info('Service record reopened'))
         .catch(err => toast.error?.(`Save failed: ${err.message}`))
     } else {
       patchMaintenance(log.id, {
         status:        'completed',
+        ticketStage:   'resolved',
         completedDate: new Date().toISOString().slice(0, 10),
       })
         .then(() => toast.success('Service marked complete ✓'))
@@ -128,8 +324,41 @@ export default function MaintenanceLogs({ initialSearch = null } = {}) {
     setSelectedSection('attachments')
   }
 
+  function handleOpenTicketPdf(log, e) {
+    e?.stopPropagation?.()
+    const win = window.open('', '_blank', 'width=920,height=1000')
+    if (!win) {
+      toast.error?.('Popup blocked. Allow popups to view the ticket PDF.')
+      return
+    }
+    win.document.open()
+    win.document.write(printableTicketHtml(log, resolveEquipment(log)))
+    win.document.close()
+    win.focus()
+  }
+
+  function handlePrintWorkOrder(log, e) {
+    e?.stopPropagation?.()
+    openMechanicWorkOrder(
+      log,
+      resolveEquipment(log),
+      inventoryItems,
+      () => toast.error?.('Popup blocked. Allow popups to print the work order.'),
+    )
+  }
+
   function handleScheduleService(log) {
-    const evtPriority = log.priority === 'critical' ? 'high' : log.priority
+    const equipmentName = log.equipmentName || 'Equipment'
+    const serviceType = log.serviceType || 'Maintenance'
+    log = {
+      ...log,
+      equipmentName,
+      serviceType,
+      date: log.date || new Date().toISOString().slice(0, 10),
+      category: log.category || 'Equipment',
+      hoursAtService: numberValue(log.hoursAtService) ?? 0,
+    }
+    const evtPriority = log.priority === 'critical' ? 'high' : (log.priority || 'routine')
     const evtStatus   = log.status === 'completed' ? 'completed'
                       : log.status === 'in-progress' ? 'in-progress'
                       : 'scheduled'
@@ -171,7 +400,13 @@ export default function MaintenanceLogs({ initialSearch = null } = {}) {
 
   function resolveEquipment(log) {
     return equipment.find(e => e.id === log.equipmentId)
-      ?? { name: log.equipmentName, type: log.category, category: log.category, model: '', status: log.status }
+      ?? {
+        name: log.equipmentName || 'Equipment',
+        type: log.category || 'Equipment',
+        category: log.category || 'Equipment',
+        model: '',
+        status: log.status || 'open',
+      }
   }
 
   function normalizeLog(l) {
@@ -181,6 +416,21 @@ export default function MaintenanceLogs({ initialSearch = null } = {}) {
       description: l.notes || `${l.serviceType} — ${l.equipmentName}`,
       technician:  l.technician || 'Unassigned',
       cost:        l.cost,
+    }
+  }
+
+  void normalizeLog
+
+  function normalizeLogSafe(l) {
+    const serviceType = l.serviceType || 'Maintenance'
+    const equipmentName = l.equipmentName || 'Equipment'
+    return {
+      date:        l.completedDate ?? l.date ?? '',
+      stage:       ticketStageLabel(l.ticketStage, l.status),
+      type:        serviceType,
+      description: l.notes || `${serviceType} - ${equipmentName}`,
+      technician:  l.technician || 'Unassigned',
+      cost:        numberValue(l.cost) ?? 0,
     }
   }
 
@@ -218,7 +468,7 @@ export default function MaintenanceLogs({ initialSearch = null } = {}) {
       setReportThumbs(thumbUrls)
       setActiveReport(buildMaintenanceLogReport(
         { ...equipment, type: equipment.category ?? equipment.type },
-        [normalizeLog(log)],
+        [normalizeLogSafe(log)],
         { dateRange: log.completedDate ?? log.date },
       ))
     } finally {
@@ -230,7 +480,7 @@ export default function MaintenanceLogs({ initialSearch = null } = {}) {
     const unit = resolveEquipment(log)
     const logs = serviceLog
       .filter(l => l.equipmentId === log.equipmentId)
-      .map(normalizeLog)
+      .map(normalizeLogSafe)
     setActiveReport(buildMaintenanceLogReport(
       { ...unit, type: unit.category ?? unit.type },
       logs,
@@ -241,15 +491,16 @@ export default function MaintenanceLogs({ initialSearch = null } = {}) {
   // Server is the source of truth (Phase 5.0). The local-overlay
   // mergeServiceLogs() pattern is no longer used by this consumer;
   // mutations flow through patchMaintenance() and the store re-syncs.
-  const mergedLogs = serviceLog
+  const mergedLogs = useMemo(() => Array.isArray(serviceLog) ? serviceLog : [], [serviceLog])
 
   const counts = useMemo(() => {
+    const thisMonth = currentMonthKey()
     let open = 0, completedMonth = 0, overdue = 0, totalCost = 0
     mergedLogs.forEach(log => {
       if (log.status === 'open' || log.status === 'in-progress') open++
       if (log.status === 'overdue') overdue++
-      if (log.status === 'completed' && log.completedDate?.startsWith(THIS_MONTH)) completedMonth++
-      totalCost += log.cost || 0
+      if (log.status === 'completed' && log.completedDate?.startsWith(thisMonth)) completedMonth++
+      totalCost += numberValue(log.cost) ?? 0
     })
     return { open, completedMonth, overdue, totalCost }
   }, [mergedLogs])
@@ -261,26 +512,26 @@ export default function MaintenanceLogs({ initialSearch = null } = {}) {
         const matchSta = staFilter === 'All' || log.status === FILTER_STATUS_KEY[staFilter]
         const matchPri = priFilter === 'All' || log.priority === priFilter.toLowerCase()
         const matchSearch = !q ||
-          log.equipmentName.toLowerCase().includes(q) ||
-          log.category.toLowerCase().includes(q) ||
-          log.serviceType.toLowerCase().includes(q) ||
-          (log.technician && log.technician.toLowerCase().includes(q)) ||
-          (log.notes && log.notes.toLowerCase().includes(q))
+          safeLower(log.equipmentName).includes(q) ||
+          safeLower(log.category).includes(q) ||
+          safeLower(log.serviceType).includes(q) ||
+          safeLower(log.technician).includes(q) ||
+          safeLower(log.notes).includes(q)
         return matchSta && matchPri && matchSearch
       })
       .sort((a, b) =>
-        SORT_STATUS[a.status]   - SORT_STATUS[b.status] ||
-        SORT_PRIORITY[a.priority] - SORT_PRIORITY[b.priority]
+        (SORT_STATUS[a.status] ?? 9) - (SORT_STATUS[b.status] ?? 9) ||
+        (SORT_PRIORITY[a.priority] ?? 9) - (SORT_PRIORITY[b.priority] ?? 9)
       )
   }, [search, staFilter, priFilter, mergedLogs])
 
   const totalPartsOnLog = log =>
-    log.partsUsed.reduce((sum, p) => sum + p.quantity * p.unitCost, 0)
+    partsFor(log).reduce((sum, p) => sum + partCost(p), 0)
 
   return (
     <div className={styles.eqRoot}>
       <WorkspaceSection
-        title="Maintenance Logs"
+        title="Work Orders & History"
         subtitle="Service history, repairs, and inspections — newest urgency first."
       >
 
@@ -356,13 +607,35 @@ export default function MaintenanceLogs({ initialSearch = null } = {}) {
       ) : (
         <div className={styles.eqList}>
           {visible.map(log => {
-            const statusMeta   = STATUS_META[log.status]   || {}
-            const priorityMeta = PRIORITY_META[log.priority] || {}
-            const typeColors   = SERVICE_TYPE_COLORS[log.serviceType] || SERVICE_TYPE_COLORS.Inspection
-            const hasParts     = log.partsUsed && log.partsUsed.length > 0
-            const priorityCls  = `mlCard_${log.priority}`
+            const equipmentName = log.equipmentName || 'Equipment'
+            const serviceType = log.serviceType || 'Maintenance'
+            const category = log.category || 'Equipment'
+            const status = log.status || 'open'
+            const stageLabel = ticketStageLabel(log.ticketStage, status)
+            const priority = log.priority || 'routine'
+            const parts = partsFor(log)
+            const statusMeta   = STATUS_META[status] || { label: status }
+            const priorityMeta = PRIORITY_META[priority] || { label: priority }
+            const typeColors   = SERVICE_TYPE_COLORS[serviceType] || SERVICE_TYPE_COLORS.Inspection
+            const hasParts     = parts.length > 0
+            const priorityCls  = `mlCard_${priority}`
             const completed    = log.status === 'completed'
-            const accentColor  = PRIORITY_COLOR[log.priority] || '#4ecb4e'
+            const accentColor  = PRIORITY_COLOR[priority] || '#4ecb4e'
+            const cost = numberValue(log.cost) ?? 0
+            const nextDueHours = numberValue(log.nextDueHours)
+            log = {
+              ...log,
+              equipmentName,
+              serviceType,
+              category,
+              status,
+              ticketStage: log.ticketStage || (status === 'completed' ? 'resolved' : 'needs_service'),
+              priority,
+              partsUsed: parts.map(normalizePartUsed),
+              hoursAtService: numberValue(log.hoursAtService) ?? 0,
+              nextDueHours,
+              cost,
+            }
             return (
               <div
                 key={log.id}
@@ -371,7 +644,7 @@ export default function MaintenanceLogs({ initialSearch = null } = {}) {
                 role="button"
                 tabIndex={0}
                 onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setSelected(log) }}
-                aria-label={`View details for ${log.equipmentName} ${log.serviceType}`}
+                aria-label={`View details for ${equipmentName} ${serviceType}`}
                 onMouseEnter={() => setHoveredId(log.id)}
                 onMouseLeave={() => setHoveredId(null)}
               >
@@ -379,35 +652,36 @@ export default function MaintenanceLogs({ initialSearch = null } = {}) {
                 {/* Left: equipment + service info */}
                 <div className={styles.eqCardMain}>
                   <div className={styles.eqCardTitleRow}>
-                    <span className={styles.eqCardName}>{log.equipmentName}</span>
+                    <span className={styles.eqCardName}>{equipmentName}</span>
                     <span
                       className={styles.mlTypeBadge}
                       style={{ background: typeColors.bg, color: typeColors.color, borderColor: typeColors.border }}
                     >
-                      {log.serviceType}
+                      {serviceType}
                     </span>
-                    <span className={styles.eqCategoryPill}>{log.category}</span>
+                    <span className={styles.eqCategoryPill}>{category}</span>
                   </div>
 
                   <div className={styles.mlCardMeta}>
-                    <span className={styles.mlCardDate}>{log.date}</span>
+                    <span className={styles.mlCardDate}>{log.date || '-'}</span>
                     {log.technician
                       ? <span className={styles.eqOperatorBadge}>{log.technician}</span>
                       : <span className={styles.mlUnassigned}>Unassigned</span>
                     }
-                    <span className={styles.mlHoursAtService}>{log.hoursAtService.toLocaleString()} hrs</span>
+                    <span className={styles.mlHoursAtService}>{formatHours(log.hoursAtService)}</span>
                   </div>
 
                   <div className={styles.eqCardBadgeRow}>
                     <span className={`${styles.eqStatusBadge} ${statusMeta.cls || ''}`}>
                       {statusMeta.label}
                     </span>
+                    <span className={styles.mlStageBadge}>{stageLabel}</span>
                     <span className={`${styles.mlPriorityBadge} ${priorityMeta.cls || ''}`}>
                       {priorityMeta.label}
                     </span>
                     {hasParts && (
                       <span className={styles.mlPartsBadge}>
-                        {log.partsUsed.length} part{log.partsUsed.length > 1 ? 's' : ''}
+                        {parts.length} part{parts.length > 1 ? 's' : ''}
                       </span>
                     )}
                     {log.notes && <span className={styles.mlHasNotes}>Note</span>}
@@ -427,7 +701,7 @@ export default function MaintenanceLogs({ initialSearch = null } = {}) {
                         },
                         ...(!completed ? [{
                           id: 'priority',
-                          label: `↕ ${log.priority.charAt(0).toUpperCase() + log.priority.slice(1)}`,
+                          label: `Change ${priorityMeta.label}`,
                           style: { color: accentColor, borderColor: accentColor },
                           onClick: e => handleCyclePriority(log, e),
                           title: 'Cycle priority: critical → high → routine',
@@ -438,6 +712,18 @@ export default function MaintenanceLogs({ initialSearch = null } = {}) {
                           onClick: e => handleInlineSchedule(log, e),
                           title: 'Add to Operations Calendar',
                         }] : []),
+                        {
+                          id: 'ticket-pdf',
+                          label: 'View PDF',
+                          onClick: e => handleOpenTicketPdf(log, e),
+                          title: 'Open printable ticket PDF',
+                        },
+                        {
+                          id: 'work-order',
+                          label: 'Print Work Order',
+                          onClick: e => handlePrintWorkOrder(log, e),
+                          title: 'Print mechanic work order with available parts',
+                        },
                         {
                           id: 'report',
                           label: '📄 Report',
@@ -458,10 +744,10 @@ export default function MaintenanceLogs({ initialSearch = null } = {}) {
 
                 {/* Right: cost */}
                 <div className={styles.eqCardRight}>
-                  {log.cost > 0 ? (
+                  {cost > 0 ? (
                     <>
                       <span className={styles.mlBigCost}>
-                        ${log.cost.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                        {formatMoney(cost)}
                       </span>
                       <span className={styles.eqHoursLabel}>cost</span>
                     </>
@@ -469,16 +755,30 @@ export default function MaintenanceLogs({ initialSearch = null } = {}) {
                     <>
                       <span className={`${styles.mlBigCost} ${styles.mlCostPending}`}>—</span>
                       <span className={styles.eqHoursLabel}>
-                        {log.status === 'completed' ? 'no cost' : 'pending'}
+                        {status === 'completed' ? 'no cost' : 'pending'}
                       </span>
                     </>
                   )}
-                  {log.nextDueHours && (
+                  {nextDueHours != null && (
                     <span className={styles.eqNextService}>
-                      Next: {log.nextDueHours.toLocaleString()} hrs
+                      Next: {formatHours(nextDueHours)}
                     </span>
                   )}
                   <span className={styles.eqViewDetail}>Details →</span>
+                  <button
+                    type="button"
+                    className={styles.mlPdfButton}
+                    onClick={e => handleOpenTicketPdf(log, e)}
+                  >
+                    View PDF
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.mlPdfButton}
+                    onClick={e => handlePrintWorkOrder(log, e)}
+                  >
+                    Print Work Order
+                  </button>
                   <button
                     className={`${exStyles.esToggleBtn} ${expandedId === log.id ? exStyles.esToggleBtnOpen : ''}`}
                     onClick={e => { e.stopPropagation(); setExpandedId(prev => prev === log.id ? null : log.id) }}
@@ -511,7 +811,7 @@ export default function MaintenanceLogs({ initialSearch = null } = {}) {
                       {log.cost > 0 && (
                         <div className={exStyles.esField}>
                           <span className={exStyles.esLabel}>Cost</span>
-                          <span className={exStyles.esValue}>${log.cost.toFixed(2)}</span>
+                          <span className={exStyles.esValue}>{formatMoneyFixed(log.cost)}</span>
                         </div>
                       )}
                       {log.completedDate && (
@@ -549,28 +849,41 @@ export default function MaintenanceLogs({ initialSearch = null } = {}) {
       {/* ── Detail drawer ── */}
       {(() => {
         if (!selected) return null
-        const statusMeta   = STATUS_META[selected.status]   || {}
-        const priorityMeta = PRIORITY_META[selected.priority] || {}
-        const typeColors   = SERVICE_TYPE_COLORS[selected.serviceType] || SERVICE_TYPE_COLORS.Inspection
+        const safeSelected = {
+          ...selected,
+          equipmentName: selected.equipmentName || 'Equipment',
+          serviceType: selected.serviceType || 'Maintenance',
+          category: selected.category || 'Equipment',
+          status: selected.status || 'open',
+          ticketStage: selected.ticketStage || (selected.status === 'completed' ? 'resolved' : 'needs_service'),
+          priority: selected.priority || 'routine',
+          hoursAtService: numberValue(selected.hoursAtService) ?? 0,
+          nextDueHours: numberValue(selected.nextDueHours),
+          cost: numberValue(selected.cost) ?? 0,
+          partsUsed: partsFor(selected).map(normalizePartUsed),
+        }
+        const statusMeta   = STATUS_META[safeSelected.status]   || { label: safeSelected.status }
+        const priorityMeta = PRIORITY_META[safeSelected.priority] || { label: safeSelected.priority }
+        const typeColors   = SERVICE_TYPE_COLORS[safeSelected.serviceType] || SERVICE_TYPE_COLORS.Inspection
         const accentColors = {
           critical: '#e05050',
           high:     '#d4883a',
           routine:  '#4ecb4e',
         }
-        const partsCost  = totalPartsOnLog(selected)
-        const laborCost  = Math.max(0, selected.cost - partsCost)
+        const partsCost  = totalPartsOnLog(safeSelected)
+        const laborCost  = Math.max(0, safeSelected.cost - partsCost)
         return (
           <SideDrawer
             open={!!selected}
             onClose={closeModal}
-            accentColor={accentColors[selected.priority] || '#4a9e4a'}
+            accentColor={accentColors[safeSelected.priority] || '#4a9e4a'}
             ariaLabel="Maintenance log details"
           >
             <SideDrawer.Header
-              title={`${selected.equipmentName} — ${selected.serviceType}`}
+              title={`${safeSelected.equipmentName} - ${safeSelected.serviceType}`}
               subtitle={
-                `${selected.category} · ${selected.date}` +
-                (selected.technician ? ` · ${selected.technician}` : '')
+                `${safeSelected.category} - ${safeSelected.date || '-'}` +
+                (safeSelected.technician ? ` - ${safeSelected.technician}` : '')
               }
               status={
                 <span className={`${styles.eqStatusBadge} ${statusMeta.cls || ''}`}>
@@ -598,7 +911,7 @@ export default function MaintenanceLogs({ initialSearch = null } = {}) {
                           padding:     '4px 10px',
                         }}
                       >
-                        {selected.serviceType}
+                          {safeSelected.serviceType}
                       </span>
                     </div>
                     <div className={styles.eqModalField}>
@@ -614,9 +927,15 @@ export default function MaintenanceLogs({ initialSearch = null } = {}) {
                       </span>
                     </div>
                     <div className={styles.eqModalField}>
+                      <span className={styles.eqModalFieldLabel}>Ticket Progress</span>
+                      <span className={styles.mlStageBadge}>
+                        {ticketStageLabel(safeSelected.ticketStage, safeSelected.status)}
+                      </span>
+                    </div>
+                    <div className={styles.eqModalField}>
                       <span className={styles.eqModalFieldLabel}>Technician</span>
                       <span className={styles.eqModalFieldValue}>
-                        {selected.technician || 'Unassigned'}
+                        {safeSelected.technician || 'Unassigned'}
                       </span>
                     </div>
                   </div>
@@ -628,16 +947,16 @@ export default function MaintenanceLogs({ initialSearch = null } = {}) {
                   <div className={styles.eqModalGrid}>
                     <div className={styles.eqModalField}>
                       <span className={styles.eqModalFieldLabel}>Equipment</span>
-                      <span className={styles.eqModalFieldValue}>{selected.equipmentName}</span>
+                      <span className={styles.eqModalFieldValue}>{safeSelected.equipmentName}</span>
                     </div>
                     <div className={styles.eqModalField}>
                       <span className={styles.eqModalFieldLabel}>Category</span>
-                      <span className={styles.eqModalFieldValue}>{selected.category}</span>
+                      <span className={styles.eqModalFieldValue}>{safeSelected.category}</span>
                     </div>
                     <div className={styles.eqModalField}>
                       <span className={styles.eqModalFieldLabel}>Hours at Service</span>
                       <span className={`${styles.eqModalFieldValue} ${styles.eqModalHoursBig}`}>
-                        {selected.hoursAtService.toLocaleString()} hrs
+                        {formatHours(safeSelected.hoursAtService)}
                       </span>
                     </div>
                   </div>
@@ -649,19 +968,19 @@ export default function MaintenanceLogs({ initialSearch = null } = {}) {
                   <div className={styles.eqModalGrid}>
                     <div className={styles.eqModalField}>
                       <span className={styles.eqModalFieldLabel}>Date Opened</span>
-                      <span className={styles.eqModalFieldValue}>{selected.date}</span>
+                      <span className={styles.eqModalFieldValue}>{safeSelected.date || '-'}</span>
                     </div>
                     <div className={styles.eqModalField}>
                       <span className={styles.eqModalFieldLabel}>Completed Date</span>
                       <span className={styles.eqModalFieldValue}>
-                        {selected.completedDate || '—'}
+                        {safeSelected.completedDate || '-'}
                       </span>
                     </div>
-                    {selected.nextDueHours && (
+                    {safeSelected.nextDueHours != null && (
                       <div className={styles.eqModalField}>
                         <span className={styles.eqModalFieldLabel}>Next Service At</span>
                         <span className={styles.eqModalFieldValue}>
-                          {selected.nextDueHours.toLocaleString()} hrs
+                          {formatHours(safeSelected.nextDueHours)}
                         </span>
                       </div>
                     )}
@@ -669,7 +988,7 @@ export default function MaintenanceLogs({ initialSearch = null } = {}) {
                 </section>
 
                 {/* Parts Used */}
-                {selected.partsUsed && selected.partsUsed.length > 0 ? (
+                {safeSelected.partsUsed.length > 0 ? (
                   <section className={styles.eqModalSection}>
                     <h3 className={styles.eqModalSectionTitle}>Parts Used</h3>
                     <div className={styles.mlPartsTable}>
@@ -680,13 +999,13 @@ export default function MaintenanceLogs({ initialSearch = null } = {}) {
                         <span className={styles.mlPartsCost}>Unit Cost</span>
                         <span className={styles.mlPartsCost}>Total</span>
                       </div>
-                      {selected.partsUsed.map((p, i) => (
+                      {safeSelected.partsUsed.map((p, i) => (
                         <div key={i} className={styles.mlPartsRow}>
                           <span className={styles.mlPartName}>{p.part}</span>
                           <span className={styles.mlPartNumber}>{p.partNumber}</span>
                           <span className={styles.mlPartsQty}>{p.quantity}</span>
-                          <span className={styles.mlPartsCost}>${p.unitCost.toFixed(2)}</span>
-                          <span className={styles.mlPartsCost}>${(p.quantity * p.unitCost).toFixed(2)}</span>
+                          <span className={styles.mlPartsCost}>{formatMoneyFixed(p.unitCost)}</span>
+                          <span className={styles.mlPartsCost}>{formatMoneyFixed(partCost(p))}</span>
                         </div>
                       ))}
                     </div>
@@ -717,9 +1036,9 @@ export default function MaintenanceLogs({ initialSearch = null } = {}) {
                     <div className={styles.eqModalField}>
                       <span className={styles.eqModalFieldLabel}>Total Cost</span>
                       <span className={`${styles.eqModalFieldValue} ${styles.mlTotalCost}`}>
-                        {selected.cost > 0
-                          ? `$${selected.cost.toFixed(2)}`
-                          : selected.status === 'completed' ? '$0.00' : 'Pending'
+                        {safeSelected.cost > 0
+                          ? formatMoneyFixed(safeSelected.cost)
+                          : safeSelected.status === 'completed' ? '$0.00' : 'Pending'
                         }
                       </span>
                     </div>
@@ -727,10 +1046,10 @@ export default function MaintenanceLogs({ initialSearch = null } = {}) {
                 </section>
 
                 {/* Technician Notes */}
-                {selected.notes && (
+                {safeSelected.notes && (
                   <section className={styles.eqModalSection}>
                     <h3 className={styles.eqModalSectionTitle}>Technician Notes</h3>
-                    <p className={styles.eqModalNotes}>{selected.notes}</p>
+                    <p className={styles.eqModalNotes}>{safeSelected.notes}</p>
                   </section>
                 )}
 
@@ -738,15 +1057,15 @@ export default function MaintenanceLogs({ initialSearch = null } = {}) {
                 <section className={styles.eqModalSection} ref={attachSectionRef}>
                   <h3 className={styles.eqModalSectionTitle}>Attachments</h3>
                   <UploadCenter
-                    module={selected.id}
+                    module={safeSelected.id}
                     type="image"
-                    tags={[selected.category, selected.serviceType, selected.priority].filter(Boolean)}
+                    tags={[safeSelected.category, safeSelected.serviceType, safeSelected.priority].filter(Boolean)}
                     title="Photos"
                   />
                   <UploadCenter
-                    module={`${selected.id}-docs`}
+                    module={`${safeSelected.id}-docs`}
                     type="document"
-                    tags={[selected.category, selected.serviceType, selected.priority].filter(Boolean)}
+                    tags={[safeSelected.category, safeSelected.serviceType, safeSelected.priority].filter(Boolean)}
                     title="Documents"
                   />
                 </section>
@@ -756,26 +1075,38 @@ export default function MaintenanceLogs({ initialSearch = null } = {}) {
             <SideDrawer.Footer>
               <button
                 className="opActionBtn"
-                onClick={() => generateMaintenanceReport(selected)}
+                onClick={e => handleOpenTicketPdf(safeSelected, e)}
+              >
+                View PDF
+              </button>
+              <button
+                className="opActionBtn"
+                onClick={e => handlePrintWorkOrder(safeSelected, e)}
+              >
+                Print Work Order
+              </button>
+              <button
+                className="opActionBtn"
+                onClick={() => generateMaintenanceReport(safeSelected)}
                 disabled={reportLoading}
               >
                 {reportLoading ? 'Loading…' : 'Generate Report'}
               </button>
               <button
                 className="opActionBtn"
-                onClick={() => generateEquipmentHistory(selected)}
+                onClick={() => generateEquipmentHistory(safeSelected)}
                 disabled={reportLoading}
               >
                 Equipment History
               </button>
               <button
                 className="opActionBtn"
-                onClick={() => { handleScheduleService(selected); closeModal() }}
+                onClick={() => { handleScheduleService(safeSelected); closeModal() }}
               >
                 + Add to Operations Calendar
               </button>
               <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
-                Reserves {selected.equipmentName} · adds maintenance event
+                Reserves {safeSelected.equipmentName} - adds maintenance event
               </span>
             </SideDrawer.Footer>
           </SideDrawer>

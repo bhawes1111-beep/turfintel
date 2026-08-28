@@ -23,6 +23,7 @@ let state = {
   error:     null,
   lastFetch: null,
 }
+const disabledState = { ...state, loading: false, error: null }
 
 const subscribers = new Set()
 let hasBooted = false
@@ -131,6 +132,8 @@ function subscribe(cb) {
 }
 
 function getSnapshot() { return state }
+function getDisabledSnapshot() { return disabledState }
+function subscribeDisabled() { return () => {} }
 
 /**
  * useCalendarData — read-only subscription to the Calendar Events vertical.
@@ -143,6 +146,10 @@ function getSnapshot() { return state }
  * sourceId, createdAt } } — so consumers swap data source without
  * reshaping field reads.
  */
-export function useCalendarData() {
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+export function useCalendarData({ enabled = true } = {}) {
+  return useSyncExternalStore(
+    enabled ? subscribe : subscribeDisabled,
+    enabled ? getSnapshot : getDisabledSnapshot,
+    enabled ? getSnapshot : getDisabledSnapshot,
+  )
 }

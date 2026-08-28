@@ -29,7 +29,13 @@ const BOARD_LANGUAGE_OPTS = [
   { value: 'es', label: 'Spanish' },
 ]
 
+const PAY_TYPE_OPTS = [
+  { value: 'hourly', label: 'Hourly' },
+  { value: 'salary', label: 'Salary' },
+]
+
 function makeInitial(employee) {
+  const payType = employee?.payType ?? (employee?.salaryAmount != null ? 'salary' : 'hourly')
   return {
     name:              employee?.name              ?? '',
     role:              employee?.role              ?? '',
@@ -39,7 +45,11 @@ function makeInitial(employee) {
     email:             employee?.email             ?? '',
     assignedArea:      employee?.assignedArea      ?? '',
     hireDate:          employee?.hireDate          ?? '',
+    payType,
     payRate:           employee?.payRate ?? '',
+    salaryAmount:      employee?.salaryAmount ?? '',
+    hidePayRate:       Boolean(employee?.hidePayRate),
+    excludeFromPayroll: Boolean(employee?.excludeFromPayroll),
     pesticideLicense:  employee?.pesticideLicense  ?? '',
     emergencyContact:  employee?.emergencyContact  ?? '',
     notes:             employee?.notes             ?? '',
@@ -53,6 +63,8 @@ function makeInitial(employee) {
 
 function toPayload(form) {
   const payRate = form.payRate === '' ? null : Number(form.payRate)
+  const salaryAmount = form.salaryAmount === '' ? null : Number(form.salaryAmount)
+  const payType = form.payType === 'salary' ? 'salary' : 'hourly'
   return {
     name:              form.name.trim(),
     role:              form.role.trim()        || null,
@@ -62,7 +74,11 @@ function toPayload(form) {
     email:             form.email.trim()       || null,
     assignedArea:      form.assignedArea.trim()|| null,
     hireDate:          form.hireDate           || null,
-    payRate:           Number.isFinite(payRate) ? payRate : null,
+    payType,
+    payRate:           payType === 'hourly' && Number.isFinite(payRate) ? payRate : null,
+    salaryAmount:      payType === 'salary' && Number.isFinite(salaryAmount) ? salaryAmount : null,
+    hidePayRate:       Boolean(form.hidePayRate),
+    excludeFromPayroll: Boolean(form.excludeFromPayroll),
     pesticideLicense:  form.pesticideLicense.trim() || null,
     emergencyContact:  form.emergencyContact.trim() || null,
     notes:             form.notes              || null,
@@ -114,7 +130,7 @@ export default function EmployeeFormModal({ employee, onClose }) {
   }
 
   return (
-    <div className={styles.modalOverlay} onClick={onClose}>
+    <div className={styles.modalOverlay}>
       <form
         className={styles.modal}
         onClick={e => e.stopPropagation()}
@@ -190,6 +206,19 @@ export default function EmployeeFormModal({ employee, onClose }) {
           </div>
 
           <div className={styles.formField}>
+            <label className={styles.formLabel}>Pay Type <span style={{ color: '#fbbf24' }}>private</span></label>
+            <select
+              className={styles.formSelect}
+              value={form.payType}
+              onChange={e => setField('payType', e.target.value)}
+            >
+              {PAY_TYPE_OPTS.map(o => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className={styles.formField}>
             <label className={styles.formLabel}>Pay Rate ($/hr) <span style={{ color: '#fbbf24' }}>· private</span></label>
             <input
               type="number"
@@ -200,6 +229,48 @@ export default function EmployeeFormModal({ employee, onClose }) {
               onChange={e => setField('payRate', e.target.value)}
               placeholder="22.50"
             />
+          </div>
+
+          {form.payType === 'salary' && (
+            <div className={styles.formField}>
+              <label className={styles.formLabel}>Annual Salary ($/yr) <span style={{ color: '#fbbf24' }}>private</span></label>
+              <input
+                type="number"
+                step="1"
+                min="0"
+                className={styles.formInput}
+                value={form.salaryAmount}
+                onChange={e => setField('salaryAmount', e.target.value)}
+                placeholder="65000"
+              />
+            </div>
+          )}
+
+          <div className={styles.formField}>
+            <label className={styles.formCheckLabel}>
+              <input
+                type="checkbox"
+                className={styles.formCheck}
+                checked={form.hidePayRate}
+                onChange={e => setField('hidePayRate', e.target.checked)}
+              />
+              <span>Hide pay rate throughout the app</span>
+            </label>
+          </div>
+
+          <div className={`${styles.formField} ${styles.formFieldWide}`}>
+            <label className={styles.formCheckLabel}>
+              <input
+                type="checkbox"
+                className={styles.formCheck}
+                checked={form.excludeFromPayroll}
+                onChange={e => setField('excludeFromPayroll', e.target.checked)}
+              />
+              <span>Exclude from payroll reports</span>
+            </label>
+            <div className={styles.translationHint}>
+              Use this for employees who may appear on TurfIntel schedules but are paid through a different department.
+            </div>
           </div>
 
           <div className={styles.formField}>
@@ -277,7 +348,7 @@ export default function EmployeeFormModal({ employee, onClose }) {
                 checked={form.autoTranslateBoardNotes}
                 onChange={e => setField('autoTranslateBoardNotes', e.target.checked)}
               />
-              <span>Auto-translate board notes</span>
+              <span>Show Spanish on Display Board</span>
             </label>
           </div>
 
@@ -297,8 +368,9 @@ export default function EmployeeFormModal({ employee, onClose }) {
 
           <div className={`${styles.formField} ${styles.formFieldWide}`}>
             <div className={styles.translationHint}>
-              When enabled, board notes and task notes are automatically
-              translated for this employee on the public board.
+              Turn this on only for employees who should see Spanish. Their task
+              notes will show English first, then Spanish underneath, on the
+              public Display Board.
             </div>
           </div>
         </div>
