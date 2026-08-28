@@ -6,7 +6,9 @@
 import { useEffect, useState } from 'react'
 import {
   createCrewEmployee,
+  deleteCrewEmployeeProfilePhoto,
   patchCrewEmployee,
+  uploadCrewEmployeeProfilePhoto,
 } from '../../../utils/crew/crewStore'
 import { useToast } from '../../../utils/feedback/toastContext'
 import styles from '../Employees.module.css'
@@ -33,6 +35,16 @@ const PAY_TYPE_OPTS = [
   { value: 'hourly', label: 'Hourly' },
   { value: 'salary', label: 'Salary' },
 ]
+
+const PROFILE_PHOTO_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])
+const MAX_PROFILE_PHOTO_BYTES = 5 * 1024 * 1024
+
+function initials(name) {
+  const parts = String(name ?? '').trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '?'
+  if (parts.length === 1) return parts[0][0].toUpperCase()
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
+}
 
 function makeInitial(employee) {
   const payType = employee?.payType ?? (employee?.salaryAmount != null ? 'salary' : 'hourly')
@@ -96,6 +108,9 @@ export default function EmployeeFormModal({ employee, onClose }) {
   const [form, setForm]       = useState(() => makeInitial(employee))
   const [busy, setBusy]       = useState(false)
   const [error, setError]     = useState('')
+  const [photoFile, setPhotoFile] = useState(null)
+  const [photoPreview, setPhotoPreview] = useState(employee?.profilePhotoUrl ?? '')
+  const [removePhoto, setRemovePhoto] = useState(false)
 
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') onClose() }
@@ -103,7 +118,37 @@ export default function EmployeeFormModal({ employee, onClose }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
+  useEffect(() => {
+    return () => {
+      if (photoPreview?.startsWith('blob:')) URL.revokeObjectURL(photoPreview)
+    }
+  }, [photoPreview])
+
   function setField(k, v) { setForm(prev => ({ ...prev, [k]: v })) }
+
+  function handlePhotoChange(event) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    if (!PROFILE_PHOTO_TYPES.has(file.type)) {
+      setError('Profile photo must be a JPEG, PNG, or WebP image.')
+      return
+    }
+    if (file.size > MAX_PROFILE_PHOTO_BYTES) {
+      setError('Profile photo cannot exceed 5 MB.')
+      return
+    }
+    setError('')
+    setPhotoFile(file)
+    setRemovePhoto(false)
+    setPhotoPreview(URL.createObjectURL(file))
+  }
+
+  function handlePhotoRemove() {
+    setPhotoFile(null)
+    setPhotoPreview('')
+    setRemovePhoto(Boolean(employee?.hasProfilePhoto))
+  }
 
   async function handleSave(e) {
     e?.preventDefault?.()
@@ -114,13 +159,12 @@ export default function EmployeeFormModal({ employee, onClose }) {
     setBusy(true)
     setError('')
     try {
-      if (isEdit) {
-        await patchCrewEmployee(employee.id, toPayload(form))
-        toast.success(`Updated ${form.name}`)
-      } else {
-        await createCrewEmployee(toPayload(form))
-        toast.success(`Hired ${form.name}`)
-      }
+      const saved = isEdit
+        ? await patchCrewEmployee(employee.id, toPayload(form))
+        : await createCrewEmployee(toPayload(form))
+      if (photoFile) await uploadCrewEmployeeProfilePhoto(saved.id, photoFile)
+      else if (removePhoto) await deleteCrewEmployeeProfilePhoto(saved.id)
+      toast.success(isEdit ? `Updated ${form.name}` : `Hired ${form.name}`)
       onClose()
     } catch (err) {
       setError(err?.message ?? String(err))
@@ -145,6 +189,42 @@ export default function EmployeeFormModal({ employee, onClose }) {
           they live on the employee record but are never surfaced to the Operations Board
           or future Display Board renderers.
         </div>
+
+        <section className={styles.profilePhotoEditor} aria-label="Employee profile photo">
+          <div className={styles.profilePhotoPreview}>
+            <span aria-hidden="true">{initials(form.name)}</span>
+            {photoPreview && (
+              <img src={photoPreview} alt={`${form.name || 'Employee'} profile`} />
+            )}
+          </div>
+          <div className={styles.profilePhotoControls}>
+            <strong>Profile Photo</strong>
+            <span>JPEG, PNG, or WebP up to 5 MB.</span>
+            <div className={styles.profilePhotoActions}>
+              <label className={styles.btnSecondary} htmlFor="employee-profile-photo">
+                {photoPreview ? 'Replace Photo' : 'Add Photo'}
+              </label>
+              <input
+                id="employee-profile-photo"
+                type="file"
+                className={styles.profilePhotoInput}
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handlePhotoChange}
+                disabled={busy}
+              />
+              {photoPreview && (
+                <button
+                  type="button"
+                  className={styles.btnDanger}
+                  onClick={handlePhotoRemove}
+                  disabled={busy}
+                >
+                  Remove Photo
+                </button>
+              )}
+            </div>
+          </div>
+        </section>
 
         <div className={styles.formGrid}>
           <div className={`${styles.formField} ${styles.formFieldWide}`}>

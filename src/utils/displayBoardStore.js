@@ -21,5 +21,6 @@ export function emptyDisplayBoardState() {
     events: [], sprays: [], crewAssignments: [], equipmentReservations: [],
     alerts: [], employees: [], schedules: [], scheduleOverrides: [],
     notes: [], moisture: [], assignmentPhotos: [],
+    displaySettings: { showEmployeeProfilePhotos: false },
   }
 }

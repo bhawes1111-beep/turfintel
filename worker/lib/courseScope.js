@@ -68,6 +68,7 @@ export const COURSE_SCOPED_READ_PATHS = [
   '/api/weather/history',
   '/api/weather/current',
   '/api/crew-assignments',
+  '/api/crew-employees',
   '/api/operations-notes',
   '/api/calendar-events',
 ]

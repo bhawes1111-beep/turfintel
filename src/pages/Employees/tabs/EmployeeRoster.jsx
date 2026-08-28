@@ -103,7 +103,19 @@ function EmployeeCard({ employee, onEdit, onDeactivate, onReactivate }) {
   return (
     <div className={styles.card} role="group">
       <div className={styles.cardHeader}>
-        <span className={styles.cardName}>{employee.name}</span>
+        <span className={styles.cardIdentity}>
+          <span className={styles.rosterAvatar} aria-hidden="true">
+            {rosterInitials(employee.name)}
+            {employee.profilePhotoUrl && (
+              <img
+                src={employee.profilePhotoUrl}
+                alt=""
+                onError={event => { event.currentTarget.style.display = 'none' }}
+              />
+            )}
+          </span>
+          <span className={styles.cardName}>{employee.name}</span>
+        </span>
         <span className={`${styles.statusBadge} ${statusCls}`}>{employee.status}</span>
       </div>
       <span className={styles.cardRole}>{employee.role ?? '—'}</span>
@@ -132,6 +144,13 @@ function EmployeeCard({ employee, onEdit, onDeactivate, onReactivate }) {
       </div>
     </div>
   )
+}
+
+function rosterInitials(name) {
+  const parts = String(name ?? '').trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '?'
+  if (parts.length === 1) return parts[0][0].toUpperCase()
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
 }
 
 function formatPayLabel(employee) {

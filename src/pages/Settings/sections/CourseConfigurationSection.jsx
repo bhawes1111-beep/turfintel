@@ -49,6 +49,7 @@ function makeInitialForm(course) {
     acresSprayable:    course?.acresSprayable    ?? '',
     acresPractice:     course?.acresPractice     ?? '',
     defaultSprayUnits: course?.defaultSprayUnits ?? '',
+    displayBoardShowProfilePhotos: Boolean(course?.displayBoardShowProfilePhotos),
     customCourseAreas: Array.isArray(course?.customCourseAreas)
       ? course.customCourseAreas.map(a => ({ name: a.name ?? '', acres: a.acres ?? '' }))
       : [],
@@ -70,6 +71,7 @@ function toPayload(form) {
     acresSprayable:    numOrNull(form.acresSprayable),
     acresPractice:     numOrNull(form.acresPractice),
     defaultSprayUnits: form.defaultSprayUnits || null,
+    displayBoardShowProfilePhotos: Boolean(form.displayBoardShowProfilePhotos),
     customCourseAreas: form.customCourseAreas
       .map(a => ({ name: (a.name ?? '').trim(), acres: numOrNull(a.acres) }))
       .filter(a => a.name !== ''),
@@ -256,6 +258,37 @@ export default function CourseConfigurationSection() {
               </option>
             ))}
           </select>
+        </div>
+      </div>
+
+      {/* ── Display Board ──────────────────────────────────────────────── */}
+      <div className={styles.card}>
+        <div className={styles.cardHeader}>
+          <p className={styles.cardTitle}>Display Board</p>
+        </div>
+        <p className={styles.cardDesc}>
+          Course-wide options for the employee-facing board. Employees without
+          a photo continue to use their initials.
+        </p>
+
+        <div className={styles.row}>
+          <div className={styles.rowStack}>
+            <span className={styles.rowLabel}>Show Employee Profile Photos</span>
+            <span className={styles.rowDesc}>
+              Display uploaded profile photos beside employee names on the
+              public Display Board. Turn this off to immediately return every
+              board layout to its existing names and initials.
+            </span>
+          </div>
+          <label className={styles.settingsToggle}>
+            <input
+              type="checkbox"
+              checked={form.displayBoardShowProfilePhotos}
+              onChange={e => setField('displayBoardShowProfilePhotos', e.target.checked)}
+            />
+            <span aria-hidden="true" />
+            <strong>{form.displayBoardShowProfilePhotos ? 'On' : 'Off'}</strong>
+          </label>
         </div>
       </div>
 

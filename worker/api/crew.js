@@ -24,6 +24,14 @@ function parseJsonArray(raw) {
   }
 }
 
+function profilePhotoUrlForRow(row) {
+  if (!row?.profile_photo_id) return null
+  const version = row.profile_photo_updated_at ?? row.profile_photo_id
+  return '/api/crew-employees/' + encodeURIComponent(row.id)
+    + '/profile-photo?courseId=' + encodeURIComponent(row.course_id)
+    + '&v=' + encodeURIComponent(version)
+}
+
 // rowToEmployee — serialize a crew_employees row. `canViewPrivate` gates
 // the management-only fields: when false, the private keys are OMITTED
 // entirely (not null, not ''), mirroring the conditionLog.js privateNotes
@@ -59,6 +67,9 @@ function rowToEmployee(row, canViewPrivate = false) {
     // board / task notes for this operator (gating lands in 9C.5c4).
     autoTranslateBoardNotes: row.auto_translate_board_notes === 1,
     boardLanguage:           row.board_language ?? 'en',
+    hasProfilePhoto:         Boolean(row.profile_photo_id),
+    profilePhotoUpdatedAt:   row.profile_photo_updated_at ?? null,
+    profilePhotoUrl:         profilePhotoUrlForRow(row),
     courseId:          row.course_id,
     createdAt:         row.created_at,
     updatedAt:         row.updated_at,
@@ -126,14 +137,50 @@ function normalizeBoolean(v) {
 export async function listCrewEmployees(env, courseId = null, canViewPrivate = false) {
   const { where, binds } = buildCourseFilter(courseId)
   const { results } = await env.DB.prepare(
-    `SELECT * FROM crew_employees ${where} ORDER BY name COLLATE NOCASE ASC`,
+    `SELECT crew_employees.*,
+            (SELECT attachment.id
+               FROM operational_attachments attachment
+              WHERE attachment.parent_type = 'crew_employee'
+                AND attachment.parent_id = crew_employees.id
+                AND attachment.course_id = crew_employees.course_id
+                AND attachment.status = 'active'
+              ORDER BY datetime(attachment.created_at) DESC, attachment.id DESC
+              LIMIT 1) AS profile_photo_id,
+            (SELECT attachment.created_at
+               FROM operational_attachments attachment
+              WHERE attachment.parent_type = 'crew_employee'
+                AND attachment.parent_id = crew_employees.id
+                AND attachment.course_id = crew_employees.course_id
+                AND attachment.status = 'active'
+              ORDER BY datetime(attachment.created_at) DESC, attachment.id DESC
+              LIMIT 1) AS profile_photo_updated_at
+       FROM crew_employees ${where}
+      ORDER BY name COLLATE NOCASE ASC`,
   ).bind(...binds).all()
   return json(results.map(r => rowToEmployee(r, canViewPrivate)))
 }
 
 export async function getCrewEmployee(env, id, canViewPrivate = false) {
   const row = await env.DB.prepare(
-    'SELECT * FROM crew_employees WHERE id = ?',
+    `SELECT crew_employees.*,
+            (SELECT attachment.id
+               FROM operational_attachments attachment
+              WHERE attachment.parent_type = 'crew_employee'
+                AND attachment.parent_id = crew_employees.id
+                AND attachment.course_id = crew_employees.course_id
+                AND attachment.status = 'active'
+              ORDER BY datetime(attachment.created_at) DESC, attachment.id DESC
+              LIMIT 1) AS profile_photo_id,
+            (SELECT attachment.created_at
+               FROM operational_attachments attachment
+              WHERE attachment.parent_type = 'crew_employee'
+                AND attachment.parent_id = crew_employees.id
+                AND attachment.course_id = crew_employees.course_id
+                AND attachment.status = 'active'
+              ORDER BY datetime(attachment.created_at) DESC, attachment.id DESC
+              LIMIT 1) AS profile_photo_updated_at
+       FROM crew_employees
+      WHERE crew_employees.id = ?`,
   ).bind(id).first()
   if (!row) return notFound('Crew employee not found')
   return json(rowToEmployee(row, canViewPrivate))

@@ -107,6 +107,28 @@ export async function deleteCrewEmployee(id) {
   }
 }
 
+export async function uploadCrewEmployeeProfilePhoto(id, file) {
+  const form = new FormData()
+  form.set('courseId', getSelectedCourseId())
+  form.set('file', file)
+  const saved = await fetchJSON(`${API}/${encodeURIComponent(id)}/profile-photo`, {
+    method: 'POST',
+    body: form,
+  })
+  await refreshCrewData()
+  return saved
+}
+
+export async function deleteCrewEmployeeProfilePhoto(id) {
+  const params = new URLSearchParams({ courseId: getSelectedCourseId() })
+  const result = await fetchJSON(
+    `${API}/${encodeURIComponent(id)}/profile-photo?${params}`,
+    { method: 'DELETE', headers: mutationHeaders() },
+  )
+  await refreshCrewData()
+  return result
+}
+
 // ── Subscription hook ──────────────────────────────────────────────────────
 
 function subscribe(cb) {

@@ -112,6 +112,7 @@ const SECTIONS = [
       'spray units', 'default spray units', 'units',
       'oz per acre', 'oz per 1000', 'gallons per acre', 'gallons per 1000',
       'operational defaults',
+      'display board', 'employee profile photos', 'profile picture', 'avatar',
     ],
   },
   {

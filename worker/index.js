@@ -152,6 +152,12 @@ import {
   deleteCrewEmployee,
 } from './api/crew.js'
 import {
+  uploadCrewProfilePhoto,
+  deleteCrewProfilePhoto,
+  streamCrewProfilePhoto,
+  streamBoardCrewProfilePhoto,
+} from './api/crewProfilePhotos.js'
+import {
   listEmployeeTraining,
   getEmployeeTraining,
   createEmployeeTraining,
@@ -398,6 +404,7 @@ async function listDisplayBoardState(env, courseId, date) {
       events: [], sprays: [], crewAssignments: [], equipmentReservations: [],
       alerts: [], employees: [], schedules: [], scheduleOverrides: [],
       notes: [], moisture: [], assignmentPhotos: [],
+      displaySettings: { showEmployeeProfilePhotos: false },
     }
   }
 
@@ -412,6 +419,7 @@ async function listDisplayBoardState(env, courseId, date) {
     scheduleOverrides,
     notes,
     moisture,
+    boardCourse,
   ] = await Promise.all([
     listCalendarEvents(env, courseId).then(res => responseJson(res, [])),
     listDisplayBoardSprays(env, courseId, date).then(res => responseJson(res, [])),
@@ -423,7 +431,26 @@ async function listDisplayBoardState(env, courseId, date) {
     listEmployeeScheduleOverrides(env, courseId, { date }).then(res => responseJson(res, [])),
     listOperationsNotes(env, courseId, { date, status: 'active' }).then(res => responseJson(res, [])),
     listMoisture(env, courseId, { days: 2, limit: 100 }).then(res => responseJson(res, [])),
+    courseId
+      ? env.DB.prepare(
+          'SELECT display_board_show_profile_photos FROM courses WHERE id = ?',
+        ).bind(courseId).first().catch(() => null)
+      : Promise.resolve(null),
   ])
+
+  const showEmployeeProfilePhotos = boardCourse?.display_board_show_profile_photos === 1
+  const boardEmployees = Array.isArray(employees)
+    ? employees.map(employee => ({
+        ...employee,
+        hasProfilePhoto: showEmployeeProfilePhotos && Boolean(employee.hasProfilePhoto),
+        profilePhotoUpdatedAt: showEmployeeProfilePhotos
+          ? (employee.profilePhotoUpdatedAt ?? null)
+          : null,
+        profilePhotoUrl: showEmployeeProfilePhotos && employee.hasProfilePhoto
+          ? `/api/display-board/employee-photos/${encodeURIComponent(employee.id)}/file?courseId=${encodeURIComponent(employee.courseId)}&v=${encodeURIComponent(employee.profilePhotoUpdatedAt ?? employee.id)}`
+          : null,
+      }))
+    : []
 
   const events = Array.isArray(allEvents)
     ? allEvents.filter(event => !date || event.startDate === date)
@@ -473,12 +500,13 @@ async function listDisplayBoardState(env, courseId, date) {
     alerts: Array.isArray(allAlerts)
       ? allAlerts.filter(alert => alert.status !== 'dismissed' && alert.status !== 'acknowledged').slice(0, 6)
       : [],
-    employees: Array.isArray(employees) ? employees : [],
+    employees: boardEmployees,
     schedules: Array.isArray(schedules) ? schedules : [],
     scheduleOverrides: Array.isArray(scheduleOverrides) ? scheduleOverrides : [],
     notes: Array.isArray(notes) ? notes : [],
     moisture: Array.isArray(moisture) ? moisture : [],
     assignmentPhotos,
+    displaySettings: { showEmployeeProfilePhotos },
   }
 }
 
@@ -567,6 +595,14 @@ async function handleApi(request, env, url, ctx) {
       decodeURIComponent(publicAssignmentPhotoMatch[1]),
       courseId,
       url.searchParams.get('date'),
+    )
+  }
+  const publicEmployeePhotoMatch = pathname.match(/^\/api\/display-board\/employee-photos\/([^/]+)\/file$/)
+  if (publicEmployeePhotoMatch && method === 'GET') {
+    return streamBoardCrewProfilePhoto(
+      env,
+      decodeURIComponent(publicEmployeePhotoMatch[1]),
+      courseId,
     )
   }
 
@@ -1383,6 +1419,15 @@ async function handleApi(request, env, url, ctx) {
   }
 
   // ── /api/crew-employees/:id ───────────────────────────────────────────
+  const employeePhotoMatch = pathname.match(/^\/api\/crew-employees\/([^/]+)\/profile-photo$/)
+  if (employeePhotoMatch) {
+    const id = decodeURIComponent(employeePhotoMatch[1])
+    const actor = await resolveActor(request, env)
+    if (method === 'GET') return streamCrewProfilePhoto(env, id, courseId, actor)
+    if (method === 'POST') return uploadCrewProfilePhoto(env, id, request, actor)
+    if (method === 'DELETE') return deleteCrewProfilePhoto(env, id, courseId, actor)
+  }
+
   const empMatch = pathname.match(/^\/api\/crew-employees\/([^/]+)$/)
   if (empMatch) {
     const id = decodeURIComponent(empMatch[1])

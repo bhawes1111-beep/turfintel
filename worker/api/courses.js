@@ -75,6 +75,7 @@ function rowToCourse(row) {
     acresPractice:      row.acres_practice,
     customCourseAreas:  parseCustomAreas(row.custom_course_areas),
     defaultSprayUnits:  row.default_spray_units,
+    displayBoardShowProfilePhotos: row.display_board_show_profile_photos === 1,
     createdAt:          row.created_at,
     updatedAt:          row.updated_at,
   }
@@ -96,6 +97,7 @@ const CORE_COLUMNS = {
   acresSprayable:     'acres_sprayable',
   acresPractice:      'acres_practice',
   defaultSprayUnits:  'default_spray_units',
+  displayBoardShowProfilePhotos: 'display_board_show_profile_photos',
 }
 
 function coerceColumnValue(apiKey, value) {
@@ -110,6 +112,7 @@ function coerceColumnValue(apiKey, value) {
     if (value == null || value === '') return null
     return ALLOWED_SPRAY_UNITS.has(value) ? value : null
   }
+  if (apiKey === 'displayBoardShowProfilePhotos') return value ? 1 : 0
   return value
 }
 
@@ -146,8 +149,9 @@ export async function createCourse(env, request) {
       id, name, short_name, location, status,
       acres_total, acres_greens, acres_tees, acres_fairways,
       acres_rough, acres_sprayable, acres_practice,
-      custom_course_areas, default_spray_units
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      custom_course_areas, default_spray_units,
+      display_board_show_profile_photos
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     body.id,
     body.name,
@@ -163,6 +167,7 @@ export async function createCourse(env, request) {
     coerceColumnValue('acresPractice',  body.acresPractice),
     customJson,
     coerceColumnValue('defaultSprayUnits', body.defaultSprayUnits),
+    coerceColumnValue('displayBoardShowProfilePhotos', body.displayBoardShowProfilePhotos),
   ).run()
 
   return getCourse(env, body.id)

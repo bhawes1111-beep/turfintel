@@ -345,6 +345,9 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
   const equipmentReservations = mergeBoardRows(protectedEquipmentReservations, boardState.equipmentReservations)
   const alerts = mergeBoardRows(protectedAlerts, boardState.alerts)
   const employees = mergeBoardRows(protectedEmployees, boardState.employees)
+  const displayBoardShowsProfilePhotos = boardMode
+    ? Boolean(boardState.displaySettings?.showEmployeeProfilePhotos)
+    : Boolean(selectedCourse?.displayBoardShowProfilePhotos)
   const weeklySchedules = mergeBoardRows(protectedWeeklySchedules, boardState.schedules)
   const scheduleOverrides = mergeBoardRows(protectedScheduleOverrides, boardState.scheduleOverrides)
   const dailyNotes = mergeBoardRows(protectedDailyNotes, boardState.notes)
@@ -715,6 +718,10 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
           // employee row is missing (legacy assignments without
           // employeeId, or an employee deleted after assignment).
           showSpanishNotes:  employeeNeedsSpanish(employee),
+          profilePhotoUrl:   displayBoardShowsProfilePhotos
+            ? (employee?.profilePhotoUrl ?? null)
+            : null,
+          showProfilePhotos: displayBoardShowsProfilePhotos,
           assignments:       [],
         })
       }
@@ -818,6 +825,10 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
           // assignment notes to translate) but pin to false so the
           // shape stays uniform with assigned cards.
           showSpanishNotes: false,
+          profilePhotoUrl:   displayBoardShowsProfilePhotos
+            ? (emp.profilePhotoUrl ?? null)
+            : null,
+          showProfilePhotos: displayBoardShowsProfilePhotos,
           outStatus:        merged.status,
           assignments:      [],
         })
@@ -836,6 +847,7 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
   }, [
     dayCrew, dayEvents, equipByEvent, employeeNameLookup,
     employees, resolveEmployee,
+    displayBoardShowsProfilePhotos,
     // Phase E.4 / E.9 — re-bucket when schedules / overrides / selectedDate change
     weeklySchedules, scheduleOverrides, selectedDate, now,
   ])
@@ -1115,6 +1127,8 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
                 equipment={equipByEvent.get(ev.id) ?? []}
                 crew={crewByEvent.get(ev.id) ?? []}
                 resolveName={empId => employeeNameLookup.get(empId)}
+                resolveEmployee={resolveEmployee}
+                showProfilePhotos={displayBoardShowsProfilePhotos}
                 canDeleteTasks={canDeleteTasks}
                 onDeleteEvent={handleDeleteEvent}
               />
@@ -1361,14 +1375,32 @@ function operatorInitials(name) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }
 
+function EmployeeAvatar({ name, photoUrl, className = '' }) {
+  return (
+    <span className={className} aria-hidden="true">
+      <span>{operatorInitials(name)}</span>
+      {photoUrl && (
+        <img
+          className={styles.employeeAvatarImage}
+          src={photoUrl}
+          alt=""
+          onError={event => { event.currentTarget.style.display = 'none' }}
+        />
+      )}
+    </span>
+  )
+}
+
 function OperatorCard({ operator, canDeleteTasks = false, onDeleteEvent }) {
-  const { employeeName, role, assignments } = operator
+  const { employeeName, role, assignments, profilePhotoUrl } = operator
   return (
     <article className={styles.operatorCard}>
       <header className={styles.operatorCardHeader}>
-        <span className={styles.operatorAvatar} aria-hidden="true">
-          {operatorInitials(employeeName)}
-        </span>
+        <EmployeeAvatar
+          name={employeeName}
+          photoUrl={profilePhotoUrl}
+          className={styles.operatorAvatar}
+        />
         <div className={styles.operatorNameBlock}>
           <h2 className={styles.operatorName}>{employeeName ?? 'Unassigned'}</h2>
           {role && <span className={styles.operatorRole}>{role}</span>}
@@ -1822,6 +1854,13 @@ function BoardModeCrewBars({ operatorCards, assignmentPhotosById }) {
           data-out-status={op.outStatus}
         >
           <div className={styles.crewCardOutHeader}>
+            {op.showProfilePhotos && (
+              <EmployeeAvatar
+                name={op.employeeName}
+                photoUrl={op.profilePhotoUrl}
+                className={styles.boardPersonAvatar}
+              />
+            )}
             <h2 className={styles.boardPersonName}>{op.employeeName ?? 'Unassigned'}</h2>
             <span
               className={styles.crewCardOutBadge}
@@ -1835,7 +1874,16 @@ function BoardModeCrewBars({ operatorCards, assignmentPhotosById }) {
     }
     return (
       <article key={op.key} className={styles.boardPersonBar}>
-        <h2 className={styles.boardPersonName}>{op.employeeName ?? 'Unassigned'}</h2>
+        <div className={styles.boardPersonHeader}>
+          {op.showProfilePhotos && (
+            <EmployeeAvatar
+              name={op.employeeName}
+              photoUrl={op.profilePhotoUrl}
+              className={styles.boardPersonAvatar}
+            />
+          )}
+          <h2 className={styles.boardPersonName}>{op.employeeName ?? 'Unassigned'}</h2>
+        </div>
         {op.assignments.map((a, idx) => {
           // Phase DAB.10b — Ordinal label gated on multi-job.
           const showOrdinal = op.assignments.length > 1
@@ -1936,7 +1984,16 @@ function BoardModeCrewBars({ operatorCards, assignmentPhotosById }) {
 
 /* ── Task card ──────────────────────────────────────────────────────── */
 
-function TaskCard({ event, equipment, crew, resolveName, canDeleteTasks = false, onDeleteEvent }) {
+function TaskCard({
+  event,
+  equipment,
+  crew,
+  resolveName,
+  resolveEmployee,
+  showProfilePhotos = false,
+  canDeleteTasks = false,
+  onDeleteEvent,
+}) {
   // ── Phase 10 chip resolution ──────────────────────────────────────────
   // Priority order per spec:
   //   1. linked employee equipment       (chip rendered beside the crew row)
@@ -1972,20 +2029,24 @@ function TaskCard({ event, equipment, crew, resolveName, canDeleteTasks = false,
         ? (event.equipment ?? []).map((name, i) => ({ id: `eq-${i}`, name, status: null }))
         : [])
 
-  const crewRows = crew.map(a => ({
-    id:       a.id,
-    name:     a.employeeId ? (resolveName(a.employeeId) ?? a.employeeName) : a.employeeName,
-    role:     a.role,
-    chips:    linkedByAssign.get(a.id) ?? [],
-    status:   normalizeCrewProgressStatus(a.status),
-    notes:    a.notes ?? '',
-    real:     true,   // backed by a crew_assignment row → status is patchable
-  }))
+  const crewRows = crew.map(a => {
+    const employee = resolveEmployee?.(a)
+    return {
+      id:       a.id,
+      name:     employee?.name ?? (a.employeeId ? (resolveName(a.employeeId) ?? a.employeeName) : a.employeeName),
+      role:     a.role,
+      profilePhotoUrl: showProfilePhotos ? (employee?.profilePhotoUrl ?? null) : null,
+      chips:    linkedByAssign.get(a.id) ?? [],
+      status:   normalizeCrewProgressStatus(a.status),
+      notes:    a.notes ?? '',
+      real:     true,   // backed by a crew_assignment row → status is patchable
+    }
+  })
   // Fallback to event.assignedStaff[] only when no crew_assignments rows
   // exist for the event. These fallback rows can't carry linked chips
   // (no row id to match on) and aren't status-patchable.
   const fallbackNames = crewRows.length === 0
-    ? (event.assignedStaff ?? []).map((name, i) => ({ id: `fb-${i}`, name, role: null, chips: [], status: 'planned', notes: '', real: false }))
+    ? (event.assignedStaff ?? []).map((name, i) => ({ id: `fb-${i}`, name, role: null, profilePhotoUrl: null, chips: [], status: 'planned', notes: '', real: false }))
     : crewRows
 
   // Phase 34 — routing/mowing visual chips from existing event.tags[].
@@ -2083,7 +2144,16 @@ function TaskCard({ event, equipment, crew, resolveName, canDeleteTasks = false,
           <ul className={styles.crewList}>
             {fallbackNames.map(c => (
             <li key={c.id} className={styles.crewRow} data-progress={c.status}>
-              <span className={styles.crewName}>{c.name}</span>
+              <span className={styles.crewIdentity}>
+                {showProfilePhotos && (
+                  <EmployeeAvatar
+                    name={c.name}
+                    photoUrl={c.profilePhotoUrl}
+                    className={styles.crewAvatar}
+                  />
+                )}
+                <span className={styles.crewName}>{c.name}</span>
+              </span>
               {c.role && <span className={styles.crewRole}>· {c.role}</span>}
               {c.chips.length > 0 && (
                 <span className={styles.crewChips}>
