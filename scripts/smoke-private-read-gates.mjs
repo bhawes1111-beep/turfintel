@@ -26,7 +26,8 @@ for (const route of [
 }
 
 const boardRouteIdx = index.indexOf("pathname === '/api/display-board/state'")
-const getGateIdx = index.indexOf("if (method === 'GET') {\n    const actor = await resolveActor(request, env)")
+const getGateMatch = /if \(method === 'GET'\) \{\r?\n    const actor = await resolveActor\(request, env\)/.exec(index)
+const getGateIdx = getGateMatch?.index ?? -1
 assert(boardRouteIdx > -1 && getGateIdx > -1 && boardRouteIdx < getGateIdx,
   'display-board routes are handled before the regular GET auth gate')
 assert(/if \(method === 'GET'\) \{\s+const actor = await resolveActor\(request, env\)\s+if \(!actor\) return json\(\{ error: 'Unauthorized' \}, 401\)/.test(index),
