@@ -5,8 +5,13 @@ import {
   useMoistureData,
 } from '../../utils/moisture/moistureStore'
 import { localTimestamp, parseTdrCsv } from '../../utils/moisture/tdrCsv'
-import { DEFAULT_MOISTURE_DISPLAY_SETTINGS } from '../../utils/moisture/moistureDisplayConfig'
+import {
+  colorForFivePointValue,
+  MOISTURE_ZONE_LABELS,
+  TDR_ZONE_LABELS,
+} from '../../utils/moisture/moistureDisplayConfig'
 import { useMoistureDisplaySettings } from '../../utils/moisture/moistureDisplaySettings'
+import { TDR_METRICS } from '../../utils/moisture/tdrMetrics'
 import {
   buildGreenProjection,
   compareGreenNames,
@@ -32,12 +37,6 @@ function formatDate(value) {
   return Number.isNaN(date.getTime())
     ? value
     : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
-}
-
-function colorForValue(value, dryBelow, wetAbove, palette = DEFAULT_MOISTURE_DISPLAY_SETTINGS) {
-  if (value < dryBelow) return palette.dryColor
-  if (value > wetAbove) return palette.wetColor
-  return palette.targetColor
 }
 
 function summaryTileStyle(color) {
@@ -79,66 +78,9 @@ function numericValue(value) {
   return Number.isFinite(number) ? number : null
 }
 
-function relativeColor(value, minimum, maximum, palette = DEFAULT_MOISTURE_DISPLAY_SETTINGS) {
-  if (maximum <= minimum) return palette.targetColor
-  const ratio = (value - minimum) / (maximum - minimum)
-  if (ratio < .34) return palette.dryColor
-  if (ratio > .66) return palette.wetColor
-  return palette.targetColor
+function metricDisplayValue(metric, value) {
+  return metric?.summary ? metric.summary(value) : value
 }
-
-const TDR_METRICS = [
-  {
-    id: 'bulkEc',
-    label: 'Bulk EC',
-    unit: 'mS/cm',
-    precision: 2,
-    note: 'Electrical conductivity is a salinity indicator, not a direct salt concentration.',
-    format: value => `${value.toFixed(2)} mS/cm`,
-  },
-  {
-    id: 'soilTempC',
-    label: 'Soil temperature',
-    unit: '°F',
-    precision: 1,
-    note: 'TDR soil temperature at the sample point.',
-    format: value => `${(value * 9 / 5 + 32).toFixed(1)}°F (${value.toFixed(1)}°C)`,
-    summary: value => value * 9 / 5 + 32,
-  },
-  {
-    id: 'irTempC',
-    label: 'Surface IR temperature',
-    unit: '°F',
-    precision: 1,
-    note: 'Infrared surface temperature when supplied by the meter.',
-    format: value => `${(value * 9 / 5 + 32).toFixed(1)}°F (${value.toFixed(1)}°C)`,
-    summary: value => value * 9 / 5 + 32,
-  },
-  {
-    id: 'periodUs',
-    label: 'TDR period',
-    unit: 'µs',
-    precision: 0,
-    note: 'Raw meter period used in the TDR measurement.',
-    format: value => `${value.toFixed(0)} µs`,
-  },
-  {
-    id: 'satelliteTotal',
-    label: 'Satellites',
-    unit: 'sat',
-    precision: 0,
-    note: 'Number of GPS satellites reported with the sample.',
-    format: value => `${value.toFixed(0)} satellites`,
-  },
-  {
-    id: 'gpsHdop',
-    label: 'GPS HDOP',
-    unit: 'HDOP',
-    precision: 2,
-    note: 'Horizontal dilution of precision; lower values generally indicate tighter GPS geometry.',
-    format: value => `${value.toFixed(2)} HDOP`,
-  },
-]
 
 function useGreenBoundaries() {
   const [features, setFeatures] = useState([])
@@ -276,6 +218,113 @@ export function TdrCsvImportWorkspace({ canEdit, onOpenMoisture, onOpenTdr }) {
   )
 }
 
+function FivePointScaleEditor({ title, unit, labels, scale, step, onChange, onReset }) {
+  function updatePoint(index, value) {
+    const numeric = Number(value)
+    if (!Number.isFinite(numeric)) return
+    const previous = index === 0 ? -Infinity : scale.points[index - 1]
+    const next = index === scale.points.length - 1 ? Infinity : scale.points[index + 1]
+    if (numeric <= previous || numeric >= next) return
+    const points = [...scale.points]
+    points[index] = numeric
+    onChange({ ...scale, points })
+  }
+
+  function updateColor(index, color) {
+    const colors = [...scale.colors]
+    colors[index] = color
+    onChange({ ...scale, colors })
+  }
+
+  return (
+    <section className={styles.scalePanel}>
+      <div className={styles.scaleHeader}>
+        <div>
+          <span className={styles.eyebrow}>FIVE-POINT SCALE</span>
+          <h3>{title}</h3>
+        </div>
+        <button type="button" className={styles.resetPaletteButton} onClick={onReset}>Reset scale</button>
+      </div>
+      <div className={styles.scaleRows}>
+        {labels.map((label, index) => (
+          <div className={styles.scaleRow} key={label} style={{ '--zone-color': scale.colors[index] }}>
+            <label className={styles.zoneColorLabel}>
+              <input
+                type="color"
+                value={scale.colors[index]}
+                onChange={event => updateColor(index, event.target.value)}
+                aria-label={`${label} color`}
+              />
+              <span>{label}</span>
+            </label>
+            <label className={styles.breakpointLabel}>
+              Setpoint
+              <input
+                type="number"
+                inputMode="decimal"
+                step={step}
+                value={scale.points[index]}
+                min={index === 0 ? undefined : scale.points[index - 1] + step}
+                max={index === 4 ? undefined : scale.points[index + 1] - step}
+                onChange={event => updatePoint(index, event.target.value)}
+              />
+              <span>{unit}</span>
+            </label>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+export function MoistureMapSettingsWorkspace() {
+  const [selectedMetricId, setSelectedMetricId] = useState(TDR_METRICS[0].id)
+  const { settings, updateScale, resetScale, resetSettings } = useMoistureDisplaySettings()
+  const metric = TDR_METRICS.find(item => item.id === selectedMetricId) ?? TDR_METRICS[0]
+  const tdrScale = settings.tdr[metric.id]
+  const step = metric.precision === 0 ? 1 : metric.precision === 1 ? .1 : .01
+
+  return (
+    <div className={styles.settingsWorkspace}>
+      <div className={styles.settingsHeading}>
+        <div>
+          <span className={styles.eyebrow}>MAP DISPLAY</span>
+          <h3>Setpoints and colors</h3>
+        </div>
+        <button type="button" className={styles.resetPaletteButton} onClick={resetSettings}>Reset all</button>
+      </div>
+
+      <FivePointScaleEditor
+        title="Moisture (VWC)"
+        unit="%"
+        labels={MOISTURE_ZONE_LABELS}
+        scale={settings.moisture}
+        step={.1}
+        onChange={scale => updateScale('moisture', null, scale)}
+        onReset={() => resetScale('moisture')}
+      />
+
+      <div className={styles.tdrScaleSection}>
+        <label className={styles.metricPicker}>
+          TDR reading type
+          <select value={metric.id} onChange={event => setSelectedMetricId(event.target.value)}>
+            {TDR_METRICS.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}
+          </select>
+        </label>
+        <FivePointScaleEditor
+          title={metric.label}
+          unit={metric.unit}
+          labels={TDR_ZONE_LABELS}
+          scale={tdrScale}
+          step={step}
+          onChange={scale => updateScale('tdr', metric.id, scale)}
+          onReset={() => resetScale('tdr', metric.id)}
+        />
+      </div>
+    </div>
+  )
+}
+
 export function TdrWorkspace() {
   const { features, boundaryError } = useGreenBoundaries()
   const moisture = useMoistureData()
@@ -295,13 +344,13 @@ export function TdrWorkspace() {
         loading={moisture.loading}
         features={features}
         boundaryError={boundaryError}
-        palette={settings}
+        displaySettings={settings}
       />
     </div>
   )
 }
 
-function TdrMap({ observations, loading, features, boundaryError, palette }) {
+function TdrMap({ observations, loading, features, boundaryError, displaySettings }) {
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedGreen, setSelectedGreen] = useState('')
   const [selectedMetricId, setSelectedMetricId] = useState('bulkEc')
@@ -328,6 +377,7 @@ function TdrMap({ observations, loading, features, boundaryError, palette }) {
     dayReadings.some(reading => numericValue(reading[metric.id]) !== null)
   ))
   const activeMetric = availableMetrics.find(metric => metric.id === selectedMetricId) ?? availableMetrics[0] ?? null
+  const activeScale = activeMetric ? displaySettings.tdr[activeMetric.id] : null
   const summaries = (() => {
     if (!activeMetric) return []
     const grouped = new Map()
@@ -351,8 +401,6 @@ function TdrMap({ observations, loading, features, boundaryError, palette }) {
   })()
 
   const summaryNames = summaries.map(summary => summary.green)
-  const summaryMinimum = summaries.length ? Math.min(...summaries.map(summary => summary.average)) : 0
-  const summaryMaximum = summaries.length ? Math.max(...summaries.map(summary => summary.average)) : 0
   const activeGreen = summaryNames.includes(selectedGreen) ? selectedGreen : (summaryNames[0] || '')
   const selectedSummary = summaries.find(summary => summary.green === activeGreen) ?? null
   const selectedFeature = features.find(feature => feature.properties?.name === activeGreen)
@@ -407,7 +455,7 @@ function TdrMap({ observations, loading, features, boundaryError, palette }) {
       </div>
 
       {boundaryError && <p className={styles.error}>Green boundary error: {boundaryError}</p>}
-      {activeMetric && <p className={styles.metricNote}>{activeMetric.note} Map colors are relative to the selected green and date.</p>}
+      {activeMetric && <p className={styles.metricNote}>{activeMetric.note}</p>}
 
       <div className={styles.mapLayout}>
         <div className={styles.mapPanel}>
@@ -446,7 +494,7 @@ function TdrMap({ observations, loading, features, boundaryError, palette }) {
                     cx={reading.point.x}
                     cy={reading.point.y}
                     r="1"
-                    fill={relativeColor(reading.metricValue, selectedSummary.minimum, selectedSummary.maximum, palette)}
+                    fill={colorForFivePointValue(metricDisplayValue(activeMetric, reading.metricValue), activeScale)}
                     className={styles.mapPoint}
                   >
                     <title>{activeMetric.format(reading.metricValue)}</title>
@@ -459,9 +507,9 @@ function TdrMap({ observations, loading, features, boundaryError, palette }) {
           )}
           <ReadingDetails reading={selectedReading} onClose={() => setSelectedReadingKey('')} />
           <div className={styles.legend}>
-            <span><i className={styles.legendDot} style={{ background: palette.dryColor }} />Low</span>
-            <span><i className={styles.legendDot} style={{ background: palette.targetColor }} />Middle</span>
-            <span><i className={styles.legendDot} style={{ background: palette.wetColor }} />High</span>
+            {TDR_ZONE_LABELS.map((label, index) => (
+              <span key={label}><i className={styles.legendDot} style={{ background: activeScale.colors[index] }} />{label}</span>
+            ))}
             <span>{mapped.length} GPS-positioned</span>
           </div>
         </div>
@@ -484,7 +532,7 @@ function TdrMap({ observations, loading, features, boundaryError, palette }) {
             key={summary.green}
             type="button"
             className={summary.green === activeGreen ? styles.greenSummaryActive : styles.greenSummaryButton}
-            style={summaryTileStyle(relativeColor(summary.average, summaryMinimum, summaryMaximum, palette))}
+            style={summaryTileStyle(colorForFivePointValue(metricDisplayValue(activeMetric, summary.average), activeScale))}
             onClick={() => setSelectedGreen(summary.green)}
           >
             <span>{summary.green}</span>
@@ -501,8 +549,8 @@ function WateringMap({ observations, loading, features, boundaryError }) {
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedGreen, setSelectedGreen] = useState('')
   const [selectedReadingKey, setSelectedReadingKey] = useState('')
-  const { settings, updateSetting, resetSettings } = useMoistureDisplaySettings()
-  const { dryBelow, wetAbove, dryColor, targetColor, wetColor } = settings
+  const { settings } = useMoistureDisplaySettings()
+  const scale = settings.moisture
 
   const validObservations = useMemo(
     () => observations.filter(item => !item._pending && item.moisturePct != null && item.location),
@@ -529,9 +577,9 @@ function WateringMap({ observations, loading, features, boundaryError }) {
       green,
       readings,
       average: readings.reduce((sum, reading) => sum + Number(reading.moisturePct), 0) / readings.length,
-      dry: readings.filter(reading => Number(reading.moisturePct) < dryBelow).length,
+      dry: readings.filter(reading => Number(reading.moisturePct) <= scale.points[1]).length,
     })).sort((left, right) => compareGreenNames(left.green, right.green))
-  }, [dayReadings, dryBelow])
+  }, [dayReadings, scale.points])
 
   const summaryNames = summaries.map(summary => summary.green)
   const activeGreen = summaryNames.includes(selectedGreen) ? selectedGreen : (summaryNames[0] || '')
@@ -557,7 +605,7 @@ function WateringMap({ observations, loading, features, boundaryError }) {
 
   return (
     <section className={styles.mapWorkspace}>
-      <div className={styles.mapControls}>
+      <div className={`${styles.mapControls} ${styles.moistureMapControls}`}>
         <label>
           Reading date
           <select value={activeDate} onChange={event => setSelectedDate(event.target.value)}>
@@ -572,30 +620,6 @@ function WateringMap({ observations, loading, features, boundaryError }) {
             <GreenOptions names={summaryNames} />
           </select>
         </label>
-        <label>
-          Dry below
-          <input type="number" inputMode="decimal" step="0.1" max={wetAbove - .1} value={dryBelow} onChange={event => updateSetting('dryBelow', Number(event.target.value) || 0)} />
-        </label>
-        <label>
-          Wet above
-          <input type="number" inputMode="decimal" step="0.1" min={dryBelow + .1} value={wetAbove} onChange={event => updateSetting('wetAbove', Number(event.target.value) || 0)} />
-        </label>
-      </div>
-
-      <div className={styles.paletteControls} aria-label="Moisture map colors">
-        <label>
-          <span>Dry color</span>
-          <input type="color" value={dryColor} onChange={event => updateSetting('dryColor', event.target.value)} aria-label="Dry dot and tile color" />
-        </label>
-        <label>
-          <span>Target color</span>
-          <input type="color" value={targetColor} onChange={event => updateSetting('targetColor', event.target.value)} aria-label="Target dot and tile color" />
-        </label>
-        <label>
-          <span>Wet color</span>
-          <input type="color" value={wetColor} onChange={event => updateSetting('wetColor', event.target.value)} aria-label="Wet dot and tile color" />
-        </label>
-        <button type="button" className={styles.resetPaletteButton} onClick={resetSettings}>Reset display</button>
       </div>
 
       {boundaryError && <p className={styles.error}>Green boundary error: {boundaryError}</p>}
@@ -640,7 +664,7 @@ function WateringMap({ observations, loading, features, boundaryError }) {
                         cx={reading.point.x}
                         cy={reading.point.y}
                         r="1"
-                        fill={colorForValue(Number(reading.moisturePct), dryBelow, wetAbove, settings)}
+                        fill={colorForFivePointValue(Number(reading.moisturePct), scale)}
                         className={styles.mapPoint}
                       >
                         <title>{`${Number(reading.moisturePct).toFixed(1)}% VWC · ${new Date(reading.observedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`}</title>
@@ -653,9 +677,9 @@ function WateringMap({ observations, loading, features, boundaryError }) {
               )}
               <ReadingDetails reading={selectedReading} onClose={() => setSelectedReadingKey('')} />
               <div className={styles.legend}>
-            <span><i className={styles.legendDot} style={{ background: dryColor }} />Dry</span>
-            <span><i className={styles.legendDot} style={{ background: targetColor }} />Target</span>
-            <span><i className={styles.legendDot} style={{ background: wetColor }} />Wet</span>
+                {MOISTURE_ZONE_LABELS.map((label, index) => (
+                  <span key={label}><i className={styles.legendDot} style={{ background: scale.colors[index] }} />{label}</span>
+                ))}
                 <span>{mapped.length} GPS-positioned</span>
               </div>
             </div>
@@ -685,7 +709,7 @@ function WateringMap({ observations, loading, features, boundaryError }) {
                 key={summary.green}
                 type="button"
                 className={summary.green === activeGreen ? styles.greenSummaryActive : styles.greenSummaryButton}
-                style={summaryTileStyle(colorForValue(summary.average, dryBelow, wetAbove, settings))}
+                style={summaryTileStyle(colorForFivePointValue(summary.average, scale))}
                 onClick={() => setSelectedGreen(summary.green)}
               >
                 <span>{summary.green}</span>

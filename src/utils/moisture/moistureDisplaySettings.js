@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getSelectedCourseId, subscribeCourseChange } from '../courses/courseStore.js'
 import {
+  cloneDefaultMoistureDisplaySettings,
   DEFAULT_MOISTURE_DISPLAY_SETTINGS,
   normalizeMoistureDisplaySettings,
 } from './moistureDisplayConfig.js'
@@ -15,7 +16,7 @@ function loadSettings() {
   try {
     return normalizeMoistureDisplaySettings(JSON.parse(localStorage.getItem(storageKey()) || 'null'))
   } catch {
-    return { ...DEFAULT_MOISTURE_DISPLAY_SETTINGS }
+    return cloneDefaultMoistureDisplaySettings()
   }
 }
 
@@ -28,15 +29,11 @@ export function useMoistureDisplaySettings() {
 
   useEffect(() => subscribeCourseChange(() => setSettings(loadSettings())), [])
 
-  function updateSetting(name, value) {
+  function updateScale(section, metricId, scale) {
     setSettings(current => {
-      const candidate = { ...current, [name]: value }
-      if (name === 'dryBelow' && Number(value) >= current.wetAbove) {
-        candidate.dryBelow = current.wetAbove - .1
-      }
-      if (name === 'wetAbove' && Number(value) <= current.dryBelow) {
-        candidate.wetAbove = current.dryBelow + .1
-      }
+      const candidate = section === 'moisture'
+        ? { ...current, moisture: scale }
+        : { ...current, tdr: { ...current.tdr, [metricId]: scale } }
       const next = normalizeMoistureDisplaySettings(candidate)
       saveSettings(next)
       return next
@@ -44,10 +41,17 @@ export function useMoistureDisplaySettings() {
   }
 
   function resetSettings() {
-    const next = { ...DEFAULT_MOISTURE_DISPLAY_SETTINGS }
+    const next = cloneDefaultMoistureDisplaySettings()
     saveSettings(next)
     setSettings(next)
   }
 
-  return { settings, updateSetting, resetSettings }
+  function resetScale(section, metricId) {
+    const fallback = section === 'moisture'
+      ? DEFAULT_MOISTURE_DISPLAY_SETTINGS.moisture
+      : DEFAULT_MOISTURE_DISPLAY_SETTINGS.tdr[metricId]
+    updateScale(section, metricId, fallback)
+  }
+
+  return { settings, updateScale, resetScale, resetSettings }
 }

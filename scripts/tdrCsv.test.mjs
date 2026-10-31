@@ -11,6 +11,7 @@ import {
 } from '../src/utils/moisture/greenMaps.js'
 import { importMoisture } from '../worker/api/moisture.js'
 import {
+  colorForFivePointValue,
   DEFAULT_MOISTURE_DISPLAY_SETTINGS,
   normalizeMoistureDisplaySettings,
 } from '../src/utils/moisture/moistureDisplayConfig.js'
@@ -228,25 +229,27 @@ test('green menus are course grouped and naturally ordered', () => {
   assert.ok(buildGreenProjection(greens[0].geometry.coordinates[0]))
 })
 
-test('moisture display settings validate setpoints and custom colors', () => {
-  assert.deepEqual(normalizeMoistureDisplaySettings({
+test('moisture and TDR display settings support five validated zones', () => {
+  const migrated = normalizeMoistureDisplaySettings({
     dryBelow: 20,
     wetAbove: 31,
     dryColor: '#AA3300',
     targetColor: '#22bb44',
     wetColor: '#0066FF',
-  }), {
-    dryBelow: 20,
-    wetAbove: 31,
-    dryColor: '#aa3300',
-    targetColor: '#22bb44',
-    wetColor: '#0066ff',
   })
-  assert.deepEqual(normalizeMoistureDisplaySettings({
-    dryBelow: 30,
-    wetAbove: 20,
-    dryColor: 'orange',
-  }), DEFAULT_MOISTURE_DISPLAY_SETTINGS)
+  assert.deepEqual(migrated.moisture.points, [14.5, 20, 25.5, 31, 36.5])
+  assert.deepEqual(migrated.moisture.colors, ['#d44c47', '#aa3300', '#22bb44', '#0066ff', '#7c61c9'])
+  assert.equal(Object.keys(migrated.tdr).length, 6)
+
+  const normalized = normalizeMoistureDisplaySettings({
+    moisture: {
+      points: [30, 20, 10, 5, 1],
+      colors: ['orange'],
+    },
+  })
+  assert.deepEqual(normalized.moisture, DEFAULT_MOISTURE_DISPLAY_SETTINGS.moisture)
+  assert.equal(colorForFivePointValue(19, migrated.moisture), '#aa3300')
+  assert.equal(colorForFivePointValue(40, migrated.moisture), '#7c61c9')
 })
 
 test('every mapped green has a high-resolution static aerial', async () => {
@@ -266,12 +269,13 @@ test('every mapped green has a high-resolution static aerial', async () => {
 })
 
 test('TDR workspace stores diagnostics and exposes smooth interactive maps', async () => {
-  const [migration, api, page, workspace, workspaceStyles, greenMaps, worker] = await Promise.all([
+  const [migration, api, page, workspace, workspaceStyles, tdrMetrics, greenMaps, worker] = await Promise.all([
     readFile(new URL('../worker/migrations/0098_moisture_tdr_fields.sql', import.meta.url), 'utf8'),
     readFile(new URL('../worker/api/moisture.js', import.meta.url), 'utf8'),
     readFile(new URL('../src/pages/TurfHealth/TurfHealth.jsx', import.meta.url), 'utf8'),
     readFile(new URL('../src/pages/TurfHealth/MoistureWorkspace.jsx', import.meta.url), 'utf8'),
     readFile(new URL('../src/pages/TurfHealth/MoistureWorkspace.module.css', import.meta.url), 'utf8'),
+    readFile(new URL('../src/utils/moisture/tdrMetrics.js', import.meta.url), 'utf8'),
     readFile(new URL('../src/utils/moisture/greenMaps.js', import.meta.url), 'utf8'),
     readFile(new URL('../worker/index.js', import.meta.url), 'utf8'),
   ])
@@ -283,18 +287,21 @@ test('TDR workspace stores diagnostics and exposes smooth interactive maps', asy
   }
   assert.match(api, /bulkEc:\s+row\.bulk_ec/)
   assert.match(api, /UPDATE moisture_observations SET[\s\S]*bulk_ec = COALESCE/)
-  assert.match(page, /'Moisture',\s*'TDR',\s*'Import CSV',\s*'Nutrients'/)
+  assert.match(page, /'Moisture',\s*'TDR',\s*'Import CSV',\s*'Settings',\s*'Nutrients'/)
   assert.match(page, /activeTab === 'TDR'[\s\S]*<TdrWorkspace/)
+  assert.match(page, /activeTab === 'Settings'[\s\S]*<MoistureMapSettingsWorkspace/)
   assert.match(page, /activeTab === 'Import CSV'[\s\S]*<TdrCsvImportWorkspace/)
   assert.match(workspace, /function smoothClosedPath/)
   assert.match(workspace, /<path d=\{outline\} className=\{satellite\.url \? styles\.greenShapeSatellite : styles\.greenShape\}/)
   assert.match(workspace, /role="button"[\s\S]*setSelectedReadingKey/)
   assert.match(workspace, /sort\(\(left, right\) => compareGreenNames\(left\.green, right\.green\)\)/)
-  assert.match(workspace, /summaryTileStyle\(colorForValue\(summary\.average, dryBelow, wetAbove, settings\)\)/)
+  assert.match(workspace, /summaryTileStyle\(colorForFivePointValue\(summary\.average, scale\)\)/)
+  assert.match(workspace, /function FivePointScaleEditor/)
+  assert.match(workspace, /settings\.tdr\[metric\.id\]/)
   assert.match(workspaceStyles, /\.mapHitArea\s*\{[\s\S]*pointer-events:\s*all/)
   assert.match(workspace, /function ReadingDetails/)
-  assert.match(workspace, /id: 'bulkEc'/)
-  assert.match(workspace, /id: 'soilTempC'/)
+  assert.match(tdrMetrics, /id: 'bulkEc'/)
+  assert.match(tdrMetrics, /id: 'soilTempC'/)
   assert.match(workspace, /Approved rows populate both tabs/)
   assert.match(workspace, /onClick=\{onOpenMoisture\}>Open Moisture/)
   assert.match(workspace, /onClick=\{onOpenTdr\}>Open TDR/)
