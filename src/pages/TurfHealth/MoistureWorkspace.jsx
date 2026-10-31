@@ -5,6 +5,12 @@ import {
   useMoistureData,
 } from '../../utils/moisture/moistureStore'
 import { localTimestamp, parseTdrCsv } from '../../utils/moisture/tdrCsv'
+import {
+  buildGreenProjection,
+  compareGreenNames,
+  greenAerialFilename,
+  groupGreenNames,
+} from '../../utils/moisture/greenMaps'
 import MoistureOverview from './MoistureOverview'
 import styles from './MoistureWorkspace.module.css'
 
@@ -189,69 +195,25 @@ function metricSummary(metric, value) {
   return `${display.toFixed(metric.precision)} ${metric.unit}`
 }
 
-function mercatorPoint(lat, lng) {
-  const boundedLat = Math.max(-85, Math.min(85, Number(lat)))
-  const sin = Math.sin(boundedLat * Math.PI / 180)
-  return {
-    x: (Number(lng) + 180) / 360,
-    y: .5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI),
-  }
-}
-
-function mercatorLatitude(y) {
-  return Math.atan(Math.sinh(Math.PI * (1 - 2 * y))) * 180 / Math.PI
-}
-
-function buildProjection(ring) {
-  if (!ring?.length) return null
-  const first = ring[0]
-  const last = ring.at(-1)
-  const source = ring.length > 3 && first[0] === last[0] && first[1] === last[1]
-    ? ring.slice(0, -1)
-    : ring
-  const points = source.map(point => mercatorPoint(point[1], point[0]))
-  const minX = Math.min(...points.map(point => point.x))
-  const maxX = Math.max(...points.map(point => point.x))
-  const minY = Math.min(...points.map(point => point.y))
-  const maxY = Math.max(...points.map(point => point.y))
-  const centerX = (minX + maxX) / 2
-  const centerY = (minY + maxY) / 2
-  const span = Math.max(maxX - minX, maxY - minY, Number.EPSILON)
-  const zoom = Math.max(17, Math.min(21, Math.floor(Math.log2((640 * .82) / (256 * span)))))
-  const viewScale = (256 * (2 ** zoom) / 640) * 100
-  const project = (lat, lng) => {
-    const point = mercatorPoint(lat, lng)
-    return {
-      x: 50 + (point.x - centerX) * viewScale,
-      y: 50 + (point.y - centerY) * viewScale,
-    }
-  }
-  project.center = {
-    lat: mercatorLatitude(centerY),
-    lng: centerX * 360 - 180,
-  }
-  project.zoom = zoom
-  return project
-}
-
-function satelliteUrl(project) {
-  if (!project?.center || project.zoom == null) return ''
-  const params = new URLSearchParams({
-    lat: project.center.lat.toFixed(6),
-    lng: project.center.lng.toFixed(6),
-    zoom: String(project.zoom),
-  })
-  return `/api/maps/satellite?${params}`
-}
-
-function useSatelliteMap(project) {
-  const url = satelliteUrl(project)
+function useGreenAerialImage(greenName) {
+  const filename = greenAerialFilename(greenName)
+  const url = filename ? `/data/green-aerial/${filename}` : ''
   const [failedUrl, setFailedUrl] = useState('')
   const visibleUrl = url && failedUrl !== url ? url : ''
   return {
     url: visibleUrl,
     onError: () => setFailedUrl(url),
   }
+}
+
+function GreenOptions({ names }) {
+  return groupGreenNames(names).map(group => (
+    <optgroup key={group.id} label={group.label}>
+      {group.options.map(option => (
+        <option key={option.value} value={option.value}>{option.label}</option>
+      ))}
+    </optgroup>
+  ))
 }
 
 export default function MoistureWorkspace() {
@@ -373,17 +335,17 @@ function TdrMap({ observations, loading, features, boundaryError }) {
         minimum: Math.min(...values),
         maximum: Math.max(...values),
       }
-    }).sort((left, right) => left.green.localeCompare(right.green, undefined, { numeric: true }))
+    }).sort((left, right) => compareGreenNames(left.green, right.green))
   })()
 
   const summaryNames = summaries.map(summary => summary.green)
   const activeGreen = summaryNames.includes(selectedGreen) ? selectedGreen : (summaryNames[0] || '')
   const selectedSummary = summaries.find(summary => summary.green === activeGreen) ?? null
   const selectedFeature = features.find(feature => feature.properties?.name === activeGreen)
-  const ring = selectedFeature?.geometry?.coordinates?.[0] ?? []
-  const project = useMemo(() => buildProjection(ring), [ring])
+  const ring = useMemo(() => selectedFeature?.geometry?.coordinates?.[0] ?? [], [selectedFeature])
+  const project = useMemo(() => buildGreenProjection(ring), [ring])
   const outline = smoothClosedPath(ring, project)
-  const satellite = useSatelliteMap(project)
+  const satellite = useGreenAerialImage(activeGreen)
   const mapped = (selectedSummary?.readings ?? []).filter(reading => (
     activeMetric
     && numericValue(reading[activeMetric.id]) !== null
@@ -419,7 +381,7 @@ function TdrMap({ observations, loading, features, boundaryError }) {
         <label>
           Green
           <select value={activeGreen} onChange={event => setSelectedGreen(event.target.value)}>
-            {summaries.map(summary => <option key={summary.green} value={summary.green}>{summary.green}</option>)}
+            <GreenOptions names={summaryNames} />
           </select>
         </label>
         <label>
@@ -560,10 +522,10 @@ function WateringMap({ observations, loading, features, boundaryError }) {
   const activeGreen = summaryNames.includes(selectedGreen) ? selectedGreen : (summaryNames[0] || '')
   const selectedSummary = summaries.find(summary => summary.green === activeGreen)
   const selectedFeature = features.find(feature => feature.properties?.name === activeGreen)
-  const ring = selectedFeature?.geometry?.coordinates?.[0] ?? []
-  const project = useMemo(() => buildProjection(ring), [ring])
+  const ring = useMemo(() => selectedFeature?.geometry?.coordinates?.[0] ?? [], [selectedFeature])
+  const project = useMemo(() => buildGreenProjection(ring), [ring])
   const outline = smoothClosedPath(ring, project)
-  const satellite = useSatelliteMap(project)
+  const satellite = useGreenAerialImage(activeGreen)
   const mapped = (selectedSummary?.readings ?? []).filter(reading => (
     Number.isFinite(Number(reading.lat)) && Number.isFinite(Number(reading.lng)) && project
   )).map((reading, index) => ({
@@ -592,9 +554,7 @@ function WateringMap({ observations, loading, features, boundaryError }) {
           Green
           <select value={activeGreen} onChange={event => setSelectedGreen(event.target.value)}>
             {summaries.length === 0 && <option value="">No mapped greens</option>}
-            {summaries.map(summary => (
-              <option key={summary.green} value={summary.green}>{summary.green}</option>
-            ))}
+            <GreenOptions names={summaryNames} />
           </select>
         </label>
         <label>
@@ -720,7 +680,7 @@ function TdrCsvImporter({ features, boundaryError, canEdit, onOpenMoisture, onOp
   const [result, setResult] = useState(null)
 
   const greenNames = useMemo(
-    () => features.map(feature => feature.properties?.name).filter(Boolean),
+    () => features.map(feature => feature.properties?.name).filter(Boolean).sort(compareGreenNames),
     [features],
   )
   const dates = useMemo(
@@ -899,7 +859,7 @@ function TdrCsvImporter({ features, boundaryError, canEdit, onOpenMoisture, onOp
                       disabled={!record}
                     >
                       <option value="">Skip / unassigned</option>
-                      {greenNames.map(name => <option key={name} value={name}>{name}</option>)}
+                      <GreenOptions names={greenNames} />
                     </select>
                   </label>
                   <span className={record && !record.green ? styles.reviewWarning : styles.reviewHint}>{hint}</span>

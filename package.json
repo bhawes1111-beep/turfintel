@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:green-imagery": "node scripts/buildGreenAerialImages.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "smoke": "node scripts/run-smokes.mjs",

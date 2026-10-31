@@ -2,8 +2,13 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { csvRows, mapGreen, parseTdrCsv, polygonContains } from '../src/utils/moisture/tdrCsv.js'
+import {
+  buildGreenProjection,
+  compareGreenNames,
+  greenAerialFilename,
+  groupGreenNames,
+} from '../src/utils/moisture/greenMaps.js'
 import { importMoisture } from '../worker/api/moisture.js'
-import { getUsgsAerialMap } from '../worker/api/usgsImagery.js'
 
 const greens = JSON.parse(await readFile(new URL('../public/data/crosswinds-greens.geojson', import.meta.url), 'utf8')).features
 
@@ -199,50 +204,46 @@ test('imports reject unassigned readings before writing', async () => {
   assert.equal(batchCalled, false)
 })
 
-test('USGS aerial maps need no key and use a matching Web Mercator image window', async () => {
-  const requestUrl = new URL('https://turfintel.test/api/maps/satellite?lat=32.129830&lng=-81.233230&zoom=20')
-  const originalFetch = globalThis.fetch
-  let upstreamUrl = ''
-  let upstreamOptions
-  globalThis.fetch = async (input, options) => {
-    upstreamUrl = String(input)
-    upstreamOptions = options
-    return new Response(new Uint8Array([137, 80, 78, 71]), {
-      status: 200,
-      headers: { 'Content-Type': 'image/png' },
-    })
-  }
-  try {
-    const response = await getUsgsAerialMap(requestUrl)
-    assert.equal(response.status, 200)
-    assert.match(response.headers.get('Cache-Control'), /max-age=86400/)
-    assert.equal(response.headers.get('X-TurfIntel-Imagery-Source'), 'USDA NAIP via USGS The National Map')
-    const upstream = new URL(upstreamUrl)
-    assert.equal(upstream.origin, 'https://imagery.nationalmap.gov')
-    assert.equal(upstream.pathname, '/arcgis/rest/services/USGSNAIPPlus/ImageServer/exportImage')
-    assert.equal(upstream.searchParams.get('bboxSR'), '3857')
-    assert.equal(upstream.searchParams.get('imageSR'), '3857')
-    assert.equal(upstream.searchParams.get('size'), '640,640')
-    assert.equal(upstream.searchParams.get('format'), 'jpgpng')
-    assert.equal(upstream.searchParams.get('interpolation'), 'RSP_BilinearInterpolation')
-    assert.deepEqual(JSON.parse(upstream.searchParams.get('renderingRule')), { rasterFunction: 'NaturalColor' })
-    assert.equal(upstream.searchParams.get('f'), 'image')
-    const bounds = upstream.searchParams.get('bbox').split(',').map(Number)
-    assert.equal(bounds.length, 4)
-    assert.ok(bounds.every(Number.isFinite))
-    assert.ok(Math.abs((bounds[2] - bounds[0]) - 95.546285357) < 0.001)
-    assert.equal(upstreamOptions.headers.Accept, 'image/png,image/*;q=0.8')
-  } finally {
-    globalThis.fetch = originalFetch
+test('green menus are course grouped and naturally ordered', () => {
+  const unordered = ['Par 3 Green 9', 'Green 10', 'Small Practice Green', 'Green 2', 'Par 3 Green 1', 'Practice Green']
+  assert.deepEqual([...unordered].sort(compareGreenNames), [
+    'Green 2',
+    'Green 10',
+    'Par 3 Green 1',
+    'Par 3 Green 9',
+    'Practice Green',
+    'Small Practice Green',
+  ])
+  assert.deepEqual(groupGreenNames(unordered).map(group => group.label), [
+    'Championship Course',
+    'Par 3 Course',
+    'Practice Greens',
+  ])
+  assert.equal(greenAerialFilename('Par 3 Green 2'), 'par-3-green-2.jpg')
+  assert.ok(buildGreenProjection(greens[0].geometry.coordinates[0]))
+})
+
+test('every mapped green has a high-resolution static aerial', async () => {
+  const manifest = JSON.parse(await readFile(new URL('../public/data/green-aerial/manifest.json', import.meta.url), 'utf8'))
+  assert.equal(manifest.imageSize, 1280)
+  assert.equal(manifest.images.length, greens.length)
+  assert.deepEqual(manifest.images.map(image => image.name), greens.map(feature => feature.properties.name).sort(compareGreenNames))
+  for (const feature of greens) {
+    const filename = greenAerialFilename(feature.properties.name)
+    const image = await readFile(new URL(`../public/data/green-aerial/${filename}`, import.meta.url))
+    assert.ok(image.byteLength > 10_000, `${filename} has image data`)
+    assert.equal(image[0], 0xff)
+    assert.equal(image[1], 0xd8)
   }
 })
 
 test('TDR workspace stores diagnostics and exposes smooth interactive maps', async () => {
-  const [migration, api, page, workspace, worker] = await Promise.all([
+  const [migration, api, page, workspace, greenMaps, worker] = await Promise.all([
     readFile(new URL('../worker/migrations/0098_moisture_tdr_fields.sql', import.meta.url), 'utf8'),
     readFile(new URL('../worker/api/moisture.js', import.meta.url), 'utf8'),
     readFile(new URL('../src/pages/TurfHealth/TurfHealth.jsx', import.meta.url), 'utf8'),
     readFile(new URL('../src/pages/TurfHealth/MoistureWorkspace.jsx', import.meta.url), 'utf8'),
+    readFile(new URL('../src/utils/moisture/greenMaps.js', import.meta.url), 'utf8'),
     readFile(new URL('../worker/index.js', import.meta.url), 'utf8'),
   ])
   for (const column of [
@@ -265,7 +266,10 @@ test('TDR workspace stores diagnostics and exposes smooth interactive maps', asy
   assert.match(workspace, /Approved rows populate both tabs/)
   assert.match(workspace, /onClick=\{onOpenMoisture\}>Open Moisture/)
   assert.match(workspace, /onClick=\{onOpenTdr\}>Open TDR/)
-  assert.match(workspace, /function mercatorPoint/)
+  assert.match(greenMaps, /function mercatorPoint/)
+  assert.match(greenMaps, /function buildGreenProjection/)
+  assert.match(greenMaps, /function groupGreenNames/)
   assert.match(workspace, /<image href=\{satellite\.url\}/)
-  assert.match(worker, /pathname === '\/api\/maps\/satellite'/)
+  assert.match(workspace, /greenAerialFilename/)
+  assert.doesNotMatch(worker, /pathname === '\/api\/maps\/satellite'/)
 })

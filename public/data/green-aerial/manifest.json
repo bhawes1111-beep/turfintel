@@ -1,0 +1,298 @@
+{
+  "source": "USDA NAIP Plus via USGS The National Map",
+  "sourceUrl": "https://imagery.nationalmap.gov/arcgis/rest/services/USGSNAIPPlus/ImageServer/exportImage",
+  "imageSize": 1280,
+  "logicalViewportSize": 640,
+  "images": [
+    {
+      "name": "Green 1",
+      "file": "green-1.jpg",
+      "center": {
+        "lat": 32.129765558043076,
+        "lng": -81.233177769
+      },
+      "zoom": 21,
+      "bytes": 69626
+    },
+    {
+      "name": "Green 2",
+      "file": "green-2.jpg",
+      "center": {
+        "lat": 32.13257109861209,
+        "lng": -81.23188774149997
+      },
+      "zoom": 21,
+      "bytes": 72236
+    },
+    {
+      "name": "Green 3",
+      "file": "green-3.jpg",
+      "center": {
+        "lat": 32.13227098514533,
+        "lng": -81.22991403049998
+      },
+      "zoom": 20,
+      "bytes": 116728
+    },
+    {
+      "name": "Green 4",
+      "file": "green-4.jpg",
+      "center": {
+        "lat": 32.12855001959456,
+        "lng": -81.23161792399999
+      },
+      "zoom": 21,
+      "bytes": 73473
+    },
+    {
+      "name": "Green 5",
+      "file": "green-5.jpg",
+      "center": {
+        "lat": 32.12699377754253,
+        "lng": -81.2274270155
+      },
+      "zoom": 20,
+      "bytes": 128839
+    },
+    {
+      "name": "Green 6",
+      "file": "green-6.jpg",
+      "center": {
+        "lat": 32.12631127959738,
+        "lng": -81.231710464
+      },
+      "zoom": 21,
+      "bytes": 72422
+    },
+    {
+      "name": "Green 7",
+      "file": "green-7.jpg",
+      "center": {
+        "lat": 32.12896460006814,
+        "lng": -81.23301019
+      },
+      "zoom": 21,
+      "bytes": 80555
+    },
+    {
+      "name": "Green 8",
+      "file": "green-8.jpg",
+      "center": {
+        "lat": 32.12967401409648,
+        "lng": -81.2357321535
+      },
+      "zoom": 21,
+      "bytes": 75684
+    },
+    {
+      "name": "Green 9",
+      "file": "green-9.jpg",
+      "center": {
+        "lat": 32.13250526307128,
+        "lng": -81.23354901500001
+      },
+      "zoom": 21,
+      "bytes": 72295
+    },
+    {
+      "name": "Green 10",
+      "file": "green-10.jpg",
+      "center": {
+        "lat": 32.131201224591614,
+        "lng": -81.23708352099999
+      },
+      "zoom": 21,
+      "bytes": 72655
+    },
+    {
+      "name": "Green 11",
+      "file": "green-11.jpg",
+      "center": {
+        "lat": 32.13151584556693,
+        "lng": -81.23857077299999
+      },
+      "zoom": 20,
+      "bytes": 137496
+    },
+    {
+      "name": "Green 12",
+      "file": "green-12.jpg",
+      "center": {
+        "lat": 32.126278261637715,
+        "lng": -81.238396692
+      },
+      "zoom": 20,
+      "bytes": 118953
+    },
+    {
+      "name": "Green 13",
+      "file": "green-13.jpg",
+      "center": {
+        "lat": 32.126223802063194,
+        "lng": -81.234770717
+      },
+      "zoom": 21,
+      "bytes": 78181
+    },
+    {
+      "name": "Green 14",
+      "file": "green-14.jpg",
+      "center": {
+        "lat": 32.126334069118656,
+        "lng": -81.23252364449999
+      },
+      "zoom": 21,
+      "bytes": 77411
+    },
+    {
+      "name": "Green 15",
+      "file": "green-15.jpg",
+      "center": {
+        "lat": 32.12875076306737,
+        "lng": -81.23454676200001
+      },
+      "zoom": 21,
+      "bytes": 78626
+    },
+    {
+      "name": "Green 16",
+      "file": "green-16.jpg",
+      "center": {
+        "lat": 32.127952542589405,
+        "lng": -81.23485815800001
+      },
+      "zoom": 21,
+      "bytes": 75235
+    },
+    {
+      "name": "Green 17",
+      "file": "green-17.jpg",
+      "center": {
+        "lat": 32.129317745557834,
+        "lng": -81.23686672749999
+      },
+      "zoom": 20,
+      "bytes": 133335
+    },
+    {
+      "name": "Green 18",
+      "file": "green-18.jpg",
+      "center": {
+        "lat": 32.13262977953967,
+        "lng": -81.23388651050001
+      },
+      "zoom": 20,
+      "bytes": 111355
+    },
+    {
+      "name": "Par 3 Green 1",
+      "file": "par-3-green-1.jpg",
+      "center": {
+        "lat": 32.13446451859952,
+        "lng": -81.2332092195
+      },
+      "zoom": 21,
+      "bytes": 93112
+    },
+    {
+      "name": "Par 3 Green 2",
+      "file": "par-3-green-2.jpg",
+      "center": {
+        "lat": 32.134339408033235,
+        "lng": -81.234490793
+      },
+      "zoom": 21,
+      "bytes": 89576
+    },
+    {
+      "name": "Par 3 Green 3",
+      "file": "par-3-green-3.jpg",
+      "center": {
+        "lat": 32.13454681662915,
+        "lng": -81.236484587
+      },
+      "zoom": 20,
+      "bytes": 134617
+    },
+    {
+      "name": "Par 3 Green 4",
+      "file": "par-3-green-4.jpg",
+      "center": {
+        "lat": 32.13520954668328,
+        "lng": -81.23744844149999
+      },
+      "zoom": 20,
+      "bytes": 111160
+    },
+    {
+      "name": "Par 3 Green 5",
+      "file": "par-3-green-5.jpg",
+      "center": {
+        "lat": 32.135289620681704,
+        "lng": -81.23562719699999
+      },
+      "zoom": 20,
+      "bytes": 145362
+    },
+    {
+      "name": "Par 3 Green 6",
+      "file": "par-3-green-6.jpg",
+      "center": {
+        "lat": 32.134579309133144,
+        "lng": -81.23494704299999
+      },
+      "zoom": 20,
+      "bytes": 125468
+    },
+    {
+      "name": "Par 3 Green 7",
+      "file": "par-3-green-7.jpg",
+      "center": {
+        "lat": 32.135433623561205,
+        "lng": -81.234343791
+      },
+      "zoom": 21,
+      "bytes": 83258
+    },
+    {
+      "name": "Par 3 Green 8",
+      "file": "par-3-green-8.jpg",
+      "center": {
+        "lat": 32.13665674310302,
+        "lng": -81.23386824399999
+      },
+      "zoom": 21,
+      "bytes": 83881
+    },
+    {
+      "name": "Par 3 Green 9",
+      "file": "par-3-green-9.jpg",
+      "center": {
+        "lat": 32.13556654057139,
+        "lng": -81.232218784
+      },
+      "zoom": 21,
+      "bytes": 78104
+    },
+    {
+      "name": "Practice Green",
+      "file": "practice-green.jpg",
+      "center": {
+        "lat": 32.1352943720875,
+        "lng": -81.2312547355
+      },
+      "zoom": 21,
+      "bytes": 73724
+    },
+    {
+      "name": "Small Practice Green",
+      "file": "small-practice-green.jpg",
+      "center": {
+        "lat": 32.132927739527815,
+        "lng": -81.2323795835
+      },
+      "zoom": 21,
+      "bytes": 80468
+    }
+  ]
+}
