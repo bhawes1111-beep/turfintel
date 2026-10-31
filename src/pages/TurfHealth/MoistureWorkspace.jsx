@@ -427,12 +427,12 @@ function TdrMap({ observations, loading, features, boundaryError }) {
                 >
                   <circle cx={reading.point.x} cy={reading.point.y} r="7.2" className={styles.mapHitArea} />
                   {selectedReading?.mapKey === reading.mapKey && (
-                    <circle cx={reading.point.x} cy={reading.point.y} r="3.7" className={styles.selectedRing} />
+                    <circle cx={reading.point.x} cy={reading.point.y} r="2" className={styles.selectedRing} />
                   )}
                   <circle
                     cx={reading.point.x}
                     cy={reading.point.y}
-                    r="2"
+                    r="1"
                     fill={relativeColor(reading.metricValue, selectedSummary.minimum, selectedSummary.maximum)}
                     className={styles.mapPoint}
                   >
@@ -604,12 +604,12 @@ function WateringMap({ observations, loading, features, boundaryError }) {
                     >
                       <circle cx={reading.point.x} cy={reading.point.y} r="7.2" className={styles.mapHitArea} />
                       {selectedReading?.mapKey === reading.mapKey && (
-                        <circle cx={reading.point.x} cy={reading.point.y} r="3.7" className={styles.selectedRing} />
+                        <circle cx={reading.point.x} cy={reading.point.y} r="2" className={styles.selectedRing} />
                       )}
                       <circle
                         cx={reading.point.x}
                         cy={reading.point.y}
-                        r="2"
+                        r="1"
                         fill={colorForValue(Number(reading.moisturePct), dryBelow, wetAbove)}
                         className={styles.mapPoint}
                       >
