@@ -369,8 +369,8 @@ console.log('— /turf-health workspace (Commit 5)')
   assert(/import\s+PageShell/.test(page),       'TurfHealth uses PageShell')
   assert(/title="Turf Health"/.test(page),     'PageShell title is "Turf Health"')
   // Moisture now lives here alongside nutrients and the permanent resolved archive.
-  assert(/TABS\s*=\s*\['Overview',\s*'Moisture',\s*'Nutrients',\s*'Active Issues',\s*'Recent Observations',\s*'Resolved'\]/.test(page),
-                                                'TABS include Moisture, Nutrients, and the Resolved archive')
+  assert(/TABS\s*=\s*\['Overview',\s*'Moisture',\s*'TDR',\s*'Nutrients',\s*'Active Issues',\s*'Recent Observations',\s*'Resolved'\]/.test(page),
+                                                'TABS include Moisture, TDR, Nutrients, and the Resolved archive')
   // Hooks are the new turf-health ones, not the moisture ones.
   assert(/useTurfHealthData\b/.test(page),     'workspace consumes useTurfHealthData')
   assert(/useTurfHealthAttachments\b/.test(page),

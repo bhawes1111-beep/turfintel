@@ -48,6 +48,13 @@ test('Spectrum combined timestamp CSV maps GPS and metadata', () => {
   assert.equal(parsed.rows[0].record.green, 'Par 3 Green 1')
   assert.equal(parsed.rows[0].record.vwc, 19.3)
   assert.equal(parsed.rows[0].record.date, '2026-10-31')
+  assert.equal(parsed.rows[0].record.ec, 0.05)
+  assert.equal(parsed.rows[0].record.soilTempC, 21)
+  assert.equal(parsed.rows[0].record.periodUs, 1)
+  assert.equal(parsed.rows[0].record.satellites, 14)
+  assert.equal(parsed.rows[0].record.fix, '1')
+  assert.equal(parsed.rows[0].record.rodLength, '1.5 inch')
+  assert.equal(parsed.rows[0].record.soilType, 'S')
   assert.equal(parsed.rows[0].record.hdop, 0.77)
 })
 
@@ -132,6 +139,9 @@ test('reviewed imports are course scoped and duplicate safe', async () => {
           moisturePct: 19.2,
           lat: 32.1,
           lng: -81.2,
+          bulkEc: 0.1,
+          soilTempC: 22.3,
+          satelliteTotal: 12,
         },
         {
           clientId: 'tdr-usb:two',
@@ -148,10 +158,17 @@ test('reviewed imports are course scoped and duplicate safe', async () => {
   const response = await importMoisture(env, request)
   assert.equal(response.status, 200)
   assert.deepEqual(await response.json(), { received: 2, inserted: 1, skipped: 1 })
-  assert.equal(statements.length, 2)
-  assert.ok(statements.every(statement => /INSERT OR IGNORE/.test(statement.sql)))
-  assert.ok(statements.every(statement => statement.args[1] === 'course-test'))
-  assert.deepEqual(statements.map(statement => statement.args[8]), ['tdr-usb:one', 'tdr-usb:two'])
+  assert.equal(statements.length, 4)
+  const inserts = statements.filter(statement => /INSERT OR IGNORE/.test(statement.sql))
+  const backfills = statements.filter(statement => /UPDATE moisture_observations/.test(statement.sql))
+  assert.equal(inserts.length, 2)
+  assert.equal(backfills.length, 2)
+  assert.ok(inserts.every(statement => statement.args[1] === 'course-test'))
+  assert.deepEqual(inserts.map(statement => statement.args[8]), ['tdr-usb:one', 'tdr-usb:two'])
+  assert.equal(inserts[0].args[13], 0.1)
+  assert.equal(inserts[0].args[14], 22.3)
+  assert.equal(backfills[0].args.at(-2), 'tdr-usb:one')
+  assert.equal(backfills[0].args.at(-1), 'course-test')
 })
 
 test('imports reject unassigned readings before writing', async () => {
@@ -179,4 +196,29 @@ test('imports reject unassigned readings before writing', async () => {
   assert.equal(response.status, 400)
   assert.match((await response.json()).error, /location is required/)
   assert.equal(batchCalled, false)
+})
+
+test('TDR workspace stores diagnostics and exposes smooth interactive maps', async () => {
+  const [migration, api, page, workspace] = await Promise.all([
+    readFile(new URL('../worker/migrations/0098_moisture_tdr_fields.sql', import.meta.url), 'utf8'),
+    readFile(new URL('../worker/api/moisture.js', import.meta.url), 'utf8'),
+    readFile(new URL('../src/pages/TurfHealth/TurfHealth.jsx', import.meta.url), 'utf8'),
+    readFile(new URL('../src/pages/TurfHealth/MoistureWorkspace.jsx', import.meta.url), 'utf8'),
+  ])
+  for (const column of [
+    'bulk_ec', 'soil_temp_c', 'ir_temp_c', 'tdr_period_us', 'satellite_total',
+    'gps_hdop', 'gps_fix', 'rod_length', 'soil_type', 'meter_id',
+  ]) {
+    assert.match(migration, new RegExp(`ADD COLUMN ${column}\\b`))
+  }
+  assert.match(api, /bulkEc:\s+row\.bulk_ec/)
+  assert.match(api, /UPDATE moisture_observations SET[\s\S]*bulk_ec = COALESCE/)
+  assert.match(page, /'Moisture',\s*'TDR',\s*'Nutrients'/)
+  assert.match(page, /activeTab === 'TDR'[\s\S]*<TdrWorkspace/)
+  assert.match(workspace, /function smoothClosedPath/)
+  assert.match(workspace, /<path d=\{outline\} className=\{styles\.greenShape\}/)
+  assert.match(workspace, /role="button"[\s\S]*setSelectedReadingKey/)
+  assert.match(workspace, /function ReadingDetails/)
+  assert.match(workspace, /id: 'bulkEc'/)
+  assert.match(workspace, /id: 'soilTempC'/)
 })

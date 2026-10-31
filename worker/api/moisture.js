@@ -40,6 +40,16 @@ function rowToObs(row) {
     lat:              row.lat               ?? null,
     lng:              row.lng               ?? null,
     gpsAccuracy:      row.gps_accuracy      ?? null,
+    bulkEc:           row.bulk_ec           ?? null,
+    soilTempC:        row.soil_temp_c       ?? null,
+    irTempC:          row.ir_temp_c         ?? null,
+    periodUs:         row.tdr_period_us     ?? null,
+    satelliteTotal:   row.satellite_total   ?? null,
+    gpsHdop:          row.gps_hdop          ?? null,
+    gpsFix:           row.gps_fix            ?? null,
+    rodLength:        row.rod_length         ?? null,
+    soilType:         row.soil_type          ?? null,
+    meterId:          row.meter_id           ?? null,
     createdAt:        row.created_at,
   }
 }
@@ -125,8 +135,10 @@ export async function createMoisture(env, request) {
       id, course_id, observed_at, observed_by, location, hole,
       moisture_pct, surface_note,
       wilt_stress, dry_spot, handwater_rec, syringe_rec, notes,
-      client_id, client_observed_at, lat, lng, gps_accuracy
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      client_id, client_observed_at, lat, lng, gps_accuracy,
+      bulk_ec, soil_temp_c, ir_temp_c, tdr_period_us, satellite_total,
+      gps_hdop, gps_fix, rod_length, soil_type, meter_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id, courseId, observedAt,
     body.observedBy ?? null,
@@ -141,6 +153,16 @@ export async function createMoisture(env, request) {
     num(body.lat),
     num(body.lng),
     num(body.gpsAccuracy),
+    num(body.bulkEc),
+    num(body.soilTempC),
+    num(body.irTempC),
+    num(body.periodUs),
+    num(body.satelliteTotal),
+    num(body.gpsHdop),
+    body.gpsFix ?? null,
+    body.rodLength ?? null,
+    body.soilType ?? null,
+    body.meterId ?? null,
   ).run()
 
   return getMoisture(env, id)
@@ -182,26 +204,63 @@ export async function importMoisture(env, request) {
       lat: num(reading.lat),
       lng: num(reading.lng),
       gpsAccuracy: num(reading.gpsAccuracy),
+      bulkEc: num(reading.bulkEc),
+      soilTempC: num(reading.soilTempC),
+      irTempC: num(reading.irTempC),
+      periodUs: num(reading.periodUs),
+      satelliteTotal: num(reading.satelliteTotal),
+      gpsHdop: num(reading.gpsHdop),
+      gpsFix: typeof reading.gpsFix === 'string' ? reading.gpsFix.slice(0, 40) : null,
+      rodLength: typeof reading.rodLength === 'string' ? reading.rodLength.slice(0, 80) : null,
+      soilType: typeof reading.soilType === 'string' ? reading.soilType.slice(0, 80) : null,
+      meterId: typeof reading.meterId === 'string' ? reading.meterId.slice(0, 80) : null,
     })
   }
 
   let inserted = 0
   for (let offset = 0; offset < normalized.length; offset += 50) {
     const chunk = normalized.slice(offset, offset + 50)
-    const statements = chunk.map(reading => env.DB.prepare(`
-      INSERT OR IGNORE INTO moisture_observations (
-        id, course_id, observed_at, observed_by, location, hole,
-        moisture_pct, surface_note,
-        wilt_stress, dry_spot, handwater_rec, syringe_rec, notes,
-        client_id, client_observed_at, lat, lng, gps_accuracy
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, 0, 0, 0, 0, ?, ?, ?, ?, ?, ?)
-    `).bind(
-      reading.id, courseId, reading.observedAt, reading.observedBy,
-      reading.location, reading.hole, reading.moisturePct, reading.notes,
-      reading.clientId, reading.observedAt, reading.lat, reading.lng, reading.gpsAccuracy,
-    ))
+    const statements = chunk.flatMap(reading => [
+      env.DB.prepare(`
+        INSERT OR IGNORE INTO moisture_observations (
+          id, course_id, observed_at, observed_by, location, hole,
+          moisture_pct, surface_note,
+          wilt_stress, dry_spot, handwater_rec, syringe_rec, notes,
+          client_id, client_observed_at, lat, lng, gps_accuracy,
+          bulk_ec, soil_temp_c, ir_temp_c, tdr_period_us, satellite_total,
+          gps_hdop, gps_fix, rod_length, soil_type, meter_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, 0, 0, 0, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(
+        reading.id, courseId, reading.observedAt, reading.observedBy,
+        reading.location, reading.hole, reading.moisturePct, reading.notes,
+        reading.clientId, reading.observedAt, reading.lat, reading.lng, reading.gpsAccuracy,
+        reading.bulkEc, reading.soilTempC, reading.irTempC, reading.periodUs,
+        reading.satelliteTotal, reading.gpsHdop, reading.gpsFix, reading.rodLength,
+        reading.soilType, reading.meterId,
+      ),
+      env.DB.prepare(`
+        UPDATE moisture_observations SET
+          bulk_ec = COALESCE(?, bulk_ec),
+          soil_temp_c = COALESCE(?, soil_temp_c),
+          ir_temp_c = COALESCE(?, ir_temp_c),
+          tdr_period_us = COALESCE(?, tdr_period_us),
+          satellite_total = COALESCE(?, satellite_total),
+          gps_hdop = COALESCE(?, gps_hdop),
+          gps_fix = COALESCE(?, gps_fix),
+          rod_length = COALESCE(?, rod_length),
+          soil_type = COALESCE(?, soil_type),
+          meter_id = COALESCE(?, meter_id)
+        WHERE client_id = ? AND course_id = ?
+      `).bind(
+        reading.bulkEc, reading.soilTempC, reading.irTempC, reading.periodUs,
+        reading.satelliteTotal, reading.gpsHdop, reading.gpsFix, reading.rodLength,
+        reading.soilType, reading.meterId, reading.clientId, courseId,
+      ),
+    ])
     const results = await env.DB.batch(statements)
-    inserted += results.reduce((total, result) => total + (Number(result?.meta?.changes) || 0), 0)
+    for (let index = 0; index < results.length; index += 2) {
+      inserted += Number(results[index]?.meta?.changes) || 0
+    }
   }
 
   return json({

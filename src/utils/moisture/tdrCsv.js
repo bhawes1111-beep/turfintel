@@ -48,10 +48,13 @@ const aliases = {
   lon: ['longitude', 'lon', 'long', 'gpslongitude'],
   ec: ['ec', 'electricalconductivity', 'ecmscm'],
   temp: ['tempsoil', 'soiltemp', 'soiltemperature', 'tempsoilc'],
+  irTemp: ['tempir', 'irtemp', 'irtemperature', 'tempirc'],
+  period: ['period', 'periodus', 'periodinus', 'periodmicroseconds'],
   satellites: ['satellites', 'sats', 'satellitecount'],
   fix: ['fix', 'gpsfix', 'gnssfix', 'fixstatus'],
   hdop: ['hdop', 'horizontalprecision'],
   rod: ['rodlength', 'rods', 'rodlenght'],
+  soilType: ['soiltype'],
 }
 
 function columns(row) {
@@ -216,7 +219,10 @@ export function parseTdrCsv(text, filename, features) {
     const satellites = numeric(pick(data, positions, 'satellites'))
     const hdop = numeric(pick(data, positions, 'hdop'))
     const soilTempC = numeric(pick(data, positions, 'temp'))
+    const irTempC = numeric(pick(data, positions, 'irTemp'))
+    const periodUs = numeric(pick(data, positions, 'period'))
     const rod = pick(data, positions, 'rod')
+    const soilType = pick(data, positions, 'soilType')
     const gpsValid = lat !== null && lng !== null
       && Math.abs(lat) <= 90 && Math.abs(lng) <= 180
       && !(lat === 0 && lng === 0)
@@ -251,6 +257,10 @@ export function parseTdrCsv(text, filename, features) {
       hdop,
       ec,
       soilTempC,
+      irTempC,
+      periodUs,
+      rodLength: depth,
+      soilType,
       importKey: [meterId, stamp.date, stamp.time, vwc.toFixed(2), lat, lng].join('|'),
     } : null
 
