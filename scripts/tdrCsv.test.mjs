@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { csvRows, mapGreen, parseTdrCsv, polygonContains } from '../src/utils/moisture/tdrCsv.js'
 import { importMoisture } from '../worker/api/moisture.js'
-import { getGoogleSatelliteMap } from '../worker/api/googleMaps.js'
+import { getUsgsAerialMap } from '../worker/api/usgsImagery.js'
 
 const greens = JSON.parse(await readFile(new URL('../public/data/crosswinds-greens.geojson', import.meta.url), 'utf8')).features
 
@@ -199,30 +199,39 @@ test('imports reject unassigned readings before writing', async () => {
   assert.equal(batchCalled, false)
 })
 
-test('Google satellite maps use a private configured proxy and fixed satellite parameters', async () => {
+test('USGS aerial maps need no key and use a matching Web Mercator image window', async () => {
   const requestUrl = new URL('https://turfintel.test/api/maps/satellite?lat=32.129830&lng=-81.233230&zoom=20')
-  const unconfigured = await getGoogleSatelliteMap({}, requestUrl)
-  assert.equal(unconfigured.status, 503)
-
   const originalFetch = globalThis.fetch
   let upstreamUrl = ''
-  globalThis.fetch = async input => {
+  let upstreamOptions
+  globalThis.fetch = async (input, options) => {
     upstreamUrl = String(input)
+    upstreamOptions = options
     return new Response(new Uint8Array([137, 80, 78, 71]), {
       status: 200,
       headers: { 'Content-Type': 'image/png' },
     })
   }
   try {
-    const response = await getGoogleSatelliteMap({ GOOGLE_MAPS_STATIC_API_KEY: 'test-key' }, requestUrl)
+    const response = await getUsgsAerialMap(requestUrl)
     assert.equal(response.status, 200)
-    assert.equal(response.headers.get('Cache-Control'), 'private, no-store')
+    assert.match(response.headers.get('Cache-Control'), /max-age=86400/)
+    assert.equal(response.headers.get('X-TurfIntel-Imagery-Source'), 'USDA NAIP via USGS The National Map')
     const upstream = new URL(upstreamUrl)
-    assert.equal(upstream.origin, 'https://maps.googleapis.com')
-    assert.equal(upstream.searchParams.get('maptype'), 'satellite')
-    assert.equal(upstream.searchParams.get('size'), '640x640')
-    assert.equal(upstream.searchParams.get('scale'), '2')
-    assert.equal(upstream.searchParams.get('key'), 'test-key')
+    assert.equal(upstream.origin, 'https://imagery.nationalmap.gov')
+    assert.equal(upstream.pathname, '/arcgis/rest/services/USGSNAIPPlus/ImageServer/exportImage')
+    assert.equal(upstream.searchParams.get('bboxSR'), '3857')
+    assert.equal(upstream.searchParams.get('imageSR'), '3857')
+    assert.equal(upstream.searchParams.get('size'), '640,640')
+    assert.equal(upstream.searchParams.get('format'), 'jpgpng')
+    assert.equal(upstream.searchParams.get('interpolation'), 'RSP_BilinearInterpolation')
+    assert.deepEqual(JSON.parse(upstream.searchParams.get('renderingRule')), { rasterFunction: 'NaturalColor' })
+    assert.equal(upstream.searchParams.get('f'), 'image')
+    const bounds = upstream.searchParams.get('bbox').split(',').map(Number)
+    assert.equal(bounds.length, 4)
+    assert.ok(bounds.every(Number.isFinite))
+    assert.ok(Math.abs((bounds[2] - bounds[0]) - 95.546285357) < 0.001)
+    assert.equal(upstreamOptions.headers.Accept, 'image/png,image/*;q=0.8')
   } finally {
     globalThis.fetch = originalFetch
   }

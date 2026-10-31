@@ -261,7 +261,7 @@ import {
   updateMoisture,
   deleteMoisture,
 } from './api/moisture.js'
-import { getGoogleSatelliteMap } from './api/googleMaps.js'
+import { getUsgsAerialMap } from './api/usgsImagery.js'
 import {
   listConditionLogs,
   getConditionLogByDate,
@@ -783,7 +783,7 @@ async function handleApi(request, env, url, ctx) {
   // ── /api/moisture ─────────────────────────────────────────────────────
   // Field moisture observations (Moisture + Handwatering Intelligence).
   if (pathname === '/api/maps/satellite' && method === 'GET') {
-    return getGoogleSatelliteMap(env, url)
+    return getUsgsAerialMap(url)
   }
 
   if (pathname === '/api/moisture') {
