@@ -10,6 +10,10 @@ import {
   groupGreenNames,
 } from '../src/utils/moisture/greenMaps.js'
 import { importMoisture } from '../worker/api/moisture.js'
+import {
+  DEFAULT_MOISTURE_DISPLAY_SETTINGS,
+  normalizeMoistureDisplaySettings,
+} from '../src/utils/moisture/moistureDisplayConfig.js'
 
 const greens = JSON.parse(await readFile(new URL('../public/data/crosswinds-greens.geojson', import.meta.url), 'utf8')).features
 
@@ -224,6 +228,27 @@ test('green menus are course grouped and naturally ordered', () => {
   assert.ok(buildGreenProjection(greens[0].geometry.coordinates[0]))
 })
 
+test('moisture display settings validate setpoints and custom colors', () => {
+  assert.deepEqual(normalizeMoistureDisplaySettings({
+    dryBelow: 20,
+    wetAbove: 31,
+    dryColor: '#AA3300',
+    targetColor: '#22bb44',
+    wetColor: '#0066FF',
+  }), {
+    dryBelow: 20,
+    wetAbove: 31,
+    dryColor: '#aa3300',
+    targetColor: '#22bb44',
+    wetColor: '#0066ff',
+  })
+  assert.deepEqual(normalizeMoistureDisplaySettings({
+    dryBelow: 30,
+    wetAbove: 20,
+    dryColor: 'orange',
+  }), DEFAULT_MOISTURE_DISPLAY_SETTINGS)
+})
+
 test('every mapped green has a high-resolution static aerial', async () => {
   const manifest = JSON.parse(await readFile(new URL('../public/data/green-aerial/manifest.json', import.meta.url), 'utf8'))
   assert.equal(manifest.imageSize, 1280)
@@ -265,7 +290,7 @@ test('TDR workspace stores diagnostics and exposes smooth interactive maps', asy
   assert.match(workspace, /<path d=\{outline\} className=\{satellite\.url \? styles\.greenShapeSatellite : styles\.greenShape\}/)
   assert.match(workspace, /role="button"[\s\S]*setSelectedReadingKey/)
   assert.match(workspace, /sort\(\(left, right\) => compareGreenNames\(left\.green, right\.green\)\)/)
-  assert.match(workspace, /summaryTileStyle\(colorForValue\(summary\.average, dryBelow, wetAbove\)\)/)
+  assert.match(workspace, /summaryTileStyle\(colorForValue\(summary\.average, dryBelow, wetAbove, settings\)\)/)
   assert.match(workspaceStyles, /\.mapHitArea\s*\{[\s\S]*pointer-events:\s*all/)
   assert.match(workspace, /function ReadingDetails/)
   assert.match(workspace, /id: 'bulkEc'/)
