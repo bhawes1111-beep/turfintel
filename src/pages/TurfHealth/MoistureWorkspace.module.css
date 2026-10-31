@@ -191,10 +191,21 @@
   fill: #0c2418;
 }
 
+.satelliteImage {
+  opacity: .94;
+}
+
 .greenShape {
   fill: #2f6a3d;
   stroke: #8ed08b;
   stroke-width: .7;
+  vector-effect: non-scaling-stroke;
+}
+
+.greenShapeSatellite {
+  fill: rgba(28, 98, 48, .13);
+  stroke: #a6ee9f;
+  stroke-width: 1;
   vector-effect: non-scaling-stroke;
 }
 

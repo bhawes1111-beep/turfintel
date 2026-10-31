@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { csvRows, mapGreen, parseTdrCsv, polygonContains } from '../src/utils/moisture/tdrCsv.js'
 import { importMoisture } from '../worker/api/moisture.js'
+import { getGoogleSatelliteMap } from '../worker/api/googleMaps.js'
 
 const greens = JSON.parse(await readFile(new URL('../public/data/crosswinds-greens.geojson', import.meta.url), 'utf8')).features
 
@@ -198,12 +199,42 @@ test('imports reject unassigned readings before writing', async () => {
   assert.equal(batchCalled, false)
 })
 
+test('Google satellite maps use a private configured proxy and fixed satellite parameters', async () => {
+  const requestUrl = new URL('https://turfintel.test/api/maps/satellite?lat=32.129830&lng=-81.233230&zoom=20')
+  const unconfigured = await getGoogleSatelliteMap({}, requestUrl)
+  assert.equal(unconfigured.status, 503)
+
+  const originalFetch = globalThis.fetch
+  let upstreamUrl = ''
+  globalThis.fetch = async input => {
+    upstreamUrl = String(input)
+    return new Response(new Uint8Array([137, 80, 78, 71]), {
+      status: 200,
+      headers: { 'Content-Type': 'image/png' },
+    })
+  }
+  try {
+    const response = await getGoogleSatelliteMap({ GOOGLE_MAPS_STATIC_API_KEY: 'test-key' }, requestUrl)
+    assert.equal(response.status, 200)
+    assert.equal(response.headers.get('Cache-Control'), 'private, no-store')
+    const upstream = new URL(upstreamUrl)
+    assert.equal(upstream.origin, 'https://maps.googleapis.com')
+    assert.equal(upstream.searchParams.get('maptype'), 'satellite')
+    assert.equal(upstream.searchParams.get('size'), '640x640')
+    assert.equal(upstream.searchParams.get('scale'), '2')
+    assert.equal(upstream.searchParams.get('key'), 'test-key')
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})
+
 test('TDR workspace stores diagnostics and exposes smooth interactive maps', async () => {
-  const [migration, api, page, workspace] = await Promise.all([
+  const [migration, api, page, workspace, worker] = await Promise.all([
     readFile(new URL('../worker/migrations/0098_moisture_tdr_fields.sql', import.meta.url), 'utf8'),
     readFile(new URL('../worker/api/moisture.js', import.meta.url), 'utf8'),
     readFile(new URL('../src/pages/TurfHealth/TurfHealth.jsx', import.meta.url), 'utf8'),
     readFile(new URL('../src/pages/TurfHealth/MoistureWorkspace.jsx', import.meta.url), 'utf8'),
+    readFile(new URL('../worker/index.js', import.meta.url), 'utf8'),
   ])
   for (const column of [
     'bulk_ec', 'soil_temp_c', 'ir_temp_c', 'tdr_period_us', 'satellite_total',
@@ -217,7 +248,7 @@ test('TDR workspace stores diagnostics and exposes smooth interactive maps', asy
   assert.match(page, /activeTab === 'TDR'[\s\S]*<TdrWorkspace/)
   assert.match(page, /activeTab === 'Import CSV'[\s\S]*<TdrCsvImportWorkspace/)
   assert.match(workspace, /function smoothClosedPath/)
-  assert.match(workspace, /<path d=\{outline\} className=\{styles\.greenShape\}/)
+  assert.match(workspace, /<path d=\{outline\} className=\{satellite\.url \? styles\.greenShapeSatellite : styles\.greenShape\}/)
   assert.match(workspace, /role="button"[\s\S]*setSelectedReadingKey/)
   assert.match(workspace, /function ReadingDetails/)
   assert.match(workspace, /id: 'bulkEc'/)
@@ -225,4 +256,7 @@ test('TDR workspace stores diagnostics and exposes smooth interactive maps', asy
   assert.match(workspace, /Approved rows populate both tabs/)
   assert.match(workspace, /onClick=\{onOpenMoisture\}>Open Moisture/)
   assert.match(workspace, /onClick=\{onOpenTdr\}>Open TDR/)
+  assert.match(workspace, /function mercatorPoint/)
+  assert.match(workspace, /<image href=\{satellite\.url\}/)
+  assert.match(worker, /pathname === '\/api\/maps\/satellite'/)
 })

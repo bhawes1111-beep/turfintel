@@ -110,6 +110,11 @@
   //                                    responses even after MAIL_PROVIDER
   //                                    is configured (for recovery).
   //
+  //  Optional, for authenticated green satellite backgrounds:
+  //    GOOGLE_MAPS_STATIC_API_KEY      Google Maps Static API key restricted
+  //                                    to the Maps Static API. Billing must be
+  //                                    enabled in the Google Cloud project.
+  //
   //  Mutation gate accepts EITHER ADMIN_KEY OR AUTOMATION_KEY (worker/lib/
   //  auth.js#requireAdminKey). 503 if neither is configured (fail-closed).
 }
