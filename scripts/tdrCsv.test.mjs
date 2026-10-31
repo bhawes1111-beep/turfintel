@@ -11,7 +11,7 @@ import {
 } from '../src/utils/moisture/greenMaps.js'
 import { importMoisture } from '../worker/api/moisture.js'
 import {
-  colorForFivePointValue,
+  colorForSixPointValue,
   DEFAULT_MOISTURE_DISPLAY_SETTINGS,
   normalizeMoistureDisplaySettings,
 } from '../src/utils/moisture/moistureDisplayConfig.js'
@@ -229,7 +229,7 @@ test('green menus are course grouped and naturally ordered', () => {
   assert.ok(buildGreenProjection(greens[0].geometry.coordinates[0]))
 })
 
-test('moisture and TDR display settings support five validated zones', () => {
+test('moisture and TDR display settings support six validated zones while preserving five-zone settings', () => {
   const migrated = normalizeMoistureDisplaySettings({
     dryBelow: 20,
     wetAbove: 31,
@@ -237,9 +237,18 @@ test('moisture and TDR display settings support five validated zones', () => {
     targetColor: '#22bb44',
     wetColor: '#0066FF',
   })
-  assert.deepEqual(migrated.moisture.points, [14.5, 20, 25.5, 31, 36.5])
-  assert.deepEqual(migrated.moisture.colors, ['#d44c47', '#aa3300', '#22bb44', '#0066ff', '#7c61c9'])
+  assert.deepEqual(migrated.moisture.points, [14.5, 20, 22.75, 25.5, 31, 36.5])
+  assert.deepEqual(migrated.moisture.colors, ['#d44c47', '#aa3300', '#d5b84b', '#22bb44', '#0066ff', '#7c61c9'])
   assert.equal(Object.keys(migrated.tdr).length, 6)
+
+  const expanded = normalizeMoistureDisplaySettings({
+    moisture: {
+      points: [10, 20, 30, 40, 50],
+      colors: ['#111111', '#222222', '#333333', '#444444', '#555555'],
+    },
+  })
+  assert.deepEqual(expanded.moisture.points, [10, 20, 25, 30, 40, 50])
+  assert.deepEqual(expanded.moisture.colors, ['#111111', '#222222', '#d5b84b', '#333333', '#444444', '#555555'])
 
   const normalized = normalizeMoistureDisplaySettings({
     moisture: {
@@ -248,8 +257,8 @@ test('moisture and TDR display settings support five validated zones', () => {
     },
   })
   assert.deepEqual(normalized.moisture, DEFAULT_MOISTURE_DISPLAY_SETTINGS.moisture)
-  assert.equal(colorForFivePointValue(19, migrated.moisture), '#aa3300')
-  assert.equal(colorForFivePointValue(40, migrated.moisture), '#7c61c9')
+  assert.equal(colorForSixPointValue(19, migrated.moisture), '#aa3300')
+  assert.equal(colorForSixPointValue(40, migrated.moisture), '#7c61c9')
 })
 
 test('every mapped green has a high-resolution static aerial', async () => {
@@ -295,8 +304,10 @@ test('TDR workspace stores diagnostics and exposes smooth interactive maps', asy
   assert.match(workspace, /<path d=\{outline\} className=\{satellite\.url \? styles\.greenShapeSatellite : styles\.greenShape\}/)
   assert.match(workspace, /role="button"[\s\S]*setSelectedReadingKey/)
   assert.match(workspace, /sort\(\(left, right\) => compareGreenNames\(left\.green, right\.green\)\)/)
-  assert.match(workspace, /summaryTileStyle\(colorForFivePointValue\(summary\.average, scale\)\)/)
-  assert.match(workspace, /function FivePointScaleEditor/)
+  assert.match(workspace, /summaryTileStyle\(colorForSixPointValue\(summary\.average, scale\)\)/)
+  assert.match(workspace, /function SixPointScaleEditor/)
+  assert.match(workspace, /SIX-POINT SCALE/)
+  assert.match(workspaceStyles, /\.scaleRows\s*\{[\s\S]*repeat\(6/)
   assert.match(workspace, /Pinpoint Map/)
   assert.match(workspace, /Moisture Surface/)
   assert.match(workspace, /createInterpolatedSurface/)

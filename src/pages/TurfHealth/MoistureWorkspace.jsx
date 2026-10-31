@@ -6,7 +6,7 @@ import {
 } from '../../utils/moisture/moistureStore'
 import { localTimestamp, parseTdrCsv } from '../../utils/moisture/tdrCsv'
 import {
-  colorForFivePointValue,
+  colorForSixPointValue,
   MOISTURE_ZONE_LABELS,
   TDR_ZONE_LABELS,
 } from '../../utils/moisture/moistureDisplayConfig'
@@ -356,7 +356,7 @@ export function TdrCsvImportWorkspace({ canEdit, onOpenMoisture, onOpenTdr }) {
   )
 }
 
-function FivePointScaleEditor({ title, unit, labels, scale, step, onChange, onReset }) {
+function SixPointScaleEditor({ title, unit, labels, scale, step, onChange, onReset }) {
   function updatePoint(index, value) {
     const numeric = Number(value)
     if (!Number.isFinite(numeric)) return
@@ -378,7 +378,7 @@ function FivePointScaleEditor({ title, unit, labels, scale, step, onChange, onRe
     <section className={styles.scalePanel}>
       <div className={styles.scaleHeader}>
         <div>
-          <span className={styles.eyebrow}>FIVE-POINT SCALE</span>
+          <span className={styles.eyebrow}>SIX-POINT SCALE</span>
           <h3>{title}</h3>
         </div>
         <button type="button" className={styles.resetPaletteButton} onClick={onReset}>Reset scale</button>
@@ -403,7 +403,7 @@ function FivePointScaleEditor({ title, unit, labels, scale, step, onChange, onRe
                 step={step}
                 value={scale.points[index]}
                 min={index === 0 ? undefined : scale.points[index - 1] + step}
-                max={index === 4 ? undefined : scale.points[index + 1] - step}
+                max={index === scale.points.length - 1 ? undefined : scale.points[index + 1] - step}
                 onChange={event => updatePoint(index, event.target.value)}
               />
               <span>{unit}</span>
@@ -432,7 +432,7 @@ export function MoistureMapSettingsWorkspace() {
         <button type="button" className={styles.resetPaletteButton} onClick={resetSettings}>Reset all</button>
       </div>
 
-      <FivePointScaleEditor
+      <SixPointScaleEditor
         title="Moisture (VWC)"
         unit="%"
         labels={MOISTURE_ZONE_LABELS}
@@ -449,7 +449,7 @@ export function MoistureMapSettingsWorkspace() {
             {TDR_METRICS.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}
           </select>
         </label>
-        <FivePointScaleEditor
+        <SixPointScaleEditor
           title={metric.label}
           unit={metric.unit}
           labels={TDR_ZONE_LABELS}
@@ -673,7 +673,7 @@ function TdrMap({ observations, loading, features, boundaryError, displaySetting
                       cx={reading.point.x}
                       cy={reading.point.y}
                       r="1"
-                      fill={colorForFivePointValue(metricDisplayValue(activeMetric, reading.metricValue), activeScale)}
+                      fill={colorForSixPointValue(metricDisplayValue(activeMetric, reading.metricValue), activeScale)}
                       className={styles.mapPoint}
                     >
                       <title>{activeMetric.format(reading.metricValue)}</title>
@@ -717,7 +717,7 @@ function TdrMap({ observations, loading, features, boundaryError, displaySetting
             key={summary.green}
             type="button"
             className={summary.green === activeGreen ? styles.greenSummaryActive : styles.greenSummaryButton}
-            style={summaryTileStyle(colorForFivePointValue(metricDisplayValue(activeMetric, summary.average), activeScale))}
+            style={summaryTileStyle(colorForSixPointValue(metricDisplayValue(activeMetric, summary.average), activeScale))}
             onClick={() => setSelectedGreen(summary.green)}
           >
             <span>{summary.green}</span>
@@ -919,7 +919,7 @@ function WateringMap({ observations, loading, features, boundaryError, displayMo
                           cx={reading.point.x}
                           cy={reading.point.y}
                           r="1"
-                          fill={colorForFivePointValue(Number(reading.moisturePct), scale)}
+                          fill={colorForSixPointValue(Number(reading.moisturePct), scale)}
                           className={styles.mapPoint}
                         >
                           <title>{`${Number(reading.moisturePct).toFixed(1)}% VWC · ${new Date(reading.observedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`}</title>
@@ -970,7 +970,7 @@ function WateringMap({ observations, loading, features, boundaryError, displayMo
                 key={summary.green}
                 type="button"
                 className={summary.green === activeGreen ? styles.greenSummaryActive : styles.greenSummaryButton}
-                style={summaryTileStyle(colorForFivePointValue(summary.average, scale))}
+                style={summaryTileStyle(colorForSixPointValue(summary.average, scale))}
                 onClick={() => selectGreen(summary.green)}
               >
                 <span>{summary.green}</span>
