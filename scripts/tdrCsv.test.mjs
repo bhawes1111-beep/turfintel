@@ -241,11 +241,12 @@ test('every mapped green has a high-resolution static aerial', async () => {
 })
 
 test('TDR workspace stores diagnostics and exposes smooth interactive maps', async () => {
-  const [migration, api, page, workspace, greenMaps, worker] = await Promise.all([
+  const [migration, api, page, workspace, workspaceStyles, greenMaps, worker] = await Promise.all([
     readFile(new URL('../worker/migrations/0098_moisture_tdr_fields.sql', import.meta.url), 'utf8'),
     readFile(new URL('../worker/api/moisture.js', import.meta.url), 'utf8'),
     readFile(new URL('../src/pages/TurfHealth/TurfHealth.jsx', import.meta.url), 'utf8'),
     readFile(new URL('../src/pages/TurfHealth/MoistureWorkspace.jsx', import.meta.url), 'utf8'),
+    readFile(new URL('../src/pages/TurfHealth/MoistureWorkspace.module.css', import.meta.url), 'utf8'),
     readFile(new URL('../src/utils/moisture/greenMaps.js', import.meta.url), 'utf8'),
     readFile(new URL('../worker/index.js', import.meta.url), 'utf8'),
   ])
@@ -263,6 +264,9 @@ test('TDR workspace stores diagnostics and exposes smooth interactive maps', asy
   assert.match(workspace, /function smoothClosedPath/)
   assert.match(workspace, /<path d=\{outline\} className=\{satellite\.url \? styles\.greenShapeSatellite : styles\.greenShape\}/)
   assert.match(workspace, /role="button"[\s\S]*setSelectedReadingKey/)
+  assert.match(workspace, /sort\(\(left, right\) => compareGreenNames\(left\.green, right\.green\)\)/)
+  assert.match(workspace, /summaryTileStyle\(colorForValue\(summary\.average, dryBelow, wetAbove\)\)/)
+  assert.match(workspaceStyles, /\.mapHitArea\s*\{[\s\S]*pointer-events:\s*all/)
   assert.match(workspace, /function ReadingDetails/)
   assert.match(workspace, /id: 'bulkEc'/)
   assert.match(workspace, /id: 'soilTempC'/)

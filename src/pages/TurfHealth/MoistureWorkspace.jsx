@@ -38,6 +38,13 @@ function colorForValue(value, dryBelow, wetAbove) {
   return '#5aa45f'
 }
 
+function summaryTileStyle(color) {
+  return {
+    '--summary-tone': color,
+    '--summary-tint': `${color}38`,
+  }
+}
+
 function readingKey(reading, index = 0) {
   return reading.id || reading.clientId || `${reading.observedAt}-${reading.lat}-${reading.lng}-${index}`
 }
@@ -340,6 +347,8 @@ function TdrMap({ observations, loading, features, boundaryError }) {
   })()
 
   const summaryNames = summaries.map(summary => summary.green)
+  const summaryMinimum = summaries.length ? Math.min(...summaries.map(summary => summary.average)) : 0
+  const summaryMaximum = summaries.length ? Math.max(...summaries.map(summary => summary.average)) : 0
   const activeGreen = summaryNames.includes(selectedGreen) ? selectedGreen : (summaryNames[0] || '')
   const selectedSummary = summaries.find(summary => summary.green === activeGreen) ?? null
   const selectedFeature = features.find(feature => feature.properties?.name === activeGreen)
@@ -425,7 +434,7 @@ function TdrMap({ observations, loading, features, boundaryError }) {
                     if (event.key === 'Enter' || event.key === ' ') setSelectedReadingKey(reading.mapKey)
                   }}
                 >
-                  <circle cx={reading.point.x} cy={reading.point.y} r="7.2" className={styles.mapHitArea} />
+                  <circle cx={reading.point.x} cy={reading.point.y} r="3.4" className={styles.mapHitArea} />
                   {selectedReading?.mapKey === reading.mapKey && (
                     <circle cx={reading.point.x} cy={reading.point.y} r="2" className={styles.selectedRing} />
                   )}
@@ -471,6 +480,7 @@ function TdrMap({ observations, loading, features, boundaryError }) {
             key={summary.green}
             type="button"
             className={summary.green === activeGreen ? styles.greenSummaryActive : styles.greenSummaryButton}
+            style={summaryTileStyle(relativeColor(summary.average, summaryMinimum, summaryMaximum))}
             onClick={() => setSelectedGreen(summary.green)}
           >
             <span>{summary.green}</span>
@@ -516,7 +526,7 @@ function WateringMap({ observations, loading, features, boundaryError }) {
       readings,
       average: readings.reduce((sum, reading) => sum + Number(reading.moisturePct), 0) / readings.length,
       dry: readings.filter(reading => Number(reading.moisturePct) < dryBelow).length,
-    })).sort((left, right) => left.average - right.average)
+    })).sort((left, right) => compareGreenNames(left.green, right.green))
   }, [dayReadings, dryBelow])
 
   const summaryNames = summaries.map(summary => summary.green)
@@ -602,7 +612,7 @@ function WateringMap({ observations, loading, features, boundaryError }) {
                         if (event.key === 'Enter' || event.key === ' ') setSelectedReadingKey(reading.mapKey)
                       }}
                     >
-                      <circle cx={reading.point.x} cy={reading.point.y} r="7.2" className={styles.mapHitArea} />
+                      <circle cx={reading.point.x} cy={reading.point.y} r="3.4" className={styles.mapHitArea} />
                       {selectedReading?.mapKey === reading.mapKey && (
                         <circle cx={reading.point.x} cy={reading.point.y} r="2" className={styles.selectedRing} />
                       )}
@@ -655,6 +665,7 @@ function WateringMap({ observations, loading, features, boundaryError }) {
                 key={summary.green}
                 type="button"
                 className={summary.green === activeGreen ? styles.greenSummaryActive : styles.greenSummaryButton}
+                style={summaryTileStyle(colorForValue(summary.average, dryBelow, wetAbove))}
                 onClick={() => setSelectedGreen(summary.green)}
               >
                 <span>{summary.green}</span>
