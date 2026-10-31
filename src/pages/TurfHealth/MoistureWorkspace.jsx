@@ -24,8 +24,12 @@ import styles from './MoistureWorkspace.module.css'
 
 const VIEW_OPTIONS = [
   { id: 'monitor', label: 'Monitor' },
-  { id: 'map', label: 'Watering Map' },
+  { id: 'pinpoints', label: 'Pinpoint Map' },
+  { id: 'surface', label: 'Moisture Surface' },
 ]
+
+const EMPTY_READINGS = []
+const SURFACE_RESOLUTION = 240
 
 function observationDate(value) {
   const date = new Date(value)
@@ -80,6 +84,89 @@ function numericValue(value) {
 
 function metricDisplayValue(metric, value) {
   return metric?.summary ? metric.summary(value) : value
+}
+
+function hexChannels(color) {
+  const hex = String(color || '').replace('#', '')
+  if (!/^[0-9a-f]{6}$/i.test(hex)) return [90, 164, 95]
+  return [0, 2, 4].map(index => Number.parseInt(hex.slice(index, index + 2), 16))
+}
+
+function interpolatedScaleColor(value, scale) {
+  if (value <= scale.points[0]) return hexChannels(scale.colors[0])
+  const lastIndex = scale.points.length - 1
+  if (value >= scale.points[lastIndex]) return hexChannels(scale.colors[lastIndex])
+  for (let index = 1; index < scale.points.length; index += 1) {
+    if (value > scale.points[index]) continue
+    const lowerValue = scale.points[index - 1]
+    const upperValue = scale.points[index]
+    const ratio = (value - lowerValue) / (upperValue - lowerValue)
+    const lower = hexChannels(scale.colors[index - 1])
+    const upper = hexChannels(scale.colors[index])
+    return lower.map((channel, channelIndex) => Math.round(channel + (upper[channelIndex] - channel) * ratio))
+  }
+  return hexChannels(scale.colors[lastIndex])
+}
+
+function createMoistureSurface(sampleSignature, polygonSignature, scaleSignature) {
+  if (typeof document === 'undefined' || !sampleSignature || !polygonSignature) return ''
+  const readings = sampleSignature.split('|').map(sample => {
+    const [x, y, moisturePct] = sample.split(',').map(Number)
+    return { point: { x, y }, moisturePct }
+  })
+  const polygon = polygonSignature.split('|').map(sample => {
+    const [x, y] = sample.split(',').map(Number)
+    return { x, y }
+  })
+  const scale = JSON.parse(scaleSignature)
+  const canvas = document.createElement('canvas')
+  canvas.width = SURFACE_RESOLUTION
+  canvas.height = SURFACE_RESOLUTION
+  const context = canvas.getContext('2d')
+  if (!context) return ''
+
+  const image = context.createImageData(SURFACE_RESOLUTION, SURFACE_RESOLUTION)
+  for (let pixelY = 0; pixelY < SURFACE_RESOLUTION; pixelY += 1) {
+    const y = (pixelY + .5) * 100 / SURFACE_RESOLUTION
+    for (let pixelX = 0; pixelX < SURFACE_RESOLUTION; pixelX += 1) {
+      const x = (pixelX + .5) * 100 / SURFACE_RESOLUTION
+      let weightedValue = 0
+      let totalWeight = 0
+      let exactValue = null
+      for (const reading of readings) {
+        const dx = x - reading.point.x
+        const dy = y - reading.point.y
+        const distanceSquared = dx * dx + dy * dy
+        if (distanceSquared < .025) {
+          exactValue = Number(reading.moisturePct)
+          break
+        }
+        const weight = 1 / Math.max(distanceSquared, .025)
+        weightedValue += Number(reading.moisturePct) * weight
+        totalWeight += weight
+      }
+      const value = exactValue ?? weightedValue / totalWeight
+      const [red, green, blue] = interpolatedScaleColor(value, scale)
+      const offset = (pixelY * SURFACE_RESOLUTION + pixelX) * 4
+      image.data[offset] = red
+      image.data[offset + 1] = green
+      image.data[offset + 2] = blue
+      image.data[offset + 3] = 220
+    }
+  }
+  context.putImageData(image, 0, 0)
+
+  context.globalCompositeOperation = 'destination-in'
+  context.beginPath()
+  polygon.forEach((point, index) => {
+    const x = point.x * SURFACE_RESOLUTION / 100
+    const y = point.y * SURFACE_RESOLUTION / 100
+    if (index === 0) context.moveTo(x, y)
+    else context.lineTo(x, y)
+  })
+  context.closePath()
+  context.fill()
+  return canvas.toDataURL('image/png')
 }
 
 function useGreenBoundaries() {
@@ -191,12 +278,13 @@ export default function MoistureWorkspace() {
       </div>
 
       {view === 'monitor' && <MoistureOverview />}
-      {view === 'map' && (
+      {view !== 'monitor' && (
         <WateringMap
           observations={moisture.observations}
           loading={moisture.loading}
           features={features}
           boundaryError={boundaryError}
+          displayMode={view}
         />
       )}
     </div>
@@ -545,7 +633,7 @@ function TdrMap({ observations, loading, features, boundaryError, displaySetting
   )
 }
 
-function WateringMap({ observations, loading, features, boundaryError }) {
+function WateringMap({ observations, loading, features, boundaryError, displayMode = 'pinpoints' }) {
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedGreen, setSelectedGreen] = useState('')
   const [selectedReadingKey, setSelectedReadingKey] = useState('')
@@ -589,13 +677,37 @@ function WateringMap({ observations, loading, features, boundaryError }) {
   const project = useMemo(() => buildGreenProjection(ring), [ring])
   const outline = smoothClosedPath(ring, project)
   const satellite = useGreenAerialImage(activeGreen)
-  const mapped = (selectedSummary?.readings ?? []).filter(reading => (
+  const selectedReadings = selectedSummary?.readings ?? EMPTY_READINGS
+  const mapped = selectedReadings.filter(reading => (
     Number.isFinite(Number(reading.lat)) && Number.isFinite(Number(reading.lng)) && project
   )).map((reading, index) => ({
     ...reading,
     mapKey: readingKey(reading, index),
     point: project(Number(reading.lat), Number(reading.lng)),
   }))
+  const sampleSignature = mapped
+    .map(reading => `${reading.point.x.toFixed(4)},${reading.point.y.toFixed(4)},${Number(reading.moisturePct).toFixed(3)}`)
+    .join('|')
+  const firstRingPoint = ring[0]
+  const lastRingPoint = ring.at(-1)
+  const surfaceRing = ring.length > 3
+    && firstRingPoint?.[0] === lastRingPoint?.[0]
+    && firstRingPoint?.[1] === lastRingPoint?.[1]
+    ? ring.slice(0, -1)
+    : ring
+  const polygonSignature = project
+    ? surfaceRing.map(point => {
+      const projected = project(point[1], point[0])
+      return `${projected.x.toFixed(4)},${projected.y.toFixed(4)}`
+    }).join('|')
+    : ''
+  const scaleSignature = JSON.stringify(scale)
+  const surfaceUrl = useMemo(
+    () => displayMode === 'surface' ? createMoistureSurface(sampleSignature, polygonSignature, scaleSignature) : '',
+    // Canvas generation is expensive; these strings are immutable snapshots of every input.
+    // eslint-disable-next-line react-hooks/preserve-manual-memoization
+    [displayMode, polygonSignature, sampleSignature, scaleSignature],
+  )
   const selectedReading = mapped.find(reading => reading.mapKey === selectedReadingKey) ?? null
   const driest = [...(selectedSummary?.readings ?? [])]
     .sort((left, right) => Number(left.moisturePct) - Number(right.moisturePct))
@@ -643,6 +755,7 @@ function WateringMap({ observations, loading, features, boundaryError }) {
                 <svg className={styles.greenMap} viewBox="0 0 100 100" role="img" aria-label={`${activeGreen} moisture map`}>
                   <rect x="0" y="0" width="100" height="100" className={styles.mapBackground} />
                   {satellite.url && <image href={satellite.url} x="0" y="0" width="100" height="100" preserveAspectRatio="none" className={styles.satelliteImage} onError={satellite.onError} />}
+                  {surfaceUrl && <image href={surfaceUrl} x="0" y="0" width="100" height="100" preserveAspectRatio="none" className={styles.moistureSurfaceImage} />}
                   <path d={outline} className={satellite.url ? styles.greenShapeSatellite : styles.greenShape} />
                   {mapped.map(reading => (
                     <g
@@ -660,15 +773,21 @@ function WateringMap({ observations, loading, features, boundaryError }) {
                       {selectedReading?.mapKey === reading.mapKey && (
                         <circle cx={reading.point.x} cy={reading.point.y} r="2" className={styles.selectedRing} />
                       )}
-                      <circle
-                        cx={reading.point.x}
-                        cy={reading.point.y}
-                        r="1"
-                        fill={colorForFivePointValue(Number(reading.moisturePct), scale)}
-                        className={styles.mapPoint}
-                      >
-                        <title>{`${Number(reading.moisturePct).toFixed(1)}% VWC · ${new Date(reading.observedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`}</title>
-                      </circle>
+                      {displayMode === 'pinpoints' ? (
+                        <circle
+                          cx={reading.point.x}
+                          cy={reading.point.y}
+                          r="1"
+                          fill={colorForFivePointValue(Number(reading.moisturePct), scale)}
+                          className={styles.mapPoint}
+                        >
+                          <title>{`${Number(reading.moisturePct).toFixed(1)}% VWC · ${new Date(reading.observedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`}</title>
+                        </circle>
+                      ) : (
+                        <circle cx={reading.point.x} cy={reading.point.y} r=".42" className={styles.surfaceSamplePoint}>
+                          <title>{`${Number(reading.moisturePct).toFixed(1)}% VWC sample`}</title>
+                        </circle>
+                      )}
                     </g>
                   ))}
                 </svg>
@@ -681,6 +800,7 @@ function WateringMap({ observations, loading, features, boundaryError }) {
                   <span key={label}><i className={styles.legendDot} style={{ background: scale.colors[index] }} />{label}</span>
                 ))}
                 <span>{mapped.length} GPS-positioned</span>
+                {displayMode === 'surface' && <span className={styles.interpolationNote}>Shaded areas are interpolated estimates</span>}
               </div>
             </div>
 

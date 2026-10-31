@@ -326,6 +326,10 @@
   filter: contrast(1.04) saturate(1.03);
 }
 
+.moistureSurfaceImage {
+  opacity: .76;
+}
+
 .greenShape {
   fill: #2f6a3d;
   stroke: #8ed08b;
@@ -359,6 +363,13 @@
 .mapPoint {
   stroke: #fff;
   stroke-width: .85;
+  vector-effect: non-scaling-stroke;
+}
+
+.surfaceSamplePoint {
+  fill: rgba(255, 255, 255, .78);
+  stroke: rgba(7, 30, 17, .75);
+  stroke-width: .45;
   vector-effect: non-scaling-stroke;
 }
 
@@ -458,6 +469,11 @@
 }
 
 .legendDot { width: 10px; height: 10px; border-radius: 50%; }
+
+.interpolationNote {
+  margin-left: auto;
+  font-style: italic;
+}
 
 .priorityPanel {
   padding: 16px;
