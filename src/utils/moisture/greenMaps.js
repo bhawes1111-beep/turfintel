@@ -29,7 +29,9 @@ export function buildGreenProjection(ring) {
   const centerX = (minX + maxX) / 2
   const centerY = (minY + maxY) / 2
   const span = Math.max(maxX - minX, maxY - minY, Number.EPSILON)
-  const zoom = Math.max(17, Math.min(21, Math.floor(Math.log2((MAP_LOGICAL_SIZE * .82) / (MAP_TILE_SIZE * span)))))
+  // Keep each green at a consistent scale. Fractional zoom avoids wasting
+  // imagery resolution when the next whole zoom level would clip the outline.
+  const zoom = Math.max(17, Math.min(22.5, Math.log2((MAP_LOGICAL_SIZE * .82) / (MAP_TILE_SIZE * span))))
   const viewScale = (MAP_TILE_SIZE * (2 ** zoom) / MAP_LOGICAL_SIZE) * 100
   const project = (lat, lng) => {
     const point = mercatorPoint(lat, lng)
@@ -55,7 +57,7 @@ export function greenAerialFilename(name) {
   return slug ? `${slug}.jpg` : ''
 }
 
-export const GREEN_AERIAL_VERSION = 'noaa-coastal-ga-2012-v1'
+export const GREEN_AERIAL_VERSION = 'noaa-coastal-ga-2012-v2'
 
 export function greenCourseDetails(name) {
   let match = /^Green\s+(\d+)$/i.exec(name)

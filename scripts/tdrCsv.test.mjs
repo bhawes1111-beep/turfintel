@@ -254,7 +254,7 @@ test('moisture and TDR display settings support five validated zones', () => {
 
 test('every mapped green has a high-resolution static aerial', async () => {
   const manifest = JSON.parse(await readFile(new URL('../public/data/green-aerial/manifest.json', import.meta.url), 'utf8'))
-  assert.equal(manifest.imageSize, 1280)
+  assert.equal(manifest.imageSize, 1600)
   assert.match(manifest.source, /6-inch orthophotography via NOAA Digital Coast/)
   assert.match(GREEN_AERIAL_VERSION, /^noaa-coastal-ga-/)
   assert.equal(manifest.images.length, greens.length)

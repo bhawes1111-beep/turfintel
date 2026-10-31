@@ -1,4 +1,5 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import sharp from 'sharp'
 import {
   GREEN_MAP_LOGICAL_SIZE,
   GREEN_MAP_TILE_SIZE,
@@ -12,7 +13,7 @@ const SOURCE_MOSAIC_RULE = {
   where: "dataset_id = '2622' AND Resolution = 0.15",
   mosaicMethod: 'esriMosaicNorthwest',
 }
-const OUTPUT_SIZE = 1280
+const OUTPUT_SIZE = 1600
 const WEB_MERCATOR_HALF_WORLD_METERS = 20037508.342789244
 const outputDirectory = new URL('../public/data/green-aerial/', import.meta.url)
 const boundaryFile = new URL('../public/data/crosswinds-greens.geojson', import.meta.url)
@@ -52,7 +53,7 @@ async function fetchAerial(feature) {
   source.searchParams.set('imageSR', '3857')
   source.searchParams.set('size', `${OUTPUT_SIZE},${OUTPUT_SIZE}`)
   source.searchParams.set('format', 'jpg')
-  source.searchParams.set('compressionQuality', '92')
+  source.searchParams.set('compressionQuality', '100')
   source.searchParams.set('interpolation', 'RSP_BilinearInterpolation')
   source.searchParams.set('mosaicRule', JSON.stringify(SOURCE_MOSAIC_RULE))
   source.searchParams.set('f', 'image')
@@ -76,7 +77,11 @@ async function fetchAerial(feature) {
   }
 
   const filename = greenAerialFilename(name)
-  const bytes = new Uint8Array(await response.arrayBuffer())
+  const sourceBytes = Buffer.from(await response.arrayBuffer())
+  const bytes = await sharp(sourceBytes)
+    .sharpen({ sigma: .8, m1: .8, m2: 1.5 })
+    .jpeg({ quality: 94, chromaSubsampling: '4:4:4', progressive: true })
+    .toBuffer()
   await writeFile(new URL(filename, outputDirectory), bytes)
   return {
     name,

@@ -322,7 +322,8 @@
 }
 
 .satelliteImage {
-  opacity: .94;
+  opacity: 1;
+  filter: contrast(1.04) saturate(1.03);
 }
 
 .greenShape {
@@ -333,7 +334,7 @@
 }
 
 .greenShapeSatellite {
-  fill: rgba(28, 98, 48, .13);
+  fill: rgba(28, 98, 48, .06);
   stroke: #a6ee9f;
   stroke-width: 1;
   vector-effect: non-scaling-stroke;
