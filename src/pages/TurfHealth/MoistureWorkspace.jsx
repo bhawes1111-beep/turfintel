@@ -689,6 +689,7 @@ function WateringMap({ observations, loading, features, boundaryError, displayMo
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedGreen, setSelectedGreen] = useState('')
   const [selectedReadingKey, setSelectedReadingKey] = useState('')
+  const surfaceSwipeStartX = useRef(null)
   const { settings } = useMoistureDisplaySettings()
   const scale = settings.moisture
 
@@ -723,6 +724,7 @@ function WateringMap({ observations, loading, features, boundaryError, displayMo
 
   const summaryNames = summaries.map(summary => summary.green)
   const activeGreen = summaryNames.includes(selectedGreen) ? selectedGreen : (summaryNames[0] || '')
+  const activeGreenIndex = summaryNames.indexOf(activeGreen)
   const selectedSummary = summaries.find(summary => summary.green === activeGreen)
   const selectedFeature = features.find(feature => feature.properties?.name === activeGreen)
   const ring = useMemo(() => selectedFeature?.geometry?.coordinates?.[0] ?? [], [selectedFeature])
@@ -765,6 +767,29 @@ function WateringMap({ observations, loading, features, boundaryError, displayMo
     .sort((left, right) => Number(left.moisturePct) - Number(right.moisturePct))
     .slice(0, 8)
 
+  const selectGreen = green => {
+    setSelectedGreen(green)
+    setSelectedReadingKey('')
+  }
+  const showAdjacentGreen = direction => {
+    if (summaryNames.length < 2) return
+    const currentIndex = Math.max(activeGreenIndex, 0)
+    const nextIndex = (currentIndex + direction + summaryNames.length) % summaryNames.length
+    selectGreen(summaryNames[nextIndex])
+  }
+  const handleSurfaceTouchStart = event => {
+    if (displayMode !== 'surface') return
+    surfaceSwipeStartX.current = event.touches[0]?.clientX ?? null
+  }
+  const handleSurfaceTouchEnd = event => {
+    if (displayMode !== 'surface' || surfaceSwipeStartX.current == null) return
+    const endX = event.changedTouches[0]?.clientX
+    const distance = Number.isFinite(endX) ? endX - surfaceSwipeStartX.current : 0
+    surfaceSwipeStartX.current = null
+    if (Math.abs(distance) < 45) return
+    showAdjacentGreen(distance < 0 ? 1 : -1)
+  }
+
   if (loading && observations.length === 0) return <p className={styles.empty}>Loading moisture readings...</p>
 
   return (
@@ -779,7 +804,7 @@ function WateringMap({ observations, loading, features, boundaryError, displayMo
         </label>
         <label>
           Green
-          <select value={activeGreen} onChange={event => setSelectedGreen(event.target.value)}>
+          <select value={activeGreen} onChange={event => selectGreen(event.target.value)}>
             {summaries.length === 0 && <option value="">No mapped greens</option>}
             <GreenOptions names={summaryNames} />
           </select>
@@ -791,8 +816,37 @@ function WateringMap({ observations, loading, features, boundaryError, displayMo
         <div className={styles.empty}>No moisture readings are available yet. Import a TDR CSV or log readings manually.</div>
       ) : (
         <>
+          {displayMode === 'surface' && (
+            <div className={styles.surfaceCarouselNav} aria-label="Moisture surface green navigation">
+              <button type="button" onClick={() => showAdjacentGreen(-1)} disabled={summaryNames.length < 2} aria-label="Previous green">
+                <span aria-hidden="true">&#8249;</span>
+              </button>
+              <div className={styles.surfaceCarouselLabel} aria-live="polite">
+                <span>Moisture surface</span>
+                <strong>{activeGreen || 'Choose a green'}</strong>
+                <small>{activeGreenIndex + 1} of {summaryNames.length} · Swipe left or right</small>
+              </div>
+              <button type="button" onClick={() => showAdjacentGreen(1)} disabled={summaryNames.length < 2} aria-label="Next green">
+                <span aria-hidden="true">&#8250;</span>
+              </button>
+            </div>
+          )}
           <div className={styles.mapLayout}>
-            <div className={styles.mapPanel}>
+            <div
+              className={`${styles.mapPanel} ${displayMode === 'surface' ? styles.surfaceSwipeFrame : ''}`}
+              role={displayMode === 'surface' ? 'group' : undefined}
+              aria-roledescription={displayMode === 'surface' ? 'carousel' : undefined}
+              aria-label={displayMode === 'surface' ? `${activeGreen} moisture surface` : undefined}
+              tabIndex={displayMode === 'surface' ? 0 : undefined}
+              onTouchStart={handleSurfaceTouchStart}
+              onTouchEnd={handleSurfaceTouchEnd}
+              onTouchCancel={() => { surfaceSwipeStartX.current = null }}
+              onKeyDown={event => {
+                if (displayMode !== 'surface' || event.target !== event.currentTarget) return
+                if (event.key === 'ArrowLeft') showAdjacentGreen(-1)
+                if (event.key === 'ArrowRight') showAdjacentGreen(1)
+              }}
+            >
               <div className={styles.mapHeader}>
                 <div>
                   <span className={styles.eyebrow}>{activeDate ? formatDate(activeDate) : ''}</span>
@@ -882,7 +936,7 @@ function WateringMap({ observations, loading, features, boundaryError, displayMo
                 type="button"
                 className={summary.green === activeGreen ? styles.greenSummaryActive : styles.greenSummaryButton}
                 style={summaryTileStyle(colorForFivePointValue(summary.average, scale))}
-                onClick={() => setSelectedGreen(summary.green)}
+                onClick={() => selectGreen(summary.green)}
               >
                 <span>{summary.green}</span>
                 <strong>{summary.average.toFixed(1)}%</strong>
