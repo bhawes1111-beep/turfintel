@@ -292,9 +292,9 @@ console.log('— TurfHealthFab (Commit 4)')
                                                 'FAB returns null when permission denied')
   assert(/if\s*\(!visible\)\s+return null/.test(fab),
                                                 'FAB returns null when not on a visible route')
-  // data-stacked on dashboard.
-  assert(/data-stacked=\{onDashboard\s*\?\s*['"]true['"]\s*:\s*['"]false['"]\}/.test(fab),
-                                                'FAB carries data-stacked on /dashboard so CSS can offset above moisture FAB')
+  // data-stacked wherever both capture actions are visible.
+  assert(/data-stacked=\{stacked\s*\?\s*['"]true['"]\s*:\s*['"]false['"]\}/.test(fab),
+                                                'FAB carries data-stacked where both Turf Health actions are visible')
 
   const fabCss = readFileSync('src/components/turfHealth/TurfHealthFab.module.css', 'utf8')
   assert(/\.fab\s*\{[\s\S]*display:\s*none/.test(fabCss),
@@ -317,8 +317,8 @@ console.log('— useFabVisibility (Commit 4)')
                                                 'exports useFabVisibility')
   assert(/useLocation/.test(hook),              'reads route via react-router useLocation')
   // The single source of truth for which FAB shows where.
-  assert(/moisture:\s*\[\s*['"]\/dashboard['"]\s*,\s*['"]\/irrigation['"]\s*\]/.test(hook),
-                                                'moisture FAB visible on /dashboard + /irrigation')
+  assert(/moisture:\s*\[\s*['"]\/dashboard['"]\s*,\s*['"]\/turf-health['"]\s*\]/.test(hook),
+                                                'moisture FAB visible on /dashboard + /turf-health')
   assert(/turfHealth:\s*\[\s*['"]\/dashboard['"]\s*,\s*['"]\/turf-health['"]\s*\]/.test(hook),
                                                 'turfHealth FAB visible on /dashboard + /turf-health')
   // matchesAny does prefix matching, not naive substring matching.
@@ -368,9 +368,9 @@ console.log('— /turf-health workspace (Commit 5)')
   const page = readFileSync('src/pages/TurfHealth/TurfHealth.jsx', 'utf8')
   assert(/import\s+PageShell/.test(page),       'TurfHealth uses PageShell')
   assert(/title="Turf Health"/.test(page),     'PageShell title is "Turf Health"')
-  // Four tabs declared in order, including the permanent resolved archive.
-  assert(/TABS\s*=\s*\['Overview',\s*'Nutrients',\s*'Active Issues',\s*'Recent Observations',\s*'Resolved'\]/.test(page),
-                                                'TABS include Nutrients and the Resolved archive')
+  // Moisture now lives here alongside nutrients and the permanent resolved archive.
+  assert(/TABS\s*=\s*\['Overview',\s*'Moisture',\s*'Nutrients',\s*'Active Issues',\s*'Recent Observations',\s*'Resolved'\]/.test(page),
+                                                'TABS include Moisture, Nutrients, and the Resolved archive')
   // Hooks are the new turf-health ones, not the moisture ones.
   assert(/useTurfHealthData\b/.test(page),     'workspace consumes useTurfHealthData')
   assert(/useTurfHealthAttachments\b/.test(page),

@@ -1,5 +1,5 @@
 // Phase 7A.1 — Persistent mobile FAB for moisture capture.
-// Phase 7B.1 — Route-aware: shows on /irrigation/* and /dashboard only.
+// Route-aware: shows on /turf-health/* and /dashboard only.
 // On /dashboard it sits at the bottom slot (Turf Health FAB stacks above).
 //
 // Hidden on ≥ 768px (desktop already has the in-page LogMoistureButton in

@@ -204,9 +204,9 @@ console.log('— src/components/moisture/MoistureFab.jsx + .module.css')
 }
 
 // ── 6b. MoistureOverview renders pending/retry affordances (Phase 7A.2) ────
-console.log('— src/pages/Irrigation/tabs/MoistureOverview.jsx (pending UI)')
+console.log('— src/pages/TurfHealth/MoistureOverview.jsx (pending UI)')
 {
-  const overview = readFileSync('src/pages/Irrigation/tabs/MoistureOverview.jsx', 'utf8')
+  const overview = readFileSync('src/pages/TurfHealth/MoistureOverview.jsx', 'utf8')
   assert(/retryPendingObservation/.test(overview),
                                                 'imports retryPendingObservation')
   assert(/dismissPendingObservation/.test(overview),
@@ -223,7 +223,7 @@ console.log('— src/pages/Irrigation/tabs/MoistureOverview.jsx (pending UI)')
   assert(/retryPendingObservation\(o\.clientId\)/.test(overview),
                                                 'Retry click calls retryPendingObservation(clientId)')
 
-  const overviewCss = readFileSync('src/pages/Irrigation/tabs/MoistureOverview.module.css', 'utf8')
+  const overviewCss = readFileSync('src/pages/TurfHealth/MoistureOverview.module.css', 'utf8')
   assert(/\.retryBadge\b/.test(overviewCss),    'CSS defines .retryBadge')
   assert(/\.savingBadge\b/.test(overviewCss),   'CSS defines .savingBadge')
   assert(/data-pending="true"/.test(overviewCss),
@@ -331,7 +331,7 @@ console.log('— Phase 7A.4: moisture photo attachment')
   assert(/min-height:\s*36px/.test(toastCss),  'toast action button is thumb-tappable (≥36px)')
 
   // Overview row distinguishes obs retry from photo retry.
-  const overview = readFileSync('src/pages/Irrigation/tabs/MoistureOverview.jsx', 'utf8')
+  const overview = readFileSync('src/pages/TurfHealth/MoistureOverview.jsx', 'utf8')
   assert(/retryPendingPhoto/.test(overview),    'overview imports retryPendingPhoto')
   assert(/o\._photoError/.test(overview),       'overview branches on _photoError')
   assert(/o\._photoPending/.test(overview),     'overview branches on _photoPending')
@@ -400,7 +400,7 @@ console.log('— Phase 7A.5: batched attachments + photo chip + viewer')
 
   // No per-row useAttachmentsForParent hook in overview — the audit caught
   // the fan-out, the build avoids it.
-  const overview2 = readFileSync('src/pages/Irrigation/tabs/MoistureOverview.jsx', 'utf8')
+  const overview2 = readFileSync('src/pages/TurfHealth/MoistureOverview.jsx', 'utf8')
   assert(!/useAttachmentsForParent/.test(overview2),
                                                 'overview does NOT use per-row useAttachmentsForParent (no fan-out)')
   assert(/useMoistureAttachments/.test(overview2),
@@ -453,7 +453,7 @@ console.log('— Phase 7A.5: batched attachments + photo chip + viewer')
   assert(/min-height:\s*44px/.test(viewerCss),  'delete button meets the 44px tap-target floor')
 
   // Chip CSS contracts.
-  const overviewCss2 = readFileSync('src/pages/Irrigation/tabs/MoistureOverview.module.css', 'utf8')
+  const overviewCss2 = readFileSync('src/pages/TurfHealth/MoistureOverview.module.css', 'utf8')
   assert(/\.photoChip\b/.test(overviewCss2),    'CSS defines .photoChip')
   assert(/\.photoChipSmall\b/.test(overviewCss2),
                                                 'CSS defines .photoChipSmall (Driest variant)')
@@ -498,7 +498,7 @@ console.log('— Phase 7A.6: post-capture photo attach')
   }
 
   // Overview: empty-state "+ 📷" chip + canEditMoisture gate + click handler.
-  const overview3 = readFileSync('src/pages/Irrigation/tabs/MoistureOverview.jsx', 'utf8')
+  const overview3 = readFileSync('src/pages/TurfHealth/MoistureOverview.jsx', 'utf8')
   assert(/import\s+\{[^}]*addPhotoToObservation[^}]*\}/.test(overview3),
                                                 'overview imports addPhotoToObservation')
   assert(/import\s+\{\s*openPhotoPicker\s*\}\s+from\s+['"][^'"]*pickPhoto/.test(overview3),
@@ -522,7 +522,7 @@ console.log('— Phase 7A.6: post-capture photo attach')
                                                 'handleAddPhoto wires the picker to addPhotoToObservation(observation.id, file)')
 
   // Empty-state chip CSS contract.
-  const overviewCss3 = readFileSync('src/pages/Irrigation/tabs/MoistureOverview.module.css', 'utf8')
+  const overviewCss3 = readFileSync('src/pages/TurfHealth/MoistureOverview.module.css', 'utf8')
   assert(/\.photoChipEmpty\b/.test(overviewCss3),
                                                 'CSS defines .photoChipEmpty')
   assert(/\.photoChipEmpty\b[\s\S]*?dashed/.test(overviewCss3),

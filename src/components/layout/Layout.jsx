@@ -45,10 +45,10 @@ export default function Layout() {
 
       <CommandOverlay />
       {/* Phase 7B.1 — Both FABs honor route-aware visibility via
-          useFabVisibility, so MoistureFab shows on /irrigation/* +
+          useFabVisibility, so MoistureFab shows on /turf-health/* +
           /dashboard, TurfHealthFab shows on /turf-health/* + /dashboard.
-          When both are visible (only on /dashboard) the Turf Health FAB
-          stacks above the Moisture FAB. */}
+          When both are visible the Turf Health FAB stacks above the
+          Moisture FAB. */}
       <MoistureFab />
       <TurfHealthFab />
     </div>

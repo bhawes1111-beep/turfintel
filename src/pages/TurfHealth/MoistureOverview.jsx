@@ -13,16 +13,16 @@ import {
   retryPendingPhoto,
   dismissPendingObservation,
   addPhotoToObservation,
-} from '../../../utils/moisture/moistureStore'
-import { useWaterBalance } from '../../../utils/irrigation/waterBalanceStore'
-import { useWeather } from '../../../utils/weather/useWeather'
-import { useAuth } from '../../../context/AuthContext'
-import { useToast } from '../../../utils/feedback/toastContext'
-import { openPhotoPicker } from '../../../utils/media/pickPhoto'
-import { computeWaterBalance } from '../../../utils/irrigation/waterBalance'
-import { computeMoistureIntel, syringeAwareness } from '../../../utils/moisture/moistureIntel'
-import LogMoistureButton from '../../../components/moisture/LogMoistureButton'
-import MoisturePhotoViewer from '../../../components/moisture/MoisturePhotoViewer'
+} from '../../utils/moisture/moistureStore'
+import { useWaterBalance } from '../../utils/irrigation/waterBalanceStore'
+import { useWeather } from '../../utils/weather/useWeather'
+import { useAuth } from '../../context/AuthContext'
+import { useToast } from '../../utils/feedback/toastContext'
+import { openPhotoPicker } from '../../utils/media/pickPhoto'
+import { computeWaterBalance } from '../../utils/irrigation/waterBalance'
+import { computeMoistureIntel, syringeAwareness } from '../../utils/moisture/moistureIntel'
+import LogMoistureButton from '../../components/moisture/LogMoistureButton'
+import MoisturePhotoViewer from '../../components/moisture/MoisturePhotoViewer'
 import styles from './MoistureOverview.module.css'
 
 const PRIORITY_COLOR = {

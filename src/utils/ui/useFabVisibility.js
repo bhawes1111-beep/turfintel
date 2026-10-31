@@ -1,20 +1,20 @@
 // Phase 7B.1 — Route-aware FAB visibility.
 //
 // Each capture FAB is visible only where it makes operational sense:
-//   - Moisture FAB on /irrigation/* and /dashboard
+//   - Moisture FAB on /turf-health/* and /dashboard
 //   - Turf Health FAB on /turf-health/* and /dashboard
-//   - Both visible together on /dashboard (and the FAB CSS handles stacking)
+//   - Both visible together on /dashboard and /turf-health
 //   - Hidden everywhere else (so /reports, /equipment, etc. stay clean)
 //
 // One hook so the rules live in a single place; FAB components just read it.
-// Path matching: exact equality OR startsWith(prefix + '/') so /irrigation
-// matches /irrigation/moisture etc., but /irrigation-foo doesn't accidentally
+// Path matching: exact equality OR startsWith(prefix + '/') so /turf-health
+// matches nested tools, but /turf-health-foo doesn't accidentally
 // match (matters less in this codebase but follows the React Router norm).
 
 import { useLocation } from 'react-router-dom'
 
 const FAB_VISIBILITY = {
-  moisture:    ['/dashboard', '/irrigation'],
+  moisture:    ['/dashboard', '/turf-health'],
   turfHealth:  ['/dashboard', '/turf-health'],
 }
 
@@ -28,7 +28,7 @@ function matchesAny(pathname, prefixes) {
 
 /**
  * @param {'moisture' | 'turfHealth'} kind
- * @returns {{ visible: boolean, onDashboard: boolean }}
+ * @returns {{ visible: boolean, onDashboard: boolean, stacked: boolean }}
  *   visible      — should this FAB render at all?
  *   onDashboard  — is the current route /dashboard (so the FAB needs to
  *                  honor the stacking offset)?
@@ -39,5 +39,6 @@ export function useFabVisibility(kind) {
   return {
     visible:     matchesAny(pathname, prefixes),
     onDashboard: pathname === '/dashboard' || pathname.startsWith('/dashboard/'),
+    stacked:     kind === 'turfHealth' && matchesAny(pathname, FAB_VISIBILITY.moisture),
   }
 }

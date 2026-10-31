@@ -14,8 +14,8 @@ function section(name) { console.log(`\n-- ${name} --`) }
 const IR = readFileSync('src/pages/Irrigation/Irrigation.jsx', 'utf8')
 
 section('Crosswinds irrigation tabs')
-assert(/const\s+CROSSWINDS_TABS\s*=\s*\[\s*'Today',\s*'Water Balance',\s*'Moisture',\s*'Repairs',?\s*\]/.test(IR),
-  "Crosswinds tabs are Today, Water Balance, Moisture, Repairs")
+assert(/const\s+CROSSWINDS_TABS\s*=\s*\[\s*'Today',\s*'Water Balance',\s*'Repairs',?\s*\]/.test(IR),
+  "Crosswinds tabs are Today, Water Balance, Repairs")
 assert(!/const\s+CROSSWINDS_MORE\b/.test(IR), 'CROSSWINDS_MORE is removed')
 assert(!/\bmoreTab\b/.test(IR), 'moreTab state is removed')
 assert(!/\bsetMoreTab\b/.test(IR), 'setMoreTab is removed')
@@ -27,15 +27,16 @@ assert(/activeTab === 'Today'\s*&& <IrrigationDashboard \/>/.test(IR),
   'Today mounts IrrigationDashboard')
 assert(/activeTab === 'Water Balance'\s*&& <WaterBalanceOverview \/>/.test(IR),
   'Water Balance mounts WaterBalanceOverview')
-assert(/activeTab === 'Moisture'\s*&& <MoistureOverview \/>/.test(IR),
-  'Moisture mounts MoistureOverview')
+assert(!/MoistureOverview/.test(IR),
+  'Moisture workspace is no longer mounted under Irrigation')
 assert(/activeTab === 'Repairs'\s*&& <Repairs \/>/.test(IR),
   'Repairs mounts Repairs')
 
 section('Legacy non-Crosswinds still available')
-for (const t of ['Overview', 'Moisture', 'Dashboard', 'Repairs', 'Head Map', 'Wet / Dry Reports', 'Pump Station', 'Zones', 'Reports']) {
+for (const t of ['Overview', 'Dashboard', 'Repairs', 'Head Map', 'Wet / Dry Reports', 'Pump Station', 'Zones', 'Reports']) {
   assert(new RegExp(`'${t}'`).test(IR), `legacy tab '${t}' remains in source`)
 }
+assert(!/'Moisture'/.test(IR), "legacy Moisture tab moved out of Irrigation")
 assert(/activeTab === 'Dashboard'\s*&& <IrrigationDashboard \/>/.test(IR),
   'legacy Dashboard mounts IrrigationDashboard')
 assert(/coming soon/.test(IR),

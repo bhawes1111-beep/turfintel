@@ -146,6 +146,71 @@ export async function createMoisture(env, request) {
   return getMoisture(env, id)
 }
 
+export async function importMoisture(env, request) {
+  if (!env.DB) return json({ error: 'D1 not configured' }, 503)
+  const body = await readJson(request)
+  const readings = Array.isArray(body.readings) ? body.readings : null
+  if (!readings || readings.length === 0) return badRequest('readings are required')
+  if (readings.length > 250) return badRequest('Import batches are limited to 250 readings')
+
+  const courseId = resolveCourseId(body)
+  const normalized = []
+  for (let index = 0; index < readings.length; index += 1) {
+    const reading = readings[index] ?? {}
+    const location = typeof reading.location === 'string' ? reading.location.trim() : ''
+    const moisturePct = num(reading.moisturePct)
+    const observedAt = typeof reading.observedAt === 'string' ? reading.observedAt : ''
+    const clientId = typeof reading.clientId === 'string' ? reading.clientId.trim() : ''
+    if (!location) return badRequest(`Reading ${index + 1}: location is required`)
+    if (moisturePct === null || moisturePct < 0 || moisturePct > 100) {
+      return badRequest(`Reading ${index + 1}: moisturePct must be between 0 and 100`)
+    }
+    if (!observedAt || !Number.isFinite(Date.parse(observedAt))) {
+      return badRequest(`Reading ${index + 1}: observedAt is invalid`)
+    }
+    if (!clientId) return badRequest(`Reading ${index + 1}: clientId is required for duplicate protection`)
+
+    normalized.push({
+      id: generateId('moist'),
+      observedAt,
+      observedBy: reading.observedBy ?? body.observedBy ?? null,
+      location,
+      hole: num(reading.hole),
+      moisturePct,
+      notes: typeof reading.notes === 'string' ? reading.notes.slice(0, 2000) : null,
+      clientId,
+      lat: num(reading.lat),
+      lng: num(reading.lng),
+      gpsAccuracy: num(reading.gpsAccuracy),
+    })
+  }
+
+  let inserted = 0
+  for (let offset = 0; offset < normalized.length; offset += 50) {
+    const chunk = normalized.slice(offset, offset + 50)
+    const statements = chunk.map(reading => env.DB.prepare(`
+      INSERT OR IGNORE INTO moisture_observations (
+        id, course_id, observed_at, observed_by, location, hole,
+        moisture_pct, surface_note,
+        wilt_stress, dry_spot, handwater_rec, syringe_rec, notes,
+        client_id, client_observed_at, lat, lng, gps_accuracy
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, 0, 0, 0, 0, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      reading.id, courseId, reading.observedAt, reading.observedBy,
+      reading.location, reading.hole, reading.moisturePct, reading.notes,
+      reading.clientId, reading.observedAt, reading.lat, reading.lng, reading.gpsAccuracy,
+    ))
+    const results = await env.DB.batch(statements)
+    inserted += results.reduce((total, result) => total + (Number(result?.meta?.changes) || 0), 0)
+  }
+
+  return json({
+    received: normalized.length,
+    inserted,
+    skipped: normalized.length - inserted,
+  })
+}
+
 export async function updateMoisture(env, id, request) {
   if (!env.DB) return json({ error: 'D1 not configured' }, 503)
   const body  = await readJson(request)

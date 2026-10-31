@@ -38,9 +38,10 @@ import TurfHealthPhotoViewer from '../../components/turfHealth/TurfHealthPhotoVi
 import TurfHealthCaptureSheet, { useRecentTurfHealthLocations } from '../../components/turfHealth/TurfHealthCaptureSheet'
 import TurfHealthEditModal from '../../components/turfHealth/TurfHealthEditModal'
 import NutrientSamples from '../../components/turfHealth/NutrientSamples'
+import MoistureWorkspace from './MoistureWorkspace'
 import styles from './TurfHealth.module.css'
 
-const TABS = ['Overview', 'Nutrients', 'Active Issues', 'Recent Observations', 'Resolved']
+const TABS = ['Overview', 'Moisture', 'Nutrients', 'Active Issues', 'Recent Observations', 'Resolved']
 
 const SEVERITY_COLOR = {
   high:     '#ef4444',
@@ -114,12 +115,12 @@ export default function TurfHealth() {
   return (
     <PageShell
       title="Turf Health"
-      description="Shade, airflow, weak turf, and chronic stress observations."
+      description="Moisture, nutrients, shade, airflow, weak turf, and chronic stress observations."
       tabs={TABS}
       activeTab={activeTab}
       onTabChange={setActiveTab}
     >
-      {activeTab !== 'Nutrients' && <div className={styles.toolbar}>
+      {!['Nutrients', 'Moisture'].includes(activeTab) && <div className={styles.toolbar}>
         <div className={styles.filters}>
           <input
             type="search"
@@ -173,6 +174,8 @@ export default function TurfHealth() {
           })}
         />
       )}
+
+      {activeTab === 'Moisture' && <MoistureWorkspace canEdit={can('canEditMoisture')} />}
 
       {activeTab === 'Active Issues' && (
         <ActiveIssues

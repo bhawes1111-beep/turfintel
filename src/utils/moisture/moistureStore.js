@@ -15,6 +15,7 @@ import { uploadAttachment, deleteAttachment } from '../attachments/attachmentsSt
 import { bridgeToast } from '../feedback/toastBridge'
 
 const API = '/api/moisture'
+const RECENT_MOISTURE_QUERY = { days: 14, limit: 1000 }
 
 let state = {
   observations: [],   // newest first
@@ -98,7 +99,7 @@ export async function refreshMoistureAttachments() {
 
 subscribeCourseChange(() => {
   if (!hasBooted) return
-  refreshMoisture()
+  refreshMoisture(RECENT_MOISTURE_QUERY)
   refreshMoistureAttachments()
 })
 
@@ -117,6 +118,32 @@ export async function createMoistureObservation(payload) {
     setState({ error: err.message })
     throw err
   }
+}
+
+export async function importMoistureReadings(readings, options = {}) {
+  if (!Array.isArray(readings) || readings.length === 0) {
+    throw new Error('Choose at least one reviewed moisture reading to import.')
+  }
+
+  const summary = { received: 0, inserted: 0, skipped: 0 }
+  for (let offset = 0; offset < readings.length; offset += 250) {
+    const chunk = readings.slice(offset, offset + 250)
+    const result = await fetchJSON(`${API}/import`, {
+      method: 'POST',
+      headers: mutationHeaders(),
+      body: JSON.stringify({
+        courseId: getSelectedCourseId(),
+        observedBy: options.observedBy ?? null,
+        readings: chunk,
+      }),
+    })
+    summary.received += Number(result.received) || 0
+    summary.inserted += Number(result.inserted) || 0
+    summary.skipped += Number(result.skipped) || 0
+  }
+
+  await refreshMoisture({ days: 365, limit: 1000 })
+  return summary
 }
 
 // ── Phase 7A.1: capture-flow wrapper ────────────────────────────────────────
@@ -480,7 +507,7 @@ function subscribe(cb) {
   subscribers.add(cb)
   if (!hasBooted) {
     hasBooted = true
-    refreshMoisture({ days: 14 })
+    refreshMoisture(RECENT_MOISTURE_QUERY)
     refreshMoistureAttachments()
   }
   return () => subscribers.delete(cb)

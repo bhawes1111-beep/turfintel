@@ -257,6 +257,7 @@ import {
   listMoisture,
   getMoisture,
   createMoisture,
+  importMoisture,
   updateMoisture,
   deleteMoisture,
 } from './api/moisture.js'
@@ -788,6 +789,10 @@ async function handleApi(request, env, url, ctx) {
       return listMoisture(env, courseId, { location, days, limit })
     }
     if (method === 'POST') return createMoisture(env, request)
+  }
+
+  if (pathname === '/api/moisture/import') {
+    if (method === 'POST') return importMoisture(env, request)
   }
 
   // ── /api/moisture/:id ─────────────────────────────────────────────────

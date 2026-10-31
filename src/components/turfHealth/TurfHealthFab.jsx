@@ -4,7 +4,7 @@
 //   - Distinct icon (🌱) so the user reads it as a different action even
 //     when both FABs render on /dashboard.
 //   - Route-aware visibility: shows on /turf-health/* and /dashboard only.
-//   - On /dashboard it sits ABOVE the Moisture FAB (CSS handles the offset)
+//   - It sits above the Moisture FAB wherever both actions are available
 //     so both are reachable one-handed without overlap.
 //   - Permission gate: canEditTurfHealth (read_only + crew NEVER see it).
 
@@ -17,7 +17,7 @@ import styles from './TurfHealthFab.module.css'
 export default function TurfHealthFab() {
   const [open, setOpen] = useState(false)
   const { can } = useAuth()
-  const { visible, onDashboard } = useFabVisibility('turfHealth')
+  const { visible, stacked } = useFabVisibility('turfHealth')
   const recentLocations = useRecentTurfHealthLocations(6)
 
   if (!can('canEditTurfHealth')) return null
@@ -28,7 +28,7 @@ export default function TurfHealthFab() {
       <button
         type="button"
         className={styles.fab}
-        data-stacked={onDashboard ? 'true' : 'false'}
+        data-stacked={stacked ? 'true' : 'false'}
         onClick={() => setOpen(true)}
         aria-label="Log turf health observation"
       >
