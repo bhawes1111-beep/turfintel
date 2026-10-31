@@ -262,6 +262,7 @@ function GreenOptions({ names }) {
 
 export default function MoistureWorkspace() {
   const [view, setView] = useState('monitor')
+  const [surfaceOpen, setSurfaceOpen] = useState(false)
   const { features, boundaryError } = useGreenBoundaries()
   const moisture = useMoistureData()
 
@@ -273,9 +274,12 @@ export default function MoistureWorkspace() {
             key={option.id}
             type="button"
             role="tab"
-            aria-selected={view === option.id}
-            className={view === option.id ? styles.viewTabActive : styles.viewTab}
-            onClick={() => setView(option.id)}
+            aria-selected={option.id === 'surface' ? surfaceOpen : !surfaceOpen && view === option.id}
+            className={(option.id === 'surface' ? surfaceOpen : !surfaceOpen && view === option.id) ? styles.viewTabActive : styles.viewTab}
+            onClick={() => {
+              if (option.id === 'surface') setSurfaceOpen(true)
+              else setView(option.id)
+            }}
           >
             {option.label}
           </button>
@@ -283,7 +287,7 @@ export default function MoistureWorkspace() {
       </div>
 
       {view === 'monitor' && <MoistureOverview />}
-      {view !== 'monitor' && (
+      {view === 'pinpoints' && (
         <WateringMap
           observations={moisture.observations}
           loading={moisture.loading}
@@ -292,6 +296,47 @@ export default function MoistureWorkspace() {
           displayMode={view}
         />
       )}
+      {surfaceOpen && (
+        <MoistureSurfaceModal
+          observations={moisture.observations}
+          loading={moisture.loading}
+          features={features}
+          boundaryError={boundaryError}
+          onClose={() => setSurfaceOpen(false)}
+        />
+      )}
+    </div>
+  )
+}
+
+function MoistureSurfaceModal({ observations, loading, features, boundaryError, onClose }) {
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = previousOverflow }
+  }, [])
+
+  return (
+    <div className={styles.surfaceModalBackdrop} role="presentation">
+      <section className={styles.surfaceModal} role="dialog" aria-modal="true" aria-labelledby="moisture-surface-title">
+        <header className={styles.surfaceModalHeader}>
+          <div>
+            <span className={styles.eyebrow}>Watering map</span>
+            <h2 id="moisture-surface-title">Moisture Surface</h2>
+            <p>Swipe the map left or right to move between greens.</p>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Close moisture surface">Close</button>
+        </header>
+        <div className={styles.surfaceModalBody}>
+          <WateringMap
+            observations={observations}
+            loading={loading}
+            features={features}
+            boundaryError={boundaryError}
+            displayMode="surface"
+          />
+        </div>
+      </section>
     </div>
   )
 }
@@ -816,21 +861,6 @@ function WateringMap({ observations, loading, features, boundaryError, displayMo
         <div className={styles.empty}>No moisture readings are available yet. Import a TDR CSV or log readings manually.</div>
       ) : (
         <>
-          {displayMode === 'surface' && (
-            <div className={styles.surfaceCarouselNav} aria-label="Moisture surface green navigation">
-              <button type="button" onClick={() => showAdjacentGreen(-1)} disabled={summaryNames.length < 2} aria-label="Previous green">
-                <span aria-hidden="true">&#8249;</span>
-              </button>
-              <div className={styles.surfaceCarouselLabel} aria-live="polite">
-                <span>Moisture surface</span>
-                <strong>{activeGreen || 'Choose a green'}</strong>
-                <small>{activeGreenIndex + 1} of {summaryNames.length} · Swipe left or right</small>
-              </div>
-              <button type="button" onClick={() => showAdjacentGreen(1)} disabled={summaryNames.length < 2} aria-label="Next green">
-                <span aria-hidden="true">&#8250;</span>
-              </button>
-            </div>
-          )}
           <div className={styles.mapLayout}>
             <div
               className={`${styles.mapPanel} ${displayMode === 'surface' ? styles.surfaceSwipeFrame : ''}`}
@@ -851,6 +881,11 @@ function WateringMap({ observations, loading, features, boundaryError, displayMo
                 <div>
                   <span className={styles.eyebrow}>{activeDate ? formatDate(activeDate) : ''}</span>
                   <h3>{activeGreen || 'Choose a green'}</h3>
+                  {displayMode === 'surface' && (
+                    <small className={styles.surfacePosition} aria-live="polite">
+                      {activeGreenIndex + 1} of {summaryNames.length} · Swipe left or right
+                    </small>
+                  )}
                 </div>
                 <div className={styles.mapMetrics}>
                   <strong>{selectedSummary ? `${selectedSummary.average.toFixed(1)}%` : '—'}</strong>

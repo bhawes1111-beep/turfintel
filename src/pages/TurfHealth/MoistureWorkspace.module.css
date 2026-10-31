@@ -112,78 +112,76 @@
   grid-template-columns: repeat(2, minmax(180px, 1fr));
 }
 
-.surfaceCarouselNav {
-  display: grid;
-  grid-template-columns: 52px minmax(0, 1fr) 52px;
-  align-items: stretch;
-  overflow: hidden;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-card);
+.surfaceModalBackdrop {
+  position: fixed;
+  z-index: 1200;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 8, 3, .78);
+  padding: 18px;
 }
 
-.surfaceCarouselNav > button {
-  display: grid;
-  min-width: 52px;
-  min-height: 64px;
-  place-items: center;
-  border: 0;
-  border-right: 1px solid var(--color-border);
-  background: rgba(74, 222, 128, .08);
-  color: var(--color-accent);
+.surfaceModal {
+  display: flex;
+  width: min(1120px, 100%);
+  max-height: calc(100dvh - 36px);
+  overflow: hidden;
+  flex-direction: column;
+  border: 1px solid rgba(74, 222, 128, .38);
+  border-radius: 8px;
+  background: var(--color-bg);
+  box-shadow: 0 20px 70px rgba(0, 0, 0, .55);
+}
+
+.surfaceModalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-card);
+  padding: 14px 16px;
+}
+
+.surfaceModalHeader h2 {
+  margin: 2px 0 0;
+  color: var(--color-text);
+  font-size: 20px;
+}
+
+.surfaceModalHeader p {
+  margin: 3px 0 0;
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.surfaceModalHeader button {
+  min-width: 72px;
+  min-height: 44px;
+  flex: 0 0 auto;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  padding: 8px 14px;
   font: inherit;
+  font-weight: 800;
   cursor: pointer;
 }
 
-.surfaceCarouselNav > button:last-child {
-  border-right: 0;
-  border-left: 1px solid var(--color-border);
+.surfaceModalBody {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 14px;
 }
 
-.surfaceCarouselNav > button span {
-  font-size: 34px;
-  line-height: 1;
-}
-
-.surfaceCarouselNav > button:disabled {
-  opacity: .4;
-  cursor: not-allowed;
-}
-
-.surfaceCarouselLabel {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  padding: 8px 12px;
-  text-align: center;
-}
-
-.surfaceCarouselLabel span,
-.surfaceCarouselLabel strong,
-.surfaceCarouselLabel small {
+.surfacePosition {
   display: block;
-  max-width: 100%;
-}
-
-.surfaceCarouselLabel span {
-  color: var(--color-accent);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: .5px;
-  text-transform: uppercase;
-}
-
-.surfaceCarouselLabel strong {
-  margin-top: 2px;
-  overflow-wrap: anywhere;
-  color: var(--color-text);
-  font-size: 17px;
-}
-
-.surfaceCarouselLabel small {
-  margin-top: 2px;
+  margin-top: 3px;
   color: var(--color-text-muted);
   font-size: 11px;
 }
@@ -877,4 +875,19 @@
   .importActions { flex-direction: column; }
   .approveButton,
   .secondaryButton { width: 100%; }
+  .surfaceModalBackdrop { padding: 0; }
+  .surfaceModal {
+    width: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
+    border: 0;
+    border-radius: 0;
+  }
+  .surfaceModalHeader {
+    padding-top: max(12px, env(safe-area-inset-top));
+  }
+  .surfaceModalBody {
+    padding: 10px;
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+  }
 }
