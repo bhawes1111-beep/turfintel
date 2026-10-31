@@ -28,6 +28,11 @@ const VIEW_OPTIONS = [
   { id: 'surface', label: 'Moisture Surface' },
 ]
 
+const TDR_VIEW_OPTIONS = [
+  { id: 'pinpoints', label: 'Pinpoint Map' },
+  { id: 'surface', label: 'TDR Surface' },
+]
+
 const EMPTY_READINGS = []
 const SURFACE_RESOLUTION = 240
 
@@ -108,11 +113,11 @@ function interpolatedScaleColor(value, scale) {
   return hexChannels(scale.colors[lastIndex])
 }
 
-function createMoistureSurface(sampleSignature, polygonSignature, scaleSignature) {
+function createInterpolatedSurface(sampleSignature, polygonSignature, scaleSignature) {
   if (typeof document === 'undefined' || !sampleSignature || !polygonSignature) return ''
   const readings = sampleSignature.split('|').map(sample => {
-    const [x, y, moisturePct] = sample.split(',').map(Number)
-    return { point: { x, y }, moisturePct }
+    const [x, y, value] = sample.split(',').map(Number)
+    return { point: { x, y }, value }
   })
   const polygon = polygonSignature.split('|').map(sample => {
     const [x, y] = sample.split(',').map(Number)
@@ -138,11 +143,11 @@ function createMoistureSurface(sampleSignature, polygonSignature, scaleSignature
         const dy = y - reading.point.y
         const distanceSquared = dx * dx + dy * dy
         if (distanceSquared < .025) {
-          exactValue = Number(reading.moisturePct)
+          exactValue = Number(reading.value)
           break
         }
         const weight = 1 / Math.max(distanceSquared, .025)
-        weightedValue += Number(reading.moisturePct) * weight
+        weightedValue += Number(reading.value) * weight
         totalWeight += weight
       }
       const value = exactValue ?? weightedValue / totalWeight
@@ -414,11 +419,26 @@ export function MoistureMapSettingsWorkspace() {
 }
 
 export function TdrWorkspace() {
+  const [view, setView] = useState('pinpoints')
   const { features, boundaryError } = useGreenBoundaries()
   const moisture = useMoistureData()
   const { settings } = useMoistureDisplaySettings()
   return (
     <div className={styles.workspace}>
+      <div className={`${styles.viewTabs} ${styles.tdrViewTabs}`} role="tablist" aria-label="TDR map type">
+        {TDR_VIEW_OPTIONS.map(option => (
+          <button
+            key={option.id}
+            type="button"
+            role="tab"
+            aria-selected={view === option.id}
+            className={view === option.id ? styles.viewTabActive : styles.viewTab}
+            onClick={() => setView(option.id)}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
       <div className={styles.tdrIntro}>
         <div>
           <span className={styles.eyebrow}>SPECTRUM TDR 350</span>
@@ -433,12 +453,13 @@ export function TdrWorkspace() {
         features={features}
         boundaryError={boundaryError}
         displaySettings={settings}
+        displayMode={view}
       />
     </div>
   )
 }
 
-function TdrMap({ observations, loading, features, boundaryError, displaySettings }) {
+function TdrMap({ observations, loading, features, boundaryError, displaySettings, displayMode = 'pinpoints' }) {
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedGreen, setSelectedGreen] = useState('')
   const [selectedMetricId, setSelectedMetricId] = useState('bulkEc')
@@ -508,6 +529,29 @@ function TdrMap({ observations, loading, features, boundaryError, displaySetting
     mapKey: readingKey(reading, index),
     point: project(Number(reading.lat), Number(reading.lng)),
   }))
+  const sampleSignature = mapped
+    .map(reading => `${reading.point.x.toFixed(4)},${reading.point.y.toFixed(4)},${Number(metricDisplayValue(activeMetric, reading.metricValue)).toFixed(3)}`)
+    .join('|')
+  const firstRingPoint = ring[0]
+  const lastRingPoint = ring.at(-1)
+  const surfaceRing = ring.length > 3
+    && firstRingPoint?.[0] === lastRingPoint?.[0]
+    && firstRingPoint?.[1] === lastRingPoint?.[1]
+    ? ring.slice(0, -1)
+    : ring
+  const polygonSignature = project
+    ? surfaceRing.map(point => {
+      const projected = project(point[1], point[0])
+      return `${projected.x.toFixed(4)},${projected.y.toFixed(4)}`
+    }).join('|')
+    : ''
+  const scaleSignature = JSON.stringify(activeScale)
+  const surfaceUrl = useMemo(
+    () => displayMode === 'surface' ? createInterpolatedSurface(sampleSignature, polygonSignature, scaleSignature) : '',
+    // Canvas generation is expensive; these strings are immutable snapshots of every input.
+    // eslint-disable-next-line react-hooks/preserve-manual-memoization
+    [displayMode, polygonSignature, sampleSignature, scaleSignature],
+  )
   const selectedReading = mapped.find(reading => reading.mapKey === selectedReadingKey) ?? null
 
   if (loading && observations.length === 0) return <p className={styles.empty}>Loading TDR readings...</p>
@@ -558,9 +602,10 @@ function TdrMap({ observations, loading, features, boundaryError, displaySetting
             </div>
           </div>
           {outline ? (
-            <svg className={styles.greenMap} viewBox="0 0 100 100" role="img" aria-label={`${activeGreen} ${activeMetric?.label} map`}>
+            <svg className={styles.greenMap} viewBox="0 0 100 100" role="img" aria-label={`${activeGreen} ${activeMetric?.label} ${displayMode === 'surface' ? 'surface' : 'pinpoint'} map`}>
               <rect x="0" y="0" width="100" height="100" className={styles.mapBackground} />
               {satellite.url && <image href={satellite.url} x="0" y="0" width="100" height="100" preserveAspectRatio="none" className={styles.satelliteImage} onError={satellite.onError} />}
+              {surfaceUrl && <image href={surfaceUrl} x="0" y="0" width="100" height="100" preserveAspectRatio="none" className={styles.moistureSurfaceImage} />}
               <path d={outline} className={satellite.url ? styles.greenShapeSatellite : styles.greenShape} />
               {mapped.map(reading => (
                 <g
@@ -578,15 +623,21 @@ function TdrMap({ observations, loading, features, boundaryError, displaySetting
                   {selectedReading?.mapKey === reading.mapKey && (
                     <circle cx={reading.point.x} cy={reading.point.y} r="2" className={styles.selectedRing} />
                   )}
-                  <circle
-                    cx={reading.point.x}
-                    cy={reading.point.y}
-                    r="1"
-                    fill={colorForFivePointValue(metricDisplayValue(activeMetric, reading.metricValue), activeScale)}
-                    className={styles.mapPoint}
-                  >
-                    <title>{activeMetric.format(reading.metricValue)}</title>
-                  </circle>
+                  {displayMode === 'pinpoints' ? (
+                    <circle
+                      cx={reading.point.x}
+                      cy={reading.point.y}
+                      r="1"
+                      fill={colorForFivePointValue(metricDisplayValue(activeMetric, reading.metricValue), activeScale)}
+                      className={styles.mapPoint}
+                    >
+                      <title>{activeMetric.format(reading.metricValue)}</title>
+                    </circle>
+                  ) : (
+                    <circle cx={reading.point.x} cy={reading.point.y} r=".42" className={styles.surfaceSamplePoint}>
+                      <title>{`${activeMetric.format(reading.metricValue)} sample`}</title>
+                    </circle>
+                  )}
                 </g>
               ))}
             </svg>
@@ -599,6 +650,7 @@ function TdrMap({ observations, loading, features, boundaryError, displaySetting
               <span key={label}><i className={styles.legendDot} style={{ background: activeScale.colors[index] }} />{label}</span>
             ))}
             <span>{mapped.length} GPS-positioned</span>
+            {displayMode === 'surface' && <span className={styles.interpolationNote}>Shaded areas are interpolated estimates</span>}
           </div>
         </div>
 
@@ -703,7 +755,7 @@ function WateringMap({ observations, loading, features, boundaryError, displayMo
     : ''
   const scaleSignature = JSON.stringify(scale)
   const surfaceUrl = useMemo(
-    () => displayMode === 'surface' ? createMoistureSurface(sampleSignature, polygonSignature, scaleSignature) : '',
+    () => displayMode === 'surface' ? createInterpolatedSurface(sampleSignature, polygonSignature, scaleSignature) : '',
     // Canvas generation is expensive; these strings are immutable snapshots of every input.
     // eslint-disable-next-line react-hooks/preserve-manual-memoization
     [displayMode, polygonSignature, sampleSignature, scaleSignature],

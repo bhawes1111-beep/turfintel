@@ -14,6 +14,11 @@
   background: var(--color-card);
 }
 
+.tdrViewTabs {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: min(100%, 380px);
+}
+
 .viewTab,
 .viewTabActive {
   min-height: 44px;
