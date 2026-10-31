@@ -55,6 +55,8 @@ export function greenAerialFilename(name) {
   return slug ? `${slug}.jpg` : ''
 }
 
+export const GREEN_AERIAL_VERSION = 'noaa-coastal-ga-2012-v1'
+
 export function greenCourseDetails(name) {
   let match = /^Green\s+(\d+)$/i.exec(name)
   if (match) {

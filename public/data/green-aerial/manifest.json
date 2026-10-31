@@ -1,6 +1,6 @@
 {
-  "source": "USDA NAIP Plus via USGS The National Map",
-  "sourceUrl": "https://imagery.nationalmap.gov/arcgis/rest/services/USGSNAIPPlus/ImageServer/exportImage",
+  "source": "2012-2013 Coastal Georgia 6-inch orthophotography via NOAA Digital Coast",
+  "sourceUrl": "https://coast.noaa.gov/arcgis/rest/services/Imagery/4Band_RGBN_8Bit_Imagery/ImageServer/exportImage",
   "imageSize": 1280,
   "logicalViewportSize": 640,
   "images": [
@@ -12,7 +12,7 @@
         "lng": -81.233177769
       },
       "zoom": 21,
-      "bytes": 69626
+      "bytes": 98185
     },
     {
       "name": "Green 2",
@@ -22,7 +22,7 @@
         "lng": -81.23188774149997
       },
       "zoom": 21,
-      "bytes": 72236
+      "bytes": 114723
     },
     {
       "name": "Green 3",
@@ -32,7 +32,7 @@
         "lng": -81.22991403049998
       },
       "zoom": 20,
-      "bytes": 116728
+      "bytes": 248204
     },
     {
       "name": "Green 4",
@@ -42,7 +42,7 @@
         "lng": -81.23161792399999
       },
       "zoom": 21,
-      "bytes": 73473
+      "bytes": 127965
     },
     {
       "name": "Green 5",
@@ -52,7 +52,7 @@
         "lng": -81.2274270155
       },
       "zoom": 20,
-      "bytes": 128839
+      "bytes": 258495
     },
     {
       "name": "Green 6",
@@ -62,7 +62,7 @@
         "lng": -81.231710464
       },
       "zoom": 21,
-      "bytes": 72422
+      "bytes": 105809
     },
     {
       "name": "Green 7",
@@ -72,7 +72,7 @@
         "lng": -81.23301019
       },
       "zoom": 21,
-      "bytes": 80555
+      "bytes": 123929
     },
     {
       "name": "Green 8",
@@ -82,7 +82,7 @@
         "lng": -81.2357321535
       },
       "zoom": 21,
-      "bytes": 75684
+      "bytes": 128368
     },
     {
       "name": "Green 9",
@@ -92,7 +92,7 @@
         "lng": -81.23354901500001
       },
       "zoom": 21,
-      "bytes": 72295
+      "bytes": 109838
     },
     {
       "name": "Green 10",
@@ -102,7 +102,7 @@
         "lng": -81.23708352099999
       },
       "zoom": 21,
-      "bytes": 72655
+      "bytes": 110891
     },
     {
       "name": "Green 11",
@@ -112,7 +112,7 @@
         "lng": -81.23857077299999
       },
       "zoom": 20,
-      "bytes": 137496
+      "bytes": 282198
     },
     {
       "name": "Green 12",
@@ -122,7 +122,7 @@
         "lng": -81.238396692
       },
       "zoom": 20,
-      "bytes": 118953
+      "bytes": 263502
     },
     {
       "name": "Green 13",
@@ -132,7 +132,7 @@
         "lng": -81.234770717
       },
       "zoom": 21,
-      "bytes": 78181
+      "bytes": 142579
     },
     {
       "name": "Green 14",
@@ -142,7 +142,7 @@
         "lng": -81.23252364449999
       },
       "zoom": 21,
-      "bytes": 77411
+      "bytes": 113193
     },
     {
       "name": "Green 15",
@@ -152,7 +152,7 @@
         "lng": -81.23454676200001
       },
       "zoom": 21,
-      "bytes": 78626
+      "bytes": 127891
     },
     {
       "name": "Green 16",
@@ -162,7 +162,7 @@
         "lng": -81.23485815800001
       },
       "zoom": 21,
-      "bytes": 75235
+      "bytes": 131811
     },
     {
       "name": "Green 17",
@@ -172,7 +172,7 @@
         "lng": -81.23686672749999
       },
       "zoom": 20,
-      "bytes": 133335
+      "bytes": 273354
     },
     {
       "name": "Green 18",
@@ -182,7 +182,7 @@
         "lng": -81.23388651050001
       },
       "zoom": 20,
-      "bytes": 111355
+      "bytes": 194765
     },
     {
       "name": "Par 3 Green 1",
@@ -192,7 +192,7 @@
         "lng": -81.2332092195
       },
       "zoom": 21,
-      "bytes": 93112
+      "bytes": 155066
     },
     {
       "name": "Par 3 Green 2",
@@ -202,7 +202,7 @@
         "lng": -81.234490793
       },
       "zoom": 21,
-      "bytes": 89576
+      "bytes": 158967
     },
     {
       "name": "Par 3 Green 3",
@@ -212,7 +212,7 @@
         "lng": -81.236484587
       },
       "zoom": 20,
-      "bytes": 134617
+      "bytes": 286121
     },
     {
       "name": "Par 3 Green 4",
@@ -222,7 +222,7 @@
         "lng": -81.23744844149999
       },
       "zoom": 20,
-      "bytes": 111160
+      "bytes": 239602
     },
     {
       "name": "Par 3 Green 5",
@@ -232,7 +232,7 @@
         "lng": -81.23562719699999
       },
       "zoom": 20,
-      "bytes": 145362
+      "bytes": 281776
     },
     {
       "name": "Par 3 Green 6",
@@ -242,7 +242,7 @@
         "lng": -81.23494704299999
       },
       "zoom": 20,
-      "bytes": 125468
+      "bytes": 244531
     },
     {
       "name": "Par 3 Green 7",
@@ -252,7 +252,7 @@
         "lng": -81.234343791
       },
       "zoom": 21,
-      "bytes": 83258
+      "bytes": 139228
     },
     {
       "name": "Par 3 Green 8",
@@ -262,7 +262,7 @@
         "lng": -81.23386824399999
       },
       "zoom": 21,
-      "bytes": 83881
+      "bytes": 136523
     },
     {
       "name": "Par 3 Green 9",
@@ -272,7 +272,7 @@
         "lng": -81.232218784
       },
       "zoom": 21,
-      "bytes": 78104
+      "bytes": 130059
     },
     {
       "name": "Practice Green",
@@ -282,7 +282,7 @@
         "lng": -81.2312547355
       },
       "zoom": 21,
-      "bytes": 73724
+      "bytes": 139782
     },
     {
       "name": "Small Practice Green",
@@ -292,7 +292,7 @@
         "lng": -81.2323795835
       },
       "zoom": 21,
-      "bytes": 80468
+      "bytes": 136278
     }
   ]
 }

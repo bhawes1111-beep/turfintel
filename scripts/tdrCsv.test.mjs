@@ -5,6 +5,7 @@ import { csvRows, mapGreen, parseTdrCsv, polygonContains } from '../src/utils/mo
 import {
   buildGreenProjection,
   compareGreenNames,
+  GREEN_AERIAL_VERSION,
   greenAerialFilename,
   groupGreenNames,
 } from '../src/utils/moisture/greenMaps.js'
@@ -226,6 +227,8 @@ test('green menus are course grouped and naturally ordered', () => {
 test('every mapped green has a high-resolution static aerial', async () => {
   const manifest = JSON.parse(await readFile(new URL('../public/data/green-aerial/manifest.json', import.meta.url), 'utf8'))
   assert.equal(manifest.imageSize, 1280)
+  assert.match(manifest.source, /6-inch orthophotography via NOAA Digital Coast/)
+  assert.match(GREEN_AERIAL_VERSION, /^noaa-coastal-ga-/)
   assert.equal(manifest.images.length, greens.length)
   assert.deepEqual(manifest.images.map(image => image.name), greens.map(feature => feature.properties.name).sort(compareGreenNames))
   for (const feature of greens) {
@@ -271,5 +274,6 @@ test('TDR workspace stores diagnostics and exposes smooth interactive maps', asy
   assert.match(greenMaps, /function groupGreenNames/)
   assert.match(workspace, /<image href=\{satellite\.url\}/)
   assert.match(workspace, /greenAerialFilename/)
+  assert.match(workspace, /GREEN_AERIAL_VERSION/)
   assert.doesNotMatch(worker, /pathname === '\/api\/maps\/satellite'/)
 })

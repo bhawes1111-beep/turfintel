@@ -8,6 +8,7 @@ import { localTimestamp, parseTdrCsv } from '../../utils/moisture/tdrCsv'
 import {
   buildGreenProjection,
   compareGreenNames,
+  GREEN_AERIAL_VERSION,
   greenAerialFilename,
   groupGreenNames,
 } from '../../utils/moisture/greenMaps'
@@ -197,7 +198,7 @@ function metricSummary(metric, value) {
 
 function useGreenAerialImage(greenName) {
   const filename = greenAerialFilename(greenName)
-  const url = filename ? `/data/green-aerial/${filename}` : ''
+  const url = filename ? `/data/green-aerial/${filename}?v=${GREEN_AERIAL_VERSION}` : ''
   const [failedUrl, setFailedUrl] = useState('')
   const visibleUrl = url && failedUrl !== url ? url : ''
   return {

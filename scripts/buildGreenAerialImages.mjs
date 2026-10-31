@@ -7,7 +7,11 @@ import {
   greenAerialFilename,
 } from '../src/utils/moisture/greenMaps.js'
 
-const SOURCE_URL = 'https://imagery.nationalmap.gov/arcgis/rest/services/USGSNAIPPlus/ImageServer/exportImage'
+const SOURCE_URL = 'https://coast.noaa.gov/arcgis/rest/services/Imagery/4Band_RGBN_8Bit_Imagery/ImageServer/exportImage'
+const SOURCE_MOSAIC_RULE = {
+  where: "dataset_id = '2622' AND Resolution = 0.15",
+  mosaicMethod: 'esriMosaicNorthwest',
+}
 const OUTPUT_SIZE = 1280
 const WEB_MERCATOR_HALF_WORLD_METERS = 20037508.342789244
 const outputDirectory = new URL('../public/data/green-aerial/', import.meta.url)
@@ -50,7 +54,7 @@ async function fetchAerial(feature) {
   source.searchParams.set('format', 'jpg')
   source.searchParams.set('compressionQuality', '92')
   source.searchParams.set('interpolation', 'RSP_BilinearInterpolation')
-  source.searchParams.set('renderingRule', JSON.stringify({ rasterFunction: 'NaturalColor' }))
+  source.searchParams.set('mosaicRule', JSON.stringify(SOURCE_MOSAIC_RULE))
   source.searchParams.set('f', 'image')
 
   let response
@@ -68,7 +72,7 @@ async function fetchAerial(feature) {
   }
 
   if (!response?.ok || !response.headers.get('Content-Type')?.toLowerCase().startsWith('image/')) {
-    throw new Error(`USGS imagery failed for ${name}: ${response?.status ?? 'network error'}`)
+    throw new Error(`NOAA imagery failed for ${name}: ${response?.status ?? 'network error'}`)
   }
 
   const filename = greenAerialFilename(name)
@@ -102,7 +106,7 @@ await Promise.all(Array.from({ length: 1 }, async () => {
 
 images.sort((left, right) => compareGreenNames(left.name, right.name))
 await writeFile(new URL('manifest.json', outputDirectory), `${JSON.stringify({
-  source: 'USDA NAIP Plus via USGS The National Map',
+  source: '2012-2013 Coastal Georgia 6-inch orthophotography via NOAA Digital Coast',
   sourceUrl: SOURCE_URL,
   imageSize: OUTPUT_SIZE,
   logicalViewportSize: GREEN_MAP_LOGICAL_SIZE,
