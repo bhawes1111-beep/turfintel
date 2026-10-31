@@ -38,10 +38,10 @@ import TurfHealthPhotoViewer from '../../components/turfHealth/TurfHealthPhotoVi
 import TurfHealthCaptureSheet, { useRecentTurfHealthLocations } from '../../components/turfHealth/TurfHealthCaptureSheet'
 import TurfHealthEditModal from '../../components/turfHealth/TurfHealthEditModal'
 import NutrientSamples from '../../components/turfHealth/NutrientSamples'
-import MoistureWorkspace, { TdrWorkspace } from './MoistureWorkspace'
+import MoistureWorkspace, { TdrCsvImportWorkspace, TdrWorkspace } from './MoistureWorkspace'
 import styles from './TurfHealth.module.css'
 
-const TABS = ['Overview', 'Moisture', 'TDR', 'Nutrients', 'Active Issues', 'Recent Observations', 'Resolved']
+const TABS = ['Overview', 'Moisture', 'TDR', 'Import CSV', 'Nutrients', 'Active Issues', 'Recent Observations', 'Resolved']
 
 const SEVERITY_COLOR = {
   high:     '#ef4444',
@@ -120,7 +120,7 @@ export default function TurfHealth() {
       activeTab={activeTab}
       onTabChange={setActiveTab}
     >
-      {!['Nutrients', 'Moisture', 'TDR'].includes(activeTab) && <div className={styles.toolbar}>
+      {!['Nutrients', 'Moisture', 'TDR', 'Import CSV'].includes(activeTab) && <div className={styles.toolbar}>
         <div className={styles.filters}>
           <input
             type="search"
@@ -175,9 +175,17 @@ export default function TurfHealth() {
         />
       )}
 
-      {activeTab === 'Moisture' && <MoistureWorkspace canEdit={can('canEditMoisture')} />}
+      {activeTab === 'Moisture' && <MoistureWorkspace />}
 
       {activeTab === 'TDR' && <TdrWorkspace />}
+
+      {activeTab === 'Import CSV' && (
+        <TdrCsvImportWorkspace
+          canEdit={can('canEditMoisture')}
+          onOpenMoisture={() => setActiveTab('Moisture')}
+          onOpenTdr={() => setActiveTab('TDR')}
+        />
+      )}
 
       {activeTab === 'Active Issues' && (
         <ActiveIssues

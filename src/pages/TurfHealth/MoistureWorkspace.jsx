@@ -11,7 +11,6 @@ import styles from './MoistureWorkspace.module.css'
 const VIEW_OPTIONS = [
   { id: 'monitor', label: 'Monitor' },
   { id: 'map', label: 'Watering Map' },
-  { id: 'import', label: 'Import TDR CSV' },
 ]
 
 function observationDate(value) {
@@ -212,7 +211,7 @@ function buildProjection(ring) {
   })
 }
 
-export default function MoistureWorkspace({ canEdit }) {
+export default function MoistureWorkspace() {
   const [view, setView] = useState('monitor')
   const { features, boundaryError } = useGreenBoundaries()
   const moisture = useMoistureData()
@@ -243,14 +242,21 @@ export default function MoistureWorkspace({ canEdit }) {
           boundaryError={boundaryError}
         />
       )}
-      {view === 'import' && (
-        <TdrCsvImporter
-          features={features}
-          boundaryError={boundaryError}
-          canEdit={canEdit}
-          onOpenMap={() => setView('map')}
-        />
-      )}
+    </div>
+  )
+}
+
+export function TdrCsvImportWorkspace({ canEdit, onOpenMoisture, onOpenTdr }) {
+  const { features, boundaryError } = useGreenBoundaries()
+  return (
+    <div className={styles.workspace}>
+      <TdrCsvImporter
+        features={features}
+        boundaryError={boundaryError}
+        canEdit={canEdit}
+        onOpenMoisture={onOpenMoisture}
+        onOpenTdr={onOpenTdr}
+      />
     </div>
   )
 }
@@ -655,7 +661,7 @@ function WateringMap({ observations, loading, features, boundaryError }) {
   )
 }
 
-function TdrCsvImporter({ features, boundaryError, canEdit, onOpenMap }) {
+function TdrCsvImporter({ features, boundaryError, canEdit, onOpenMoisture, onOpenTdr }) {
   const fileInput = useRef(null)
   const { user } = useAuth()
   const [parsed, setParsed] = useState(null)
@@ -782,8 +788,8 @@ function TdrCsvImporter({ features, boundaryError, canEdit, onOpenMap }) {
       <div className={styles.importHeader}>
         <div>
           <span className={styles.eyebrow}>SPECTRUM TDR 350</span>
-          <h3>Import USB readings</h3>
-          <p>Upload, review green assignments, approve, then save to the shared TurfIntel moisture log.</p>
+          <h3>Import moisture and TDR readings</h3>
+          <p>Upload once, review green assignments, then approve the shared samples for both Moisture and TDR.</p>
         </div>
         <button type="button" className={styles.uploadButton} onClick={() => fileInput.current?.click()} disabled={!features.length || busy}>
           Choose CSV
@@ -865,9 +871,10 @@ function TdrCsvImporter({ features, boundaryError, canEdit, onOpenMap }) {
             <button type="button" className={styles.secondaryButton} onClick={() => { setParsed(null); setResult(null); setMessage('Preview discarded. No readings were changed.') }} disabled={busy}>
               Discard preview
             </button>
-            {result && <button type="button" className={styles.secondaryButton} onClick={onOpenMap}>Open Watering Map</button>}
+            {result && <button type="button" className={styles.secondaryButton} onClick={onOpenMoisture}>Open Moisture</button>}
+            {result && <button type="button" className={styles.secondaryButton} onClick={onOpenTdr}>Open TDR</button>}
           </div>
-          <p className={styles.fileNote}>{fileName} · Re-importing the same readings is safe; duplicates are skipped.</p>
+          <p className={styles.fileNote}>{fileName} · Approved rows populate both tabs. Re-importing the same readings is safe; duplicates are skipped.</p>
         </>
       )}
     </section>
