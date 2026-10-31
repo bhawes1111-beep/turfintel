@@ -64,6 +64,17 @@ test('separate date and time columns work and no-fix readings require review', (
   assert.equal(parsed.rows[1].record.green, '')
 })
 
+test('multiple CSV reading dates remain distinct', () => {
+  const point = inside('Green 1')
+  const csv = [
+    'Date,Time,VWC%,Latitude,Longitude,Fix',
+    `10/30/2026,09:42:12,27.1,${point.lat},${point.lon},1`,
+    `10/31/2026,09:43:12,28.1,${point.lat},${point.lon},1`,
+  ].join('\n')
+  const parsed = parseTdrCsv(csv, '19522.csv', greens)
+  assert.deepEqual(parsed.rows.map(row => row.record.date), ['2026-10-30', '2026-10-31'])
+})
+
 test('points outside mapped greens are not forced into a green', () => {
   const parsed = parseTdrCsv(
     'Time,VWC%,Latitude,Longitude\n10/31/2026 12:05:00,25.0,32.0000,-81.0000',

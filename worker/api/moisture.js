@@ -78,7 +78,7 @@ export async function listMoisture(env, courseId, opts = {}) {
     }
   }
   const whereClause = sets.length > 0 ? `WHERE ${sets.join(' AND ')}` : ''
-  const limit = Math.min(Math.max(parseInt(opts.limit, 10) || 200, 1), 1000)
+  const limit = Math.min(Math.max(parseInt(opts.limit, 10) || 200, 1), 5000)
   const { results } = await env.DB.prepare(
     `SELECT * FROM moisture_observations ${whereClause}
      ORDER BY datetime(observed_at) DESC LIMIT ${limit}`,

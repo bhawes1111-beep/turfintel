@@ -300,15 +300,23 @@ function TdrCsvImporter({ features, boundaryError, canEdit, onOpenMap }) {
     () => [...new Set((parsed?.rows ?? []).map(row => row.record?.date).filter(Boolean))].sort().reverse(),
     [parsed],
   )
+  const indexedRows = useMemo(
+    () => (parsed?.rows ?? []).map((row, index) => ({ ...row, index })),
+    [parsed],
+  )
   const scopedRows = useMemo(
-    () => (parsed?.rows ?? []).map((row, index) => ({ ...row, index })).filter(row => (
+    () => indexedRows.filter(row => (
       !dateFilter || row.record?.date === dateFilter
     )),
-    [dateFilter, parsed],
+    [dateFilter, indexedRows],
   )
   const readyRows = useMemo(
     () => scopedRows.filter(row => row.record?.green && row.record?.vwc != null && localTimestamp(row.record.date, row.record.time)),
     [scopedRows],
+  )
+  const importableRows = useMemo(
+    () => indexedRows.filter(row => row.record?.green && row.record?.vwc != null && localTimestamp(row.record.date, row.record.time)),
+    [indexedRows],
   )
   const reviewCount = scopedRows.filter(row => row.record && !row.record.green).length
   const invalidCount = scopedRows.filter(row => !row.record).length
@@ -334,7 +342,7 @@ function TdrCsvImporter({ features, boundaryError, canEdit, onOpenMap }) {
       const nextDates = [...new Set(next.rows.map(row => row.record?.date).filter(Boolean))].sort().reverse()
       setDateFilter(nextDates[0] || '')
       setRowFilter('all')
-      setMessage(`${next.rows.length.toLocaleString()} meter readings detected. Review green assignments before importing.`)
+      setMessage(`${next.rows.length.toLocaleString()} meter readings across ${nextDates.length.toLocaleString()} date${nextDates.length === 1 ? '' : 's'} detected. Review green assignments before importing.`)
     } catch (error) {
       setMessage(`Import preview failed: ${error.message}`)
     } finally {
@@ -355,12 +363,13 @@ function TdrCsvImporter({ features, boundaryError, canEdit, onOpenMap }) {
   }
 
   async function approveImport() {
-    if (!readyRows.length || busy) return
+    if (!importableRows.length || busy) return
+    const importDateCount = new Set(importableRows.map(row => row.record.date)).size
     setBusy(true)
     setResult(null)
-    setMessage(`Importing ${readyRows.length.toLocaleString()} reviewed readings...`)
+    setMessage(`Importing ${importableRows.length.toLocaleString()} reviewed readings across all dates...`)
     try {
-      const readings = readyRows.map(({ record }) => ({
+      const readings = importableRows.map(({ record }) => ({
         clientId: `tdr-usb:${record.importKey}`,
         observedAt: localTimestamp(record.date, record.time),
         observedBy: user?.name || user?.displayName || user?.email || null,
@@ -372,7 +381,7 @@ function TdrCsvImporter({ features, boundaryError, canEdit, onOpenMap }) {
       }))
       const summary = await importMoistureReadings(readings)
       setResult(summary)
-      setMessage(`Imported ${summary.inserted.toLocaleString()} new readings. ${summary.skipped.toLocaleString()} duplicates were safely skipped.`)
+      setMessage(`Imported ${summary.inserted.toLocaleString()} new readings across ${importDateCount.toLocaleString()} date${importDateCount === 1 ? '' : 's'}. ${summary.skipped.toLocaleString()} duplicates were safely skipped.`)
     } catch (error) {
       setMessage(`Import failed: ${error.message}`)
     } finally {
@@ -405,8 +414,9 @@ function TdrCsvImporter({ features, boundaryError, canEdit, onOpenMap }) {
         <>
           <div className={styles.importControls}>
             <label>
-              Import date
+              Review date
               <select value={dateFilter} onChange={event => setDateFilter(event.target.value)}>
+                <option value="">All dates ({dates.length})</option>
                 {dates.map(date => <option key={date} value={date}>{formatDate(date)}</option>)}
               </select>
             </label>
@@ -420,10 +430,13 @@ function TdrCsvImporter({ features, boundaryError, canEdit, onOpenMap }) {
               </select>
             </label>
           </div>
+          <p className={styles.dateScopeNote}>
+            This date only filters the review list. Approve imports all {importableRows.length.toLocaleString()} ready readings across every date in the CSV.
+          </p>
 
           <div className={styles.importStats}>
-            <div><strong>{scopedRows.length.toLocaleString()}</strong><span>Rows</span></div>
-            <div><strong>{readyRows.length.toLocaleString()}</strong><span>Ready</span></div>
+            <div><strong>{scopedRows.length.toLocaleString()}</strong><span>Rows shown</span></div>
+            <div><strong>{readyRows.length.toLocaleString()}</strong><span>Ready shown</span></div>
             <div><strong>{reviewCount.toLocaleString()}</strong><span>Needs review</span></div>
             <div><strong>{invalidCount.toLocaleString()}</strong><span>Invalid</span></div>
           </div>
@@ -462,8 +475,8 @@ function TdrCsvImporter({ features, boundaryError, canEdit, onOpenMap }) {
           )}
 
           <div className={styles.importActions}>
-            <button type="button" className={styles.approveButton} onClick={approveImport} disabled={busy || readyRows.length === 0 || !!result}>
-              {busy ? 'Importing...' : `Approve & Import ${readyRows.length.toLocaleString()}`}
+            <button type="button" className={styles.approveButton} onClick={approveImport} disabled={busy || importableRows.length === 0 || !!result}>
+              {busy ? 'Importing...' : `Approve & Import All ${importableRows.length.toLocaleString()}`}
             </button>
             <button type="button" className={styles.secondaryButton} onClick={() => { setParsed(null); setResult(null); setMessage('Preview discarded. No readings were changed.') }} disabled={busy}>
               Discard preview

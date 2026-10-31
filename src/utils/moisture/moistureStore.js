@@ -15,7 +15,7 @@ import { uploadAttachment, deleteAttachment } from '../attachments/attachmentsSt
 import { bridgeToast } from '../feedback/toastBridge'
 
 const API = '/api/moisture'
-const RECENT_MOISTURE_QUERY = { days: 14, limit: 1000 }
+const RECENT_MOISTURE_QUERY = { days: 14, limit: 5000 }
 
 let state = {
   observations: [],   // newest first
@@ -142,7 +142,7 @@ export async function importMoistureReadings(readings, options = {}) {
     summary.skipped += Number(result.skipped) || 0
   }
 
-  await refreshMoisture({ days: 365, limit: 1000 })
+  await refreshMoisture({ days: 365, limit: 5000 })
   return summary
 }
 
