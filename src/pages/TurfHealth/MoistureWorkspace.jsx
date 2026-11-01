@@ -98,19 +98,24 @@ function hexChannels(color) {
 }
 
 function interpolatedScaleColor(value, scale) {
-  if (value <= scale.points[0]) return hexChannels(scale.colors[0])
-  const lastIndex = scale.points.length - 1
-  if (value >= scale.points[lastIndex]) return hexChannels(scale.colors[lastIndex])
-  for (let index = 1; index < scale.points.length; index += 1) {
-    if (value > scale.points[index]) continue
-    const lowerValue = scale.points[index - 1]
-    const upperValue = scale.points[index]
-    const ratio = (value - lowerValue) / (upperValue - lowerValue)
-    const lower = hexChannels(scale.colors[index - 1])
-    const upper = hexChannels(scale.colors[index])
+  const stops = scale.points
+    .map((point, index) => ({ point: Number(point), color: scale.colors[index] }))
+    .filter(stop => Number.isFinite(stop.point))
+    .sort((left, right) => left.point - right.point)
+  if (stops.length === 0) return hexChannels(scale.colors[0])
+  if (value <= stops[0].point) return hexChannels(stops[0].color)
+  const lastIndex = stops.length - 1
+  if (value >= stops[lastIndex].point) return hexChannels(stops[lastIndex].color)
+  for (let index = 1; index < stops.length; index += 1) {
+    if (value > stops[index].point) continue
+    const lowerValue = stops[index - 1].point
+    const upperValue = stops[index].point
+    const ratio = upperValue === lowerValue ? 1 : (value - lowerValue) / (upperValue - lowerValue)
+    const lower = hexChannels(stops[index - 1].color)
+    const upper = hexChannels(stops[index].color)
     return lower.map((channel, channelIndex) => Math.round(channel + (upper[channelIndex] - channel) * ratio))
   }
-  return hexChannels(scale.colors[lastIndex])
+  return hexChannels(stops[lastIndex].color)
 }
 
 function createInterpolatedSurface(sampleSignature, polygonSignature, scaleSignature) {
@@ -356,13 +361,40 @@ export function TdrCsvImportWorkspace({ canEdit, onOpenMoisture, onOpenTdr }) {
   )
 }
 
-function SixPointScaleEditor({ title, unit, labels, scale, step, onChange, onReset }) {
-  function updatePoint(index, value) {
-    const numeric = Number(value)
-    if (!Number.isFinite(numeric)) return
-    const previous = index === 0 ? -Infinity : scale.points[index - 1]
-    const next = index === scale.points.length - 1 ? Infinity : scale.points[index + 1]
-    if (numeric <= previous || numeric >= next) return
+function SetpointInput({ label, value, onCommit }) {
+  const [draft, setDraft] = useState(String(value))
+
+  function commit(nextValue) {
+    if (nextValue === '') {
+      setDraft(String(value))
+      return
+    }
+    const numeric = Number(nextValue)
+    if (!Number.isFinite(numeric)) {
+      setDraft(String(value))
+      return
+    }
+    onCommit(numeric)
+  }
+
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      value={draft}
+      aria-label={`${label} setpoint`}
+      onFocus={event => event.target.select()}
+      onChange={event => setDraft(event.target.value)}
+      onKeyDown={event => {
+        if (event.key === 'Enter') event.currentTarget.blur()
+      }}
+      onBlur={event => commit(event.target.value.trim())}
+    />
+  )
+}
+
+function SixPointScaleEditor({ title, unit, labels, scale, onChange, onReset }) {
+  function updatePoint(index, numeric) {
     const points = [...scale.points]
     points[index] = numeric
     onChange({ ...scale, points })
@@ -397,14 +429,11 @@ function SixPointScaleEditor({ title, unit, labels, scale, step, onChange, onRes
             </label>
             <label className={styles.breakpointLabel}>
               Setpoint
-              <input
-                type="number"
-                inputMode="decimal"
-                step={step}
+              <SetpointInput
+                key={`${label}-${scale.points[index]}`}
+                label={label}
                 value={scale.points[index]}
-                min={index === 0 ? undefined : scale.points[index - 1] + step}
-                max={index === scale.points.length - 1 ? undefined : scale.points[index + 1] - step}
-                onChange={event => updatePoint(index, event.target.value)}
+                onCommit={numeric => updatePoint(index, numeric)}
               />
               <span>{unit}</span>
             </label>
@@ -420,7 +449,6 @@ export function MoistureMapSettingsWorkspace() {
   const { settings, updateScale, resetScale, resetSettings } = useMoistureDisplaySettings()
   const metric = TDR_METRICS.find(item => item.id === selectedMetricId) ?? TDR_METRICS[0]
   const tdrScale = settings.tdr[metric.id]
-  const step = metric.precision === 0 ? 1 : metric.precision === 1 ? .1 : .01
 
   return (
     <div className={styles.settingsWorkspace}>
@@ -437,7 +465,6 @@ export function MoistureMapSettingsWorkspace() {
         unit="%"
         labels={MOISTURE_ZONE_LABELS}
         scale={settings.moisture}
-        step={.1}
         onChange={scale => updateScale('moisture', null, scale)}
         onReset={() => resetScale('moisture')}
       />
@@ -450,11 +477,11 @@ export function MoistureMapSettingsWorkspace() {
           </select>
         </label>
         <SixPointScaleEditor
+          key={`tdr-${metric.id}`}
           title={metric.label}
           unit={metric.unit}
           labels={TDR_ZONE_LABELS}
           scale={tdrScale}
-          step={step}
           onChange={scale => updateScale('tdr', metric.id, scale)}
           onReset={() => resetScale('tdr', metric.id)}
         />

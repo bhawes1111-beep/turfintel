@@ -250,9 +250,17 @@ test('moisture and TDR display settings support six validated zones while preser
   assert.deepEqual(expanded.moisture.points, [10, 20, 25, 30, 40, 50])
   assert.deepEqual(expanded.moisture.colors, ['#111111', '#222222', '#d5b84b', '#333333', '#444444', '#555555'])
 
+  const unrestricted = normalizeMoistureDisplaySettings({
+    moisture: {
+      points: [40, -5.5, 100, 0, 100, 12.34],
+      colors: ['#111111', '#222222', '#333333', '#444444', '#555555', '#666666'],
+    },
+  })
+  assert.deepEqual(unrestricted.moisture.points, [40, -5.5, 100, 0, 100, 12.34])
+
   const normalized = normalizeMoistureDisplaySettings({
     moisture: {
-      points: [30, 20, 10, 5, 1],
+      points: [30, 20, 'not-a-number', 10, 5, 1],
       colors: ['orange'],
     },
   })
@@ -306,6 +314,11 @@ test('TDR workspace stores diagnostics and exposes smooth interactive maps', asy
   assert.match(workspace, /sort\(\(left, right\) => compareGreenNames\(left\.green, right\.green\)\)/)
   assert.match(workspace, /summaryTileStyle\(colorForSixPointValue\(summary\.average, scale\)\)/)
   assert.match(workspace, /function SixPointScaleEditor/)
+  assert.match(workspace, /function SetpointInput/)
+  assert.match(workspace, /type="text"[\s\S]*inputMode="decimal"/)
+  assert.match(workspace, /onChange=\{event => setDraft\(event\.target\.value\)\}/)
+  assert.match(workspace, /event\.key === 'Enter'[\s\S]*event\.currentTarget\.blur\(\)/)
+  assert.doesNotMatch(workspace, /scale\.points\[index - 1\] \+ step|scale\.points\[index \+ 1\] - step/)
   assert.match(workspace, /SIX-POINT SCALE/)
   assert.match(workspaceStyles, /\.scaleRows\s*\{[\s\S]*repeat\(6/)
   assert.match(workspace, /Pinpoint Map/)

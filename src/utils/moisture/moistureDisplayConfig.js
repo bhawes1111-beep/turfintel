@@ -37,7 +37,6 @@ function cloneScale(scale) {
 function validPoints(candidatePoints, expectedLength) {
   return candidatePoints.length === expectedLength
     && candidatePoints.every(Number.isFinite)
-    && candidatePoints.every((point, index) => index === 0 || point > candidatePoints[index - 1])
 }
 
 function normalizedColor(color, fallback) {
