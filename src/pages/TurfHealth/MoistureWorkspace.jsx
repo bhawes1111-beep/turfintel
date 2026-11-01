@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import {
+  downloadConsolidatedMoistureCsv,
   importMoistureReadings,
   useMoistureData,
 } from '../../utils/moisture/moistureStore'
@@ -1021,6 +1022,7 @@ function TdrCsvImporter({ features, boundaryError, canEdit, onOpenMoisture, onOp
   const [rowFilter, setRowFilter] = useState('all')
   const [message, setMessage] = useState('Choose a Spectrum TDR 350 CSV to begin.')
   const [busy, setBusy] = useState(false)
+  const [exportBusy, setExportBusy] = useState(false)
   const [result, setResult] = useState(null)
 
   const greenNames = useMemo(
@@ -1130,6 +1132,20 @@ function TdrCsvImporter({ features, boundaryError, canEdit, onOpenMoisture, onOp
     }
   }
 
+  async function exportConsolidatedCsv() {
+    if (exportBusy) return
+    setExportBusy(true)
+    setMessage('Preparing the consolidated moisture and TDR export...')
+    try {
+      const exported = await downloadConsolidatedMoistureCsv()
+      setMessage(`Exported ${exported.rows.toLocaleString()} saved readings to ${exported.filename}.`)
+    } catch (error) {
+      setMessage(`Export failed: ${error.message}`)
+    } finally {
+      setExportBusy(false)
+    }
+  }
+
   if (!canEdit) {
     return <div className={styles.empty}>You have read-only access to moisture records. A manager can import TDR files.</div>
   }
@@ -1142,9 +1158,14 @@ function TdrCsvImporter({ features, boundaryError, canEdit, onOpenMoisture, onOp
           <h3>Import moisture and TDR readings</h3>
           <p>Upload once, review green assignments, then approve the shared samples for both Moisture and TDR.</p>
         </div>
-        <button type="button" className={styles.uploadButton} onClick={() => fileInput.current?.click()} disabled={!features.length || busy}>
-          Choose CSV
-        </button>
+        <div className={styles.importHeaderActions}>
+          <button type="button" className={styles.secondaryButton} onClick={exportConsolidatedCsv} disabled={busy || exportBusy}>
+            {exportBusy ? 'Preparing...' : 'Export Consolidated CSV'}
+          </button>
+          <button type="button" className={styles.uploadButton} onClick={() => fileInput.current?.click()} disabled={!features.length || busy || exportBusy}>
+            Choose CSV
+          </button>
+        </div>
         <input ref={fileInput} type="file" accept=".csv,text/csv" onChange={handleFile} hidden />
       </div>
 

@@ -9,7 +9,7 @@ import {
   greenAerialFilename,
   groupGreenNames,
 } from '../src/utils/moisture/greenMaps.js'
-import { importMoisture } from '../worker/api/moisture.js'
+import { exportMoistureCsv, importMoisture } from '../worker/api/moisture.js'
 import {
   colorForSixPointValue,
   DEFAULT_MOISTURE_DISPLAY_SETTINGS,
@@ -210,6 +210,44 @@ test('imports reject unassigned readings before writing', async () => {
   assert.equal(batchCalled, false)
 })
 
+test('consolidated export is course scoped and includes moisture plus TDR fields', async () => {
+  let preparedSql = ''
+  let boundArgs = []
+  const env = {
+    DB: {
+      prepare(sql) {
+        preparedSql = sql
+        return {
+          bind(...args) {
+            boundArgs = args
+            return {
+              async all() {
+                return { results: [{
+                  id: 'moist-1', course_id: 'course-test', observed_at: '2026-10-31T13:00:00.000Z',
+                  location: 'Green 1', moisture_pct: 24.5, bulk_ec: 0.12, soil_temp_c: 20,
+                  ir_temp_c: 22, tdr_period_us: 2559, satellite_total: 10, gps_hdop: 0.8,
+                  gps_fix: '1', lat: 32.1, lng: -81.2, notes: 'Front, near "ridge"',
+                  wilt_stress: 0, dry_spot: 1, handwater_rec: 1, syringe_rec: 0,
+                }] }
+              },
+            }
+          },
+        }
+      },
+    },
+  }
+  const response = await exportMoistureCsv(env, 'course-test')
+  const csv = await response.text()
+  assert.equal(response.status, 200)
+  assert.match(response.headers.get('Content-Type'), /text\/csv/)
+  assert.equal(response.headers.get('X-TurfIntel-Row-Count'), '1')
+  assert.match(preparedSql, /WHERE course_id = \?/)
+  assert.deepEqual(boundArgs, ['course-test'])
+  assert.match(csv, /Moisture VWC \(%\),Bulk EC \(mS\/cm\),Soil Temperature \(C\),Soil Temperature \(F\)/)
+  assert.match(csv, /24\.5,0\.12,20,68,22,71\.6,2559,10,0\.8/)
+  assert.match(csv, /"Front, near ""ridge"""/)
+})
+
 test('green menus are course grouped and naturally ordered', () => {
   const unordered = ['Par 3 Green 9', 'Green 10', 'Small Practice Green', 'Green 2', 'Par 3 Green 1', 'Practice Green']
   assert.deepEqual([...unordered].sort(compareGreenNames), [
@@ -348,6 +386,8 @@ test('TDR workspace stores diagnostics and exposes smooth interactive maps', asy
   assert.match(tdrMetrics, /id: 'bulkEc'/)
   assert.match(tdrMetrics, /id: 'soilTempC'/)
   assert.match(workspace, /Approved rows populate both tabs/)
+  assert.match(workspace, /Export Consolidated CSV/)
+  assert.match(workspace, /downloadConsolidatedMoistureCsv/)
   assert.match(workspace, /onClick=\{onOpenMoisture\}>Open Moisture/)
   assert.match(workspace, /onClick=\{onOpenTdr\}>Open TDR/)
   assert.match(greenMaps, /function mercatorPoint/)
@@ -356,5 +396,7 @@ test('TDR workspace stores diagnostics and exposes smooth interactive maps', asy
   assert.match(workspace, /<image href=\{satellite\.url\}/)
   assert.match(workspace, /greenAerialFilename/)
   assert.match(workspace, /GREEN_AERIAL_VERSION/)
+  assert.match(worker, /pathname === '\/api\/moisture\/export'/)
+  assert.match(worker, /exportMoistureCsv\(env, courseId\)/)
   assert.doesNotMatch(worker, /pathname === '\/api\/maps\/satellite'/)
 })

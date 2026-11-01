@@ -18,6 +18,17 @@ function num(v) {
 }
 function bit(v) { return v ? 1 : 0 }
 
+function csvValue(value) {
+  if (value === null || value === undefined) return ''
+  const text = String(value)
+  return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text
+}
+
+function fahrenheit(celsius) {
+  const value = num(celsius)
+  return value === null ? null : Number((value * 9 / 5 + 32).toFixed(1))
+}
+
 function rowToObs(row) {
   if (!row) return null
   return {
@@ -94,6 +105,64 @@ export async function listMoisture(env, courseId, opts = {}) {
      ORDER BY datetime(observed_at) DESC LIMIT ${limit}`,
   ).bind(...all).all()
   return json((results ?? []).map(rowToObs))
+}
+
+export async function exportMoistureCsv(env, courseId) {
+  if (!env.DB) return json({ error: 'D1 not configured' }, 503)
+  const { where, binds } = buildCourseFilter(courseId)
+  const { results } = await env.DB.prepare(
+    `SELECT * FROM moisture_observations ${where}
+     ORDER BY datetime(observed_at) ASC, location ASC, id ASC`,
+  ).bind(...binds).all()
+
+  const columns = [
+    ['Record ID', row => row.id],
+    ['Course ID', row => row.course_id],
+    ['Observed At (ISO)', row => row.observed_at],
+    ['Reading Date', row => String(row.observed_at || '').slice(0, 10)],
+    ['Reading Time', row => String(row.observed_at || '').slice(11, 19)],
+    ['Green / Location', row => row.location],
+    ['Hole', row => row.hole],
+    ['Moisture VWC (%)', row => row.moisture_pct],
+    ['Bulk EC (mS/cm)', row => row.bulk_ec],
+    ['Soil Temperature (C)', row => row.soil_temp_c],
+    ['Soil Temperature (F)', row => fahrenheit(row.soil_temp_c)],
+    ['IR Temperature (C)', row => row.ir_temp_c],
+    ['IR Temperature (F)', row => fahrenheit(row.ir_temp_c)],
+    ['TDR Period (us)', row => row.tdr_period_us],
+    ['Satellites', row => row.satellite_total],
+    ['GPS HDOP', row => row.gps_hdop],
+    ['GPS Fix', row => row.gps_fix],
+    ['Latitude', row => row.lat],
+    ['Longitude', row => row.lng],
+    ['GPS Accuracy (m)', row => row.gps_accuracy],
+    ['Rod Length', row => row.rod_length],
+    ['Soil Type', row => row.soil_type],
+    ['Meter ID', row => row.meter_id],
+    ['Observed By', row => row.observed_by],
+    ['Surface Note', row => row.surface_note],
+    ['Wilt Stress', row => row.wilt_stress === 1 ? 'Yes' : 'No'],
+    ['Dry Spot', row => row.dry_spot === 1 ? 'Yes' : 'No'],
+    ['Handwater Recommended', row => row.handwater_rec === 1 ? 'Yes' : 'No'],
+    ['Syringe Recommended', row => row.syringe_rec === 1 ? 'Yes' : 'No'],
+    ['Notes', row => row.notes],
+    ['Client ID', row => row.client_id],
+    ['Client Observed At', row => row.client_observed_at],
+    ['Created At', row => row.created_at],
+  ]
+  const lines = [
+    columns.map(([heading]) => csvValue(heading)).join(','),
+    ...(results ?? []).map(row => columns.map(([, read]) => csvValue(read(row))).join(',')),
+  ]
+  const filename = `turfintel-moisture-tdr-consolidated-${new Date().toISOString().slice(0, 10)}.csv`
+  return new Response(`\uFEFF${lines.join('\r\n')}\r\n`, {
+    headers: {
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Cache-Control': 'no-store',
+      'X-TurfIntel-Row-Count': String(results?.length ?? 0),
+    },
+  })
 }
 
 export async function getMoisture(env, id) {

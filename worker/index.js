@@ -255,6 +255,7 @@ import {
 } from './api/waterBalance.js'
 import {
   listMoisture,
+  exportMoistureCsv,
   getMoisture,
   createMoisture,
   importMoisture,
@@ -793,6 +794,10 @@ async function handleApi(request, env, url, ctx) {
 
   if (pathname === '/api/moisture/import') {
     if (method === 'POST') return importMoisture(env, request)
+  }
+
+  if (pathname === '/api/moisture/export') {
+    if (method === 'GET') return exportMoistureCsv(env, courseId)
   }
 
   // ── /api/moisture/:id ─────────────────────────────────────────────────

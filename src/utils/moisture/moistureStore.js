@@ -146,6 +146,27 @@ export async function importMoistureReadings(readings, options = {}) {
   return summary
 }
 
+export async function downloadConsolidatedMoistureCsv() {
+  const response = await fetch(withCourseScope(`${API}/export`), { credentials: 'same-origin' })
+  if (!response.ok) {
+    const text = await response.text().catch(() => '')
+    throw new Error(`Export failed (${response.status})${text ? `: ${text}` : ''}`)
+  }
+  const disposition = response.headers.get('Content-Disposition') || ''
+  const filename = disposition.match(/filename="?([^";]+)"?/i)?.[1]
+    || `turfintel-moisture-tdr-consolidated-${new Date().toLocaleDateString('en-CA')}.csv`
+  const blob = await response.blob()
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = filename
+  document.body.appendChild(anchor)
+  anchor.click()
+  anchor.remove()
+  URL.revokeObjectURL(url)
+  return { filename, rows: Number(response.headers.get('X-TurfIntel-Row-Count')) || 0 }
+}
+
 // ── Phase 7A.1: capture-flow wrapper ────────────────────────────────────────
 //
 // Splits the user action ("tap Save") from the network round-trip. Inserts an

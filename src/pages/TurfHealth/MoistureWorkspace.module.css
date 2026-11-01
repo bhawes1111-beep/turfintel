@@ -712,6 +712,14 @@
   padding: 18px;
 }
 
+.importHeaderActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .uploadButton,
 .approveButton,
 .secondaryButton {
@@ -867,7 +875,9 @@
   .tdrIntro { align-items: flex-start; flex-direction: column; }
   .tdrIntro > span { max-width: none; text-align: left; }
   .importHeader { align-items: stretch; flex-direction: column; }
-  .uploadButton { width: 100%; }
+  .importHeaderActions { align-items: stretch; flex-direction: column; }
+  .importHeaderActions .uploadButton,
+  .importHeaderActions .secondaryButton { width: 100%; }
   .importStats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .reviewRow { grid-template-columns: 1fr; }
   .greenSummary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
