@@ -27,7 +27,11 @@ import { useEmployeeSchedulesData } from '../../../utils/schedules/schedulesStor
 // merges overrides over the recurring grid so an operator marked off
 // today never appears as an assignable row, even if their Wednesday
 // recurring rule says "scheduled".
-import { useScheduleOverridesData } from '../../../utils/schedules/scheduleOverridesStore'
+import {
+  useScheduleOverridesData,
+  createScheduleOverride,
+  patchScheduleOverride,
+} from '../../../utils/schedules/scheduleOverridesStore'
 // Phase E.4 — shared daily schedule merge helpers used by both the
 // DAB and the kiosk. Single source of truth for "override wins over
 // recurring, fall back to all-active when nothing is configured".
@@ -83,6 +87,14 @@ const ASSIGNMENT_STATUS_LABELS = {
   'weather-delay': 'Weather Delay',
   complete:      'Complete',
 }
+
+const AVAILABILITY_OPTIONS = [
+  { value: 'scheduled', label: 'Scheduled' },
+  { value: 'off',       label: 'Off' },
+  { value: 'vacation',  label: 'Vacation' },
+  { value: 'sick',      label: 'Sick' },
+]
+const AVAILABILITY_VALUES = new Set(AVAILABILITY_OPTIONS.map(option => option.value))
 
 // Phase DAB.10b — Ordinal labels for additional jobs. Index 1 = "2nd
 // Job" (the primary/1st job in the main row gets no label to keep
@@ -398,6 +410,7 @@ export default function DailyAssignmentBoard({
   // Server-side endpoint already enforces canSystemSettings (9C.5c3b),
   // so this client gate is convenience UX, not the authority.
   const { can, user } = useAuth()
+  const canEditAssignments = can('canEditAssignments')
   const canTranslate = can('canSystemSettings')
   const [translating, setTranslating] = useState(false)
 
@@ -567,14 +580,9 @@ export default function DailyAssignmentBoard({
       }))
   }, [activeTaskTemplates, taskCategoryMeta])
 
-  // Scheduled employees (Phase 13):
-  //   - If the employee_schedules table has any rows for this course,
-  //     the board surfaces employees whose recurring schedule for the
-  //     selected day-of-week is status='scheduled'.
-  //   - If the table is empty, fall back to every active employee so
-  //     morning assignment still works on day one.
-  // status='off' / 'vacation' / 'sick' rows are intentionally excluded
-  // from the day's roster — those employees aren't working that day.
+  // Keep every non-inactive employee visible, including crew marked off,
+  // sick, or on vacation. Availability is edited inline below and saved
+  // through the same per-date override used by the Schedule tab.
   const selectedDow = useMemo(() => {
     return new Date(`${selectedDate}T00:00:00`).getDay()
   }, [selectedDate])
@@ -597,6 +605,11 @@ export default function DailyAssignmentBoard({
   // exists) should ALSO honor the override. So fallback now requires
   // BOTH stores empty.
   const usingScheduleFallback = weeklySchedules.length === 0 && scheduleOverrides.length === 0
+
+  const scheduleByEmpForDate = useMemo(
+    () => buildScheduleByEmployeeForDate(selectedDate, weeklySchedules, scheduleOverrides),
+    [selectedDate, weeklySchedules, scheduleOverrides],
+  )
 
   // Index: scheduleRoleByEmpId for selectedDow. Lets the row render
   // surface a per-day operational role (e.g. "Spray Tech") that
@@ -622,58 +635,10 @@ export default function DailyAssignmentBoard({
   }, [weeklySchedules, scheduleOverrides, selectedDow, selectedDate])
 
   const dayEmployees = useMemo(() => {
-    if (usingScheduleFallback) {
-      return employees
-        .filter(e => e.status === 'active' || e.status === 'on-leave')
-        .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
-    }
-    // Phase E.2 — Merge rule: an override row for selectedDate ALWAYS
-    // wins. An employee is "scheduled today" when:
-    //   • override.status === 'scheduled', OR
-    //   • no override AND recurring.status === 'scheduled'.
-    // Off / sick / vacation (from either source) suppress the row from
-    // the assignable roster. Existing crew_assignments are NOT deleted
-    // here — they keep displaying via the assignment table render path
-    // until a supervisor explicitly clears them. This phase only gates
-    // who appears as a NEW assignable row.
-    //
-    // Phase E.4 — Widen this list to ALSO include off/sick/vacation
-    // employees who STILL have a crew_assignment row for selectedDate.
-    // The row renders with a conflict pill so the supervisor sees the
-    // mismatch and can clear it. Without this widening, an assigned-
-    // then-marked-off employee would silently disappear from the board
-    // while their assignment row remained in D1 — confusing.
-    const recurringScheduledIds = new Set(
-      weeklySchedules
-        .filter(s => s.dayOfWeek === selectedDow && s.status === 'scheduled')
-        .map(s => s.employeeId),
-    )
-    const assignedEmpIds = new Set()
-    for (const a of crewAssignments) {
-      if (a.status === 'cancelled') continue
-      if (!dayEventIds.has(a.calendarEventId)) continue
-      if (a.employeeId) assignedEmpIds.add(a.employeeId)
-    }
     return employees
       .filter(e => e.status !== 'inactive')
-      .filter(e => {
-        // Assignable path — Phase E.2.
-        const ov = overridesByEmpForDate.get(e.id)
-        if (ov) {
-          if (ov.status === 'scheduled') return true
-          // Conflict path — Phase E.4. Keep the row visible so the
-          // supervisor can see and clear it.
-          return assignedEmpIds.has(e.id)
-        }
-        if (recurringScheduledIds.has(e.id)) return true
-        // No override + not on the recurring scheduled list. If they
-        // have an active assignment anyway (e.g. unscheduled employee
-        // pulled in by an earlier Copy Yesterday), show the row so it
-        // can be cleared. Otherwise hide.
-        return assignedEmpIds.has(e.id)
-      })
       .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
-  }, [employees, weeklySchedules, overridesByEmpForDate, selectedDow, usingScheduleFallback, crewAssignments, dayEventIds])
+  }, [employees])
 
   // Phase E.4 — Per-employee conflict reason for selectedDate. NULL
   // when the employee is genuinely scheduled (assignable path); set
@@ -683,19 +648,34 @@ export default function DailyAssignmentBoard({
   const conflictByEmpId = useMemo(() => {
     const m = new Map()
     if (usingScheduleFallback) return m
-    const scheduleByEmp = buildScheduleByEmployeeForDate(selectedDate, weeklySchedules, scheduleOverrides)
     for (const e of employees) {
       if (e.status === 'inactive') continue
-      const merged = scheduleByEmp.get(e.id)
-      if (!merged) {
-        m.set(e.id, 'unscheduled')
-        continue
-      }
+      const merged = scheduleByEmpForDate.get(e.id)
+      if (!merged) continue
       if (merged.status === 'scheduled') continue
       m.set(e.id, merged.status)   // 'off' | 'sick' | 'vacation'
     }
     return m
-  }, [employees, weeklySchedules, scheduleOverrides, selectedDate, usingScheduleFallback])
+  }, [employees, scheduleByEmpForDate, usingScheduleFallback])
+
+  const availabilityByEmpId = useMemo(() => {
+    const m = new Map()
+    for (const employee of dayEmployees) {
+      const mergedStatus = scheduleByEmpForDate.get(employee.id)?.status
+      m.set(employee.id, AVAILABILITY_VALUES.has(mergedStatus) ? mergedStatus : 'scheduled')
+    }
+    return m
+  }, [dayEmployees, scheduleByEmpForDate])
+
+  const availabilitySummary = useMemo(() => {
+    let scheduled = 0
+    let away = 0
+    for (const employee of dayEmployees) {
+      if (availabilityByEmpId.get(employee.id) === 'scheduled') scheduled += 1
+      else away += 1
+    }
+    return { scheduled, away }
+  }, [dayEmployees, availabilityByEmpId])
 
   // Index: which crew_assignment row this employee currently holds on
   // selectedDate. We only consider assignments tied to one of today's
@@ -797,11 +777,15 @@ export default function DailyAssignmentBoard({
 
     return {
       assigned:   assignedEmps.size,
-      unassigned: Math.max(0, dayEmployees.length - assignedEmps.size),
+      unassigned: dayEmployees.filter(employee => (
+        availabilityByEmpId.get(employee.id) === 'scheduled'
+        && !assignedEmps.has(employee.id)
+        && !assignedEmps.has(employee.name)
+      )).length,
       linkedEquipment,
       openTasks,
     }
-  }, [crewAssignments, equipmentReservations, dayEventIds, dayEvents, dayEmployees])
+  }, [crewAssignments, equipmentReservations, dayEventIds, dayEvents, dayEmployees, availabilityByEmpId])
 
   // ── Mutations ─────────────────────────────────────────────────────────
   //
@@ -1162,6 +1146,41 @@ export default function DailyAssignmentBoard({
       await patchCrewAssignment(assignment.id, { status: nextStatus })
     } catch (err) {
       toast.error(`Status save failed: ${err.message}`)
+    }
+  }
+
+  async function handleAvailabilityChange(employee, nextStatus) {
+    if (!employee || !AVAILABILITY_VALUES.has(nextStatus)) return
+    const currentStatus = availabilityByEmpId.get(employee.id) ?? 'scheduled'
+    if (currentStatus === nextStatus) return
+
+    const existingOverride = overridesByEmpForDate.get(employee.id)
+    const merged = scheduleByEmpForDate.get(employee.id)
+    setBusyEmpId(employee.id)
+    try {
+      if (existingOverride) {
+        await patchScheduleOverride(existingOverride.id, { status: nextStatus })
+      } else {
+        await createScheduleOverride({
+          employeeId: employee.id,
+          effectiveDate: selectedDate,
+          status: nextStatus,
+          role: merged?.role ?? employee.role ?? null,
+          startTime: merged?.startTime ?? null,
+          endTime: merged?.endTime ?? null,
+          lunchBreakMinutes: merged?.lunchBreakMinutes ?? 30,
+          lunchStartTime: merged?.lunchStartTime ?? null,
+          lunchEndTime: merged?.lunchEndTime ?? null,
+          autoLunchBreak: merged?.autoLunchBreak !== false,
+          notes: merged?.notes ?? null,
+        })
+      }
+      const label = AVAILABILITY_OPTIONS.find(option => option.value === nextStatus)?.label ?? nextStatus
+      toast.success(`${employee.name} marked ${label.toLowerCase()} for ${prettyDate(selectedDate)}`)
+    } catch (err) {
+      toast.error(`Availability save failed: ${err.message}`)
+    } finally {
+      setBusyEmpId(null)
     }
   }
 
@@ -1971,7 +1990,8 @@ export default function DailyAssignmentBoard({
         </div>
       ) : (
         <div className={styles.scheduleNoticeOk}>
-          <strong>Scheduled crew:</strong> {dayEmployees.length} for{' '}
+          <strong>Crew roster:</strong> {availabilitySummary.scheduled} scheduled
+          {availabilitySummary.away > 0 ? ` · ${availabilitySummary.away} away` : ''} for{' '}
           {prettyDate(selectedDate)}. Edit shifts in
           <strong> Employee Management &gt; Schedule</strong>.
         </div>
@@ -2039,6 +2059,7 @@ export default function DailyAssignmentBoard({
             <tr>
               <th>Operator</th>
               <th>Role</th>
+              <th>Availability</th>
               <th>Task</th>
               <th>Equipment</th>
               <th aria-label="Open equipment picker" />
@@ -2064,26 +2085,25 @@ export default function DailyAssignmentBoard({
               const additionalJobs = additionalJobsByEmpId.get(emp.id)
                 ?? additionalJobsByEmpId.get(emp.name)
                 ?? []
-              const colSpan = isCrosswinds ? 7 : 5
-              // Phase E.4 — Conflict pill copy maps the merged schedule
-              // status to a short human-readable label. Renders only
-              // when (a) we're not in fallback mode AND (b) the
-              // employee has a conflict status AND (c) they have an
-              // existing assignment row (otherwise hiding them would
-              // be enough). The pill makes the mismatch visible so the
-              // supervisor can clear the assignment manually.
+              const availabilityStatus = availabilityByEmpId.get(emp.id) ?? 'scheduled'
+              const isAvailable = availabilityStatus === 'scheduled'
+              const colSpan = isCrosswinds ? 8 : 6
+              // If an employee is marked away after work was assigned,
+              // keep the assignment visible and flag the mismatch so a
+              // supervisor can clear it intentionally. Away employees
+              // without assignments still remain visible in the roster.
               const conflictReason = conflictByEmpId.get(emp.id)
               const conflictLabel  = conflictReason && assignment ? ({
                 off:         'Scheduled off today',
                 sick:        'Sick today',
                 vacation:    'Vacation today',
-                unscheduled: 'Not scheduled today',
               })[conflictReason] : null
               return (
                 <Fragment key={emp.id}>
                 <tr
                   data-busy={busyEmpId === emp.id ? 'true' : undefined}
                   data-state={rowState}
+                  data-availability={availabilityStatus}
                   data-conflict={conflictLabel ? conflictReason : undefined}
                 >
                   <td className={styles.cellName}>
@@ -2117,6 +2137,20 @@ export default function DailyAssignmentBoard({
                       )
                     })()}
                   </td>
+                  <td className={styles.availabilityCell}>
+                    <select
+                      className={styles.availabilitySelect}
+                      data-status={availabilityStatus}
+                      value={availabilityStatus}
+                      onChange={event => handleAvailabilityChange(emp, event.target.value)}
+                      disabled={busyEmpId === emp.id || !canEditAssignments}
+                      aria-label={`Availability for ${emp.name}`}
+                    >
+                      {AVAILABILITY_OPTIONS.map(option => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
+                  </td>
                   <td className={`${styles.taskCell} ${styles.taskCellStack}`}>
                     {/* Phase 9C.11 — Unified task-library dropdown.
                         Options come from active task_templates on every
@@ -2137,7 +2171,7 @@ export default function DailyAssignmentBoard({
                           (tmpl.name ?? '').trim().toLowerCase() === t,
                         )?.id ?? ''
                       })()}
-                      disabled={busyEmpId === emp.id || activeTaskTemplates.length === 0}
+                      disabled={!isAvailable || busyEmpId === emp.id || activeTaskTemplates.length === 0}
                       onChange={e => handleQuickTaskChange(emp, e.target.value)}
                     >
                       <option value="">— Unassigned —</option>
@@ -2170,7 +2204,7 @@ export default function DailyAssignmentBoard({
                       <SubJobsEditor
                         assignment={assignment}
                         groups={groupedActiveTaskTemplates}
-                        disabled={busyEmpId === emp.id || activeTaskTemplates.length === 0}
+                        disabled={!isAvailable || busyEmpId === emp.id || activeTaskTemplates.length === 0}
                         onAdd={templateId => handleAddSubJob(emp, assignment, templateId)}
                         onRemove={subJobId => handleRemoveSubJob(emp, assignment, subJobId)}
                         label={`1st job for ${emp.name}`}
@@ -2306,14 +2340,14 @@ export default function DailyAssignmentBoard({
                       className={styles.dabAdditionalJobRow}
                       data-additional-job="true"
                     >
-                      <td className={styles.dabAdditionalJobLabel} colSpan={2}>
+                      <td className={styles.dabAdditionalJobLabel} colSpan={3}>
                         {jobLabel}
                       </td>
                       <td className={`${styles.taskCell} ${styles.taskCellStack} ${styles.dabAdditionalJobTask}`}>
                         <select
                           className={styles.taskSelect}
                           value={templateIdForAssignment(aj)}
-                          disabled={busyEmpId === emp.id || activeTaskTemplates.length === 0}
+                          disabled={!isAvailable || busyEmpId === emp.id || activeTaskTemplates.length === 0}
                           onChange={e => handleAdditionalTaskChange(emp, aj, e.target.value)}
                           aria-label={`${jobLabel} task for ${emp.name}`}
                         >
@@ -2323,7 +2357,7 @@ export default function DailyAssignmentBoard({
                         <SubJobsEditor
                           assignment={aj}
                           groups={groupedActiveTaskTemplates}
-                          disabled={busyEmpId === emp.id || activeTaskTemplates.length === 0}
+                          disabled={!isAvailable || busyEmpId === emp.id || activeTaskTemplates.length === 0}
                           onAdd={templateId => handleAddSubJob(emp, aj, templateId)}
                           onRemove={subJobId => handleRemoveSubJob(emp, aj, subJobId)}
                           label={`${jobLabel} for ${emp.name}`}
@@ -2471,7 +2505,7 @@ export default function DailyAssignmentBoard({
                     otherwise show just the button. Hidden for employees
                     with no primary assignment (assigning a primary is
                     still the existing dropdown in the main row). */}
-                {assignment && (
+                {assignment && isAvailable && (
                   <tr className={styles.dabAddJobRow} data-add-job-row="true">
                     <td colSpan={colSpan} className={styles.dabAddJobCell}>
                       {addingJobForEmpId === emp.id ? (

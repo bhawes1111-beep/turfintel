@@ -686,6 +686,53 @@
   color: rgba(212, 237, 212, 0.7);
 }
 
+.availabilityCell {
+  min-width: 116px;
+}
+
+.availabilitySelect {
+  width: 100%;
+  min-width: 112px;
+  min-height: 34px;
+  padding: 6px 28px 6px 9px;
+  border: 1px solid rgba(74, 158, 74, 0.32);
+  border-radius: 5px;
+  background: rgba(4, 12, 6, 0.9);
+  color: rgba(212, 237, 212, 0.92);
+  font: inherit;
+  font-weight: 650;
+}
+
+.availabilitySelect[data-status="scheduled"] {
+  border-color: rgba(74, 222, 128, 0.42);
+  color: #86efac;
+}
+
+.availabilitySelect[data-status="off"] {
+  border-color: rgba(251, 191, 36, 0.45);
+  color: #fbbf24;
+}
+
+.availabilitySelect[data-status="vacation"] {
+  border-color: rgba(56, 189, 248, 0.45);
+  color: #7dd3fc;
+}
+
+.availabilitySelect[data-status="sick"] {
+  border-color: rgba(239, 68, 68, 0.46);
+  color: #fca5a5;
+}
+
+.availabilitySelect:focus-visible {
+  outline: 2px solid rgba(74, 222, 128, 0.55);
+  outline-offset: 2px;
+}
+
+.availabilitySelect:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
 .cellDept {
   color: rgba(212, 237, 212, 0.45);
   font-size: 11px;
@@ -750,6 +797,9 @@
 .assignTable tbody tr[data-conflict="sick"]     td { background: rgba(239, 68, 68, 0.03); }
 .assignTable tbody tr[data-conflict="vacation"] td { background: rgba(56, 189, 248, 0.03); }
 .assignTable tbody tr[data-conflict="off"]      td { background: rgba(0, 0, 0, 0.06); }
+.assignTable tbody tr[data-availability="sick"]     { border-left-color: rgba(239, 68, 68, 0.62); }
+.assignTable tbody tr[data-availability="vacation"] { border-left-color: rgba(56, 189, 248, 0.62); }
+.assignTable tbody tr[data-availability="off"]      { border-left-color: rgba(251, 191, 36, 0.56); }
 
 /* Task select + clear */
 
@@ -1997,6 +2047,7 @@
     padding: 10px;
   }
   .assignTable td { padding: 4px 0; }
+  .availabilitySelect { min-height: 42px; }
   .taskSelect { min-width: 0; }
   .equipmentRow { grid-template-columns: 1fr; gap: 6px; }
 }
