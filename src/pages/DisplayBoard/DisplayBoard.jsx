@@ -980,7 +980,8 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
             three controls + the E.10 swipe gesture mutate the same
             selectedDate state, so the kiosk stays no-login + side-
             effect-free. */}
-        <nav className={styles.boardMobileActionRow} aria-label="Equipment shortcuts">
+        <nav className={styles.boardMobileActionRow} aria-label="Crew shortcuts">
+          {isCrosswinds && <a href="/iphone-field/?board=1" className={styles.boardMobileActionBtn}>Moisture</a>}
           <Link to="/equipment/board" className={styles.boardMobileActionBtn}>
             Mechanic Board
           </Link>

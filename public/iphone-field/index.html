@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; worker-src 'self'; img-src 'self'; manifest-src 'self'">
+<link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="theme-color" content="#0d1a0d"><title>TurfIntel Field</title><style>
+*{box-sizing:border-box}body{margin:0;background:#fbfaf6;color:#102e20;font:16px Roboto,Arial,sans-serif}
+main{max-width:480px;margin:auto;padding:20px 20px 14px}h1{font-size:clamp(28px,8vw,38px);letter-spacing:-1.5px;line-height:1.08;margin:0 0 12px;font-weight:760}
+button,a{font:inherit;color:inherit;touch-action:manipulation}button{cursor:pointer}.badge{display:flex;align-items:center;gap:9px;background:#e2ecd9;border:0;border-radius:10px;padding:12px 14px;font-weight:650;width:100%;text-align:left}.dot{width:12px;height:12px;border-radius:100%;background:#94988c;flex:none}.online .dot{background:#23a63e}
+.heading{display:flex;align-items:center;justify-content:space-between;margin-top:15px;border-top:1px solid #d8ded2;padding-top:13px}.heading h2{margin:0;font-size:clamp(28px,8vw,40px);letter-spacing:-1.4px}.outline{border:1.4px solid #30523c;border-radius:8px;background:transparent;padding:7px 12px;font-weight:650;min-height:42px}
+.sub{font-size:14px;color:#546256;margin:3px 0}.map{height:clamp(184px,29vh,320px);position:relative}canvas{height:100%;width:100%;display:block}.empty{position:absolute;inset:0;display:grid;place-content:center;text-align:center;color:#657364;font-size:14px;padding:22px}.empty:empty{display:none}
+.legend{display:flex;justify-content:center;gap:20px;margin:6px 0 15px}.legend span{display:flex;align-items:center;gap:6px;font-size:14px}.swatch{width:23px;height:12px;border-radius:4px}.card{border-radius:13px;background:linear-gradient(115deg,#edf1e2,#e1ead9);padding:12px 16px}.card span{font-weight:650}.number{font-weight:750;letter-spacing:-1.5px;font-size:clamp(35px,11vw,51px);line-height:1.1;margin:2px 0}.number small{font-size:.49em;letter-spacing:0}.target{color:#465549}.sync{display:flex;align-items:center;justify-content:center;gap:9px;font-weight:650;margin:14px 0;min-height:24px}.sync svg{width:27px;height:24px;color:#34723e}.instruction{text-align:center;background:#e1ead9;border-radius:10px;font-weight:680;padding:12px}.fine{font-size:13px;color:#57665a;line-height:1.4}.tools{display:flex;justify-content:space-between;align-items:center;margin:7px 0}.link{border:0;background:transparent;text-decoration:underline;font-size:13px;min-height:42px}.demo{background:#f6e5b7;text-align:center;padding:6px;font-size:13px} [hidden]{display:none!important} button:disabled{opacity:.55}
+.legend{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}.legend span{font-size:12px;gap:4px}.swatch{width:13px;height:10px;flex:none}#scaleSource{color:#536459;font-size:11px}
+html[data-theme="dark"]{color-scheme:dark;--bg:#0d1a0d;--card:#111e11;--text:#e8f0e8;--muted:#7a9e7a;--border:#1e341e;--accent:#4a9e4a;--active:#1c301c}
+[data-theme="dark"] body{background:var(--bg);color:var(--text)}
+[data-theme="dark"] .badge,[data-theme="dark"] .instruction{background:var(--active);color:var(--text)}
+[data-theme="dark"] .card{background:var(--card);box-shadow:inset 0 0 0 1px var(--border)}
+[data-theme="dark"] .heading{border-color:var(--border)}
+[data-theme="dark"] .outline{border-color:var(--accent)}
+[data-theme="dark"] .fine,[data-theme="dark"] .sub,[data-theme="dark"] .target,[data-theme="dark"] #scaleSource,[data-theme="dark"] .empty{color:var(--muted)}
+[data-theme="dark"] .online .dot{background:var(--accent)}
+[data-theme="dark"] .sync svg{color:#5cb85c}
+[data-theme="dark"] .demo{background:var(--card);color:var(--muted)}
+.appearance{display:flex;justify-content:center;gap:.3em;margin:auto;align-items:center}
+body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}select,input{font:inherit;padding:10px;max-width:100%;color:var(--text);background:var(--bg);border:1px solid #58865a;border-radius:8px}#mapping-setup label{display:block;margin:10px 0}#mapping-setup select,#mapping-setup input{display:block;width:100%}#area-type{margin:8px} [hidden]{display:none!important}.field-modes{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}.field-modes [aria-pressed="true"]{background:#295b31;color:#fff;border-color:#76b56b}</style></head><body><main><div id="demoBar" class="demo" hidden>Preview · illustrative readings</div><header style="display:flex;align-items:center;justify-content:space-between;gap:8px"><h1>TurfIntel Moisture</h1><button class="outline" id="refresh">Refresh</button></header><div id="mapStatus" class="fine" role="status"></div>
+<button class="badge" id="connect"><i class="dot"></i><span id="meter">Connect TDR 350</span></button><div class="field-modes" aria-label="Field mode"><button id="sampling-mode" class="outline" type="button" aria-pressed="true">Sampling</button><button id="mapping-toggle" class="outline" type="button" aria-pressed="false">Mapping</button></div><div id="detail" class="fine"></div>
+<section class="card" aria-label="Area controls">
+<label for="area-type">Show areas</label>
+<select id="area-type"><option value="greens">Greens</option><option value="tees">Tees</option><option value="fairways">Fairways</option><option value="lawns">Lawns</option><option value="all">All areas</option></select>
+
+
+<button id="phone-gps-enable" class="outline" type="button">Enable phone location</button><p id="phone-gps-status" role="status">Phone GPS required for mapped readings.</p><div id="mapping-panel" hidden>
+<p>Walk the edge in one direction and tap Add phone GPS point at corners and curves. Send the draft for approval in Turf Health. Start at the side you want at the top of the map. Your first point sets the map’s top.</p>
+<div id="mapping-setup">
+<label>Area to map<select id="mapping-target"><option value="">New area</option></select></label>
+<label>Area type<select id="mapping-category"><option value="greens">Greens</option><option value="tees">Tees</option><option value="fairways">Fairways</option><option value="lawns">Lawns</option></select></label>
+<label>Name<input id="mapping-name" maxlength="80" placeholder="For example, Hole 1 forward tee"></label>
+<button id="mapping-start" class="outline" type="button">Start perimeter</button>
+</div>
+<div id="mapping-active" hidden>
+<h3 id="mapping-title"></h3>
+<svg id="mapping-preview" viewBox="0 0 330 260" style="width:100%;max-height:300px" aria-label="Boundary preview"></svg>
+<p>White points show the draft. Gray shows the existing boundary. The yellow first point defines the top of the map.</p>
+<button id="mapping-add" class="outline" type="button">Add phone GPS point</button><button id="mapping-undo" class="outline">Undo last point</button>
+<button id="mapping-pause" class="outline">Pause tracing</button>
+<button id="mapping-save" class="outline">Send draft for review</button>
+<button id="mapping-cancel" class="link">Discard draft</button>
+</div>
+<p id="mapping-status" role="status"></p>
+</div>
+</section>
+<div id="sampling-view"><div class="heading"><h2 id="title"></h2><button class="outline" id="change">Change</button></div><div id="source" class="sub"></div>
+<div class="map" id="greenMap" style="touch-action:pan-y pinch-zoom"><canvas id="plot"></canvas><div id="empty" class="empty"></div></div>
+<div id="surfaceNote" class="fine" style="text-align:center"></div><div id="legend" class="legend" aria-label="Course moisture thresholds"></div>
+<div class="card"><span>Latest reading</span><div class="number"><b id="vwc">—</b> <small>VWC</small></div><div class="target" id="target"></div><small id="scaleSource"></small></div>
+<div class="sync"><svg viewBox="0 0 32 26" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 22H8a6 6 0 0 1-1-12 9 9 0 0 1 17-1 6.5 6.5 0 0 1 1 13h-3"/><path id="check" d="m11 17 4 4 7-9"/></svg><span id="sync"></span></div><div class="instruction" id="hint"></div>
+</div><div class="tools"><button class="link" id="preview">Preview field screen</button><button class="link" id="settings">Phone link</button></div><button type="button" class="link appearance" id="appearance"></button></main>
+<script>
+const byId=id=>document.getElementById(id);
+let state={},demo=location.hash==='#preview';
+const demoData={green:7,connected:true,account:'Preview',latest:22,sync:'Preview upload',outline:[[0,22],[8,6],[23,3],[34,7],[47,5],[67,0],[78,6],[84,17],[81,27],[74,35],[53,36],[39,33],[20,37],[5,34],[0,22]],points:[[7,22,22],[16,12,22.5],[18,29,23],[25,21,23.8],[32,14,24.4],[41,18,25],[46,27,25.2],[55,15,26.5],[68,21,27.9],[73,10,28],[63,28,27.5]],preview:true};
+let theme=localStorage.getItem('ti-field-theme')==='light'?'light':'dark';
+function applyTheme(value){
+ theme=value==='light'?'light':'dark';
+ document.documentElement.dataset.theme=theme;
+ byId('appearance').textContent=theme==='dark'?'Switch to Light mode':'Switch to Dark mode';
+}
+applyTheme(theme);
+byId('appearance').onclick=()=>{
+ applyTheme(theme==='dark'?'light':'dark');render();
+ command('theme-'+theme);
+};
+function command(name){window.crewCommand?.(name)}
+byId('connect').onclick=()=>{if(!demo)command('connect')};
+byId('refresh').onclick=()=>{if(!demo)command('refresh')};
+byId('settings').onclick=()=>{if(!demo)command('settings')};
+const greenMap=byId('greenMap');
+let swipe=null;
+greenMap.addEventListener('pointerdown',event=>{
+ if(demo||!event.isPrimary||event.button!==0){swipe=null;return}
+ swipe={id:event.pointerId,x:event.clientX,y:event.clientY};
+ greenMap.setPointerCapture(event.pointerId);
+});
+greenMap.addEventListener('pointercancel',()=>{swipe=null});
+greenMap.addEventListener('lostpointercapture',()=>{swipe=null});
+greenMap.addEventListener('pointerup',event=>{
+ const start=swipe;swipe=null;
+ if(!start||start.id!==event.pointerId||demo)return;
+ const dx=event.clientX-start.x,dy=event.clientY-start.y;
+ if(Math.abs(dx)>=48&&Math.abs(dx)>1.5*Math.abs(dy))command(dx<0?'next-green':'previous-green');
+});
+byId('change').onclick=()=>{if(!demo)command('change')};
+byId('preview').onclick=()=>{demo=!demo;render()};
+window.updateField=s=>{state=s;render()};
+const defaultScale={points:[18,21,23,25,28,32],colors:['#d44c47','#ef8f3c','#d5b84b','#5aa45f','#4387cc','#7c61c9']};
+const labels=['Very dry','Dry','Below target','Target','Wet','Very wet'];
+let scale=defaultScale,stops=[];
+function setPalette(packet){
+ const supplied=packet?.scale;
+ const valid=supplied?.points?.length===6 && supplied.points.every(Number.isFinite) && supplied.colors?.length===6 && supplied.colors.every(v=>/^#[0-9a-f]{6}$/i.test(v));
+ scale=valid?supplied:defaultScale;
+ stops=scale.points.map((n,i)=>({n,rgb:[1,3,5].map(k=>parseInt(scale.colors[i].slice(k,k+2),16))})).sort((a,b)=>a.n-b.n);
+ byId('legend').replaceChildren(...labels.map((name,i)=>{const row=document.createElement('span'),swatch=document.createElement('i');swatch.className='swatch';swatch.style.backgroundColor=scale.colors[i];row.append(swatch,document.createTextNode(name+' '+scale.points[i]+'%'));return row}));
+ byId('target').textContent='Target '+scale.points[3]+'%';
+ byId('scaleSource').textContent=valid&&packet.revision?'Saved Turf Health scale':'Default Turf Health scale';
+}
+function pointColor(value){let nearest=0;for(let i=1;i<6;i++)if(Math.abs(value-scale.points[i])<Math.abs(value-scale.points[nearest]))nearest=i;return scale.colors[nearest]}
+function color(value){
+ let hi=stops.findIndex(s=>value<=s.n);
+ if(hi<0)return 'rgb('+stops[5].rgb.join(',')+')';
+ if(hi===0)return 'rgb('+stops[0].rgb.join(',')+')';
+ const a=stops[hi-1],b=stops[hi],t=b.n===a.n?1:(value-a.n)/(b.n-a.n);
+ return 'rgb('+a.rgb.map((v,i)=>Math.round(v+(b.rgb[i]-v)*t)).join(',')+')'
+}
+function draw(s){
+ const canvas=byId('plot'),rect=canvas.getBoundingClientRect(),w=rect.width,h=rect.height;if(!w||!h)return;
+ const ratio=devicePixelRatio||1;canvas.width=w*ratio;canvas.height=h*ratio;const c=canvas.getContext('2d');c.scale(ratio,ratio);
+ const ring=s.outline||[],points=s.points||[];byId('empty').textContent=ring.length?'':(s.connected?'Waiting for a green from phone GPS':'Choose a green to view today’s crew readings.');if(!ring.length){byId('surfaceNote').textContent='';return;}
+ const cos=s.preview?1:Math.cos(ring[0][1]*Math.PI/180),meters=s.preview?1:111320;
+ const bearing=(s.preview?0:(s.topBearingDeg||0))*Math.PI/180;
+ const right=Math.cos(bearing),up=Math.sin(bearing);
+ const project=p=>{
+   const east=(p[0]-ring[0][0])*cos*meters,north=(p[1]-ring[0][1])*meters*(s.preview?-1:1);
+   return [east*right-north*up,east*up+north*right];
+ };
+ const hull=ring.map(project),extent=hull.concat(points.map(project)),xs=extent.map(p=>p[0]),ys=extent.map(p=>p[1]),l=Math.min(...xs),r=Math.max(...xs),b=Math.min(...ys),top=Math.max(...ys),scale=Math.min((w-22)/(r-l),(h-22)/(top-b)),xy=p=>[(w-(r-l)*scale)/2+(p[0]-l)*scale,(h-(top-b)*scale)/2+(top-p[1])*scale];
+ const pointsOnEdge=hull.map(xy);
+ const first=pointsOnEdge[0],last=pointsOnEdge[pointsOnEdge.length-1];
+ if(pointsOnEdge.length>3 && first[0]===last[0] && first[1]===last[1])pointsOnEdge.pop();
+ const path=new Path2D();
+ const finalPoint=pointsOnEdge[pointsOnEdge.length-1];
+ path.moveTo((finalPoint[0]+first[0])/2,(finalPoint[1]+first[1])/2);
+ pointsOnEdge.forEach(([x,y],index)=>{
+   const next=pointsOnEdge[(index+1)%pointsOnEdge.length];
+   path.quadraticCurveTo(x,y,(x+next[0])/2,(y+next[1])/2);
+ });
+ path.closePath();c.lineJoin='round';c.lineWidth=9;c.strokeStyle=theme==='dark'?'#375738':'#b6d08e';c.stroke(path);c.fillStyle=theme==='dark'?'#273a2a':'#d8dfd3';c.fill(path);
+ const seen=new Set(),sites=[];for(const p of points){const key=p.slice(0,2).map(v=>v.toFixed(5)).join(',');if(!seen.has(key)){seen.add(key);sites.push([...xy(project(p)),p[2]])}}
+ if(sites.length){
+   // Paint a low-resolution field, then smoothly resample it inside the actual outline.
+   const surface=document.createElement('canvas');
+   surface.width=Math.max(1,Math.ceil(w/3));
+   surface.height=Math.max(1,Math.ceil(h/3));
+   const brush=surface.getContext('2d');
+   for(let row=0;row<surface.height;row++){
+     const y=(row+.5)*h/surface.height;
+     for(let col=0;col<surface.width;col++){
+       const x=(col+.5)*w/surface.width;
+       let sum=0,total=0;
+       for(const [sx,sy,vwc] of sites){
+         const dx=sx-x,dy=sy-y;
+         const weight=1/Math.max(.25,dx*dx+dy*dy);
+         sum+=weight*vwc;total+=weight;
+       }
+       brush.fillStyle=color(sum/total);
+       brush.fillRect(col,row,1,1);
+     }
+   }
+   c.save();c.clip(path);c.imageSmoothingEnabled=true;
+   c.drawImage(surface,0,0,w,h);c.restore();
+ }
+ byId('surfaceNote').textContent=sites.length
+   ? 'Estimated surface · '+sites.length+' measured location'+(sites.length===1?'':'s')
+   : 'Waiting for the first located reading';
+ c.lineWidth=1.5;c.strokeStyle='#49603c';c.stroke(path);for(const [x,y,v] of sites){c.beginPath();c.arc(x,y,3.8,0,Math.PI*2);c.fillStyle=pointColor(v);c.fill();c.strokeStyle='white';c.stroke()}
+ const labels=sites.length?[sites[0]]:[];if(s.preview)labels.push(sites[5]);for(const [px,py,v] of labels){const x=Math.max(21,Math.min(w-21,px)),y=Math.max(19,py-10);c.fillStyle=theme==='dark'?'#111e11':'#fbfaf6';c.fillRect(x-20,y-16,40,18);c.strokeStyle='#345339';c.strokeRect(x-20,y-16,40,18);c.font='bold 12px sans-serif';c.textAlign='center';c.fillStyle=theme==='dark'?'#e8f0e8':'#173b25';c.fillText(Number(v.toFixed(1))+'%',x,y-3)}
+}
+function render(){const s=demo?demoData:state;setPalette(state.moistureScale);
+byId('refresh').disabled=demo||!!s.mapLoading;
+const stamp=s.mapAsOf?new Date(s.mapAsOf).toLocaleString('en-US',{timeZone:'America/New_York',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'';
+byId('mapStatus').textContent=demo?'':s.mapLoading?'Refreshing watering maps…':[s.mapError,stamp?'Course maps updated '+stamp+' ET':''].filter(Boolean).join(' · ');
+byId('demoBar').hidden=!demo;byId('connect').classList.toggle('online',!!s.connected);byId('meter').textContent=s.meterLabel||(s.linked?'Crew watering map':'Link this phone to TurfIntel');byId('title').textContent=s.green?(s.greenName||'Green '+s.green):'Find your green';byId('source').textContent=s.manual?'Viewing selected green · swipe for another':s.green?(s.shared?'Latest sampled green · crew map':'Selected green'):'Automatic selection by phone GPS';byId('detail').textContent=[s.detail,s.newestSample?'Latest map sample '+new Date(s.newestSample).toLocaleTimeString('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit'})+' ET':''].filter(Boolean).join(' · ');byId('vwc').textContent=s.latest==null?'—':Number(s.latest.toFixed(1))+'%';byId('sync').textContent=s.sync||'Waiting for a reading';byId('check').style.visibility=(s.sync||'').includes('Uploaded')||demo?'visible':'hidden';byId('hint').textContent=s.connected?'Press READ on the meter.':'Choose a green to view its watering map.';byId('preview').textContent=demo?'Exit preview':'Preview field screen';byId('preview').hidden=!demo&&s.connected;byId('settings').disabled=demo;byId('change').disabled=demo||!s.account;draw(s)}
+window.addEventListener('resize',render);render();
+</script><script src="./phone-gps.js?v=20261106a"></script><script src="./meter.js?v=20261106a"></script><script src="./mapping.js?v=20261106a"></script><script src="./crew.js?v=20261106a"></script></body></html>

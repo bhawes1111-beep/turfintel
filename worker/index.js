@@ -4,6 +4,8 @@
 // every other request → served from the static ASSETS binding (SPA fallback
 // for unknown paths is configured in wrangler.jsonc).
 
+import { fieldAreaCatalog } from './api/fieldAreas.js'
+import { fieldDeviceApi, todayFieldMap } from './api/fieldDevice.js'
 import { json, notFound, serverError } from './lib/json.js'
 import { requireAdminKey, isMutation } from './lib/auth.js'
 import {
@@ -570,6 +572,14 @@ async function handleApi(request, env, url, ctx) {
   // Public employee board feed. This is intentionally much narrower than
   // /api/sprays so the no-login kiosk can show today's field conditions
   // without exposing the full spray log.
+  if (pathname === '/api/field-areas' && method === 'GET') {
+    return fieldAreaCatalog(env)
+  }
+  if (pathname === '/api/display-board/moisture') {
+    if (method !== 'GET') return json({ error: 'Read only' }, 405)
+    if (courseId !== 'crossroads-gc') return json({ error: 'Unknown course' }, 404)
+    return todayFieldMap(env, true, true, url.searchParams.get('areas') === 'all')
+  }
   if (pathname === '/api/display-board/sprays') {
     if (method === 'GET') {
       if (!env.DB) return json([])
@@ -606,6 +616,12 @@ async function handleApi(request, env, url, ctx) {
       decodeURIComponent(publicEmployeePhotoMatch[1]),
       courseId,
     )
+  }
+
+  // The field companion authenticates with its linked-device token, so its
+  // routes must run before the browser-session mutation gate below.
+  if (pathname.startsWith('/api/field-device/')) {
+    return fieldDeviceApi(env, request, pathname)
   }
 
   // ── Mutation auth + permission gate (Phase 2 P2) ────────────────────

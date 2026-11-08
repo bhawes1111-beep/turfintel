@@ -1,0 +1,10 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>Link field phone · TurfIntel</title>
+<style>body{font:18px system-ui;background:#f7f9f2;color:#173d2c;max-width:32em;margin:3em auto;padding:1em}button,a{font:inherit;margin:.4em;padding:.55em}button{background:#235c41;color:white;border:0;border-radius:.5em}code{font-size:1.5em}</style>
+<h1>Link field phone</h1><p>Match this code with the code on your phone before allowing this phone to upload Crosswinds moisture readings and view today’s crew watering maps.</p><code id="code"></code><p id="status" role="status"></p><a href="/" target="_blank" rel="noopener">Open TurfIntel account</a><button id="link" disabled>Allow this phone</button><button id="revoke" disabled>Unlink phone</button>
+<script>
+const fingerprint=location.hash.slice(1),valid=/^[a-f0-9]{64}$/.test(fingerprint),statusText=document.getElementById('status'),link=document.getElementById('link'),revoke=document.getElementById('revoke');
+document.getElementById('code').textContent=valid?fingerprint.slice(0,8).toUpperCase():'Open this page from the companion.';
+async function check(){if(!valid)return;try{const r=await fetch('/api/auth/me',{cache:'no-store'});const {user}=await r.json();link.disabled=revoke.disabled=!user;statusText.textContent=user?'Using '+(user.displayName||user.email):'Open your TurfIntel account, sign in there, then return to this tab.';}catch{statusText.textContent='Connection unavailable. Try again.'}}
+async function apply(action){link.disabled=revoke.disabled=true;try{const r=await fetch('/api/field-device/link',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fingerprint,action})});if(!r.ok)throw Error((await r.json()).error);statusText.textContent=action==='link'?'Phone linked. Return to TurfIntel Field.':'Phone unlinked.';}catch(e){statusText.textContent=e.message}finally{link.disabled=revoke.disabled=false}}
+link.onclick=()=>apply('link');revoke.onclick=()=>apply('revoke');window.onfocus=check;check();
+</script></html>
