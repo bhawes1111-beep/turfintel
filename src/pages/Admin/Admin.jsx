@@ -11,7 +11,10 @@ import { useAuth } from '../../context/AuthContext'
 import { useUsers, inviteUser, updateUser } from '../../utils/auth/usersStore'
 import { ROLES, ROLE_LABELS, canManageRole } from '../../utils/auth/permissions'
 import { useToast } from '../../utils/feedback/toastContext'
+import WorkBoardLogins from '../Employees/tabs/WorkBoardLogins'
 import styles from './Admin.module.css'
+
+const ADMIN_TABS = ['Users', 'Work Board Logins']
 
 const fmtDate = iso => {
   if (!iso) return 'never'
@@ -189,6 +192,7 @@ export default function Admin() {
   const { user: actor } = useAuth()
   const { users, loading, error } = useUsers()
   const [inviteOpen, setInviteOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState('Users')
   const toast = useToast()
 
   const roleOptions = useMemo(() => assignableRoles(actor), [actor])
@@ -206,8 +210,15 @@ export default function Admin() {
   const canManage = (u) => actor && u.id !== actor.id && canManageRole(actor, u.role)
 
   return (
-    <PageShell title="Admin" description="Users & permissions">
-      <div className={styles.wrap}>
+    <PageShell
+      title="Admin"
+      description="Users, permissions, and Work Board access"
+      tabs={ADMIN_TABS}
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
+    >
+      {activeTab === 'Users' ? (
+        <div className={styles.wrap}>
         <div className={styles.headRow}>
           <span className={styles.headTitle}>Users</span>
           <button type="button" className={styles.addBtn} onClick={() => setInviteOpen(true)}>+ Invite User</button>
@@ -264,8 +275,11 @@ export default function Admin() {
           </ul>
         )}
 
-        {inviteOpen && <InviteModal actor={actor} onClose={() => setInviteOpen(false)} />}
-      </div>
+          {inviteOpen && <InviteModal actor={actor} onClose={() => setInviteOpen(false)} />}
+        </div>
+      ) : (
+        <WorkBoardLogins />
+      )}
     </PageShell>
   )
 }

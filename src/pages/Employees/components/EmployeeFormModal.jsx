@@ -76,11 +76,9 @@ function makeInitial(employee) {
     pesticideLicense:  employee?.pesticideLicense  ?? '',
     emergencyContact:  employee?.emergencyContact  ?? '',
     notes:             employee?.notes             ?? '',
-    // A blank value on an employee with a custom PIN means "keep the
-    // current PIN". New/default employees show the shared 2026 default.
-    workBoardPin:      employee
-      ? (employee.workBoardPinIsDefault === true ? '2026' : '')
-      : '2026',
+    // Existing PINs are never re-sent unless a manager enters a replacement.
+    // New employees start on the shared 2026 default.
+    workBoardPin:      employee ? '' : '2026',
     // Phase 9C.5c1 — translation preferences. The kiosk render gating
     // in 9C.5c4 reads these per-operator to decide whether to surface
     // the Spanish line; for now they are storage-only.
@@ -131,6 +129,9 @@ export default function EmployeeFormModal({ employee, onClose }) {
   const [removePhoto, setRemovePhoto] = useState(false)
   const [loginHistory, setLoginHistory] = useState([])
   const [loginHistoryLoading, setLoginHistoryLoading] = useState(Boolean(employee?.id))
+  const [pinIsDefault, setPinIsDefault] = useState(employee?.workBoardPinIsDefault ?? null)
+  const [pinSetAt, setPinSetAt] = useState(employee?.workBoardPinSetAt ?? null)
+  const [resettingPin, setResettingPin] = useState(false)
 
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') onClose() }
@@ -178,6 +179,23 @@ export default function EmployeeFormModal({ employee, onClose }) {
     setPhotoFile(null)
     setPhotoPreview('')
     setRemovePhoto(Boolean(employee?.hasProfilePhoto))
+  }
+
+  async function resetWorkBoardPin() {
+    if (!employee?.id || resettingPin) return
+    setResettingPin(true)
+    setError('')
+    try {
+      const saved = await patchCrewEmployee(employee.id, { workBoardPin: '2026' })
+      setPinIsDefault(saved.workBoardPinIsDefault === true)
+      setPinSetAt(saved.workBoardPinSetAt ?? null)
+      setField('workBoardPin', '')
+      toast.success(`${employee.name}'s Work Board PIN reset to 2026`)
+    } catch (err) {
+      setError(err?.message ?? String(err))
+    } finally {
+      setResettingPin(false)
+    }
   }
 
   async function handleSave(e) {
@@ -268,14 +286,33 @@ export default function EmployeeFormModal({ employee, onClose }) {
                 <span>Employee PIN status and successful logins.</span>
               </div>
               <span className={
-                employee.workBoardPinIsDefault === true ? styles.pinDefaultBadge
-                  : employee.workBoardPinIsDefault === false ? styles.pinPersonalBadge
+                pinIsDefault === true ? styles.pinDefaultBadge
+                  : pinIsDefault === false ? styles.pinPersonalBadge
                     : styles.pinPrivateBadge
               }>
-                {employee.workBoardPinIsDefault === true ? 'Default PIN 2026'
-                  : employee.workBoardPinIsDefault === false ? 'Personal PIN set'
+                {pinIsDefault === true ? 'Default PIN 2026'
+                  : pinIsDefault === false ? 'Personal PIN set'
                     : 'PIN status private'}
               </span>
+            </div>
+            <div className={styles.workBoardPinProfile}>
+              <div>
+                <span>Current PIN</span>
+                <strong>{pinIsDefault === true ? '2026' : pinIsDefault === false ? '••••' : '—'}</strong>
+                <small>
+                  {pinIsDefault === false
+                    ? 'Personal PINs are securely hashed and cannot be displayed. Reset it if forgotten.'
+                    : 'The employee can use this PIN to open the Work Board.'}
+                </small>
+              </div>
+              <button
+                type="button"
+                className={styles.btnPinReset}
+                onClick={resetWorkBoardPin}
+                disabled={resettingPin || pinIsDefault !== false}
+              >
+                {resettingPin ? 'Resetting…' : pinIsDefault === true ? 'PIN is 2026' : 'Reset to 2026'}
+              </button>
             </div>
             <div className={styles.workBoardAccessStats}>
               <div>
@@ -288,7 +325,7 @@ export default function EmployeeFormModal({ employee, onClose }) {
               </div>
               <div>
                 <span>Personal PIN set</span>
-                <strong>{formatLoginDate(employee.workBoardPinSetAt)}</strong>
+                <strong>{formatLoginDate(pinSetAt)}</strong>
               </div>
             </div>
             <div className={styles.workBoardRecentLogins}>
@@ -382,11 +419,11 @@ export default function EmployeeFormModal({ employee, onClose }) {
               className={styles.formInput}
               value={form.workBoardPin}
               onChange={e => setField('workBoardPin', e.target.value.replace(/\D/g, '').slice(0, 4))}
-              placeholder={employee && employee.workBoardPinIsDefault !== true ? 'Leave blank to keep current PIN' : '2026'}
+              placeholder={employee ? 'Enter a replacement PIN' : '2026'}
             />
             <div className={styles.fieldHint}>
               Four digits. Default is 2026. Employees can create a personal PIN after signing in.
-              {employee && employee.workBoardPinIsDefault !== true && ' Leave blank to keep the personal PIN.'}
+              {employee && ' Leave blank to keep the current PIN.'}
             </div>
           </div>
 

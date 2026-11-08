@@ -320,6 +320,7 @@ export async function updateCrewEmployee(env, id, request) {
   const body = await readJson(request)
   const sets = []
   const binds = []
+  const workBoardPinChanged = Object.prototype.hasOwnProperty.call(body, 'workBoardPin')
   for (const [apiKey, dbCol] of Object.entries(CORE_COLUMNS)) {
     if (Object.prototype.hasOwnProperty.call(body, apiKey)) {
       sets.push(`${dbCol} = ?`)
@@ -360,6 +361,10 @@ export async function updateCrewEmployee(env, id, request) {
   ).bind(...binds).run()
 
   if (!result.success || result.meta.changes === 0) return notFound('Crew employee not found')
+  if (workBoardPinChanged) {
+    await env.DB.prepare('DELETE FROM work_board_sessions WHERE employee_id = ?')
+      .bind(id).run()
+  }
   // Phase 9C.5a.5 — see createCrewEmployee comment; the PATCH caller is
   // already authenticated past the mutation gate, so echo back the full
   // record.
