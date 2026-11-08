@@ -1,7 +1,7 @@
 // Private read gate smoke.
 //
-// Contract: the employee display board is the only no-login app surface.
-// Anonymous data reads must use /api/display-board/*; regular app reads require auth.
+// Contract: the employee display board uses its narrow PIN/session surface.
+// Regular app reads still require full application auth.
 
 import { readFileSync } from 'fs'
 
@@ -30,6 +30,8 @@ const getGateMatch = /if \(method === 'GET'\) \{\r?\n    const actor = await res
 const getGateIdx = getGateMatch?.index ?? -1
 assert(boardRouteIdx > -1 && getGateIdx > -1 && boardRouteIdx < getGateIdx,
   'display-board routes are handled before the regular GET auth gate')
+assert(index.includes("if (!await canViewWorkBoard(request, env, boardCourseId)) return json({ error: 'Work Board PIN required' }, 401)"),
+  'display-board state requires a manager or employee Work Board session')
 assert(/if \(method === 'GET'\) \{\s+const actor = await resolveActor\(request, env\)\s+if \(!actor\) return json\(\{ error: 'Unauthorized' \}, 401\)/.test(index),
   'regular API GET reads require an authenticated actor')
 

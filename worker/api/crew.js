@@ -11,6 +11,20 @@
 import { json, badRequest, notFound, readJson } from '../lib/json.js'
 import { generateId } from '../lib/id.js'
 import { buildCourseFilter, resolveCourseId } from '../lib/scope.js'
+import { hashPin } from '../lib/passwords.js'
+
+const DEFAULT_WORK_BOARD_PIN = '2026'
+
+function normalizedWorkBoardPin(value) {
+  const pin = typeof value === 'string' ? value.trim() : String(value ?? '')
+  if (!/^\d{4}$/.test(pin)) throw new Error('Work Board PIN must be exactly 4 digits')
+  return pin
+}
+
+async function workBoardPinHash(value) {
+  const pin = normalizedWorkBoardPin(value)
+  return pin === DEFAULT_WORK_BOARD_PIN ? null : hashPin(pin)
+}
 
 // ── Mapper ────────────────────────────────────────────────────────────────
 
@@ -86,6 +100,9 @@ function rowToEmployee(row, canViewPrivate = false) {
     out.hireDate         = row.hire_date
     out.pesticideLicense = row.pesticide_license
     out.emergencyContact = row.emergency_contact
+    // Never expose the PIN or its hash. Managers only need to know whether
+    // this employee still uses the shared default when opening the editor.
+    out.workBoardPinIsDefault = row.work_board_pin_hash == null
   }
   return out
 }
@@ -194,6 +211,12 @@ export async function createCrewEmployee(env, request) {
   if (!name) return badRequest('name is required')
 
   const id = body.id ?? generateId('emp')
+  let pinHash
+  try {
+    pinHash = await workBoardPinHash(body.workBoardPin ?? DEFAULT_WORK_BOARD_PIN)
+  } catch (error) {
+    return badRequest(error.message)
+  }
 
   await env.DB.prepare(`
     INSERT INTO crew_employees (
@@ -201,8 +224,9 @@ export async function createCrewEmployee(env, request) {
       assigned_area, skills_json, certifications_json, notes,
       pay_rate, pay_type, salary_amount, hide_pay_rate, exclude_from_payroll, hire_date, pesticide_license, emergency_contact,
       auto_translate_board_notes, board_language,
+      work_board_pin_hash,
       course_id
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id,
     name,
@@ -228,6 +252,7 @@ export async function createCrewEmployee(env, request) {
     // when not supplied so existing English-only callers stay happy.
     body.autoTranslateBoardNotes ? 1 : 0,
     body.boardLanguage    ?? 'en',
+    pinHash,
     resolveCourseId(body),
   ).run()
 
@@ -260,6 +285,14 @@ export async function updateCrewEmployee(env, id, request) {
   if (Object.prototype.hasOwnProperty.call(body, 'certifications')) {
     sets.push('certifications_json = ?')
     binds.push(body.certifications ? JSON.stringify(body.certifications) : null)
+  }
+  if (Object.prototype.hasOwnProperty.call(body, 'workBoardPin')) {
+    try {
+      sets.push('work_board_pin_hash = ?')
+      binds.push(await workBoardPinHash(body.workBoardPin))
+    } catch (error) {
+      return badRequest(error.message)
+    }
   }
   if (sets.length === 0) return badRequest('No mutable fields supplied')
 

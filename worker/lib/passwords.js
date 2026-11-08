@@ -40,14 +40,26 @@ async function deriveBits(password, salt, iterations) {
   return new Uint8Array(bits)
 }
 
+async function hashValue(value) {
+  const salt = crypto.getRandomValues(new Uint8Array(SALT_BYTES))
+  const hash = await deriveBits(value, salt, ITERATIONS)
+  return `pbkdf2$${ITERATIONS}$${b64encode(salt)}$${b64encode(hash)}`
+}
+
 /** hashPassword — returns the self-describing storage string. */
 export async function hashPassword(password) {
   if (typeof password !== 'string' || password.length < 8) {
     throw new Error('Password must be at least 8 characters')
   }
-  const salt = crypto.getRandomValues(new Uint8Array(SALT_BYTES))
-  const hash = await deriveBits(password, salt, ITERATIONS)
-  return `pbkdf2$${ITERATIONS}$${b64encode(salt)}$${b64encode(hash)}`
+  return hashValue(password)
+}
+
+/** hashPin — hashes a four-digit employee work-board PIN. */
+export async function hashPin(pin) {
+  if (typeof pin !== 'string' || !/^\d{4}$/.test(pin)) {
+    throw new Error('PIN must be exactly 4 digits')
+  }
+  return hashValue(pin)
 }
 
 // Constant-time comparison over equal-length byte arrays.

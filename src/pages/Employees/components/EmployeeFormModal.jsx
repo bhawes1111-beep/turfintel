@@ -65,6 +65,11 @@ function makeInitial(employee) {
     pesticideLicense:  employee?.pesticideLicense  ?? '',
     emergencyContact:  employee?.emergencyContact  ?? '',
     notes:             employee?.notes             ?? '',
+    // A blank value on an employee with a custom PIN means "keep the
+    // current PIN". New/default employees show the shared 2026 default.
+    workBoardPin:      employee
+      ? (employee.workBoardPinIsDefault === true ? '2026' : '')
+      : '2026',
     // Phase 9C.5c1 — translation preferences. The kiosk render gating
     // in 9C.5c4 reads these per-operator to decide whether to surface
     // the Spanish line; for now they are storage-only.
@@ -77,7 +82,7 @@ function toPayload(form) {
   const payRate = form.payRate === '' ? null : Number(form.payRate)
   const salaryAmount = form.salaryAmount === '' ? null : Number(form.salaryAmount)
   const payType = form.payType === 'salary' ? 'salary' : 'hourly'
-  return {
+  const payload = {
     name:              form.name.trim(),
     role:              form.role.trim()        || null,
     department:        form.department         || null,
@@ -99,6 +104,8 @@ function toPayload(form) {
     autoTranslateBoardNotes: Boolean(form.autoTranslateBoardNotes),
     boardLanguage:           form.boardLanguage || 'en',
   }
+  if (form.workBoardPin) payload.workBoardPin = form.workBoardPin
+  return payload
 }
 
 export default function EmployeeFormModal({ employee, onClose }) {
@@ -154,6 +161,10 @@ export default function EmployeeFormModal({ employee, onClose }) {
     e?.preventDefault?.()
     if (!form.name.trim()) {
       setError('Name is required.')
+      return
+    }
+    if (form.workBoardPin && !/^\d{4}$/.test(form.workBoardPin)) {
+      setError('Work Board PIN must be exactly 4 digits.')
       return
     }
     setBusy(true)
@@ -283,6 +294,28 @@ export default function EmployeeFormModal({ employee, onClose }) {
               value={form.hireDate}
               onChange={e => setField('hireDate', e.target.value)}
             />
+          </div>
+
+          <div className={styles.formField}>
+            <label className={styles.formLabel} htmlFor="employee-work-board-pin">
+              Work Board PIN
+            </label>
+            <input
+              id="employee-work-board-pin"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]{4}"
+              maxLength={4}
+              autoComplete="new-password"
+              className={styles.formInput}
+              value={form.workBoardPin}
+              onChange={e => setField('workBoardPin', e.target.value.replace(/\D/g, '').slice(0, 4))}
+              placeholder={employee && employee.workBoardPinIsDefault !== true ? 'Leave blank to keep current PIN' : '2026'}
+            />
+            <div className={styles.fieldHint}>
+              Four digits. Default is 2026.
+              {employee && employee.workBoardPinIsDefault !== true && ' Leave blank to keep the current PIN.'}
+            </div>
           </div>
 
           <div className={styles.formField}>

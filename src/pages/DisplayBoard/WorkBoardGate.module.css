@@ -1,0 +1,132 @@
+.page,
+.statusPage {
+  min-height: 100dvh;
+  background: #031208;
+  color: #e5f4e7;
+}
+
+.page {
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.statusPage {
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.panel {
+  width: min(100%, 460px);
+  border: 1px solid rgba(74, 222, 128, 0.3);
+  border-radius: 8px;
+  background: #0a2111;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+  padding: 28px;
+}
+
+.logo {
+  display: block;
+  width: min(220px, 70%);
+  max-height: 110px;
+  object-fit: contain;
+  margin: 0 auto 22px;
+}
+
+.headingBlock {
+  margin-bottom: 24px;
+}
+
+.headingBlock h1 {
+  margin: 0;
+  font-size: 28px;
+  letter-spacing: 0;
+}
+
+.headingBlock p {
+  margin: 8px 0 0;
+  color: rgba(229, 244, 231, 0.68);
+  line-height: 1.5;
+}
+
+.eyebrow {
+  color: #4ade80 !important;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.form {
+  display: grid;
+  gap: 10px;
+}
+
+.form label {
+  margin-top: 5px;
+  color: rgba(229, 244, 231, 0.78);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.form select,
+.form input,
+.form button {
+  width: 100%;
+  min-height: 52px;
+  border-radius: 6px;
+  font: inherit;
+}
+
+.form select,
+.form input {
+  border: 1px solid rgba(74, 222, 128, 0.3);
+  background: #020d05;
+  color: #f0fdf4;
+  padding: 0 14px;
+  font-size: 17px;
+}
+
+.form input {
+  font-size: 24px;
+  letter-spacing: 0.35em;
+}
+
+.form select:focus,
+.form input:focus {
+  outline: 3px solid rgba(74, 222, 128, 0.3);
+  border-color: #4ade80;
+}
+
+.form button {
+  margin-top: 12px;
+  border: 1px solid #4ade80;
+  background: #16a34a;
+  color: #041208;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.form button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.error {
+  margin: 4px 0 0;
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  border-radius: 6px;
+  background: rgba(127, 29, 29, 0.28);
+  color: #fecaca;
+  padding: 10px 12px;
+  line-height: 1.4;
+}
+
+@media (max-width: 520px) {
+  .page { padding: 12px; }
+  .panel { padding: 22px 18px; }
+  .headingBlock h1 { font-size: 24px; }
+}

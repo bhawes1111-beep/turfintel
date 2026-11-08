@@ -1,10 +1,9 @@
-// Phase 9C.4a — Display Board public route auth + boardMode refresh.
+// Display Board employee PIN route + boardMode refresh.
 //
 //   node scripts/smoke-display-board-auth-refresh.mjs
 //
 // Source-only checks confirming:
-//   - /display-board/board is the only public no-login data route
-//     (still outside RequireAuth)
+//   - /display-board/board stays outside full app auth and uses WorkBoardGate
 //   - /display-board/print is now wrapped in RequireAuth
 //   - normal /display-board remains inside the authenticated Layout
 //   - boardMode auto-refresh is 60s; normal refresh stays at 3 min
@@ -29,11 +28,9 @@ const DB  = readFileSync('src/pages/DisplayBoard/DisplayBoard.jsx', 'utf8')
 // ── App.jsx routes ──────────────────────────────────────────────────────
 section('App.jsx — route auth wiring')
 
-// /display-board/board: must remain OUTSIDE RequireAuth. We match the
-// exact Route element used today (single-line) and then verify that no
-// RequireAuth wraps that DisplayBoard mount.
-assert(/<Route\s+path="\/display-board\/board"\s+element=\{<DisplayBoard\s+boardMode\s*\/>\}\s*\/>/.test(APP),
-  "/display-board/board route renders <DisplayBoard boardMode /> directly (no RequireAuth wrap)")
+// /display-board/board: outside full app auth, inside employee PIN gate.
+assert(/<Route\s+path="\/display-board\/board"\s+element=\{<WorkBoardGate\s*\/>\}\s*\/>/.test(APP),
+  "/display-board/board route renders WorkBoardGate")
 
 // /display-board/print: must now be wrapped in <RequireAuth>.
 assert(/<Route[\s\S]{0,80}path="\/display-board\/print"[\s\S]{0,200}<RequireAuth>[\s\S]{0,80}<DisplayBoard\s+printMode\s*\/>[\s\S]{0,80}<\/RequireAuth>/.test(APP),
@@ -44,8 +41,8 @@ assert(/<Route path="\/" element=\{<RequireAuth><Layout \/><\/RequireAuth>\}>[\s
   '/display-board (normal) route is still mounted inside the authenticated Layout wrap')
 
 // Comment must call out the new policy.
-assert(/Phase 9C\.4a[\s\S]{0,300}only public kiosk\/data\s+route/.test(APP),
-  'App.jsx comment names /display-board/board as the only public kiosk/data route')
+assert(/Full-screen crew Work Board[\s\S]{0,200}employee name \+ PIN gate/.test(APP),
+  'App.jsx comment documents the employee PIN gate')
 assert(/Phase 9C\.4a[\s\S]{0,300}requires a session/.test(APP),
   'App.jsx comment notes /display-board/print now requires a session')
 
@@ -64,9 +61,7 @@ assert(/const\s+intervalMs\s*=\s*printMode\s*\?\s*null\s*:\s*\(boardMode\s*\?\s*
 // useEffect early-returns when interval is null (printMode), and uses intervalMs.
 assert(/if \(intervalMs == null\) return/.test(DB),
   'refresh effect early-returns when intervalMs is null (printMode)')
-// Phase 9C.6 — the setInterval body grew (added the !boardDateTouched
-// rollover comment block) so the regex window widened from 1000 → 2000.
-assert(/setInterval\([\s\S]{0,2000}\},\s*intervalMs\)/.test(DB),
+assert(/setInterval\([\s\S]*?\},\s*intervalMs\)/.test(DB),
   'setInterval uses intervalMs (not the legacy BOARD_REFRESH_MS literal)')
 
 // Existing refresh suite still runs inside the tick — regression couple.

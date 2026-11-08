@@ -79,7 +79,7 @@ function normalizeCrewProgressStatus(value) {
 // shows up without anyone touching the screen.
 const BOARD_REFRESH_MS = 3 * 60 * 1000
 
-// Phase 9C.4a — kiosk (boardMode) refresh interval. /display-board/board
+// Phase 9C.4a — work-board (boardMode) refresh interval. /display-board/board
 // is the unauthenticated kiosk view, so a faster cadence keeps the TV
 // in sync without anyone touching it. Normal /display-board keeps the
 // existing 3-minute cadence above; /display-board/print is gated to
@@ -270,7 +270,7 @@ function employeeNeedsSpanish(employee) {
 
 // ── Main component ───────────────────────────────────────────────────────
 
-export default function DisplayBoard({ boardMode = false, printMode = false }) {
+export default function DisplayBoard({ boardMode = false, printMode = false, onLock, workBoardViewerName = '' }) {
   const navigate                                    = useNavigate()
   const { events: protectedEvents, loading: protectedEventsLoading } = useCalendarData({ enabled: !boardMode })
   const { records: protectedSprays }                 = useSpraysData({ enabled: !boardMode })
@@ -468,7 +468,7 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
   const [lastSync, setLastSync] = useState(() => new Date())
   // Phase 9C.4a — mode-aware refresh cadence.
   //   printMode  → null  (no auto-refresh; the page prints once)
-  //   boardMode  → 60s   (public kiosk needs a fast feed)
+  //   boardMode  → 60s   (crew work board needs a fast feed)
   //   normal     → 3min  (legacy behaviour preserved)
   const intervalMs = printMode ? null : (boardMode ? KIOSK_REFRESH_MS : BOARD_REFRESH_MS)
   useEffect(() => {
@@ -988,6 +988,11 @@ export default function DisplayBoard({ boardMode = false, printMode = false }) {
           <Link to="/equipment/report-issue" className={styles.boardMobileActionBtn}>
             Report Equipment
           </Link>
+          {onLock && (
+            <button type="button" className={styles.boardMobileActionBtn} onClick={onLock}>
+              {workBoardViewerName ? `Lock · ${workBoardViewerName}` : 'Lock Board'}
+            </button>
+          )}
         </nav>
         <header className={styles.boardDateTop}>
           <button
@@ -1610,7 +1615,7 @@ function BoardModeAlertMarquee({ alerts }) {
 
 /* ── BoardModeCrewBars (Phase 9C.4b — simplified kiosk layout) ──────────
  * Renders one wide bar per assigned operator with their name + each
- * assigned task + per-task notes. Drives the public /display-board/board
+ * assigned task + per-task notes. Drives the PIN-gated /display-board/board
  * kiosk view only. No equipment chips, status chips, status pickers,
  * delete buttons, or any other interaction — view-only by design (the
  * kiosk route is the one public no-login surface in the app).

@@ -30,7 +30,7 @@ function assert(cond, label, ctx) {
 }
 function section(name) { console.log(`\n— ${name} —`) }
 
-const CREW   = readFileSync('worker/api/crew.js',          'utf8')
+const CREW   = readFileSync('worker/api/crew.js',          'utf8').replace(/\r\n/g, '\n')
 const IDX    = readFileSync('worker/index.js',             'utf8')
 const PERM_W = readFileSync('worker/lib/permissions.js',   'utf8')
 const PERM_C = readFileSync('src/utils/auth/permissions.js', 'utf8')
@@ -91,7 +91,9 @@ const ifBranchSrc   = ifBranchMatch ? ifBranchMatch[1] : ''
 assert(ifBranchSrc.length > 0, 'rowToEmployee has an `if (canViewPrivate) { ... }` private-fields branch')
 
 for (const privateField of [
-  'phone', 'email', 'notes', 'payRate', 'hireDate', 'pesticideLicense', 'emergencyContact',
+  'phone', 'email', 'notes', 'payRate', 'payType', 'salaryAmount',
+  'hidePayRate', 'excludeFromPayroll', 'hireDate', 'pesticideLicense',
+  'emergencyContact', 'workBoardPinIsDefault',
 ]) {
   assert(new RegExp(`out\\.${privateField}\\s*=`).test(ifBranchSrc),
     `private field '${privateField}' assigned ONLY inside the canViewPrivate branch`)
@@ -102,7 +104,9 @@ for (const privateField of [
 // line.) Reading the unconditional half.
 const unconditionalHalf = rowToEmpSrc.slice(0, rowToEmpSrc.indexOf('if (canViewPrivate)'))
 for (const privateField of [
-  'phone', 'email', 'payRate', 'hireDate', 'pesticideLicense', 'emergencyContact',
+  'phone', 'email', 'payRate', 'payType', 'salaryAmount', 'hidePayRate',
+  'excludeFromPayroll', 'hireDate', 'pesticideLicense', 'emergencyContact',
+  'workBoardPinIsDefault',
 ]) {
   // 'notes:' is dangerous to assert raw because the file contains comments
   // that mention notes; only check that the field-assignment shape isn't
@@ -183,11 +187,18 @@ const migrationFiles = readdirSync('worker/migrations').filter(f => f.endsWith('
 //      asserts that the canonical 7 private fields stay gated; the
 //      check below confirms no NEW private columns sneak past.
 
-// Allow-list: new crew_employees columns approved as public-safe.
-const PUBLIC_SAFE_NEW_EMP_COLUMNS = [
-  'auto_translate_board_notes',   // Phase 9C.5c1
-  'board_language',               // Phase 9C.5c1
-]
+// Every later employee column must be explicitly classified. Public fields
+// may appear in kiosk payloads; private fields must remain inside the
+// canViewPrivate branch (or, for a credential hash, never serialize at all).
+const EMP_COLUMN_CLASSIFICATION = {
+  auto_translate_board_notes: 'public',
+  board_language: 'public',
+  pay_type: 'private',
+  salary_amount: 'private',
+  exclude_from_payroll: 'private',
+  hide_pay_rate: 'private',
+  work_board_pin_hash: 'credential',
+}
 const postPrivacyMigrations = migrationFiles.filter(f => /^00(4[9]|[5-9]\d|\d{3,})/.test(f))
 for (const file of postPrivacyMigrations) {
   const sql = readFileSync(`worker/migrations/${file}`, 'utf8')
@@ -197,8 +208,8 @@ for (const file of postPrivacyMigrations) {
   const addColMatches = [...sql.matchAll(/ALTER\s+TABLE\s+crew_employees\s+ADD\s+COLUMN\s+(\w+)/gi)]
   for (const m of addColMatches) {
     const col = m[1]
-    assert(PUBLIC_SAFE_NEW_EMP_COLUMNS.includes(col),
-      `${file} ADD COLUMN ${col} is on the public-safe allow-list (private fields must stay gated)`)
+    assert(Boolean(EMP_COLUMN_CLASSIFICATION[col]),
+      `${file} ADD COLUMN ${col} is explicitly classified for employee privacy`)
   }
 }
 
@@ -231,11 +242,11 @@ for (const path of [
     `${path} carries no Phase 9C.5a.5 edits (privacy hardening is server-side only)`)
 }
 
-// ── /display-board/board still public ──────────────────────────────────
-section('/display-board/board route remains public')
+// ── /display-board/board stays outside full app login ──────────────────
+section('/display-board/board uses its employee PIN gate')
 
 const APP = readFileSync('src/App.jsx', 'utf8')
-// The board route must not be wrapped in <RequireAuth>.
+// The board route must not be wrapped in the full application <RequireAuth>.
 assert(/path="\/display-board\/board"/.test(APP) || /path="display-board\/board"/.test(APP),
   '/display-board/board route declared in App.jsx')
 // Find the board route declaration and confirm it isn't nested inside a
@@ -247,7 +258,9 @@ const reqAuthCloseIdx = APP.lastIndexOf('</RequireAuth>', boardRouteIdx)
 // matching closer also sits between it and the board route (i.e. the
 // board route is OUTSIDE the RequireAuth subtree).
 assert(reqAuthIdx === -1 || reqAuthCloseIdx > reqAuthIdx,
-  '/display-board/board route is NOT wrapped in <RequireAuth> (public kiosk preserved)')
+  '/display-board/board route is NOT wrapped in full app <RequireAuth>')
+assert(APP.includes('<WorkBoardGate />'),
+  '/display-board/board is wrapped in the employee Work Board PIN gate')
 
 // ── Summary ────────────────────────────────────────────────────────────
 console.log(`\n${failed === 0 ? '✅' : '❌'}  ${passed} passed, ${failed} failed`)

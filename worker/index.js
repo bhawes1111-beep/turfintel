@@ -329,6 +329,13 @@ import {
   resetRequest,
 } from './api/auth.js'
 import {
+  canViewWorkBoard,
+  getWorkBoardSession,
+  listWorkBoardEmployees,
+  logoutWorkBoard,
+  unlockWorkBoard,
+} from './api/workBoardAuth.js'
+import {
   listUsers,
   createUser,
   inviteUser,
@@ -569,9 +576,24 @@ async function handleApi(request, env, url, ctx) {
   // has canManageUsers — for hand-delivering reset links pre-email-provider.
   if (pathname === '/api/auth/reset-request' && method === 'POST') return resetRequest(env, request, ctx)
 
-  // Public employee board feed. This is intentionally much narrower than
-  // /api/sprays so the no-login kiosk can show today's field conditions
-  // without exposing the full spray log.
+  // Employee PIN entry points for the read-only work board. These run before
+  // the central mutation gate because the PIN/session is the authority.
+  if (pathname === '/api/work-board/employees' && method === 'GET') {
+    if (!env.DB) return json([])
+    return listWorkBoardEmployees(env, courseId)
+  }
+  if (pathname === '/api/work-board/session' && method === 'GET') {
+    return getWorkBoardSession(env, request, courseId)
+  }
+  if (pathname === '/api/work-board/unlock' && method === 'POST') {
+    return unlockWorkBoard(env, request)
+  }
+  if (pathname === '/api/work-board/logout' && method === 'POST') {
+    return logoutWorkBoard(env, request)
+  }
+
+  // Employee work-board feed. This is intentionally much narrower than
+  // /api/sprays and requires either a manager session or employee PIN session.
   if (pathname === '/api/field-areas' && method === 'GET') {
     return fieldAreaCatalog(env)
   }
@@ -583,12 +605,16 @@ async function handleApi(request, env, url, ctx) {
   if (pathname === '/api/display-board/sprays') {
     if (method === 'GET') {
       if (!env.DB) return json([])
-      return listDisplayBoardSprays(env, courseId, url.searchParams.get('date'))
+      const boardCourseId = courseId || 'crossroads-gc'
+      if (!await canViewWorkBoard(request, env, boardCourseId)) return json({ error: 'Work Board PIN required' }, 401)
+      return listDisplayBoardSprays(env, boardCourseId, url.searchParams.get('date'))
     }
   }
   if (pathname === '/api/display-board/state') {
     if (method === 'GET') {
-      return json(await listDisplayBoardState(env, courseId, url.searchParams.get('date')))
+      const boardCourseId = courseId || 'crossroads-gc'
+      if (!await canViewWorkBoard(request, env, boardCourseId)) return json({ error: 'Work Board PIN required' }, 401)
+      return json(await listDisplayBoardState(env, boardCourseId, url.searchParams.get('date')))
     }
   }
   if (pathname === '/api/display-board/weather/current') {
@@ -602,19 +628,23 @@ async function handleApi(request, env, url, ctx) {
   }
   const publicAssignmentPhotoMatch = pathname.match(/^\/api\/display-board\/assignment-photos\/([^/]+)\/file$/)
   if (publicAssignmentPhotoMatch && method === 'GET') {
+    const boardCourseId = courseId || 'crossroads-gc'
+    if (!await canViewWorkBoard(request, env, boardCourseId)) return json({ error: 'Work Board PIN required' }, 401)
     return streamBoardAssignmentPhoto(
       env,
       decodeURIComponent(publicAssignmentPhotoMatch[1]),
-      courseId,
+      boardCourseId,
       url.searchParams.get('date'),
     )
   }
   const publicEmployeePhotoMatch = pathname.match(/^\/api\/display-board\/employee-photos\/([^/]+)\/file$/)
   if (publicEmployeePhotoMatch && method === 'GET') {
+    const boardCourseId = courseId || 'crossroads-gc'
+    if (!await canViewWorkBoard(request, env, boardCourseId)) return json({ error: 'Work Board PIN required' }, 401)
     return streamBoardCrewProfilePhoto(
       env,
       decodeURIComponent(publicEmployeePhotoMatch[1]),
-      courseId,
+      boardCourseId,
     )
   }
 

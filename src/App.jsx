@@ -13,6 +13,7 @@ import MorningBrief from './pages/MorningBrief/MorningBrief'
 import OperationsBoard from './pages/Operations/OperationsBoard'
 import Employees from './pages/Employees/Employees'
 import DisplayBoard from './pages/DisplayBoard/DisplayBoard'
+import WorkBoardGate from './pages/DisplayBoard/WorkBoardGate'
 import Chemical from './pages/Chemical/Chemical'
 import Spray from './pages/Spray/Spray'
 import Disease from './pages/Disease/Disease'
@@ -50,13 +51,10 @@ export default function App() {
         <Route path="/accept-invite"  element={<AcceptInvitePage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-        {/* Full-screen Display Board mode — outside Layout AND outside the
-            auth guard, so a TV / tablet kiosk can show it without a login.
-            It is read-only (GET) and carries no private data.
-            Phase 9C.4a — /display-board/board is the only public kiosk/data
-            route in the app. Every other route (including normal
-            /display-board and the print fallback below) requires a session. */}
-        <Route path="/display-board/board" element={<DisplayBoard boardMode />} />
+        {/* Full-screen crew Work Board — outside the normal app auth guard,
+            with its own employee name + PIN gate. It remains read-only and
+            carries no private employee data. */}
+        <Route path="/display-board/board" element={<WorkBoardGate />} />
         <Route path="/equipment/board" element={<EquipmentMechanicBoard />} />
         <Route path="/equipment/report-issue" element={<EquipmentIssueReport />} />
 
@@ -65,7 +63,7 @@ export default function App() {
             dialog once on mount.
             Phase 9C.4a — /display-board/print now requires a session; it
             is supervisor-only and is no longer the second public route.
-            The kiosk path is /display-board/board (still public). */}
+            The kiosk path is /display-board/board (employee PIN gated). */}
         <Route
           path="/display-board/print"
           element={
