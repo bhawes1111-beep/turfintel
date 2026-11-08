@@ -1,6 +1,6 @@
 import { json, badRequest, readJson } from '../lib/json.js'
 import { generateId } from '../lib/id.js'
-import { verifyPassword } from '../lib/passwords.js'
+import { hashPin, verifyPassword } from '../lib/passwords.js'
 import { mintToken, hashToken, expiryFromNow, isExpired } from '../lib/sessions.js'
 import { clientIp } from '../lib/rateLimit.js'
 import { resolveActor, actorCanAccessCourse } from '../lib/actor.js'
@@ -112,7 +112,10 @@ export async function resolveWorkBoardSession(request, env, courseId) {
   const tokenHash = await hashToken(token).catch(() => null)
   if (!tokenHash) return null
   const session = await env.DB.prepare(`
-    SELECT session.*, employee.name AS employee_name, employee.status AS employee_status
+    SELECT session.*,
+           employee.name AS employee_name,
+           employee.status AS employee_status,
+           employee.work_board_pin_hash AS employee_pin_hash
     FROM work_board_sessions session
     JOIN crew_employees employee ON employee.id = session.employee_id
     WHERE session.token_hash = ? AND session.course_id = ?
@@ -142,6 +145,7 @@ export async function getWorkBoardSession(env, request, courseId) {
     authenticated: true,
     mode: 'employee',
     employee: { id: session.employee_id, name: session.employee_name },
+    pinSetupRequired: session.employee_pin_hash == null,
   })
 }
 
@@ -163,6 +167,7 @@ export async function unlockWorkBoard(env, request) {
     FROM crew_employees
     WHERE id = ? AND course_id = ?
   `).bind(employeeId, courseId).first().catch(() => null)
+  const pinWasDefault = employee?.work_board_pin_hash == null
   const valid = Boolean(employee && employee.status === 'active') && (
     employee.work_board_pin_hash
       ? await verifyPassword(pin, employee.work_board_pin_hash)
@@ -179,24 +184,74 @@ export async function unlockWorkBoard(env, request) {
 
   const token = mintToken()
   const tokenHash = await hashToken(token)
-  await env.DB.prepare(`
-    INSERT INTO work_board_sessions
-      (id, token_hash, employee_id, course_id, expires_at, last_seen_at, user_agent)
-    VALUES (?, ?, ?, ?, ?, datetime('now'), ?)
-  `).bind(
-    generateId('wbs'),
-    tokenHash,
-    employee.id,
-    courseId,
-    expiryFromNow(SESSION_DAYS),
-    (request.headers.get('User-Agent') || '').slice(0, 256) || null,
-  ).run()
+  const sessionId = generateId('wbs')
+  const userAgent = (request.headers.get('User-Agent') || '').slice(0, 256) || null
+  await env.DB.batch([
+    env.DB.prepare(`
+      INSERT INTO work_board_sessions
+        (id, token_hash, employee_id, course_id, expires_at, last_seen_at, user_agent)
+      VALUES (?, ?, ?, ?, ?, datetime('now'), ?)
+    `).bind(
+      sessionId,
+      tokenHash,
+      employee.id,
+      courseId,
+      expiryFromNow(SESSION_DAYS),
+      userAgent,
+    ),
+    env.DB.prepare(`
+      INSERT INTO work_board_login_events
+        (id, employee_id, course_id, pin_was_default, user_agent)
+      VALUES (?, ?, ?, ?, ?)
+    `).bind(
+      generateId('wbl'),
+      employee.id,
+      courseId,
+      pinWasDefault ? 1 : 0,
+      userAgent,
+    ),
+  ])
 
   return jsonWithCookie({
     authenticated: true,
     mode: 'employee',
     employee: { id: employee.id, name: employee.name },
+    pinSetupRequired: pinWasDefault,
   }, sessionCookie(token))
+}
+
+export async function setOwnWorkBoardPin(env, request) {
+  if (!env.DB) return json({ error: 'D1 not configured' }, 503)
+  const body = await readJson(request)
+  const courseId = courseScope(body.courseId)
+  const pin = typeof body.pin === 'string' ? body.pin.trim() : ''
+  if (!/^\d{4}$/.test(pin)) return badRequest('Enter a 4-digit PIN')
+  if (pin === DEFAULT_PIN) return badRequest('Choose a personal PIN other than 2026')
+
+  const session = await resolveWorkBoardSession(request, env, courseId)
+  if (!session) return json({ error: 'Work Board login required' }, 401)
+
+  const pinHash = await hashPin(pin)
+  await env.DB.batch([
+    env.DB.prepare(`
+      UPDATE crew_employees
+      SET work_board_pin_hash = ?,
+          work_board_pin_set_at = datetime('now'),
+          updated_at = datetime('now')
+      WHERE id = ? AND course_id = ?
+    `).bind(pinHash, session.employee_id, courseId),
+    env.DB.prepare(`
+      DELETE FROM work_board_sessions
+      WHERE employee_id = ? AND course_id = ? AND id <> ?
+    `).bind(session.employee_id, courseId, session.id),
+  ])
+
+  return json({
+    authenticated: true,
+    mode: 'employee',
+    employee: { id: session.employee_id, name: session.employee_name },
+    pinSetupRequired: false,
+  })
 }
 
 export async function logoutWorkBoard(env, request) {

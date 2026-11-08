@@ -651,6 +651,225 @@
   margin-top: 5px;
 }
 
+.workBoardAccessPanel {
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 8px;
+  background: rgba(14, 116, 144, 0.08);
+  padding: 12px;
+}
+
+.workBoardAccessHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.workBoardAccessHeader > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.workBoardAccessHeader strong {
+  color: #d4edd4;
+  font-size: 13px;
+}
+
+.workBoardAccessHeader > div > span,
+.workBoardLoginEmpty {
+  color: rgba(212, 237, 212, 0.5);
+  font-size: 10.5px;
+}
+
+.pinDefaultBadge,
+.pinPersonalBadge,
+.pinPrivateBadge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.pinDefaultBadge {
+  border: 1px solid rgba(245, 158, 11, 0.34);
+  background: rgba(245, 158, 11, 0.1);
+  color: #fbbf24;
+}
+
+.pinPersonalBadge {
+  border: 1px solid rgba(74, 222, 128, 0.34);
+  background: rgba(74, 222, 128, 0.1);
+  color: #86efac;
+}
+
+.pinPrivateBadge {
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: rgba(148, 163, 184, 0.08);
+  color: rgba(212, 237, 212, 0.58);
+}
+
+.workBoardAccessStats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.workBoardAccessStats > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  border-left: 2px solid rgba(56, 189, 248, 0.3);
+  padding-left: 8px;
+}
+
+.workBoardAccessStats span,
+.workBoardRecentTitle {
+  color: rgba(212, 237, 212, 0.48);
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.workBoardAccessStats strong {
+  color: rgba(229, 244, 231, 0.9);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.workBoardRecentLogins {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.workBoardLoginRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: rgba(229, 244, 231, 0.78);
+  font-size: 11px;
+}
+
+.workBoardLoginRow small {
+  color: rgba(212, 237, 212, 0.48);
+  font-size: 10px;
+}
+
+.rosterWorkBoardStatus {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: rgba(212, 237, 212, 0.48);
+  font-size: 10.5px;
+}
+
+.loginActivityRoot {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.loginActivityHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.loginActivityHeader h3 {
+  margin: 0;
+  color: #d4edd4;
+  font-size: 16px;
+}
+
+.loginActivityHeader p {
+  margin: 4px 0 0;
+  color: rgba(212, 237, 212, 0.54);
+  font-size: 12px;
+}
+
+.loginActivityStats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.loginActivityStats > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid rgba(74, 158, 74, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.025);
+  padding: 12px 14px;
+}
+
+.loginActivityStats strong {
+  color: #4ade80;
+  font-size: 22px;
+}
+
+.loginActivityStats span {
+  color: rgba(212, 237, 212, 0.5);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.loginActivityList {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.loginActivityRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(74, 158, 74, 0.14);
+  border-radius: 8px;
+  background: linear-gradient(160deg, var(--color-card) 0%, var(--color-bg) 100%);
+  padding: 11px 13px;
+}
+
+.loginActivityRow > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.loginActivityRow strong {
+  color: #d4edd4;
+  font-size: 13px;
+}
+
+.loginActivityRow > div > span {
+  color: rgba(212, 237, 212, 0.52);
+  font-size: 11px;
+}
+
+.loginActivityError {
+  margin: 0;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 7px;
+  background: rgba(239, 68, 68, 0.08);
+  color: #fca5a5;
+  padding: 9px 12px;
+  font-size: 12px;
+}
+
 .profilePhotoActions label {
   display: inline-flex;
   align-items: center;
@@ -761,6 +980,13 @@
   .modal { max-height: calc(100dvh - 20px); padding: 18px 16px; }
   .profilePhotoEditor { align-items: flex-start; }
   .profilePhotoPreview { width: 64px; height: 64px; flex-basis: 64px; }
+  .workBoardAccessHeader { flex-direction: column; }
+  .workBoardAccessStats { grid-template-columns: 1fr; }
+  .workBoardLoginRow { align-items: flex-start; flex-direction: column; gap: 2px; }
+  .rosterWorkBoardStatus { align-items: flex-start; flex-direction: column; gap: 4px; }
+  .loginActivityHeader { align-items: stretch; flex-direction: column; }
+  .loginActivityStats { grid-template-columns: 1fr; }
+  .loginActivityRow { align-items: flex-start; flex-direction: column; }
 }
 
 /* Payroll */

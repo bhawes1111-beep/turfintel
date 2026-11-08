@@ -16,6 +16,9 @@ export default function WorkBoardGate() {
   const [employees, setEmployees] = useState([])
   const [employeeId, setEmployeeId] = useState('')
   const [pin, setPin] = useState('')
+  const [newPin, setNewPin] = useState('')
+  const [confirmPin, setConfirmPin] = useState('')
+  const [pinSetupDismissed, setPinSetupDismissed] = useState(false)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -75,6 +78,9 @@ export default function WorkBoardGate() {
     setSession({ authenticated: false })
     setEmployeeId('')
     setPin('')
+    setNewPin('')
+    setConfirmPin('')
+    setPinSetupDismissed(false)
     try {
       const roster = await fetchJson(`/api/work-board/employees?courseId=${encodeURIComponent(courseId)}`)
       setEmployees(Array.isArray(roster) ? roster : [])
@@ -84,8 +90,98 @@ export default function WorkBoardGate() {
     setBusy(false)
   }
 
+  async function savePersonalPin(event) {
+    event.preventDefault()
+    if (!/^\d{4}$/.test(newPin)) {
+      setError('Enter a new 4-digit PIN.')
+      return
+    }
+    if (newPin === '2026') {
+      setError('Choose a personal PIN other than 2026.')
+      return
+    }
+    if (newPin !== confirmPin) {
+      setError('The PINs do not match.')
+      return
+    }
+    setBusy(true)
+    setError('')
+    try {
+      const current = await fetchJson('/api/work-board/pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ courseId, pin: newPin }),
+      })
+      setNewPin('')
+      setConfirmPin('')
+      setSession(current)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   if (loading) {
     return <div className={styles.statusPage} role="status">Opening Work Board…</div>
+  }
+
+  if (session?.authenticated && session.mode === 'employee'
+      && session.pinSetupRequired && !pinSetupDismissed) {
+    return (
+      <main className={styles.page}>
+        <section className={styles.panel} aria-labelledby="personal-pin-title">
+          <img className={styles.logo} src="/logo-full.png" alt="TurfIntel Pro" />
+          <div className={styles.headingBlock}>
+            <p className={styles.eyebrow}>First Login</p>
+            <h1 id="personal-pin-title">Create Your PIN</h1>
+            <p>
+              Welcome, {session.employee?.name}. Choose four numbers you will use
+              to open the Work Board next time.
+            </p>
+          </div>
+          <form className={styles.form} onSubmit={savePersonalPin}>
+            <label htmlFor="new-work-board-pin">New 4-digit PIN</label>
+            <input
+              id="new-work-board-pin"
+              type="password"
+              inputMode="numeric"
+              pattern="[0-9]{4}"
+              maxLength={4}
+              autoComplete="new-password"
+              value={newPin}
+              onChange={event => setNewPin(event.target.value.replace(/\D/g, '').slice(0, 4))}
+              disabled={busy}
+              autoFocus
+            />
+            <label htmlFor="confirm-work-board-pin">Confirm PIN</label>
+            <input
+              id="confirm-work-board-pin"
+              type="password"
+              inputMode="numeric"
+              pattern="[0-9]{4}"
+              maxLength={4}
+              autoComplete="new-password"
+              value={confirmPin}
+              onChange={event => setConfirmPin(event.target.value.replace(/\D/g, '').slice(0, 4))}
+              disabled={busy}
+            />
+            {error && <p className={styles.error} role="alert">{error}</p>}
+            <button type="submit" disabled={busy || newPin.length !== 4 || confirmPin.length !== 4}>
+              {busy ? 'Saving…' : 'Save My PIN'}
+            </button>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={() => { setError(''); setPinSetupDismissed(true) }}
+              disabled={busy}
+            >
+              Keep 2026 for Now
+            </button>
+          </form>
+        </section>
+      </main>
+    )
   }
 
   if (session?.authenticated) {

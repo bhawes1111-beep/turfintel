@@ -115,6 +115,17 @@
   opacity: 0.45;
 }
 
+.form .secondaryButton {
+  margin-top: 2px;
+  border-color: rgba(229, 244, 231, 0.28);
+  background: rgba(229, 244, 231, 0.06);
+  color: #d8eadb;
+}
+
+.form .secondaryButton:hover:not(:disabled) {
+  background: rgba(229, 244, 231, 0.12);
+}
+
 .error {
   margin: 4px 0 0;
   border: 1px solid rgba(248, 113, 113, 0.45);

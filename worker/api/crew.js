@@ -103,6 +103,9 @@ function rowToEmployee(row, canViewPrivate = false) {
     // Never expose the PIN or its hash. Managers only need to know whether
     // this employee still uses the shared default when opening the editor.
     out.workBoardPinIsDefault = row.work_board_pin_hash == null
+    out.workBoardPinSetAt      = row.work_board_pin_set_at ?? null
+    out.workBoardLastLoginAt   = row.work_board_last_login_at ?? null
+    out.workBoardLoginCount    = Number(row.work_board_login_count ?? 0)
   }
   return out
 }
@@ -171,6 +174,14 @@ export async function listCrewEmployees(env, courseId = null, canViewPrivate = f
                 AND attachment.status = 'active'
               ORDER BY datetime(attachment.created_at) DESC, attachment.id DESC
               LIMIT 1) AS profile_photo_updated_at
+            ,(SELECT MAX(login.logged_in_at)
+                FROM work_board_login_events login
+               WHERE login.employee_id = crew_employees.id
+                 AND login.course_id = crew_employees.course_id) AS work_board_last_login_at
+            ,(SELECT COUNT(*)
+                FROM work_board_login_events login
+               WHERE login.employee_id = crew_employees.id
+                 AND login.course_id = crew_employees.course_id) AS work_board_login_count
        FROM crew_employees ${where}
       ORDER BY name COLLATE NOCASE ASC`,
   ).bind(...binds).all()
@@ -196,11 +207,51 @@ export async function getCrewEmployee(env, id, canViewPrivate = false) {
                 AND attachment.status = 'active'
               ORDER BY datetime(attachment.created_at) DESC, attachment.id DESC
               LIMIT 1) AS profile_photo_updated_at
+            ,(SELECT MAX(login.logged_in_at)
+                FROM work_board_login_events login
+               WHERE login.employee_id = crew_employees.id
+                 AND login.course_id = crew_employees.course_id) AS work_board_last_login_at
+            ,(SELECT COUNT(*)
+                FROM work_board_login_events login
+               WHERE login.employee_id = crew_employees.id
+                 AND login.course_id = crew_employees.course_id) AS work_board_login_count
        FROM crew_employees
       WHERE crew_employees.id = ?`,
   ).bind(id).first()
   if (!row) return notFound('Crew employee not found')
   return json(rowToEmployee(row, canViewPrivate))
+}
+
+export async function listCrewWorkBoardLogins(env, courseId, employeeId = null, limit = 100) {
+  const safeLimit = Math.min(Math.max(Number(limit) || 100, 1), 250)
+  const binds = [courseId]
+  let employeeFilter = ''
+  if (employeeId) {
+    employeeFilter = ' AND login.employee_id = ?'
+    binds.push(employeeId)
+  }
+  binds.push(safeLimit)
+  const { results } = await env.DB.prepare(`
+    SELECT login.id,
+           login.employee_id,
+           employee.name AS employee_name,
+           login.logged_in_at,
+           login.pin_was_default
+    FROM work_board_login_events login
+    JOIN crew_employees employee
+      ON employee.id = login.employee_id
+     AND employee.course_id = login.course_id
+    WHERE login.course_id = ?${employeeFilter}
+    ORDER BY datetime(login.logged_in_at) DESC, login.id DESC
+    LIMIT ?
+  `).bind(...binds).all()
+  return json(results.map(row => ({
+    id: row.id,
+    employeeId: row.employee_id,
+    employeeName: row.employee_name,
+    loggedInAt: row.logged_in_at,
+    usedDefaultPin: row.pin_was_default === 1,
+  })))
 }
 
 // ── Create + Update + Delete ──────────────────────────────────────────────
@@ -217,6 +268,7 @@ export async function createCrewEmployee(env, request) {
   } catch (error) {
     return badRequest(error.message)
   }
+  const pinSetAt = pinHash ? new Date().toISOString() : null
 
   await env.DB.prepare(`
     INSERT INTO crew_employees (
@@ -224,9 +276,9 @@ export async function createCrewEmployee(env, request) {
       assigned_area, skills_json, certifications_json, notes,
       pay_rate, pay_type, salary_amount, hide_pay_rate, exclude_from_payroll, hire_date, pesticide_license, emergency_contact,
       auto_translate_board_notes, board_language,
-      work_board_pin_hash,
+      work_board_pin_hash, work_board_pin_set_at,
       course_id
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id,
     name,
@@ -253,6 +305,7 @@ export async function createCrewEmployee(env, request) {
     body.autoTranslateBoardNotes ? 1 : 0,
     body.boardLanguage    ?? 'en',
     pinHash,
+    pinSetAt,
     resolveCourseId(body),
   ).run()
 
@@ -288,8 +341,11 @@ export async function updateCrewEmployee(env, id, request) {
   }
   if (Object.prototype.hasOwnProperty.call(body, 'workBoardPin')) {
     try {
+      const pinHash = await workBoardPinHash(body.workBoardPin)
       sets.push('work_board_pin_hash = ?')
-      binds.push(await workBoardPinHash(body.workBoardPin))
+      binds.push(pinHash)
+      sets.push('work_board_pin_set_at = ?')
+      binds.push(pinHash ? new Date().toISOString() : null)
     } catch (error) {
       return badRequest(error.message)
     }

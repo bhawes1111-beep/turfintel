@@ -131,6 +131,22 @@ function EmployeeCard({ employee, onEdit, onDeactivate, onReactivate }) {
       {employee.excludeFromPayroll && (
         <span className={styles.payrollExcludedBadge}>Excluded from payroll</span>
       )}
+      <div className={styles.rosterWorkBoardStatus}>
+        <span className={
+          employee.workBoardPinIsDefault === true ? styles.pinDefaultBadge
+            : employee.workBoardPinIsDefault === false ? styles.pinPersonalBadge
+              : styles.pinPrivateBadge
+        }>
+          {employee.workBoardPinIsDefault === true ? 'PIN 2026'
+            : employee.workBoardPinIsDefault === false ? 'Personal PIN'
+              : 'PIN status private'}
+        </span>
+        <span>
+          {employee.workBoardLastLoginAt
+            ? `Last Work Board login ${formatShortLogin(employee.workBoardLastLoginAt)}`
+            : 'No Work Board login yet'}
+        </span>
+      </div>
       <div className={styles.cardFooter}>
         {payLabel
           ? <span className={styles.payRate}>{payLabel}<span className={styles.privateTag}>private</span></span>
@@ -144,6 +160,14 @@ function EmployeeCard({ employee, onEdit, onDeactivate, onReactivate }) {
       </div>
     </div>
   )
+}
+
+function formatShortLogin(value) {
+  const parsed = new Date(String(value).endsWith('Z') ? value : `${value}Z`)
+  if (Number.isNaN(parsed.getTime())) return value
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+  }).format(parsed)
 }
 
 function rosterInitials(name) {

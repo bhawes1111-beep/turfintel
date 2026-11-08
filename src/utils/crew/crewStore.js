@@ -129,6 +129,15 @@ export async function deleteCrewEmployeeProfilePhoto(id) {
   return result
 }
 
+export async function fetchCrewWorkBoardLogins({ employeeId = null, limit = 100 } = {}) {
+  const params = new URLSearchParams({
+    courseId: getSelectedCourseId(),
+    limit: String(limit),
+  })
+  if (employeeId) params.set('employeeId', employeeId)
+  return fetchJSON(`/api/crew-work-board-logins?${params}`)
+}
+
 // ── Subscription hook ──────────────────────────────────────────────────────
 
 function subscribe(cb) {

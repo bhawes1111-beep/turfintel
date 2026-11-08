@@ -152,6 +152,7 @@ import {
   createCrewEmployee,
   updateCrewEmployee,
   deleteCrewEmployee,
+  listCrewWorkBoardLogins,
 } from './api/crew.js'
 import {
   uploadCrewProfilePhoto,
@@ -333,6 +334,7 @@ import {
   getWorkBoardSession,
   listWorkBoardEmployees,
   logoutWorkBoard,
+  setOwnWorkBoardPin,
   unlockWorkBoard,
 } from './api/workBoardAuth.js'
 import {
@@ -590,6 +592,9 @@ async function handleApi(request, env, url, ctx) {
   }
   if (pathname === '/api/work-board/logout' && method === 'POST') {
     return logoutWorkBoard(env, request)
+  }
+  if (pathname === '/api/work-board/pin' && method === 'POST') {
+    return setOwnWorkBoardPin(env, request)
   }
 
   // Employee work-board feed. This is intentionally much narrower than
@@ -1472,6 +1477,19 @@ async function handleApi(request, env, url, ctx) {
       return listCrewEmployees(env, courseId, canViewPrivate)
     }
     if (method === 'POST') return createCrewEmployee(env, request)
+  }
+
+  if (pathname === '/api/crew-work-board-logins' && method === 'GET') {
+    const actor = await resolveActor(request, env)
+    if (!actorHasPermission(actor, 'canViewEmployeePrivate')) {
+      return json({ error: 'Forbidden — employee private access required' }, 403)
+    }
+    return listCrewWorkBoardLogins(
+      env,
+      courseId || 'crossroads-gc',
+      url.searchParams.get('employeeId') || null,
+      url.searchParams.get('limit') || 100,
+    )
   }
 
   // ── /api/crew-employees/:id ───────────────────────────────────────────

@@ -24,6 +24,7 @@ import EmployeePayroll       from './tabs/EmployeePayroll'
 import CrewRoles             from './tabs/CrewRoles'
 import Certifications        from './tabs/Certifications'
 import EmployeeTraining      from './tabs/EmployeeTraining'
+import WorkBoardLogins       from './tabs/WorkBoardLogins'
 import EmployeeFormModal     from './components/EmployeeFormModal'
 import workspace from '../../styles/workspace.module.css'
 
@@ -34,6 +35,7 @@ const TABS = [
   'Schedule',
   'Payroll',
   'Training',
+  'Work Board Logins',
   'Crew Roles',
   'Certifications',
 ]
@@ -78,6 +80,7 @@ export default function Employees() {
         {activeTab === 'Schedule'           && <EmployeeScheduleTab />}
         {activeTab === 'Payroll'            && <EmployeePayroll />}
         {activeTab === 'Training'           && <EmployeeTraining />}
+        {activeTab === 'Work Board Logins'  && <WorkBoardLogins />}
         {activeTab === 'Crew Roles'         && <CrewRoles onEdit={openEdit} />}
         {activeTab === 'Certifications'     && <Certifications />}
       </PageShell>

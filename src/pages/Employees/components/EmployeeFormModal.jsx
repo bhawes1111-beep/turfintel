@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import {
   createCrewEmployee,
   deleteCrewEmployeeProfilePhoto,
+  fetchCrewWorkBoardLogins,
   patchCrewEmployee,
   uploadCrewEmployeeProfilePhoto,
 } from '../../../utils/crew/crewStore'
@@ -38,6 +39,16 @@ const PAY_TYPE_OPTS = [
 
 const PROFILE_PHOTO_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])
 const MAX_PROFILE_PHOTO_BYTES = 5 * 1024 * 1024
+
+function formatLoginDate(value) {
+  if (!value) return 'Never'
+  const parsed = new Date(value.endsWith?.('Z') ? value : `${value}Z`)
+  if (Number.isNaN(parsed.getTime())) return value
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short', day: 'numeric', year: 'numeric',
+    hour: 'numeric', minute: '2-digit',
+  }).format(parsed)
+}
 
 function initials(name) {
   const parts = String(name ?? '').trim().split(/\s+/).filter(Boolean)
@@ -118,6 +129,8 @@ export default function EmployeeFormModal({ employee, onClose }) {
   const [photoFile, setPhotoFile] = useState(null)
   const [photoPreview, setPhotoPreview] = useState(employee?.profilePhotoUrl ?? '')
   const [removePhoto, setRemovePhoto] = useState(false)
+  const [loginHistory, setLoginHistory] = useState([])
+  const [loginHistoryLoading, setLoginHistoryLoading] = useState(Boolean(employee?.id))
 
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') onClose() }
@@ -130,6 +143,16 @@ export default function EmployeeFormModal({ employee, onClose }) {
       if (photoPreview?.startsWith('blob:')) URL.revokeObjectURL(photoPreview)
     }
   }, [photoPreview])
+
+  useEffect(() => {
+    if (!employee?.id) return undefined
+    let cancelled = false
+    fetchCrewWorkBoardLogins({ employeeId: employee.id, limit: 8 })
+      .then(rows => { if (!cancelled) setLoginHistory(Array.isArray(rows) ? rows : []) })
+      .catch(() => { if (!cancelled) setLoginHistory([]) })
+      .finally(() => { if (!cancelled) setLoginHistoryLoading(false) })
+    return () => { cancelled = true }
+  }, [employee?.id])
 
   function setField(k, v) { setForm(prev => ({ ...prev, [k]: v })) }
 
@@ -237,6 +260,55 @@ export default function EmployeeFormModal({ employee, onClose }) {
           </div>
         </section>
 
+        {isEdit && (
+          <section className={styles.workBoardAccessPanel} aria-label="Work Board access activity">
+            <div className={styles.workBoardAccessHeader}>
+              <div>
+                <strong>Work Board Access</strong>
+                <span>Employee PIN status and successful logins.</span>
+              </div>
+              <span className={
+                employee.workBoardPinIsDefault === true ? styles.pinDefaultBadge
+                  : employee.workBoardPinIsDefault === false ? styles.pinPersonalBadge
+                    : styles.pinPrivateBadge
+              }>
+                {employee.workBoardPinIsDefault === true ? 'Default PIN 2026'
+                  : employee.workBoardPinIsDefault === false ? 'Personal PIN set'
+                    : 'PIN status private'}
+              </span>
+            </div>
+            <div className={styles.workBoardAccessStats}>
+              <div>
+                <span>Last login</span>
+                <strong>{formatLoginDate(employee.workBoardLastLoginAt)}</strong>
+              </div>
+              <div>
+                <span>Successful logins</span>
+                <strong>{employee.workBoardLoginCount ?? 0}</strong>
+              </div>
+              <div>
+                <span>Personal PIN set</span>
+                <strong>{formatLoginDate(employee.workBoardPinSetAt)}</strong>
+              </div>
+            </div>
+            <div className={styles.workBoardRecentLogins}>
+              <span className={styles.workBoardRecentTitle}>Recent login activity</span>
+              {loginHistoryLoading ? (
+                <span className={styles.workBoardLoginEmpty}>Loading activity…</span>
+              ) : loginHistory.length === 0 ? (
+                <span className={styles.workBoardLoginEmpty}>No Work Board logins recorded yet.</span>
+              ) : (
+                loginHistory.map(login => (
+                  <div key={login.id} className={styles.workBoardLoginRow}>
+                    <span>{formatLoginDate(login.loggedInAt)}</span>
+                    <small>{login.usedDefaultPin ? 'Default 2026' : 'Personal PIN'}</small>
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
+        )}
+
         <div className={styles.formGrid}>
           <div className={`${styles.formField} ${styles.formFieldWide}`}>
             <label className={styles.formLabel}>Full Name *</label>
@@ -313,8 +385,8 @@ export default function EmployeeFormModal({ employee, onClose }) {
               placeholder={employee && employee.workBoardPinIsDefault !== true ? 'Leave blank to keep current PIN' : '2026'}
             />
             <div className={styles.fieldHint}>
-              Four digits. Default is 2026.
-              {employee && employee.workBoardPinIsDefault !== true && ' Leave blank to keep the current PIN.'}
+              Four digits. Default is 2026. Employees can create a personal PIN after signing in.
+              {employee && employee.workBoardPinIsDefault !== true && ' Leave blank to keep the personal PIN.'}
             </div>
           </div>
 
