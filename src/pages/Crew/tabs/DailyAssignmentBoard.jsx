@@ -9,7 +9,7 @@
 // No new schema. Reuses the Phase 10 crew_assignment_id linkage to
 // surface chips next to the operator on the Display Board.
 
-import { useMemo, useRef, useState, Fragment } from 'react'
+import { useEffect, useMemo, useRef, useState, Fragment } from 'react'
 import {
   createCrewAssignment,
   deleteCrewAssignment,
@@ -65,6 +65,10 @@ import {
 // + /api/pilot-feedback endpoint via the existing createFeedback
 // helper; no new schema or worker route is added.
 import { createFeedback } from '../../../utils/feedback/feedbackStore'
+import {
+  fetchAssignmentBoardPublication,
+  postAssignmentBoard,
+} from '../../../utils/assignments/assignmentBoardPublication'
 import {
   deleteAttachment,
   uploadAttachment,
@@ -388,12 +392,29 @@ export default function DailyAssignmentBoard({
   const [tasksModalOpen, setTasksModalOpen] = useState(false)
   const [busyEmpId,    setBusyEmpId]    = useState(null)
   const [bulkBusy,     setBulkBusy]     = useState(null)   // 'copy' | 'clear' | null
+  const [postingBoard, setPostingBoard] = useState(false)
+  const [publicationResult, setPublicationResult] = useState({ key: null, publication: null })
 
   // Phase 8A.3a — Crosswinds gate. The new Notes + Status columns
   // are only rendered when the active course is Crosswinds. Every
   // other course keeps the existing 4-column table unchanged.
   const courseId        = useSelectedCourseId()
   const isCrosswinds    = courseId === CROSSWINDS_COURSE_ID
+  const publicationKey  = `${courseId ?? ''}:${selectedDate}`
+  const publicationLoading = publicationResult.key !== publicationKey
+  const assignmentPublication = publicationLoading ? null : publicationResult.publication
+
+  useEffect(() => {
+    let ignore = false
+    fetchAssignmentBoardPublication(selectedDate, courseId)
+      .then(publication => {
+        if (!ignore) setPublicationResult({ key: publicationKey, publication })
+      })
+      .catch(() => {
+        if (!ignore) setPublicationResult({ key: publicationKey, publication: null })
+      })
+    return () => { ignore = true }
+  }, [selectedDate, courseId, publicationKey])
 
   // Local draft buffer for the notes input so we save on blur, not
   // on every keystroke. Keyed by assignment id; clears on save.
@@ -737,6 +758,17 @@ export default function DailyAssignmentBoard({
       if (arr.length > 1) m.set(k, arr.slice(1))
     }
     return m
+  }, [assignmentsByEmpId])
+
+  const dayJobCount = useMemo(() => {
+    let total = 0
+    for (const assignments of assignmentsByEmpId.values()) {
+      for (const assignment of assignments) {
+        total += 1
+        total += Array.isArray(assignment.subJobs) ? assignment.subJobs.length : 0
+      }
+    }
+    return total
   }, [assignmentsByEmpId])
 
   // Index: reservations linked to a specific crew_assignment, so the
@@ -1686,6 +1718,28 @@ export default function DailyAssignmentBoard({
     }
   }
 
+  async function handlePostToDisplayBoard() {
+    if (!canEditAssignments) {
+      toast.error('You do not have permission to post assignments.')
+      return
+    }
+    if (dayJobCount === 0) {
+      toast.info('Add at least one job before posting the day.')
+      return
+    }
+
+    setPostingBoard(true)
+    try {
+      const saved = await postAssignmentBoard(selectedDate, courseId)
+      setPublicationResult({ key: publicationKey, publication: saved })
+      toast.success(`Posted ${dayJobCount} job${dayJobCount === 1 ? '' : 's'} to the Display Board`)
+    } catch (error) {
+      toast.error(`Post failed: ${error.message}`)
+    } finally {
+      setPostingBoard(false)
+    }
+  }
+
   // Phase DAB.10b — Multi-job state + handlers.
   //
   // addingJobForEmpId: which employee currently has the "+ Add Job"
@@ -1852,6 +1906,17 @@ export default function DailyAssignmentBoard({
           <p className={styles.sectionHint}>
             Employee-first morning workflow · {prettyDate(selectedDate)}
           </p>
+          <p
+            className={styles.publicationState}
+            data-posted={assignmentPublication?.posted ? 'true' : 'false'}
+            aria-live="polite"
+          >
+            {publicationLoading
+              ? 'Checking Display Board status...'
+              : assignmentPublication?.posted
+                ? `Posted - all ${dayJobCount} job${dayJobCount === 1 ? '' : 's'} are visible on the Display Board`
+                : 'Draft - the Display Board shows first jobs only until you post'}
+          </p>
         </div>
         <div className={styles.dateNav}>
           <div className={styles.dayCalendarStrip} aria-label={`Events for ${selectedDate}`}>
@@ -1954,6 +2019,22 @@ export default function DailyAssignmentBoard({
             title="Pick any past date and copy its assignments into the selected day. You can choose whether notes and equipment carry, and how to handle existing rows."
           >
             Copy From Date…
+          </button>
+          <button
+            type="button"
+            className={styles.tasksBtn}
+            data-variant="post"
+            onClick={handlePostToDisplayBoard}
+            disabled={postingBoard || publicationLoading || bulkBusy !== null || dayJobCount === 0 || !canEditAssignments || assignmentPublication?.posted}
+            title={assignmentPublication?.posted
+              ? 'Every job for this date is visible on the Display Board.'
+              : 'Reveal every job for this date on the Display Board.'}
+          >
+            {postingBoard
+              ? 'Posting...'
+              : assignmentPublication?.posted
+                ? 'Posted'
+                : 'Post'}
           </button>
           <button
             type="button"

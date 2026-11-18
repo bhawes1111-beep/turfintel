@@ -182,6 +182,11 @@ import {
   deleteOperationsNote,
 } from './api/operationsNotes.js'
 import {
+  findAssignmentBoardPublication,
+  getAssignmentBoardPublication,
+  postAssignmentBoardPublication,
+} from './api/assignmentBoardPublications.js'
+import {
   listPilotFeedback,
   getPilotFeedback,
   createPilotFeedback,
@@ -417,6 +422,7 @@ async function listDisplayBoardState(env, courseId, date) {
       events: [], sprays: [], crewAssignments: [], equipmentReservations: [],
       alerts: [], employees: [], schedules: [], scheduleOverrides: [],
       notes: [], moisture: [], assignmentPhotos: [],
+      assignmentPublication: null,
       displaySettings: { showEmployeeProfilePhotos: false },
     }
   }
@@ -433,6 +439,7 @@ async function listDisplayBoardState(env, courseId, date) {
     notes,
     moisture,
     boardCourse,
+    assignmentPublication,
   ] = await Promise.all([
     listCalendarEvents(env, courseId).then(res => responseJson(res, [])),
     listDisplayBoardSprays(env, courseId, date).then(res => responseJson(res, [])),
@@ -449,6 +456,7 @@ async function listDisplayBoardState(env, courseId, date) {
           'SELECT display_board_show_profile_photos FROM courses WHERE id = ?',
         ).bind(courseId).first().catch(() => null)
       : Promise.resolve(null),
+    findAssignmentBoardPublication(env, courseId, date),
   ])
 
   const showEmployeeProfilePhotos = boardCourse?.display_board_show_profile_photos === 1
@@ -519,6 +527,11 @@ async function listDisplayBoardState(env, courseId, date) {
     notes: Array.isArray(notes) ? notes : [],
     moisture: Array.isArray(moisture) ? moisture : [],
     assignmentPhotos,
+    assignmentPublication: {
+      publicationDate: date,
+      status: assignmentPublication?.status === 'posted' ? 'posted' : 'draft',
+      posted: assignmentPublication?.status === 'posted',
+    },
     displaySettings: { showEmployeeProfilePhotos },
   }
 }
@@ -1403,6 +1416,19 @@ async function handleApi(request, env, url, ctx) {
   if (pathname === '/api/alerts') {
     if (method === 'GET')  return listAlerts(env, courseId)
     if (method === 'POST') return createAlert(env, request)
+  }
+
+  // ── /api/assignment-board-publications ────────────────────────────────
+  // A date-scoped publish marker. Posting does not rewrite assignments; it
+  // tells the Display Board to reveal every ordered job for that day.
+  if (pathname === '/api/assignment-board-publications') {
+    if (method === 'GET') {
+      return getAssignmentBoardPublication(env, courseId, url.searchParams.get('date'))
+    }
+    if (method === 'POST') {
+      const actor = await resolveActor(request, env)
+      return postAssignmentBoardPublication(env, request, actor)
+    }
   }
 
   // ── /api/alerts/:id ───────────────────────────────────────────────────

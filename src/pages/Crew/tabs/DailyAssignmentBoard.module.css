@@ -34,6 +34,17 @@
   margin: 0;
 }
 
+.publicationState {
+  margin: 2px 0 0;
+  color: #fbbf24;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.publicationState[data-posted='true'] {
+  color: #86efac;
+}
+
 /* ── Date selector ──────────────────────────────────────────────────── */
 
 .dateNav {
@@ -367,6 +378,22 @@
 .tasksBtn:hover:not(:disabled) { background: rgba(34, 197, 94, 0.26); }
 
 .tasksBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.tasksBtn[data-variant="post"] {
+  background: #22c55e;
+  border-color: #4ade80;
+  color: #052e16;
+  font-weight: 800;
+}
+.tasksBtn[data-variant="post"]:hover:not(:disabled) {
+  background: #4ade80;
+}
+.tasksBtn[data-variant="post"]:disabled {
+  background: rgba(34, 197, 94, 0.18);
+  border-color: rgba(74, 222, 128, 0.35);
+  color: #86efac;
+  opacity: 1;
+}
 
 .tasksBtn[data-variant="copy"] {
   background: rgba(56, 189, 248, 0.14);

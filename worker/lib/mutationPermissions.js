@@ -56,6 +56,7 @@ const MUTATION_RULES = [
   ['/api/nutrient-samples',       'canEditTurfHealth'],
 
   ['/api/calendar-events',        'canEditAssignments'],
+  ['/api/assignment-board-publications', 'canEditAssignments'],
   ['/api/task-templates',         'canEditAssignments'],   // Phase 9C.11
   ['/api/task-categories',        'canEditAssignments'],
   ['/api/weekly-goals',           'canEditAssignments'],

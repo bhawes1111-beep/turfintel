@@ -352,6 +352,7 @@ export default function DisplayBoard({ boardMode = false, printMode = false, onL
   const scheduleOverrides = mergeBoardRows(protectedScheduleOverrides, boardState.scheduleOverrides)
   const dailyNotes = mergeBoardRows(protectedDailyNotes, boardState.notes)
   const moistureObs = mergeBoardRows(protectedMoistureObs, boardState.moisture)
+  const assignmentPublication = boardState.assignmentPublication ?? null
   const assignmentPhotosById = useMemo(() => {
     const grouped = new Map()
     for (const attachment of (boardState.assignmentPhotos ?? [])) {
@@ -690,7 +691,10 @@ export default function DisplayBoard({ boardMode = false, printMode = false, onL
   // to avoid duplication across multiple operators on the same event;
   // they remain visible in the EquipmentStatusPanel in the sidebar.
   const operatorCards = useMemo(() => {
-    const firstJobsOnly = selectedDate === isoToday() && now.getHours() < 7
+    // The supervisor explicitly publishes the day's full job slate from the
+    // Daily Assignment Board. Until then, the kiosk keeps the familiar
+    // first-job-only morning view. Posting is date- and course-scoped.
+    const firstJobsOnly = assignmentPublication?.status !== 'posted'
     const eventsById = new Map(dayEvents.map(e => [e.id, e]))
     const byOperator = new Map()
     for (const a of dayCrew) {
@@ -849,7 +853,8 @@ export default function DisplayBoard({ boardMode = false, printMode = false, onL
     employees, resolveEmployee,
     displayBoardShowsProfilePhotos,
     // Phase E.4 / E.9 — re-bucket when schedules / overrides / selectedDate change
-    weeklySchedules, scheduleOverrides, selectedDate, now,
+    weeklySchedules, scheduleOverrides, selectedDate,
+    assignmentPublication,
   ])
 
   // ── Crew-facing weather impacts (rule-based, from existing weather) ─────
